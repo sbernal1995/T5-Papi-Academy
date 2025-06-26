@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>T5-Papi-Academy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="/dist/output.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-50 min-h-screen flex flex-col font-inter">
+    <header class="bg-white shadow-md py-4 px-6 flex items-center justify-center">
+      <h1 class="text-3xl font-bold tracking-tight text-primary">T5-Papi-Academy</h1>
+    </header>
+    <main class="flex-1 flex flex-col items-center justify-center p-4">
+      <section class="w-full max-w-5xl mb-8">
+        <div class="overflow-x-auto rounded-2xl shadow-lg bg-white">
+          <table class="table w-full text-sm md:text-base">
+            <thead>
+              <tr class="bg-gray-100">
+                <th>Nombre</th>
+                <th>Total Puntos</th>
+                <th>PJ</th>
+                <th>PG</th>
+                <th>PE</th>
+                <th>PP</th>
+                <th>Goles</th>
+                <th>Asistencias</th>
+                <th>Cagadas en gol</th>
+                <th>MVP</th>
+                <th>ACE</th>
+                <th>Atajadas</th>
+                <th>Winrate</th>
+                <th>Capitan Defeat</th>
+                <th>Bita Defeat</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body">
+              <!-- Filas de jugadores -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="w-full max-w-xl bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Cargar Partido</h2>
+        <form id="match-form" class="space-y-4">
+          <div class="form-control">
+            <label class="label" for="fecha">Fecha</label>
+            <input type="date" id="fecha" name="fecha" class="input input-bordered w-full" required />
+          </div>
+          <div class="form-control">
+            <label class="label" for="cancha">Cancha</label>
+            <input type="text" id="cancha" name="cancha" class="input input-bordered w-full" placeholder="Ej: La Bombonera" required />
+          </div>
+          <div class="form-control">
+            <label class="label" for="jugadores">Jugadores</label>
+            <select id="jugadores" name="jugadores" class="select select-bordered w-full" multiple required></select>
+            <div id="jugadores-tags" class="flex flex-wrap gap-2 mt-2"></div>
+          </div>
+          <div class="form-control flex flex-row gap-4">
+            <div class="w-1/2">
+              <label class="label" for="resultado">Resultado</label>
+              <input type="text" id="resultado" name="resultado" class="input input-bordered w-full" placeholder="Ej: 5-3" required />
+            </div>
+            <div class="w-1/2">
+              <label class="label" for="equipo_ganador">Equipo Ganador</label>
+              <input type="text" id="equipo_ganador" name="equipo_ganador" class="input input-bordered w-full" placeholder="Ej: Azul" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-full shadow-md hover:shadow-xl transition">Cargar Partido</button>
+        </form>
+      </section>
+    </main>
+    <footer class="bg-white text-gray-400 text-center py-3 text-xs shadow-inner">
+      <span>&copy; 2025 T5-Papi-Academy. Entre amigos, fútbol y stats.</span>
+    </footer>
+    <script src="/src/app.js"></script>
+  </body>
+</html> 
