@@ -22,9 +22,16 @@ const initApp = () => {
 
   // Estado de la aplicación
   let todosLosJugadores = [];
+  let todasLasPosiciones = [];
   let equipo1 = [];
   let equipo2 = [];
   let eventos = [];
+  let jugadorEditando = null; // Para saber si estamos editando o agregando
+
+  // Mapeo de iconos de posiciones (se cargará dinámicamente)
+  let iconosPosiciones = {};
+  let nombresPosiciones = {};
+  let posicionesIds = {}; // Para mapear nombre -> UUID
 
   // --- Sistema de notificaciones toast ---
   function showToast(message, type = 'success') {
@@ -83,7 +90,18 @@ const initApp = () => {
 
   // --- Lógica de carga de datos ---
   async function cargarTodosLosJugadores() {
-    const { data, error } = await supabase.from('jugadores').select('id, nombre');
+    const { data, error } = await supabase.from('jugadores').select(`
+      id, 
+      nombre,
+      jugador_posicion (
+        posicion_id,
+        es_primaria,
+        posicion (
+          id,
+          nombre
+        )
+      )
+    `);
     if (error) {
       console.error('Error al cargar jugadores:', error);
       showToast('Error al cargar la lista de jugadores', 'error');
@@ -93,11 +111,218 @@ const initApp = () => {
     return todosLosJugadores;
   }
 
+  async function cargarPosiciones() {
+    const { data, error } = await supabase.from('posicion').select('*').order('nombre');
+    if (error) {
+      console.error('Error al cargar posiciones:', error);
+      return [];
+    }
+    todasLasPosiciones = data || [];
+    
+    // Configurar mapeos dinámicos
+    iconosPosiciones = {};
+    nombresPosiciones = {};
+    posicionesIds = {};
+    
+    data.forEach(pos => {
+      const iconos = {
+        'Arquero': '🥅',
+        'Defensor': '🛡️', 
+        'Mediocampo': '⚡',
+        'Atacante': '⚽'
+      };
+      
+      const abrev = {
+        'Arquero': 'ARQ',
+        'Defensor': 'DEF',
+        'Mediocampo': 'MED', 
+        'Atacante': 'ATA'
+      };
+      
+      iconosPosiciones[pos.id] = iconos[pos.nombre] || '❓';
+      nombresPosiciones[pos.id] = abrev[pos.nombre] || pos.nombre.substr(0, 3).toUpperCase();
+      posicionesIds[pos.nombre] = pos.id;
+    });
+    
+    return todasLasPosiciones;
+  }
+
+  async function inicializarPosiciones() {
+    await cargarPosiciones();
+    cargarOpcionesPosiciones();
+  }
+
+  function cargarOpcionesPosiciones() {
+    const selectPrimaria = document.getElementById('posicion-primaria');
+    const selectSecundaria = document.getElementById('posicion-secundaria');
+    
+    if (!selectPrimaria || !selectSecundaria) return;
+    
+    // Limpiar opciones existentes (excepto la primera)
+    selectPrimaria.innerHTML = '<option value="">Seleccionar posición</option>';
+    selectSecundaria.innerHTML = '<option value="">Seleccionar posición (opcional)</option>';
+    
+    // Agregar opciones dinámicamente
+    todasLasPosiciones.forEach(pos => {
+      const icono = iconosPosiciones[pos.id] || '❓';
+      const nombre = nombresPosiciones[pos.id] || pos.nombre;
+      const option = `<option value="${pos.id}">${icono} ${pos.nombre} (${nombre})</option>`;
+      
+      selectPrimaria.innerHTML += option;
+      selectSecundaria.innerHTML += option;
+    });
+  }
+
+  // Función para abrir modal en modo agregar
+  window.abrirModalAgregar = () => {
+    jugadorEditando = null;
+    
+    // Cambiar textos del modal
+    document.getElementById('modal-title-text').textContent = 'Agregar Nuevo Jugador';
+    document.getElementById('submit-text').textContent = 'Agregar Jugador';
+    document.getElementById('submit-icon').className = 'bi bi-plus me-2';
+    
+    // Limpiar formulario
+    document.getElementById('player-form').reset();
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('playerModal'));
+    modal.show();
+  };
+
+  // Función para abrir modal en modo editar
+  window.abrirModalEditar = (jugadorId) => {
+    const jugador = todosLosJugadores.find(j => j.id === jugadorId);
+    if (!jugador) {
+      showToast('Jugador no encontrado', 'error');
+      return;
+    }
+    
+    jugadorEditando = jugador;
+    
+    // Cambiar textos del modal
+    document.getElementById('modal-title-text').textContent = 'Editar Jugador';
+    document.getElementById('submit-text').textContent = 'Guardar Cambios';
+    document.getElementById('submit-icon').className = 'bi bi-check-lg me-2';
+    
+    // Pre-llenar formulario
+    document.getElementById('nombre').value = jugador.nombre;
+    
+    // Pre-seleccionar posiciones
+    const posiciones = jugador.jugador_posicion || [];
+    const primaria = posiciones.find(p => p.es_primaria);
+    const secundaria = posiciones.find(p => !p.es_primaria);
+    
+    document.getElementById('posicion-primaria').value = primaria ? primaria.posicion_id : '';
+    document.getElementById('posicion-secundaria').value = secundaria ? secundaria.posicion_id : '';
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('playerModal'));
+    modal.show();
+  };
+
+  // Función para eliminar jugador
+  window.eliminarJugador = async (jugadorId, nombreJugador) => {
+    const confirmacion = confirm(`¿Estás seguro de que quieres eliminar a "${nombreJugador}"?\n\nEsta acción no se puede deshacer y eliminará todas las estadísticas del jugador.`);
+    
+    if (!confirmacion) {
+      return;
+    }
+
+    try {
+      // Eliminar jugador (las posiciones se eliminan automáticamente por CASCADE)
+      const { error } = await supabase
+        .from('jugadores')
+        .delete()
+        .eq('id', jugadorId);
+
+      if (error) {
+        throw error;
+      }
+
+      showToast(`${nombreJugador} ha sido eliminado exitosamente`, 'success');
+      cargarEstadisticas();
+      cargarTodosLosJugadores();
+      
+      // Remover del armado de equipos si estaba agregado
+      equipo1 = equipo1.filter(j => j.id !== jugadorId);
+      equipo2 = equipo2.filter(j => j.id !== jugadorId);
+      renderizarEquipos();
+
+    } catch (error) {
+      console.error('Error al eliminar jugador:', error);
+      showToast('Error al eliminar el jugador: ' + error.message, 'error');
+    }
+  };
+
   // --- Lógica de renderizado ---
 
   function renderizarEquipos() {
+    const mostrarPosicionesJugador = (jugadorPosiciones) => {
+      if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
+        return '<span class="small text-muted">Sin pos.</span>';
+      }
+      
+      const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
+      const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
+      
+      let html = '';
+      if (primaria) {
+        const icono = iconosPosiciones[primaria.posicion_id] || '❓';
+        html += `<span class="badge bg-primary badge-sm me-1">${icono}</span>`;
+      }
+      if (secundaria) {
+        const icono = iconosPosiciones[secundaria.posicion_id] || '❓';
+        html += `<span class="badge bg-secondary badge-sm">${icono}</span>`;
+      }
+      
+      return html;
+    };
+
+    const contarPosiciones = (equipo) => {
+      const conteo = {};
+      
+      // Inicializar conteo con todas las posiciones conocidas
+      todasLasPosiciones.forEach(pos => {
+        conteo[pos.id] = 0;
+      });
+      
+      equipo.forEach(jugador => {
+        if (jugador.jugador_posicion && jugador.jugador_posicion.length > 0) {
+          const primaria = jugador.jugador_posicion.find(jp => jp.es_primaria);
+          if (primaria) {
+            conteo[primaria.posicion_id] = (conteo[primaria.posicion_id] || 0) + 1;
+          }
+        }
+      });
+      
+      return conteo;
+    };
+
+    const mostrarDistribucion = (conteo) => {
+      let html = '<div class="mt-2 pt-2 border-top border-secondary"><small class="text-muted d-block mb-1">Distribución:</small>';
+      
+      // Mostrar iconos repetidos según la cantidad
+      Object.entries(conteo).forEach(([posicionId, cantidad]) => {
+        if (cantidad > 0) {
+          const icono = iconosPosiciones[posicionId];
+          const nombre = nombresPosiciones[posicionId];
+          html += `<div class="d-inline-block me-2">`;
+          for (let i = 0; i < cantidad; i++) {
+            html += `<span class="me-1" title="${nombre}">${icono}</span>`;
+          }
+          html += `</div>`;
+        }
+      });
+      
+      html += '</div>';
+      return html;
+    };
+
     const renderEquipo = (equipo, containerId, colorClass) => {
       const container = document.getElementById(containerId);
+      const conteo = contarPosiciones(equipo);
+      
       container.innerHTML = ''; // Limpiar siempre antes de renderizar
 
       if (equipo.length === 0) {
@@ -109,17 +334,31 @@ const initApp = () => {
           </div>
         `;
       } else {
+        // Lista de jugadores
+        const jugadoresDiv = document.createElement('div');
+        jugadoresDiv.className = 'mb-3';
+        
         equipo.forEach((jugador, index) => {
           const playerEl = document.createElement('div');
           playerEl.className = `player-item d-flex justify-content-between align-items-center p-2 mb-2 rounded`;
           playerEl.innerHTML = `
-            <span class="text-white fw-medium">${jugador.nombre}</span>
+            <div class="d-flex align-items-center">
+              <span class="text-white fw-medium me-2">${jugador.nombre}</span>
+              ${mostrarPosicionesJugador(jugador.jugador_posicion)}
+            </div>
             <button onclick="quitarJugador('${containerId.includes('1') ? 'equipo1' : 'equipo2'}', ${index})" class="btn btn-sm btn-outline-danger">
               <i class="bi bi-x"></i>
             </button>
           `;
-          container.appendChild(playerEl);
+          jugadoresDiv.appendChild(playerEl);
         });
+        
+        container.appendChild(jugadoresDiv);
+        
+        // Distribución de posiciones
+        const distribucionEl = document.createElement('div');
+        distribucionEl.innerHTML = mostrarDistribucion(conteo);
+        container.appendChild(distribucionEl);
       }
     };
 
@@ -282,7 +521,17 @@ const initApp = () => {
   }
   
   async function cargarEstadisticas() {
-    const { data, error } = await supabase.from('jugadores').select('*');
+    const { data, error } = await supabase.from('jugadores').select(`
+      *,
+      jugador_posicion (
+        posicion_id,
+        es_primaria,
+        posicion (
+          id,
+          nombre
+        )
+      )
+    `);
     if (error) {
       console.error('Error al cargar estadísticas:', error);
       showToast('Error al cargar estadísticas', 'error');
@@ -308,9 +557,34 @@ const initApp = () => {
         }
         return `<span class="badge ${colorClass}">${val}</span>`;
       };
+
+      // Función para mostrar posiciones con iconos
+      const mostrarPosiciones = (jugadorPosiciones) => {
+        if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
+          return '<span class="text-muted small">Sin posición</span>';
+        }
+        
+        const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
+        const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
+        
+        let html = '';
+        if (primaria) {
+          const icono = iconosPosiciones[primaria.posicion_id] || '❓';
+          const nombre = nombresPosiciones[primaria.posicion_id] || 'N/A';
+          html += `<span class="badge bg-primary me-1" title="Posición Principal">${icono} ${nombre}</span>`;
+        }
+        if (secundaria) {
+          const icono = iconosPosiciones[secundaria.posicion_id] || '❓';
+          const nombre = nombresPosiciones[secundaria.posicion_id] || 'N/A';
+          html += `<span class="badge bg-outline-secondary" title="Posición Secundaria">${icono} ${nombre}</span>`;
+        }
+        
+        return html || '<span class="text-muted small">Sin posición</span>';
+      };
       
       tr.innerHTML = `
         <td class="fw-bold text-white">${jugador.nombre}</td>
+        <td>${mostrarPosiciones(jugador.jugador_posicion)}</td>
         <td class="text-center">${createBadge(jugador.total_puntos, 'points')}</td>
         <td class="text-center"><span class="badge bg-outline-light">${jugador.pj ?? 0}</span></td>
         <td class="text-center"><span class="badge bg-success">${jugador.pg ?? 0}</span></td>
@@ -325,6 +599,16 @@ const initApp = () => {
         <td class="text-center">${createBadge(jugador.winrate, 'winrate')}%</td>
         <td class="text-center fw-semibold text-light">${jugador.capitan_defeat ?? 0}</td>
         <td class="text-center fw-semibold text-light">${jugador.bita_defeat ?? 0}</td>
+        <td class="text-center">
+          <div class="btn-group" role="group">
+            <button onclick="abrirModalEditar('${jugador.id}')" class="btn btn-sm btn-outline-primary" title="Editar jugador">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button onclick="eliminarJugador('${jugador.id}', '${jugador.nombre}')" class="btn btn-sm btn-outline-danger" title="Eliminar jugador">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -339,35 +623,128 @@ const initApp = () => {
     console.log('Player form submitted');
     const form = e.target;
     const nombre = form.nombre.value.trim();
+    const posicionPrimaria = form.posicion_primaria.value;
+    const posicionSecundaria = form.posicion_secundaria.value;
 
     if (!nombre) {
       showToast('Por favor ingresa el nombre del jugador.', 'warning');
       return;
     }
 
-    const { error } = await supabase.from('jugadores').insert([
-      { nombre: nombre }
-    ]);
-    
-    if (error) {
-      console.error('Error al agregar jugador:', error);
-      showToast('Error al agregar el jugador: ' + error.message, 'error');
-    } else {
+    if (!posicionPrimaria) {
+      showToast('Por favor selecciona una posición principal.', 'warning');
+      return;
+    }
+
+    // Verificar que las posiciones no sean iguales
+    if (posicionPrimaria === posicionSecundaria) {
+      showToast('La posición principal y secundaria no pueden ser iguales.', 'warning');
+      return;
+    }
+
+    try {
+      if (jugadorEditando) {
+        // MODO EDICIÓN
+        await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria);
+        showToast('Jugador actualizado exitosamente!', 'success');
+      } else {
+        // MODO AGREGAR
+        await agregarJugador(nombre, posicionPrimaria, posicionSecundaria);
+        showToast('Jugador agregado exitosamente!', 'success');
+      }
+
       // Cerrar modal usando Bootstrap
       const modal = bootstrap.Modal.getInstance(document.getElementById('playerModal'));
       if (modal) {
         modal.hide();
       }
       form.reset();
+      jugadorEditando = null;
       cargarEstadisticas();
       cargarTodosLosJugadores(); // Actualizar lista de jugadores
-      renderizarEquipos(); // Inicializar equipos vacíos
-      showToast('Jugador agregado exitosamente!');
+      renderizarEquipos(); // Actualizar equipos si hay jugadores cargados
+
+    } catch (error) {
+      console.error('Error al procesar jugador:', error);
+      const accion = jugadorEditando ? 'actualizar' : 'agregar';
+      showToast(`Error al ${accion} el jugador: ${error.message}`, 'error');
     }
   });
 
+  // Función para agregar un nuevo jugador
+  async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria) {
+    // Insertar el jugador
+    const { data: jugadorData, error: jugadorError } = await supabase
+      .from('jugadores')
+      .insert([{ nombre: nombre }])
+      .select();
+    
+    if (jugadorError) {
+      throw jugadorError;
+    }
+
+    const jugadorId = jugadorData[0].id;
+    await asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria);
+  }
+
+  // Función para editar un jugador existente
+  async function editarJugador(jugadorId, nombre, posicionPrimaria, posicionSecundaria) {
+    // Actualizar nombre del jugador
+    const { error: jugadorError } = await supabase
+      .from('jugadores')
+      .update({ nombre: nombre })
+      .eq('id', jugadorId);
+    
+    if (jugadorError) {
+      throw jugadorError;
+    }
+
+    // Eliminar posiciones existentes
+    const { error: deleteError } = await supabase
+      .from('jugador_posicion')
+      .delete()
+      .eq('jugador_id', jugadorId);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    // Asignar nuevas posiciones
+    await asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria);
+  }
+
+  // Función auxiliar para asignar posiciones a un jugador
+  async function asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria) {
+    const posicionesAInsertar = [];
+    
+    // Posición principal
+    posicionesAInsertar.push({
+      jugador_id: jugadorId,
+      posicion_id: posicionPrimaria,
+      es_primaria: true
+    });
+
+    // Posición secundaria (si existe)
+    if (posicionSecundaria) {
+      posicionesAInsertar.push({
+        jugador_id: jugadorId,
+        posicion_id: posicionSecundaria,
+        es_primaria: false
+      });
+    }
+
+    const { error: posicionError } = await supabase
+      .from('jugador_posicion')
+      .insert(posicionesAInsertar);
+
+    if (posicionError) {
+      throw posicionError;
+    }
+  }
+
   // --- Inicialización ---
   console.log('Initializing app...');
+  inicializarPosiciones(); // Crear posiciones si no existen
   cargarEstadisticas();
   cargarTodosLosJugadores(); // Cargar la lista de jugadores para validación
   renderizarEquipos(); // Inicializar equipos vacíos
