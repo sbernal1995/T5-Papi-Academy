@@ -23,9 +23,8 @@ const initApp = () => {
   const playerForm = document.getElementById('player-form');
 
   // Elementos del formulario de partido
-  const btnAddEvento = document.getElementById('btn-add-evento');
-  const tablaEventos = document.getElementById('tabla-eventos');
   const btnCargarPartido = document.getElementById('btn-cargar-partido');
+  const btnAddGol = document.getElementById('btn-add-gol');
 
   // Estado de la aplicación
   let todosLosJugadores = [];
@@ -237,12 +236,19 @@ const initApp = () => {
   function cargarOpcionesTemporadas() {
     const selector = document.getElementById('selector-temporada');
     const selectorMobile = document.getElementById('selector-temporada-mobile');
+    const selectorPartido = document.getElementById('temporada-partido');
     
-    const selectors = [selector, selectorMobile].filter(s => s);
+    const selectors = [selector, selectorMobile, selectorPartido].filter(s => s);
     
     selectors.forEach(sel => {
-      // Limpiar opciones existentes (excepto la primera)
-      sel.innerHTML = '<option value="">Todas las temporadas</option>';
+      // Limpiar opciones existentes
+      if (sel.id === 'temporada-partido') {
+        // Para el selector de partido, usar texto diferente
+        sel.innerHTML = '<option value="">Seleccionar temporada</option>';
+      } else {
+        // Para los selectores de filtro, usar "Todas las temporadas"
+        sel.innerHTML = '<option value="">Todas las temporadas</option>';
+      }
       
       // Agregar opciones dinámicamente
       todasLasTemporadas.forEach(temporada => {
@@ -250,19 +256,28 @@ const initApp = () => {
         sel.innerHTML += option;
       });
       
-      // Agregar event listener para cambio de temporada
-      sel.addEventListener('change', (e) => {
-        temporadaSeleccionada = e.target.value || null;
-        
-        // Sincronizar ambos selectores
-        selectors.forEach(otherSel => {
-          if (otherSel !== e.target) {
-            otherSel.value = e.target.value;
+      // Agregar event listener solo para los selectores de filtro (no para el de partido)
+      if (sel.id !== 'temporada-partido') {
+        sel.addEventListener('change', async (e) => {
+          temporadaSeleccionada = e.target.value || null;
+          
+          // Sincronizar solo los selectores de filtro
+          const selectoresFiltro = [selector, selectorMobile].filter(s => s);
+          selectoresFiltro.forEach(otherSel => {
+            if (otherSel !== e.target) {
+              otherSel.value = e.target.value;
+            }
+          });
+          
+          // Cargar estadísticas y actualizar gráficos del armador
+          await cargarEstadisticas();
+          
+          // Si hay jugadores en los equipos, actualizar los gráficos
+          if (equipo1.length > 0 || equipo2.length > 0) {
+            renderizarEquipos();
           }
         });
-        
-        cargarEstadisticas();
-      });
+      }
     });
   }
 
@@ -688,18 +703,12 @@ const initApp = () => {
     // Renderizar gráficos fuera de las cards
     renderizarGraficos();
     
-    // Actualizar selects de eventos (goleador, asistencia)
-    const jugadoresDelPartido = [...equipo1, ...equipo2];
-    const goleadorSelect = document.getElementById('goleador');
-    const asistenciaSelect = document.getElementById('asistencia');
-    goleadorSelect.innerHTML = '<option disabled selected>Seleccionar</option>';
-    asistenciaSelect.innerHTML = '<option disabled selected>Seleccionar</option><option value="nadie">Nadie</option>';
-    jugadoresDelPartido.forEach(j => {
-        const option = `<option value="${j.id}">${j.nombre}</option>`;
-        goleadorSelect.innerHTML += option;
-        asistenciaSelect.innerHTML += option;
-    });
-  }
+      // Actualizar todos los selectores de jugadores en "Información del Encuentro"
+      poblarSelectoresJugadores();
+      
+      // Renderizar tabla de goles
+      renderizarTablaGoles();
+    }
 
   function renderizarGraficos() {
     // Usar la sección HTML existente
@@ -2216,23 +2225,235 @@ const initApp = () => {
 
 
   
-  function renderizarEventos() {
-    tablaEventos.innerHTML = '';
-    eventos.forEach((evento, index) => {
-        const goleador = todosLosJugadores.find(j => j.id == evento.goleador_id)?.nombre || 'N/A';
-        const asistencia = todosLosJugadores.find(j => j.id == evento.asistencia_id)?.nombre || 'N/A';
-        tablaEventos.innerHTML += `
-            <tr>
-                <td>${evento.minuto}'</td>
-                <td>${goleador}</td>
-                <td>${asistencia}</td>
-                <td><span class="badge ${evento.equipo === 'azul' ? 'bg-primary' : 'bg-danger'}">${evento.equipo === 'azul' ? 'Azul' : 'Rojo'}</span></td>
-                <td><button onclick="quitarEvento(${index})" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td>
-            </tr>
-        `;
-    });
+  // Función para renderizar la tabla de goles (usando el HTML existente)
+  function renderizarTablaGoles() {
+    const tablaGoles = document.getElementById('tabla-goles');
+    if (!tablaGoles) return;
+
+    if (eventos.length === 0) {
+      tablaGoles.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center text-muted py-3">
+            <i class="bi bi-plus-circle me-2"></i>
+            No se han registrado goles aún
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tablaGoles.innerHTML = eventos.map((evento, index) => {
+      const goleador = todosLosJugadores.find(j => j.id == evento.goleador_id)?.nombre || 'N/A';
+      const asistencia = evento.asistencia_id === 'nadie' ? 'Sin asistencia' : 
+                        (todosLosJugadores.find(j => j.id == evento.asistencia_id)?.nombre || 'N/A');
+      
+      return `
+        <tr>
+          <td><span class="fw-bold">${goleador}</span></td>
+          <td>${asistencia}</td>
+          <td>
+            <span class="badge ${evento.equipo === 1 ? 'bg-primary' : 'bg-danger'}">
+              ${evento.equipo === 1 ? '🔵 Equipo 1' : '🔴 Equipo 2'}
+            </span>
+          </td>
+          <td>
+            <span class="badge bg-success">
+              <i class="bi bi-check me-1"></i>Normal
+            </span>
+          </td>
+          <td>
+            <button onclick="quitarEvento(${index})" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    // Actualizar marcador visual después de renderizar la tabla
+    actualizarMarcadorAutomatico();
   }
 
+
+  // Función para poblar todos los selectores de jugadores en "Información del Encuentro"
+  function poblarSelectoresJugadores() {
+    // Solo usar jugadores de los equipos armados
+    const jugadoresDelPartido = [...equipo1, ...equipo2];
+    
+    // Lista de todos los selectores de jugadores
+    const selectores = [
+      { id: 'goleador', placeholder: 'Seleccionar goleador' },
+      { id: 'asistencia', placeholder: 'Seleccionar asistencia', extraOption: '<option value="nadie">Nadie</option>' },
+      { id: 'mvp-partido', placeholder: 'Seleccionar MVP' },
+      { id: 'ace-partido', placeholder: 'Seleccionar ACE' }
+    ];
+
+    if (jugadoresDelPartido.length === 0) {
+      console.log('No hay jugadores en los equipos armados, limpiando selectores');
+      
+      // Limpiar todos los selectores si no hay jugadores
+      selectores.forEach(({ id, placeholder, extraOption }) => {
+        const selector = document.getElementById(id);
+        if (selector) {
+          selector.innerHTML = `<option value="">${placeholder}</option>`;
+          if (extraOption) {
+            selector.innerHTML += extraOption;
+          }
+        }
+      });
+      
+      // Limpiar también selectores dinámicos
+      const selectoresAtajadas = document.querySelectorAll('.atajadas-jugador');
+      selectoresAtajadas.forEach(selector => {
+        selector.innerHTML = '<option value="">Seleccionar jugador</option>';
+      });
+      
+      const selectoresCagadas = document.querySelectorAll('.cagadas-jugador');
+      selectoresCagadas.forEach(selector => {
+        selector.innerHTML = '<option value="">Seleccionar jugador</option>';
+      });
+      
+      return;
+    }
+
+    selectores.forEach(({ id, placeholder, extraOption }) => {
+      const selector = document.getElementById(id);
+      if (selector) {
+        selector.innerHTML = `<option value="">${placeholder}</option>`;
+        if (extraOption) {
+          selector.innerHTML += extraOption;
+        }
+        
+        jugadoresDelPartido.forEach(jugador => {
+          const option = `<option value="${jugador.id}">${jugador.nombre}</option>`;
+          selector.innerHTML += option;
+        });
+      }
+    });
+
+    // Poblar también los selectores dinámicos de atajadas y cagadas
+    poblarSelectoresDinamicos();
+    
+    // Ocultar campo de equipo del gol ya que se detecta automáticamente
+    ocultarCampoEquipoGol();
+    
+    // Inicializar selectores buscables solo la primera vez, luego solo actualizar
+    const wrappers = document.querySelectorAll('.searchable-wrapper');
+    if (wrappers.length === 0) {
+      initializeSearchableSelects();
+    } else {
+      updateSearchableSelects();
+    }
+  }
+
+  function poblarSelectoresDinamicos() {
+    // Solo usar jugadores de los equipos armados
+    const jugadoresDelPartido = [...equipo1, ...equipo2];
+    
+    if (jugadoresDelPartido.length === 0) return;
+
+    // Atajadas
+    const selectoresAtajadas = document.querySelectorAll('.atajadas-jugador');
+    selectoresAtajadas.forEach(selector => {
+      const valorActual = selector.value;
+      selector.innerHTML = '<option value="">Seleccionar jugador</option>';
+      
+      jugadoresDelPartido.forEach(jugador => {
+        const option = document.createElement('option');
+        option.value = jugador.id;
+        option.textContent = jugador.nombre;
+        if (valorActual === jugador.id) {
+          option.selected = true;
+        }
+        selector.appendChild(option);
+      });
+    });
+
+    // Cagadas
+    const selectoresCagadas = document.querySelectorAll('.cagadas-jugador');
+    selectoresCagadas.forEach(selector => {
+      const valorActual = selector.value;
+      selector.innerHTML = '<option value="">Seleccionar jugador</option>';
+      
+      jugadoresDelPartido.forEach(jugador => {
+        const option = document.createElement('option');
+        option.value = jugador.id;
+        option.textContent = jugador.nombre;
+        if (valorActual === jugador.id) {
+          option.selected = true;
+        }
+        selector.appendChild(option);
+      });
+    });
+    
+    // Ocultar campo de equipo del gol ya que se detecta automáticamente
+    ocultarCampoEquipoGol();
+  }
+
+  // Funciones para agregar/eliminar filas dinámicas
+  window.agregarAtajada = function() {
+    const container = document.getElementById('atajadas-container');
+    const nuevaFila = document.createElement('div');
+    nuevaFila.className = 'atajadas-row row g-2 mb-2';
+    
+    nuevaFila.innerHTML = `
+      <div class="col-8">
+        <select class="form-select form-select-sm atajadas-jugador">
+          <option value="">Seleccionar jugador</option>
+        </select>
+      </div>
+      <div class="col-3">
+        <input type="number" class="form-control form-control-sm atajadas-cantidad" placeholder="0" min="0">
+      </div>
+      <div class="col-1">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarAtajada(this)">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    `;
+    
+    container.appendChild(nuevaFila);
+    poblarSelectoresDinamicos(); // Poblar el nuevo selector
+  };
+
+  window.eliminarAtajada = function(button) {
+    const fila = button.closest('.atajadas-row');
+    if (fila && document.querySelectorAll('.atajadas-row').length > 1) {
+      fila.remove();
+    }
+  };
+
+  window.agregarCagada = function() {
+    const container = document.getElementById('cagadas-container');
+    const nuevaFila = document.createElement('div');
+    nuevaFila.className = 'cagadas-row row g-2 mb-2';
+    
+    nuevaFila.innerHTML = `
+      <div class="col-8">
+        <select class="form-select form-select-sm cagadas-jugador">
+          <option value="">Seleccionar jugador</option>
+        </select>
+      </div>
+      <div class="col-3">
+        <input type="number" class="form-control form-control-sm cagadas-cantidad" placeholder="0" min="0">
+      </div>
+      <div class="col-1">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarCagada(this)">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    `;
+    
+    container.appendChild(nuevaFila);
+    poblarSelectoresDinamicos(); // Poblar el nuevo selector
+  };
+
+  window.eliminarCagada = function(button) {
+    const fila = button.closest('.cagadas-row');
+    if (fila && document.querySelectorAll('.cagadas-row').length > 1) {
+      fila.remove();
+    }
+  };
 
   // --- Lógica de negocio ---
   
@@ -2253,8 +2474,60 @@ const initApp = () => {
 
   window.quitarEvento = (index) => {
       eventos.splice(index, 1);
-      renderizarEventos();
+      renderizarTablaGoles();
+      actualizarMarcadorAutomatico();
   }
+
+  // Función para ocultar el campo equipo del gol
+  function ocultarCampoEquipoGol() {
+      const equipoGolContainer = document.getElementById('equipo-gol')?.closest('.col-md-2');
+      if (equipoGolContainer) {
+          equipoGolContainer.style.display = 'none';
+      }
+  }
+
+  // Función para actualizar el selector de ACE basándose en el equipo ganador
+  window.actualizarSelectACE = function() {
+      const equipoGanadorSelect = document.getElementById('equipo-ganador');
+      const aceSelect = document.getElementById('ace-partido');
+      
+      if (!equipoGanadorSelect || !aceSelect) return;
+      
+      const equipoGanador = equipoGanadorSelect.value;
+      
+      // Limpiar selector de ACE
+      aceSelect.innerHTML = '<option value="">Seleccionar ACE</option>';
+      
+      // Si no hay equipo ganador seleccionado o es empate, mostrar todos los jugadores
+      if (!equipoGanador || equipoGanador === '0') {
+          const todosLosJugadores = [...equipo1, ...equipo2];
+          todosLosJugadores.forEach(jugador => {
+              const option = document.createElement('option');
+              option.value = jugador.id;
+              option.textContent = jugador.nombre;
+              aceSelect.appendChild(option);
+          });
+          return;
+      }
+      
+      // Determinar el equipo perdedor (ACE viene del equipo perdedor)
+      let equipoPerdedor = [];
+      if (equipoGanador === '1') {
+          // Equipo 1 ganó, ACE viene del equipo 2
+          equipoPerdedor = equipo2;
+      } else if (equipoGanador === '2') {
+          // Equipo 2 ganó, ACE viene del equipo 1
+          equipoPerdedor = equipo1;
+      }
+      
+      // Poblar selector con jugadores del equipo perdedor
+      equipoPerdedor.forEach(jugador => {
+          const option = document.createElement('option');
+          option.value = jugador.id;
+          option.textContent = jugador.nombre;
+          aceSelect.appendChild(option);
+      });
+  };
 
   window.agregarJugadorPorNombre = async (equipo) => {
     const inputId = equipo === 'equipo1' ? 'input-equipo1' : 'input-equipo2';
@@ -2331,57 +2604,379 @@ const initApp = () => {
   };
 
   function agregarEvento() {
-      const minuto = document.getElementById('minuto').value;
       const goleador_id = document.getElementById('goleador').value;
       const asistencia_id = document.getElementById('asistencia').value;
-      const equipo = document.getElementById('equipo-evento').value;
 
-      if (!minuto || !goleador_id) {
-          showToast('El minuto y el goleador son obligatorios.', 'warning');
+      if (!goleador_id) {
+          showToast('Debes seleccionar un goleador.', 'warning');
           return;
       }
-      eventos.push({ minuto, goleador_id, asistencia_id, equipo });
-      const goleadorNombre = todosLosJugadores.find(j => j.id == goleador_id)?.nombre || 'N/A';
-      showToast(`Gol agregado: ${goleadorNombre} (${minuto}')`, 'success');
-      renderizarEventos();
-      // Resetear inputs
-      document.getElementById('minuto').value = '';
-      document.getElementById('goleador').selectedIndex = 0;
-      document.getElementById('asistencia').selectedIndex = 0;
+
+      // Verificar que goleador y asistidor no sean la misma persona
+      if (asistencia_id && asistencia_id !== 'nadie' && asistencia_id === goleador_id) {
+          showToast('Un jugador no puede asistirse a sí mismo. Se registrará como gol sin asistencia.', 'warning');
+          // Continuar pero sin asistencia
+      }
+
+      // Detectar automáticamente el equipo del goleador
+      const jugadoresDelPartido = [...equipo1, ...equipo2];
+      const goleador = jugadoresDelPartido.find(j => j.id === goleador_id);
+      
+      if (!goleador) {
+          showToast('Error: El goleador debe estar en uno de los equipos.', 'error');
+          return;
+      }
+
+      // Determinar equipo (1 si está en equipo1, 2 si está en equipo2)
+      const equipo = equipo1.find(j => j.id === goleador_id) ? 1 : 2;
+      
+      // Asegurar que el asistidor no sea el mismo que el goleador
+      let asistencia_final = null;
+      if (asistencia_id && asistencia_id !== 'nadie' && asistencia_id !== goleador_id) {
+          asistencia_final = asistencia_id;
+      }
+      
+      eventos.push({ goleador_id, asistencia_id: asistencia_final, equipo });
+      
+      const goleadorNombre = goleador.nombre;
+      const asistidorNombre = asistencia_final 
+          ? jugadoresDelPartido.find(j => j.id === asistencia_final)?.nombre || 'N/A'
+          : null;
+
+      const mensaje = asistidorNombre 
+          ? `Gol agregado: ${goleadorNombre} (Asist: ${asistidorNombre})`
+          : `Gol agregado: ${goleadorNombre}`;
+      
+      showToast(mensaje, 'success');
+      renderizarTablaGoles();
+      actualizarMarcadorAutomatico();
+      
+      // Resetear inputs (tanto selectores como inputs buscables)
+      const goleadorElement = document.getElementById('goleador');
+      const asistenciaElement = document.getElementById('asistencia');
+      
+      if (goleadorElement) {
+        if (goleadorElement.style.display === 'none') {
+          // Es un input buscable
+          const inputGoleador = document.getElementById('goleador_input');
+          if (inputGoleador) inputGoleador.value = '';
+        } else {
+          // Es un selector normal
+          goleadorElement.selectedIndex = 0;
+        }
+      }
+      
+      if (asistenciaElement) {
+        if (asistenciaElement.style.display === 'none') {
+          // Es un input buscable
+          const inputAsistencia = document.getElementById('asistencia_input');
+          if (inputAsistencia) inputAsistencia.value = '';
+        } else {
+          // Es un selector normal
+          asistenciaElement.selectedIndex = 0;
+        }
+      }
+  }
+
+  // Función para actualizar el marcador automáticamente basado en los goles
+  function actualizarMarcadorAutomatico() {
+      let golesEquipo1 = 0;
+      let golesEquipo2 = 0;
+
+      eventos.forEach(evento => {
+          if (evento.equipo === 1) {
+              golesEquipo1++;
+          } else if (evento.equipo === 2) {
+              golesEquipo2++;
+          }
+      });
+
+      const resultadoField = document.getElementById('resultado-final');
+      if (resultadoField) {
+          resultadoField.value = `${golesEquipo1}-${golesEquipo2}`;
+      }
+
+      // Actualizar marcador visual en tiempo real
+      const marcadorActual = document.getElementById('marcador-actual');
+      if (marcadorActual) {
+          marcadorActual.textContent = `${golesEquipo1} - ${golesEquipo2}`;
+      }
+
+      // Auto-seleccionar equipo ganador si hay diferencia
+      const equipoGanadorSelect = document.getElementById('equipo-ganador');
+      if (equipoGanadorSelect) {
+          if (golesEquipo1 > golesEquipo2) {
+              equipoGanadorSelect.value = '1';
+          } else if (golesEquipo2 > golesEquipo1) {
+              equipoGanadorSelect.value = '2';
+          } else if (golesEquipo1 === golesEquipo2 && golesEquipo1 > 0) {
+              equipoGanadorSelect.value = '0'; // Empate
+          }
+      }
   }
 
   async function cargarPartido() {
       const fecha = document.getElementById('fecha-partido').value;
       const cancha = document.getElementById('cancha-partido').value;
       const resultado = document.getElementById('resultado-final').value;
-      const equipo_ganador = document.querySelector('input[name="equipo_ganador"]:checked').value;
+      const equipoGanadorSelect = document.getElementById('equipo-ganador');
+      const equipo_ganador = equipoGanadorSelect ? equipoGanadorSelect.value : null;
+      const temporadaPartidoSelect = document.getElementById('temporada-partido');
+      const temporada_id = temporadaPartidoSelect ? temporadaPartidoSelect.value : null;
 
-      if (!fecha || !cancha || !resultado) {
-          showToast('Completa los datos del partido (fecha, cancha, resultado).', 'warning');
+      if (!fecha || !cancha || !resultado || !equipo_ganador) {
+          showToast('Completa todos los datos del partido (fecha, cancha, resultado, equipo ganador).', 'warning');
           return;
       }
 
-      const jugadores_partido = [...equipo1.map(j => j.id), ...equipo2.map(j => j.id)];
+      if (!temporada_id) {
+          showToast('Debes seleccionar una temporada para el partido.', 'warning');
+          return;
+      }
 
-      // TODO: Aquí iría la lógica para guardar en Supabase.
-      // Por ahora, solo mostraremos los datos en consola.
-      const dataPartido = {
-          fecha,
-          cancha,
-          resultado,
-          equipo_ganador,
-          equipo_azul: equipo1.map(j => j.id),
-          equipo_rojo: equipo2.map(j => j.id),
-          eventos
-      };
+      if (equipo1.length === 0 || equipo2.length === 0) {
+          showToast('Debes tener jugadores en ambos equipos para guardar el partido.', 'warning');
+          return;
+      }
 
-      console.log('Partido a cargar:', dataPartido);
-      showToast('Partido listo para cargar! Revisa la consola para ver los datos.', 'success');
-      
-      // Aquí iría la llamada a Supabase, por ejemplo:
-      // const { data, error } = await supabase.from('partidos').insert([dataPartido]);
-      // if (error) ...
-      // else ...
+      try {
+          // Mostrar loading
+          const btnCargar = document.getElementById('btn-cargar-partido');
+          const textoOriginal = btnCargar.innerHTML;
+          btnCargar.disabled = true;
+          btnCargar.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Guardando partido...';
+
+          // Obtener todos los datos del partido
+          const mvp_id = document.getElementById('mvp-partido').value || null;
+          const ace_id = document.getElementById('ace-partido').value || null;
+
+          // Procesar atajadas
+          const atajadas = [];
+          document.querySelectorAll('.atajadas-row').forEach(row => {
+              const jugadorSelect = row.querySelector('.atajadas-jugador');
+              const cantidadInput = row.querySelector('.atajadas-cantidad');
+              
+              if (jugadorSelect && cantidadInput && jugadorSelect.value && cantidadInput.value) {
+                  atajadas.push({
+                      jugador_id: jugadorSelect.value,
+                      cantidad: parseInt(cantidadInput.value) || 0
+                  });
+              }
+          });
+
+          // Procesar cagadas
+          const cagadas = [];
+          document.querySelectorAll('.cagadas-row').forEach(row => {
+              const jugadorSelect = row.querySelector('.cagadas-jugador');
+              const cantidadInput = row.querySelector('.cagadas-cantidad');
+              
+              if (jugadorSelect && cantidadInput && jugadorSelect.value && cantidadInput.value) {
+                  cagadas.push({
+                      jugador_id: jugadorSelect.value,
+                      cantidad: parseInt(cantidadInput.value) || 0
+                  });
+              }
+          });
+
+          // Preparar datos para el partido (solo campos que existen en la tabla partidos)
+          const partidoData = {
+              fecha: fecha,
+              cancha: cancha,
+              resultado: resultado,
+              equipo_ganador: parseInt(equipo_ganador),
+              temporada_id: temporada_id
+          };
+
+          console.log('Guardando partido:', partidoData);
+
+          // Insertar partido en Supabase
+          const { data: partidoInsertado, error: partidoError } = await supabase
+              .from('partidos')
+              .insert([partidoData])
+              .select()
+              .single();
+
+          if (partidoError) {
+              console.error('Error al insertar partido:', partidoError);
+              throw new Error(`Error al guardar el partido: ${partidoError.message}`);
+          }
+
+          const partido_id = partidoInsertado.id;
+          console.log('Partido insertado con ID:', partido_id);
+
+          // Insertar jugadores del partido en la tabla jugador_partido
+          const jugadoresPartidoData = [];
+          
+          // Agregar jugadores del equipo 1
+          equipo1.forEach(jugador => {
+              jugadoresPartidoData.push({
+                  jugador_id: jugador.id,
+                  partido_id: partido_id,
+                  equipo: 1,
+                  goles: 0,
+                  asistencias: 0,
+                  cagadas: 0,
+                  mvp: mvp_id === jugador.id,
+                  ace: ace_id === jugador.id,
+                  atajadas: 0,
+                  puntos: 0,
+                  capitan_defeat: false,
+                  bita_defeat: false,
+                  pulmon: jugador.pulmon || 0
+              });
+          });
+          
+          // Agregar jugadores del equipo 2
+          equipo2.forEach(jugador => {
+              jugadoresPartidoData.push({
+                  jugador_id: jugador.id,
+                  partido_id: partido_id,
+                  equipo: 2,
+                  goles: 0,
+                  asistencias: 0,
+                  cagadas: 0,
+                  mvp: mvp_id === jugador.id,
+                  ace: ace_id === jugador.id,
+                  atajadas: 0,
+                  puntos: 0,
+                  capitan_defeat: false,
+                  bita_defeat: false,
+                  pulmon: jugador.pulmon || 0
+              });
+          });
+
+          // Guardar jugadores del partido
+          const { error: jugadoresError } = await supabase
+              .from('jugador_partido')
+              .insert(jugadoresPartidoData);
+
+          if (jugadoresError) {
+              console.error('Error al insertar jugadores del partido:', jugadoresError);
+              throw new Error(`Error al guardar los jugadores del partido: ${jugadoresError.message}`);
+          }
+
+          console.log('Jugadores del partido insertados:', jugadoresPartidoData.length);
+
+          // Insertar goles
+          if (eventos.length > 0) {
+              const golesData = eventos.map(evento => {
+                  // Verificar que goleador y asistidor no sean la misma persona
+                  let asistidor_id = null;
+                  if (evento.asistencia_id && 
+                      evento.asistencia_id !== 'nadie' && 
+                      evento.asistencia_id !== '' && 
+                      evento.asistencia_id !== evento.goleador_id) {
+                      asistidor_id = evento.asistencia_id;
+                  }
+                  
+                  return {
+                      partido_id: partido_id,
+                      goleador_id: evento.goleador_id,
+                      asistidor_id: asistidor_id,
+                      equipo: evento.equipo,
+                      minuto: null // Opcional: agregar minuto si lo necesitas
+                  };
+              });
+
+              const { error: golesError } = await supabase
+                  .from('goles') // Cambio de partido_goles a goles
+                  .insert(golesData);
+
+              if (golesError) {
+                  console.error('Error al insertar goles:', golesError);
+                  throw new Error(`Error al guardar los goles: ${golesError.message}`);
+              }
+
+              console.log('Goles insertados:', golesData.length);
+          }
+
+          // Actualizar atajadas en jugador_partido
+          if (atajadas.length > 0) {
+              for (const atajada of atajadas) {
+                  const { error: atajadasError } = await supabase
+                      .from('jugador_partido')
+                      .update({ atajadas: atajada.cantidad })
+                      .eq('partido_id', partido_id)
+                      .eq('jugador_id', atajada.jugador_id);
+
+                  if (atajadasError) {
+                      console.error('Error al actualizar atajadas:', atajadasError);
+                      throw new Error(`Error al guardar las atajadas: ${atajadasError.message}`);
+                  }
+              }
+              console.log('Atajadas actualizadas:', atajadas.length);
+          }
+
+          // Actualizar cagadas en jugador_partido
+          if (cagadas.length > 0) {
+              for (const cagada of cagadas) {
+                  const { error: cagadasError } = await supabase
+                      .from('jugador_partido')
+                      .update({ cagadas: cagada.cantidad })
+                      .eq('partido_id', partido_id)
+                      .eq('jugador_id', cagada.jugador_id);
+
+                  if (cagadasError) {
+                      console.error('Error al actualizar cagadas:', cagadasError);
+                      throw new Error(`Error al guardar las cagadas: ${cagadasError.message}`);
+                  }
+              }
+              console.log('Cagadas actualizadas:', cagadas.length);
+          }
+
+          // Éxito!
+          showToast('¡Partido guardado exitosamente! 🎉', 'success');
+          
+          // Limpiar formulario
+          document.getElementById('fecha-partido').value = '';
+          document.getElementById('cancha-partido').value = '';
+          document.getElementById('resultado-final').value = '';
+          document.getElementById('equipo-ganador').value = '';
+          document.getElementById('temporada-partido').value = '';
+          document.getElementById('mvp-partido').value = '';
+          document.getElementById('ace-partido').value = '';
+          
+          // Limpiar eventos
+          eventos.length = 0;
+          renderizarTablaGoles();
+          
+          // Limpiar inputs buscables
+          const inputGoleador = document.getElementById('goleador_input');
+          const inputAsistencia = document.getElementById('asistencia_input');
+          if (inputGoleador) inputGoleador.value = '';
+          if (inputAsistencia) inputAsistencia.value = '';
+          
+          // Limpiar atajadas y cagadas extra (mantener solo una fila)
+          document.querySelectorAll('.atajadas-row').forEach((row, index) => {
+              if (index === 0) {
+                  row.querySelector('.atajadas-jugador').value = '';
+                  row.querySelector('.atajadas-cantidad').value = '';
+              } else {
+                  row.remove();
+              }
+          });
+          
+          document.querySelectorAll('.cagadas-row').forEach((row, index) => {
+              if (index === 0) {
+                  row.querySelector('.cagadas-jugador').value = '';
+                  row.querySelector('.cagadas-cantidad').value = '';
+              } else {
+                  row.remove();
+              }
+          });
+
+          // Refrescar estadísticas
+          await cargarEstadisticas();
+
+      } catch (error) {
+          console.error('Error completo al cargar partido:', error);
+          showToast(`Error al guardar el partido: ${error.message}`, 'error');
+      } finally {
+          // Restaurar botón
+          const btnCargar = document.getElementById('btn-cargar-partido');
+          btnCargar.disabled = false;
+          btnCargar.innerHTML = '<i class="bi bi-save me-2"></i>Cargar Partido Completo';
+      }
   }
   
   async function cargarEstadisticas() {
@@ -3023,10 +3618,15 @@ const initApp = () => {
   }
 
   // --- Event Listeners ---
-  btnAddEvento.addEventListener('click', agregarEvento);
-  btnCargarPartido.addEventListener('click', cargarPartido);
+  if (btnAddGol) {
+    btnAddGol.addEventListener('click', agregarEvento);
+  }
+  if (btnCargarPartido) {
+    btnCargarPartido.addEventListener('click', cargarPartido);
+  }
 
-  playerForm.addEventListener('submit', async (e) => {
+  if (playerForm) {
+    playerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     console.log('Player form submitted');
     const form = e.target;
@@ -3079,6 +3679,7 @@ const initApp = () => {
       showToast(`Error al ${accion} el jugador: ${error.message}`, 'error');
     }
   });
+  }
 
   // Función para agregar un nuevo jugador
   async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
@@ -3424,6 +4025,1032 @@ const initApp = () => {
   // Hacer ambas funciones globales
   window.crearJugadoresSimples = crearJugadoresSimples;
 
+  // --- Función para cargar historial de partidos ---
+  async function cargarHistorialPartidos() {
+    const container = document.getElementById('historial-partidos-container');
+    if (!container) return;
+    
+    try {
+      // Mostrar loading
+      container.innerHTML = `
+        <div class="col-12 text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-light-emphasis mt-2 mb-0">Buscando partidos...</p>
+        </div>
+      `;
+      
+      // Primero intentar consulta simple para diagnosticar
+      const cantidad = parseInt(document.getElementById('cantidad-partidos')?.value) || 5;
+      console.log('🔍 Intentando cargar partidos, cantidad:', cantidad);
+      
+      const { data: partidos, error } = await supabase
+        .from('partidos')
+        .select(`
+          *,
+          temporadas (
+            id,
+            nombre
+          ),
+          jugador_partido (
+            jugador_id,
+            equipo,
+            goles,
+            asistencias,
+            cagadas,
+            mvp,
+            ace,
+            atajadas,
+            puntos,
+            jugadores (
+              id,
+              nombre
+            )
+          ),
+          goles (
+            id,
+            goleador_id,
+            asistidor_id,
+            equipo,
+            minuto
+          )
+        `)
+        .order('fecha', { ascending: false })
+        .limit(cantidad);
+      
+      console.log('📊 Resultado consulta partidos:', { partidos, error });
+
+              if (error) {
+          console.warn('⚠️ Error al cargar partidos:', error);
+          mostrarMensajeSinPartidos(container);
+          return;
+        }
+
+        console.log('✅ Consulta exitosa, partidos encontrados:', partidos?.length || 0);
+        
+        if (!partidos || partidos.length === 0) {
+          console.log('ℹ️ No hay partidos para mostrar');
+          mostrarMensajeSinPartidos(container);
+          return;
+        }
+
+        // Obtener IDs únicos de jugadores para buscar sus nombres
+        const jugadorIds = new Set();
+        partidos.forEach(partido => {
+          partido.goles?.forEach(gol => {
+            if (gol.goleador_id) jugadorIds.add(gol.goleador_id);
+            if (gol.asistidor_id) jugadorIds.add(gol.asistidor_id);
+          });
+        });
+
+        // Cargar datos de jugadores si hay goles
+        let jugadoresMap = {};
+        if (jugadorIds.size > 0) {
+          const { data: jugadores } = await supabase
+            .from('jugadores')
+            .select('id, nombre')
+            .in('id', Array.from(jugadorIds));
+          
+          if (jugadores) {
+            jugadores.forEach(jugador => {
+              jugadoresMap[jugador.id] = jugador;
+            });
+          }
+        }
+
+        // Agregar información de jugadores a los goles
+        partidos.forEach(partido => {
+          partido.goles?.forEach(gol => {
+            if (gol.goleador_id && jugadoresMap[gol.goleador_id]) {
+              gol.goleador = jugadoresMap[gol.goleador_id];
+            }
+            if (gol.asistidor_id && jugadoresMap[gol.asistidor_id]) {
+              gol.asistidor = jugadoresMap[gol.asistidor_id];
+            }
+          });
+        });
+
+        console.log('🎯 Mostrando partidos en la interfaz...');
+        mostrarPartidosBasicos(container, partidos);
+      
+    } catch (error) {
+      console.warn('Error al cargar historial (esperado en versión simplificada):', error);
+      mostrarMensajeSinPartidos(container);
+    }
+  }
+
+  function mostrarMensajeSinPartidos(container) {
+    container.innerHTML = `
+      <div class="text-center py-5">
+        <i class="bi bi-calendar-x fs-1 text-muted mb-3"></i>
+        <h5 class="text-muted">No hay partidos registrados</h5>
+        <p class="text-light-emphasis mb-4">
+          El historial de partidos aparecerá aquí cuando comiences a registrar partidos.<br>
+          Arma tus equipos y registra tu primer partido para ver el historial.
+        </p>
+        <div class="alert alert-info d-inline-block mb-3">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Tip:</strong> Usa la sección "Armado de Equipos" para formar equipos y luego registra partidos.
+        </div>
+        <div class="mt-4">
+          <button onclick="crearPartidosDummy()" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-plus-circle me-2"></i>
+            Crear Partidos de Prueba
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Función para crear partidos dummy para testing
+  async function crearPartidosDummy() {
+    try {
+      console.log('🧪 Creando partidos de prueba...');
+      
+      // Verificar si hay temporadas
+      const { data: temporadas } = await supabase.from('temporadas').select('id').limit(1);
+      let temporadaId = temporadas?.[0]?.id || null;
+      
+      if (!temporadaId) {
+        // Crear una temporada si no existe
+        const { data: nuevaTemporada } = await supabase
+          .from('temporadas')
+          .insert([{ nombre: 'Temporada de Prueba', fecha_inicio: '2024-01-01', fecha_fin: '2024-12-31' }])
+          .select()
+          .single();
+        temporadaId = nuevaTemporada?.id;
+      }
+      
+      const partidosEjemplo = [
+        {
+          fecha: '2024-01-15',
+          cancha: 'Cancha Central',
+          resultado: '5-3',
+          equipo_ganador: 1,
+          temporada_id: temporadaId
+        },
+        {
+          fecha: '2024-01-22',
+          cancha: 'Cancha Norte',
+          resultado: '2-4',
+          equipo_ganador: 2,
+          temporada_id: temporadaId
+        },
+        {
+          fecha: '2024-01-29',
+          cancha: 'Cancha Sur',
+          resultado: '3-3',
+          equipo_ganador: null,
+          temporada_id: temporadaId
+        }
+      ];
+      
+      const { error } = await supabase
+        .from('partidos')
+        .insert(partidosEjemplo);
+        
+      if (error) {
+        console.error('Error al crear partidos dummy:', error);
+        showToast('Error al crear partidos de prueba: ' + error.message, 'error');
+        return;
+      }
+      
+      showToast('✅ Partidos de prueba creados exitosamente!', 'success');
+      
+      // Recargar el historial
+      setTimeout(() => {
+        cargarHistorialPartidos();
+      }, 500);
+      
+    } catch (error) {
+      console.error('Error creando partidos dummy:', error);
+      showToast('Error inesperado al crear partidos de prueba', 'error');
+    }
+  }
+  
+  // Hacer la función global
+  window.crearPartidosDummy = crearPartidosDummy;
+
+  function mostrarPartidosBasicos(container, partidos) {
+    console.log('🎨 Mostrando partidos con detalles completos:', partidos);
+    let html = '<div class="row g-4">';
+    
+    partidos.forEach((partido, index) => {
+      const fecha = new Date(partido.fecha).toLocaleDateString('es-ES', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      
+      // Separar jugadores por equipo
+      const equipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
+      const equipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
+      
+      // Calcular marcador desde los goles registrados
+      let golesEquipo1 = 0;
+      let golesEquipo2 = 0;
+      
+      if (partido.goles && partido.goles.length > 0) {
+        partido.goles.forEach(gol => {
+          const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
+          if (jugadorData) {
+            // Determinar si es gol en contra comparando el equipo del gol con el equipo del jugador
+            const esEnContra = gol.equipo !== jugadorData.equipo;
+            
+            if (esEnContra) {
+              // Gol en contra suma al equipo contrario
+              if (jugadorData.equipo === 1) golesEquipo2++;
+              else golesEquipo1++;
+            } else {
+              // Gol normal suma al propio equipo
+              if (jugadorData.equipo === 1) golesEquipo1++;
+              else golesEquipo2++;
+            }
+          }
+        });
+      }
+      
+      // Determinar ganador y color del card
+      let equipoGanador = '';
+      let colorCard = 'border-secondary';
+      let iconoResultado = '🤝';
+      
+      if (partido.equipo_ganador === 1) {
+        equipoGanador = 'Equipo 1';
+        colorCard = 'border-primary';
+        iconoResultado = '🏆';
+      } else if (partido.equipo_ganador === 2) {
+        equipoGanador = 'Equipo 2';
+        colorCard = 'border-danger';
+        iconoResultado = '🏆';
+      } else {
+        equipoGanador = 'Empate';
+        iconoResultado = '🤝';
+      }
+      
+      // Obtener MVP y ACE
+      const mvpData = partido.jugador_partido?.find(jp => jp.mvp);
+      const aceData = partido.jugador_partido?.find(jp => jp.ace);
+      
+      // Calcular estadísticas totales
+      const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.cagadas || 0), 0) || 0;
+      const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
+      
+      html += `
+        <div class="col-lg-6 col-md-12">
+          <div class="glass-effect rounded-3 p-4 h-100 border-top border-3 ${colorCard} partido-card" data-partido-id="${partido.id}">
+            <!-- Header del partido -->
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <h5 class="text-white fw-bold mb-1">
+                  ${iconoResultado} Partido #${partidos.length - index}
+                </h5>
+                <div class="text-light-emphasis small">
+                  <i class="bi bi-calendar me-1"></i>${fecha}
+                  ${partido.cancha ? `<span class="ms-2"><i class="bi bi-geo-alt me-1"></i>${partido.cancha}</span>` : ''}
+                </div>
+                ${partido.temporadas ? `<div class="badge bg-info mt-2">${partido.temporadas.nombre}</div>` : ''}
+              </div>
+              <div class="text-end">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="badge bg-primary fs-5 px-3 py-2">
+                    ${golesEquipo1} - ${golesEquipo2}
+                  </div>
+                  <button onclick="console.log('🖱️ CLICK detectado en botón editar'); editarPartido('${partido.id}')" class="btn btn-sm btn-outline-warning" title="Editar partido">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button onclick="eliminarPartido('${partido.id}')" class="btn btn-sm btn-outline-danger" title="Eliminar partido">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+                ${equipoGanador !== 'Empate' ? `<div class="text-success small fw-bold">🏆 ${equipoGanador}</div>` : '<div class="text-warning small fw-bold">🤝 Empate</div>'}
+              </div>
+            </div>
+            
+            <!-- Equipos -->
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <div class="bg-primary bg-opacity-10 rounded-2 p-2">
+                  <h6 class="text-primary fw-bold mb-2 small">🔵 Equipo 1 (${equipo1.length})</h6>
+                  <div class="text-white small">
+                    ${equipo1.map(jp => {
+                      // Calcular goles y asistencias reales desde la tabla goles
+                      const golesJugador = partido.goles?.filter(gol => gol.goleador_id === jp.jugador_id).length || 0;
+                      const asistenciasJugador = partido.goles?.filter(gol => gol.asistidor_id === jp.jugador_id).length || 0;
+                      
+                      const stats = [];
+                      if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
+                      if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
+                      if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
+                      if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
+                      
+                      return `
+                        <div class="mb-1 d-flex justify-content-between align-items-center">
+                          <span>${jp.jugadores?.nombre || 'Jugador'}</span>
+                          ${stats.length > 0 ? `<span class="text-light-emphasis small">${stats.join(' ')}</span>` : ''}
+                        </div>
+                      `;
+                    }).join('')}
+                    ${equipo1.length === 0 ? '<div class="text-muted">Sin jugadores registrados</div>' : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="bg-danger bg-opacity-10 rounded-2 p-2">
+                  <h6 class="text-danger fw-bold mb-2 small">🔴 Equipo 2 (${equipo2.length})</h6>
+                  <div class="text-white small">
+                    ${equipo2.map(jp => {
+                      // Calcular goles y asistencias reales desde la tabla goles
+                      const golesJugador = partido.goles?.filter(gol => gol.goleador_id === jp.jugador_id).length || 0;
+                      const asistenciasJugador = partido.goles?.filter(gol => gol.asistidor_id === jp.jugador_id).length || 0;
+                      
+                      const stats = [];
+                      if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
+                      if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
+                      if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
+                      if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
+                      
+                      return `
+                        <div class="mb-1 d-flex justify-content-between align-items-center">
+                          <span>${jp.jugadores?.nombre || 'Jugador'}</span>
+                          ${stats.length > 0 ? `<span class="text-light-emphasis small">${stats.join(' ')}</span>` : ''}
+                        </div>
+                      `;
+                    }).join('')}
+                    ${equipo2.length === 0 ? '<div class="text-muted">Sin jugadores registrados</div>' : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Reconocimientos y estadísticas -->
+            <div class="row g-2 mb-3">
+              ${mvpData ? `
+                <div class="col-6">
+                  <div class="badge bg-warning text-dark small w-100">
+                    👑 MVP: ${mvpData.jugadores?.nombre || 'N/A'}
+                  </div>
+                </div>
+              ` : ''}
+              ${aceData ? `
+                <div class="col-6">
+                  <div class="badge bg-secondary small w-100">
+                    ⭐ ACE: ${aceData.jugadores?.nombre || 'N/A'}
+                  </div>
+                </div>
+              ` : ''}
+              ${totalAtajadas > 0 ? `
+                <div class="col-6">
+                  <div class="badge bg-info small w-100">
+                    🥅 Atajadas: ${totalAtajadas}
+                  </div>
+                </div>
+              ` : ''}
+              ${totalCagadas > 0 ? `
+                <div class="col-6">
+                  <div class="badge bg-danger small w-100">
+                    ❌ Cagadas: ${totalCagadas}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+            
+
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  // Función para eliminar un partido completo
+  window.eliminarPartido = async function(partidoId) {
+    // Confirmación antes de eliminar
+    const confirmacion = confirm('⚠️ ¿Estás seguro de que quieres eliminar este partido?\n\nEsta acción eliminará:\n• Los datos del partido\n• Todos los goles registrados\n• Todas las estadísticas de jugadores\n• Esta acción NO se puede deshacer');
+    
+    if (!confirmacion) {
+      return;
+    }
+
+    try {
+      // Mostrar loading
+      showToast('Eliminando partido...', 'info');
+
+      // 1. Eliminar goles del partido
+      const { error: golesError } = await supabase
+        .from('goles')
+        .delete()
+        .eq('partido_id', partidoId);
+
+      if (golesError) {
+        console.error('Error al eliminar goles:', golesError);
+        throw new Error(`Error al eliminar goles: ${golesError.message}`);
+      }
+
+      // 2. Eliminar registros de jugador_partido
+      const { error: jugadorPartidoError } = await supabase
+        .from('jugador_partido')
+        .delete()
+        .eq('partido_id', partidoId);
+
+      if (jugadorPartidoError) {
+        console.error('Error al eliminar jugadores del partido:', jugadorPartidoError);
+        throw new Error(`Error al eliminar jugadores del partido: ${jugadorPartidoError.message}`);
+      }
+
+      // 3. Finalmente, eliminar el partido
+      const { error: partidoError } = await supabase
+        .from('partidos')
+        .delete()
+        .eq('id', partidoId);
+
+      if (partidoError) {
+        console.error('Error al eliminar partido:', partidoError);
+        throw new Error(`Error al eliminar partido: ${partidoError.message}`);
+      }
+
+      // Éxito
+      showToast('🗑️ Partido eliminado exitosamente', 'success');
+      
+      // Recargar el historial para reflejar los cambios
+      cargarHistorialPartidos();
+      
+      // Recargar estadísticas para actualizar los totales
+      await cargarEstadisticas();
+
+    } catch (error) {
+      console.error('Error completo al eliminar partido:', error);
+      showToast(`Error al eliminar el partido: ${error.message}`, 'error');
+    }
+  };
+
+  // Hacer la función global
+  window.cargarHistorialPartidos = cargarHistorialPartidos;
+
+  // ===============================
+  // Funcionalidad de Edición de Partidos
+  // ===============================
+  
+  let partidoEnEdicion = null;
+
+  // Función para abrir el modal de edición
+  window.editarPartido = async function(partidoId) {
+    console.log('✏️ CLICK EN EDITAR - Abriendo editor de partido para ID:', partidoId);
+    console.log('🔍 Función editarPartido ejecutada correctamente');
+    try {
+      showToast('Cargando datos del partido...', 'info');
+      
+      // Cargar datos completos del partido
+      const { data: partido, error } = await supabase
+        .from('partidos')
+        .select(`
+          *,
+          temporadas (
+            id,
+            nombre
+          ),
+          jugador_partido (
+            jugador_id,
+            equipo,
+            goles,
+            asistencias,
+            cagadas,
+            mvp,
+            ace,
+            atajadas,
+            puntos,
+            jugadores (
+              id,
+              nombre
+            )
+          ),
+          goles (
+            id,
+            goleador_id,
+            asistidor_id,
+            equipo,
+            minuto
+          )
+        `)
+        .eq('id', partidoId)
+        .single();
+
+      if (error) {
+        console.error('Error al cargar partido:', error);
+        showToast('Error al cargar los datos del partido', 'error');
+        return;
+      }
+
+      partidoEnEdicion = partido;
+      console.log('📥 Datos del partido cargados:', partido);
+      
+      // Cargar temporadas para el selector
+      console.log('🏆 Cargando temporadas...');
+      await cargarTemporadasEdicion();
+      
+      // Poblar el modal con los datos
+      console.log('📝 Poblando modal con datos...');
+      poblarModalEdicion(partido);
+      
+      // Abrir el modal
+      console.log('🪟 Abriendo modal de edición...');
+      const modal = new bootstrap.Modal(document.getElementById('editarPartidoModal'));
+      modal.show();
+      console.log('✅ Modal de edición abierto');
+      
+      // Configurar event listener del formulario DESPUÉS de abrir el modal
+      setTimeout(() => {
+        const form = document.getElementById('editar-partido-form');
+        if (form) {
+          console.log('🔧 Configurando event listener del formulario después de abrir modal...');
+          
+          // Remover event listeners previos
+          const nuevoForm = form.cloneNode(true);
+          form.parentNode.replaceChild(nuevoForm, form);
+          
+          // Agregar nuevo event listener
+          nuevoForm.addEventListener('submit', async function(e) {
+            console.log('📝 FORMULARIO ENVIADO - event listener funcionando!');
+            e.preventDefault();
+            console.log('🛑 preventDefault() ejecutado');
+            await guardarCambiosPartido();
+          });
+          
+          console.log('✅ Event listener del formulario configurado correctamente');
+          
+          // Método principal: capturar click directo del botón guardar
+          const guardarBtn = document.getElementById('btn-guardar-cambios');
+          if (guardarBtn) {
+            // Remover listeners previos
+            const nuevoGuardarBtn = guardarBtn.cloneNode(true);
+            guardarBtn.parentNode.replaceChild(nuevoGuardarBtn, guardarBtn);
+            
+            nuevoGuardarBtn.addEventListener('click', async function(e) {
+              console.log('🖱️ CLICK DIRECTO en botón Guardar Cambios');
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🛑 Click preventDefault() ejecutado');
+              await guardarCambiosPartido();
+            });
+            console.log('✅ Event listener del botón guardar configurado');
+          } else {
+            console.error('❌ No se encontró el botón guardar cambios');
+          }
+          
+        } else {
+          console.error('❌ No se encontró el formulario después de abrir el modal');
+        }
+      }, 500);
+      
+    } catch (error) {
+      console.error('Error al editar partido:', error);
+      showToast('Error inesperado al cargar el partido', 'error');
+    }
+  };
+  
+  // Verificar que la función esté disponible globalmente
+  console.log('🔧 Función editarPartido registrada:', typeof window.editarPartido);
+  
+  // Función de test para verificar manualmente
+  window.testEditarPartido = function() {
+    console.log('🧪 TEST: Verificando función editarPartido...');
+    console.log('🔍 Tipo:', typeof window.editarPartido);
+    console.log('🔍 Función:', window.editarPartido);
+    console.log('💡 Para probar, ejecuta: window.editarPartido("test-id")');
+  };
+
+  // Función para cargar temporadas en el modal de edición
+  async function cargarTemporadasEdicion() {
+    try {
+      const { data: temporadas, error } = await supabase
+        .from('temporadas')
+        .select('id, nombre')
+        .order('fecha_inicio', { ascending: false });
+
+      const select = document.getElementById('editar-temporada');
+      if (select && temporadas) {
+        select.innerHTML = '<option value="">Sin temporada</option>';
+        temporadas.forEach(temporada => {
+          const option = document.createElement('option');
+          option.value = temporada.id;
+          option.textContent = temporada.nombre;
+          select.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar temporadas para edición:', error);
+    }
+  }
+
+  // Función para poblar el modal con los datos del partido
+  function poblarModalEdicion(partido) {
+    // Información básica
+    document.getElementById('editar-fecha').value = partido.fecha;
+    document.getElementById('editar-cancha').value = partido.cancha || '';
+    document.getElementById('editar-temporada').value = partido.temporada_id || '';
+    
+    // Separar jugadores por equipo
+    const equipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
+    const equipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
+    
+    // Renderizar equipos
+    renderizarEquiposEdicion(equipo1, 1);
+    renderizarEquiposEdicion(equipo2, 2);
+    
+    // Renderizar goles
+    renderizarGolesEdicion(partido.goles || []);
+    
+    // Poblar selectores de MVP y ACE
+    poblarSelectoresMVPACE(partido.jugador_partido || []);
+    
+    // Seleccionar MVP y ACE actuales
+    const mvpActual = partido.jugador_partido?.find(jp => jp.mvp);
+    const aceActual = partido.jugador_partido?.find(jp => jp.ace);
+    
+    if (mvpActual) {
+      document.getElementById('editar-mvp').value = mvpActual.jugador_id;
+    }
+    if (aceActual) {
+      document.getElementById('editar-ace').value = aceActual.jugador_id;
+    }
+  }
+
+  // Función para renderizar equipos en el modal de edición
+  function renderizarEquiposEdicion(equipo, equipoNum) {
+    const container = document.getElementById(`editar-equipo${equipoNum}-container`);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    equipo.forEach((jp, index) => {
+      const jugadorDiv = document.createElement('div');
+      jugadorDiv.className = 'mb-2 p-2 border rounded bg-dark';
+      jugadorDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-white">${jp.jugadores?.nombre || 'Jugador'}</span>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarJugadorEdicion(${equipoNum}, '${jp.jugador_id}')">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-md-6">
+            <label class="form-label small text-light">🥅 Atajadas</label>
+            <input type="number" class="form-control form-control-sm" 
+                   value="${jp.atajadas || 0}" min="0" 
+                   onchange="actualizarEstadisticaJugador('${jp.jugador_id}', 'atajadas', this.value)">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-light">💥 Cagadas</label>
+            <input type="number" class="form-control form-control-sm" 
+                   value="${jp.cagadas || 0}" min="0" 
+                   onchange="actualizarEstadisticaJugador('${jp.jugador_id}', 'cagadas', this.value)">
+          </div>
+        </div>
+      `;
+      container.appendChild(jugadorDiv);
+    });
+    
+    // Botón para agregar jugador
+    const agregarBtn = document.createElement('button');
+    agregarBtn.type = 'button';
+    agregarBtn.className = 'btn btn-sm btn-outline-primary w-100';
+    agregarBtn.innerHTML = `<i class="bi bi-plus"></i> Agregar Jugador al Equipo ${equipoNum}`;
+    agregarBtn.onclick = () => agregarJugadorEdicion(equipoNum);
+    container.appendChild(agregarBtn);
+  }
+
+  // Función para renderizar goles en el modal de edición
+  function renderizarGolesEdicion(goles) {
+    const container = document.getElementById('editar-goles-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (goles.length === 0) {
+      container.innerHTML = '<div class="text-center text-muted py-3">Sin goles registrados</div>';
+      return;
+    }
+    
+    goles.forEach((gol, index) => {
+      const golDiv = document.createElement('div');
+      golDiv.className = 'mb-3 p-3 border rounded bg-dark';
+      golDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+          <h6 class="text-white mb-2">Gol ${index + 1}</h6>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarGolEdicion('${gol.id}')">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label small text-light">👤 Goleador</label>
+            <select class="form-control form-control-sm goleador-select" data-gol-id="${gol.id}">
+              <option value="">Seleccionar goleador</option>
+              ${partidoEnEdicion.jugador_partido?.map(jp => 
+                `<option value="${jp.jugador_id}" ${jp.jugador_id === gol.goleador_id ? 'selected' : ''}>
+                  ${jp.jugadores?.nombre}
+                </option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-light">🅰️ Asistidor</label>
+            <select class="form-control form-control-sm asistidor-select" data-gol-id="${gol.id}">
+              <option value="">Sin asistencia</option>
+              ${partidoEnEdicion.jugador_partido?.map(jp => 
+                `<option value="${jp.jugador_id}" ${jp.jugador_id === gol.asistidor_id ? 'selected' : ''}>
+                  ${jp.jugadores?.nombre}
+                </option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-light">🏃 Equipo</label>
+            <select class="form-control form-control-sm equipo-select" data-gol-id="${gol.id}">
+              <option value="1" ${gol.equipo === 1 ? 'selected' : ''}>Equipo 1</option>
+              <option value="2" ${gol.equipo === 2 ? 'selected' : ''}>Equipo 2</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-light">⏱️ Minuto</label>
+            <input type="number" class="form-control form-control-sm minuto-input" 
+                   value="${gol.minuto || ''}" min="1" max="120" 
+                   placeholder="Minuto" data-gol-id="${gol.id}">
+          </div>
+        </div>
+      `;
+      container.appendChild(golDiv);
+    });
+  }
+
+  // Función para poblar selectores de MVP y ACE
+  function poblarSelectoresMVPACE(jugadores) {
+    const mvpSelect = document.getElementById('editar-mvp');
+    const aceSelect = document.getElementById('editar-ace');
+    
+    if (mvpSelect && aceSelect) {
+      const opciones = jugadores.map(jp => 
+        `<option value="${jp.jugador_id}">${jp.jugadores?.nombre}</option>`
+      ).join('');
+      
+      mvpSelect.innerHTML = '<option value="">Sin MVP</option>' + opciones;
+      aceSelect.innerHTML = '<option value="">Sin ACE</option>' + opciones;
+    }
+  }
+
+  // Función para agregar gol en edición
+  window.agregarGolEdicion = function() {
+    const container = document.getElementById('editar-goles-container');
+    if (!container || !partidoEnEdicion) return;
+    
+    // Crear ID temporal para el nuevo gol
+    const tempId = 'temp_' + Date.now();
+    
+    const golDiv = document.createElement('div');
+    golDiv.className = 'mb-3 p-3 border rounded bg-dark';
+    golDiv.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start">
+        <h6 class="text-white mb-2">Nuevo Gol</h6>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.remove()">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label small text-light">👤 Goleador</label>
+          <select class="form-control form-control-sm goleador-select" data-gol-id="${tempId}">
+            <option value="">Seleccionar goleador</option>
+            ${partidoEnEdicion.jugador_partido?.map(jp => 
+              `<option value="${jp.jugador_id}">${jp.jugadores?.nombre}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-light">🅰️ Asistidor</label>
+          <select class="form-control form-control-sm asistidor-select" data-gol-id="${tempId}">
+            <option value="">Sin asistencia</option>
+            ${partidoEnEdicion.jugador_partido?.map(jp => 
+              `<option value="${jp.jugador_id}">${jp.jugadores?.nombre}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-light">🏃 Equipo</label>
+          <select class="form-control form-control-sm equipo-select" data-gol-id="${tempId}">
+            <option value="1">Equipo 1</option>
+            <option value="2">Equipo 2</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-light">⏱️ Minuto</label>
+          <input type="number" class="form-control form-control-sm minuto-input" 
+                 placeholder="Minuto" min="1" max="120" data-gol-id="${tempId}">
+        </div>
+      </div>
+    `;
+    
+    // Insertar antes del mensaje "sin goles" si existe, o al final
+    const sinGoles = container.querySelector('.text-muted');
+    if (sinGoles) {
+      container.removeChild(sinGoles);
+    }
+    
+    container.appendChild(golDiv);
+  };
+
+  // Función para eliminar gol en edición
+  window.eliminarGolEdicion = function(golId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este gol?')) {
+      const golElement = document.querySelector(`[data-gol-id="${golId}"]`)?.closest('.mb-3');
+      if (golElement) {
+        golElement.remove();
+      }
+    }
+  };
+
+  // Función para actualizar estadística de jugador
+  window.actualizarEstadisticaJugador = function(jugadorId, campo, valor) {
+    // Buscar el jugador en partidoEnEdicion y actualizar el valor
+    if (partidoEnEdicion && partidoEnEdicion.jugador_partido) {
+      const jugador = partidoEnEdicion.jugador_partido.find(jp => jp.jugador_id === jugadorId);
+      if (jugador) {
+        jugador[campo] = parseInt(valor) || 0;
+      }
+    }
+  };
+
+  // Manejar el envío del formulario de edición y botones de editar
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Configurando event listeners para edición de partidos...');
+    
+    // Event listener para el formulario
+    const form = document.getElementById('editar-partido-form');
+    if (form) {
+      console.log('✅ Formulario de edición encontrado, agregando event listener');
+      form.addEventListener('submit', async function(e) {
+        console.log('📝 Formulario de edición enviado');
+        e.preventDefault();
+        await guardarCambiosPartido();
+      });
+    } else {
+      console.log('❌ No se encontró el formulario de edición');
+    }
+    
+    // Event listener alternativo para botones de editar (delegated event)
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('button[title="Editar partido"]')) {
+        console.log('🖱️ CLICK ALTERNATIVO detectado en botón editar');
+        const button = e.target.closest('button[title="Editar partido"]');
+        const partidoCard = button.closest('.partido-card');
+        if (partidoCard) {
+          console.log('🔍 Buscando ID del partido en el card...');
+          // Intentar extraer el ID del partido del DOM
+          const partidoData = partidoCard.querySelector('[data-partido-id]');
+          if (partidoData) {
+            const partidoId = partidoData.getAttribute('data-partido-id');
+            console.log('📋 ID del partido encontrado:', partidoId);
+            window.editarPartido(partidoId);
+          } else {
+            console.log('❌ No se pudo encontrar el ID del partido');
+          }
+        }
+      }
+    });
+  });
+
+  // Función para guardar cambios del partido
+  async function guardarCambiosPartido() {
+    console.log('💾 Iniciando guardado de cambios del partido...');
+    
+    if (!partidoEnEdicion) {
+      console.error('❌ No hay partido en edición');
+      showToast('Error: No hay partido en edición', 'error');
+      return;
+    }
+
+    console.log('📋 Partido en edición:', partidoEnEdicion);
+
+    try {
+      console.log('🔄 Guardando cambios...');
+      showToast('Guardando cambios...', 'info');
+
+      // Recopilar datos del formulario
+      const fecha = document.getElementById('editar-fecha').value;
+      const cancha = document.getElementById('editar-cancha').value;
+      const temporadaId = document.getElementById('editar-temporada').value || null;
+      const mvpId = document.getElementById('editar-mvp').value || null;
+      const aceId = document.getElementById('editar-ace').value || null;
+      
+      console.log('📋 Datos del formulario:', { fecha, cancha, temporadaId, mvpId, aceId });
+
+      // Actualizar información básica del partido
+      console.log('🔄 Actualizando información básica del partido...');
+      
+      // Preparar datos de actualización (solo incluir temporada_id si tiene valor)
+      const updateData = {
+        fecha: fecha,
+        cancha: cancha
+      };
+      
+      // Solo incluir temporada_id si no está vacío
+      if (temporadaId && temporadaId !== '') {
+        updateData.temporada_id = temporadaId;
+      }
+      
+      console.log('📋 Datos de actualización:', updateData);
+      
+      const { error: partidoError } = await supabase
+        .from('partidos')
+        .update(updateData)
+        .eq('id', partidoEnEdicion.id);
+
+      if (partidoError) {
+        console.error('❌ Error al actualizar partido:', partidoError);
+        throw new Error(`Error al actualizar partido: ${partidoError.message}`);
+      }
+      console.log('✅ Información básica del partido actualizada');
+
+      // Actualizar estadísticas de jugadores (atajadas, cagadas)
+      for (const jp of partidoEnEdicion.jugador_partido) {
+        const { error: jpError } = await supabase
+          .from('jugador_partido')
+          .update({
+            atajadas: jp.atajadas || 0,
+            cagadas: jp.cagadas || 0,
+            mvp: jp.jugador_id === mvpId,
+            ace: jp.jugador_id === aceId
+          })
+          .eq('partido_id', partidoEnEdicion.id)
+          .eq('jugador_id', jp.jugador_id);
+
+        if (jpError) {
+          console.error('Error al actualizar jugador_partido:', jpError);
+        }
+      }
+
+      // Eliminar goles existentes
+      const { error: deleteGolesError } = await supabase
+        .from('goles')
+        .delete()
+        .eq('partido_id', partidoEnEdicion.id);
+
+      if (deleteGolesError) {
+        throw new Error(`Error al eliminar goles: ${deleteGolesError.message}`);
+      }
+
+      // Insertar goles actualizados
+      const golesData = [];
+      document.querySelectorAll('#editar-goles-container .mb-3').forEach(golDiv => {
+        const goleadorSelect = golDiv.querySelector('.goleador-select');
+        const asistidorSelect = golDiv.querySelector('.asistidor-select');
+        const equipoSelect = golDiv.querySelector('.equipo-select');
+        const minutoInput = golDiv.querySelector('.minuto-input');
+
+        if (goleadorSelect && goleadorSelect.value) {
+          golesData.push({
+            partido_id: partidoEnEdicion.id,
+            goleador_id: goleadorSelect.value,
+            asistidor_id: asistidorSelect.value || null,
+            equipo: parseInt(equipoSelect.value),
+            minuto: minutoInput.value ? parseInt(minutoInput.value) : null
+          });
+        }
+      });
+
+      if (golesData.length > 0) {
+        const { error: golesError } = await supabase
+          .from('goles')
+          .insert(golesData);
+
+        if (golesError) {
+          throw new Error(`Error al insertar goles: ${golesError.message}`);
+        }
+      }
+
+      // Cerrar modal
+      console.log('🚪 Cerrando modal de edición...');
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editarPartidoModal'));
+      modal.hide();
+
+      showToast('¡Partido actualizado exitosamente!', 'success');
+      console.log('✅ Partido actualizado exitosamente');
+      
+      // Recargar historial y estadísticas
+      console.log('🔄 Recargando historial y estadísticas...');
+      cargarHistorialPartidos();
+      cargarEstadisticas();
+      console.log('✅ Proceso de edición completado');
+
+    } catch (error) {
+      console.error('Error al guardar cambios:', error);
+      showToast(`Error al guardar cambios: ${error.message}`, 'error');
+    }
+  }
+
   // --- Función para crear temporadas dummy ---
   async function crearTemporadasDummy() {
     const temporadas = [
@@ -3542,7 +5169,160 @@ const initApp = () => {
     }
   }
 
-  // --- Inicialización ---
+  // --- Función para hacer selectores buscables ---
+  function initializeSearchableSelects() {
+    const searchableSelects = document.querySelectorAll('.searchable-select');
+    
+    searchableSelects.forEach(select => {
+      // Verificar si ya está inicializado
+      if (select.dataset.searchableInitialized === 'true') {
+        return;
+      }
+      
+      // Marcar como inicializado
+      select.dataset.searchableInitialized = 'true';
+      
+      // Crear un div contenedor para el "combobox"
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'relative';
+      wrapper.style.display = 'inline-block';
+      wrapper.style.width = '100%';
+      wrapper.classList.add('searchable-wrapper');
+      
+      // Crear input de texto
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'form-control';
+      input.placeholder = select.options[0]?.text || 'Escribir o seleccionar...';
+      input.autocomplete = 'off';
+      input.id = select.id + '_input';
+      
+      // Crear div para el dropdown
+      const dropdown = document.createElement('div');
+      dropdown.style.position = 'absolute';
+      dropdown.style.top = '100%';
+      dropdown.style.left = '0';
+      dropdown.style.right = '0';
+      dropdown.style.backgroundColor = '#0a0e27';
+      dropdown.style.border = '1px solid rgba(255, 255, 255, 0.125)';
+      dropdown.style.borderTop = 'none';
+      dropdown.style.borderRadius = '0 0 0.375rem 0.375rem';
+      dropdown.style.maxHeight = '200px';
+      dropdown.style.overflowY = 'auto';
+      dropdown.style.zIndex = '1000';
+      dropdown.style.display = 'none';
+      dropdown.style.boxShadow = '0 0.25rem 0.5rem rgba(0, 0, 0, 0.3)';
+      
+      // Guardar referencia del select original
+      input.originalSelect = select;
+      
+      // Reemplazar el select con el wrapper
+      select.parentNode.insertBefore(wrapper, select);
+      wrapper.appendChild(input);
+      wrapper.appendChild(dropdown);
+      select.style.display = 'none';
+      
+      // Función para actualizar el dropdown cuando cambien las opciones
+      function updateDropdown() {
+        populateDropdown(input.value);
+      }
+      
+      // Función para poblar el dropdown
+      function populateDropdown(filterText = '') {
+        dropdown.innerHTML = '';
+        let hasResults = false;
+        
+        Array.from(select.options).forEach(option => {
+          if (option.value === '') return; // Skip empty option
+          
+          const text = option.textContent.toLowerCase();
+          const filter = filterText.toLowerCase();
+          
+          if (!filterText || text.includes(filter)) {
+            const item = document.createElement('div');
+            item.style.padding = '0.5rem 0.75rem';
+            item.style.cursor = 'pointer';
+            item.style.borderBottom = '1px solid rgba(255, 255, 255, 0.075)';
+            item.style.color = 'rgba(255, 255, 255, 0.75)';
+            item.style.fontSize = '0.875rem';
+            item.textContent = option.textContent;
+            item.dataset.value = option.value;
+            
+            item.addEventListener('mouseenter', () => {
+              item.style.background = 'rgba(13, 110, 253, 0.25)';
+              item.style.color = 'white';
+            });
+            
+            item.addEventListener('mouseleave', () => {
+              item.style.background = '';
+              item.style.color = 'rgba(255, 255, 255, 0.75)';
+            });
+            
+            item.addEventListener('click', () => {
+              input.value = option.textContent;
+              select.value = option.value;
+              dropdown.style.display = 'none';
+              
+              // Trigger change event
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            
+            dropdown.appendChild(item);
+            hasResults = true;
+          }
+        });
+        
+        if (!hasResults && filterText) {
+          const noResults = document.createElement('div');
+          noResults.style.padding = '0.5rem 0.75rem';
+          noResults.style.color = 'rgba(255, 255, 255, 0.5)';
+          noResults.style.fontStyle = 'italic';
+          noResults.style.fontSize = '0.875rem';
+          noResults.textContent = 'No se encontraron resultados';
+          dropdown.appendChild(noResults);
+        }
+      }
+      
+      // Event listeners
+      input.addEventListener('input', (e) => {
+        const value = e.target.value;
+        populateDropdown(value);
+        dropdown.style.display = 'block';
+        
+        // Clear selection if typing
+        select.value = '';
+      });
+      
+      input.addEventListener('focus', () => {
+        populateDropdown(input.value);
+        dropdown.style.display = 'block';
+      });
+      
+      input.addEventListener('blur', () => {
+        // Delay para permitir clicks en el dropdown
+        setTimeout(() => {
+          dropdown.style.display = 'none';
+        }, 150);
+      });
+      
+      // Guardar la función de update en el wrapper para poder llamarla externamente
+      wrapper.updateDropdown = updateDropdown;
+      
+      // Poblar inicialmente
+      populateDropdown();
+    });
+  }
+  
+  // Función para actualizar los dropdowns cuando cambien las opciones
+  function updateSearchableSelects() {
+    document.querySelectorAll('.searchable-wrapper').forEach(wrapper => {
+      if (wrapper.updateDropdown) {
+        wrapper.updateDropdown();
+      }
+    });
+  }
+
+    // --- Inicialización ---
   console.log('Initializing app...');
   
   // Cargar todo de forma secuencial para evitar problemas de timing
@@ -3561,6 +5341,30 @@ const initApp = () => {
       await cargarEstadisticas(); // Cargar estadísticas después de posiciones
       configurarFiltroPartidos(); // Configurar filtro de partidos
       renderizarEquipos(); // Inicializar equipos vacíos
+      renderizarTablaGoles(); // Inicializar tabla de goles vacía
+      
+      // Configurar listener para la pestaña de historial
+      const historialTab = document.getElementById('historial-tab');
+      if (historialTab) {
+        historialTab.addEventListener('click', () => {
+          // Cargar historial cuando se abra la pestaña
+          setTimeout(() => {
+            cargarHistorialPartidos();
+          }, 100);
+        });
+      }
+      
+      // Configurar listener para el selector de cantidad de partidos
+      const cantidadPartidos = document.getElementById('cantidad-partidos');
+      if (cantidadPartidos) {
+        cantidadPartidos.addEventListener('change', () => {
+          cargarHistorialPartidos();
+        });
+      }
+      
+      // Cargar historial inicial para evitar el estado de "Cargando..." infinito
+      cargarHistorialPartidos();
+      
       console.log('App initialized successfully');
       console.log('💡 Tip: Ejecuta crearJugadoresDummy() en la consola para crear jugadores de prueba');
     } catch (error) {

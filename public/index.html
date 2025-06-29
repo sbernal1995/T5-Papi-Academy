@@ -858,6 +858,113 @@
       .btn-ai-special:hover::before {
         left: 100%;
       }
+
+      /* Estilos para tabs personalizados */
+      .nav-dark .nav-link {
+        color: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.3s ease;
+        margin-right: 4px;
+        padding: 12px 24px;
+      }
+
+      .nav-dark .nav-link:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .nav-dark .nav-link.active {
+        color: #fff;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .tab-content {
+        border-top: 2px solid rgba(255, 255, 255, 0.1);
+        padding-top: 0;
+      }
+
+      /* Estilos para indicadores de racha */
+      .racha-indicator {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.85rem;
+        padding: 2px 6px;
+        border-radius: 12px;
+        margin-left: 6px;
+        font-weight: bold;
+        vertical-align: middle;
+      }
+
+      .racha-victoria {
+        background: linear-gradient(45deg, #ff6b35, #ff8e3c);
+        color: white;
+        box-shadow: 0 2px 4px rgba(255, 107, 53, 0.3);
+        animation: flicker 2s ease-in-out infinite alternate;
+      }
+
+      .racha-derrota {
+        background: linear-gradient(45deg, #4facfe, #00f2fe);
+        color: white;
+        box-shadow: 0 2px 4px rgba(79, 172, 254, 0.3);
+        animation: freeze 3s ease-in-out infinite;
+      }
+
+      @keyframes flicker {
+        0% { box-shadow: 0 2px 4px rgba(255, 107, 53, 0.3); }
+        100% { box-shadow: 0 2px 8px rgba(255, 107, 53, 0.6), 0 0 12px rgba(255, 107, 53, 0.3); }
+      }
+
+      @keyframes freeze {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(0.98); }
+      }
+
+      .racha-indicator:hover {
+        transform: scale(1.05);
+        transition: transform 0.2s ease;
+      }
+      
+      /* Estilos para botones de partido (editar y eliminar) */
+      .partido-card .btn-outline-warning,
+      .partido-card .btn-outline-danger {
+        opacity: 0;
+        transform: translateX(10px);
+        transition: all 0.3s ease;
+      }
+      
+      .partido-card:hover .btn-outline-warning,
+      .partido-card:hover .btn-outline-danger {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      
+      .partido-card .btn-outline-warning {
+        transition-delay: 0.1s;
+      }
+      
+      .partido-card .btn-outline-danger {
+        transition-delay: 0.2s;
+      }
+      
+      .partido-card .btn-outline-warning:hover {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+        transform: scale(1.1);
+      }
+      
+      .partido-card .btn-outline-danger:hover {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+        transform: scale(1.1);
+      }
     </style>
   </head>
   <body>
@@ -912,8 +1019,28 @@
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="container-fluid py-5">
+    <!-- Navigation Tabs -->
+    <div class="container-fluid mb-4">
+      <ul class="nav nav-tabs nav-dark justify-content-center" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="estadisticas-tab" data-bs-toggle="tab" data-bs-target="#estadisticas-content" type="button" role="tab" aria-controls="estadisticas-content" aria-selected="true">
+            <i class="bi bi-trophy me-2"></i>Estadísticas y Equipos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial-content" type="button" role="tab" aria-controls="historial-content" aria-selected="false">
+            <i class="bi bi-calendar-event me-2"></i>Historial de Partidos
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="mainTabContent">
+      <!-- Estadísticas Tab -->
+      <div class="tab-pane fade show active" id="estadisticas-content" role="tabpanel" aria-labelledby="estadisticas-tab">
+        <!-- Main Content -->
+        <main class="container-fluid py-5">
       <!-- Destacados Section -->
       <section class="mb-5 animate-fade-in-up">
         <div class="enhanced-card rounded-3 p-4">
@@ -959,6 +1086,8 @@
           </div>
         </div>
       </section>
+
+
 
       <!-- Stats Table Section -->
       <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.1s">
@@ -1245,114 +1374,248 @@
               <span class="me-2">📋</span>
               Información del Encuentro
             </h2>
+            
+            <!-- Información básica del partido -->
             <div class="row g-3 mb-4">
-              <div class="col-md-4">
+              <div class="col-md-2">
                 <label class="form-label text-light">📅 Fecha</label>
                 <input type="date" id="fecha-partido" class="form-control">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label text-light">🏟️ Cancha</label>
                 <input type="text" id="cancha-partido" class="form-control" placeholder="Nombre de la cancha">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-2">
                 <label class="form-label text-light">🎯 Resultado Final</label>
-                <input type="text" id="resultado-final" class="form-control" placeholder="ej: 7-6">
+                <input type="text" id="resultado-final" class="form-control" placeholder="ej: 11-8">
               </div>
-            </div>
-            <div>
-              <label class="form-label text-light h6">🏆 Equipo Ganador</label>
-              <div class="d-flex gap-4 justify-content-center mt-3">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="equipo_ganador" value="azul" id="ganador-azul" checked>
-                  <label class="form-check-label text-primary fw-semibold" for="ganador-azul">
-                    🔵 Azul
-                  </label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="equipo_ganador" value="rojo" id="ganador-rojo">
-                  <label class="form-check-label text-danger fw-semibold" for="ganador-rojo">
-                    🔴 Rojo
-                  </label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="equipo_ganador" value="empate" id="ganador-empate">
-                  <label class="form-check-label text-warning fw-semibold" for="ganador-empate">
-                    🤝 Empate
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Divisor -->
-          <hr class="border-light-subtle my-5">
-
-          <!-- Match Events -->
-          <div class="glass-effect rounded-3 p-4 mb-4">
-            <h2 class="h4 text-white mb-4">
-              <span class="me-2">⚽</span>
-              Eventos y Goles
-            </h2>
-            
-            <div class="table-responsive mb-4 rounded-3">
-              <table class="table table-dark table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th scope="col">⏰ Minuto</th>
-                    <th scope="col">⚽ Goleador</th>
-                    <th scope="col">🎯 Asistencia</th>
-                    <th scope="col">👕 Equipo</th>
-                    <th scope="col">🗑️</th>
-                  </tr>
-                </thead>
-                <tbody id="tabla-eventos"></tbody>
-              </table>
-            </div>
-            
-            <div class="row g-3 align-items-end">
-              <div class="col-6 col-md">
-                <label class="form-label text-light">⏰ Min</label>
-                <input type="number" id="minuto" class="form-control" placeholder="90">
-              </div>
-              <div class="col-6 col-md">
-                <label class="form-label text-light">⚽ Goleador</label>
-                <select id="goleador" class="form-select">
-                  <option disabled selected>Seleccionar</option>
+              <div class="col-md-2">
+                <label class="form-label text-light">🏆 Equipo Ganador</label>
+                <select id="equipo-ganador" class="form-select" onchange="actualizarSelectACE()">
+                  <option value="">Seleccionar ganador</option>
+                  <option value="1">🔵 Equipo 1 (Azul)</option>
+                  <option value="2">🔴 Equipo 2 (Rojo)</option>
+                  <option value="0">🤝 Empate</option>
                 </select>
               </div>
-              <div class="col-6 col-md">
-                <label class="form-label text-light">🎯 Asistencia</label>
-                <select id="asistencia" class="form-select">
-                  <option disabled selected>Seleccionar</option>
+              <div class="col-md-3">
+                <label class="form-label text-light">📅 Temporada</label>
+                <select id="temporada-partido" class="form-select">
+                  <option value="">Seleccionar temporada</option>
                 </select>
-              </div>
-              <div class="col-6 col-md">
-                <label class="form-label text-light">👕 Equipo</label>
-                <select id="equipo-evento" class="form-select">
-                  <option value="azul">🔵 Azul</option>
-                  <option value="rojo">🔴 Rojo</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-auto">
-                <button id="btn-add-evento" class="btn btn-success btn-enhanced w-100">
-                  <i class="bi bi-plus me-2"></i>
-                  Agregar
-                </button>
               </div>
             </div>
-          </div>
 
-          <!-- Submit Button -->
-          <div class="text-center">
-            <button id="btn-cargar-partido" class="btn btn-primary btn-lg btn-enhanced px-5">
-              <i class="bi bi-lightning-fill me-2"></i>
-              Cargar Partido Completo
-            </button>
+            <!-- Reconocimientos especiales -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label text-light">🏆 MVP del Partido</label>
+                <select id="mvp-partido" class="form-select">
+                  <option value="">Seleccionar MVP</option>
+                </select>
+                <div class="form-text">Jugador más valioso del encuentro</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label text-light">⭐ ACE del Partido</label>
+                <select id="ace-partido" class="form-select">
+                  <option value="">Seleccionar ACE</option>
+                </select>
+                <div class="form-text">Mejor jugador del equipo perdedor</div>
+              </div>
+            </div>
+
+            <!-- Estadísticas detalladas -->
+            <div class="row g-4">
+              <!-- Atajadas -->
+              <div class="col-md-6">
+                <div class="border border-info border-opacity-25 rounded-3 p-3">
+                  <h6 class="text-info fw-bold mb-3">
+                    <i class="bi bi-shield-check me-2"></i>
+                    Atajadas
+                  </h6>
+                  <div id="atajadas-container">
+                    <div class="atajadas-row row g-2 mb-2">
+                      <div class="col-7">
+                        <select class="form-select form-select-sm atajadas-jugador">
+                          <option value="">Seleccionar jugador</option>
+                        </select>
+                      </div>
+                      <div class="col-4">
+                        <input type="number" class="form-control form-control-sm atajadas-cantidad" placeholder="0" min="0">
+                      </div>
+                      <div class="col-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarAtajada(this)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-info" onclick="agregarAtajada()">
+                    <i class="bi bi-plus me-1"></i>
+                    Agregar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Cagadas -->
+              <div class="col-md-6">
+                <div class="border border-danger border-opacity-25 rounded-3 p-3">
+                  <h6 class="text-danger fw-bold mb-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Cagadas en Gol
+                  </h6>
+                  <div id="cagadas-container">
+                    <div class="cagadas-row row g-2 mb-2">
+                      <div class="col-7">
+                        <select class="form-select form-select-sm cagadas-jugador">
+                          <option value="">Seleccionar jugador</option>
+                        </select>
+                      </div>
+                      <div class="col-4">
+                        <input type="number" class="form-control form-control-sm cagadas-cantidad" placeholder="0" min="0">
+                      </div>
+                      <div class="col-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarCagada(this)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="agregarCagada()">
+                    <i class="bi bi-plus me-1"></i>
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Goles y Asistencias -->
+            <div class="row g-4 mt-3">
+              <div class="col-12">
+                <div class="border border-success border-opacity-25 rounded-3 p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-success fw-bold mb-0">
+                      <i class="bi bi-star-fill me-2"></i>
+                      Goles y Asistencias
+                    </h6>
+                    <div id="marcador-actual" class="badge bg-primary fs-6 px-3 py-2">
+                      0 - 0
+                    </div>
+                  </div>
+                  
+                  <div class="table-responsive mb-3 rounded-3">
+                    <table class="table table-dark table-hover mb-0">
+                      <thead>
+                        <tr>
+                          <th scope="col">⚽ Goleador</th>
+                          <th scope="col">🎯 Asistencia</th>
+                          <th scope="col">👕 Equipo</th>
+                          <th scope="col">🔄 Tipo</th>
+                          <th scope="col">🗑️</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tabla-goles"></tbody>
+                    </table>
+                  </div>
+                  
+                  <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label text-light">⚽ Goleador</label>
+                      <select id="goleador" class="form-select searchable-select">
+                        <option value="">Seleccionar goleador</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label text-light">🎯 Asistencia</label>
+                      <select id="asistencia" class="form-select searchable-select">
+                        <option value="">Sin asistencia</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label text-light">👕 Equipo</label>
+                      <select id="equipo-gol" class="form-select">
+                        <option value="azul">🔵 Equipo 1</option>
+                        <option value="rojo">🔴 Equipo 2</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="gol-en-contra">
+                        <label class="form-check-label text-light small" for="gol-en-contra">
+                          🔄 En contra
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-2">
+                      <button id="btn-add-gol" class="btn btn-success btn-enhanced w-100">
+                        <i class="bi bi-plus me-2"></i>
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón para cargar partido -->
+            <div class="d-grid mt-4">
+              <button id="btn-cargar-partido" class="btn btn-primary btn-lg btn-enhanced">
+                <i class="bi bi-save me-2"></i>
+                Cargar Partido Completo
+              </button>
+            </div>
           </div>
 
         </div>
       </section>
     </main>
+    </div>
+    <!-- End Estadísticas Tab -->
+
+    <!-- Historial Tab -->
+    <div class="tab-pane fade" id="historial-content" role="tabpanel" aria-labelledby="historial-tab">
+      <main class="container-fluid py-5">
+        <!-- Historial de Partidos Section -->
+        <section class="mb-5 animate-fade-in-up">
+          <div class="enhanced-card rounded-3 p-4">
+            <div class="text-center mb-4">
+              <h2 class="h3 text-white mb-2">
+                <span class="me-2">📊</span>
+                Historial de Partidos
+              </h2>
+              <p class="text-light-emphasis">Últimos partidos registrados con estadísticas detalladas</p>
+            </div>
+            
+            <!-- Selector de cantidad de partidos -->
+            <div class="d-flex justify-content-center mb-4">
+              <div class="d-flex align-items-center gap-2">
+                <label for="cantidad-partidos" class="text-light small mb-0">📅 Mostrar últimos:</label>
+                <select id="cantidad-partidos" class="form-select form-select-sm" style="width: 100px;" onchange="cargarHistorialPartidos()">
+                  <option value="5">5 partidos</option>
+                  <option value="10">10 partidos</option>
+                  <option value="15">15 partidos</option>
+                  <option value="20">20 partidos</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Contenedor del historial -->
+            <div id="historial-partidos-container">
+              <div class="col-12 text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="text-light-emphasis mt-2 mb-0">Cargando historial de partidos...</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <!-- End Historial Tab -->
+
+    </div>
+    <!-- End Tab Content -->
 
     <!-- Footer -->
     <footer class="text-center py-5 mt-5">
@@ -1603,6 +1866,97 @@
               </div>
             </div>
 
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para Editar Partido -->
+    <div class="modal fade" id="editarPartidoModal" tabindex="-1" aria-labelledby="editarPartidoModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content enhanced-card border-0">
+          <div class="modal-header border-bottom border-light-subtle">
+            <h5 class="modal-title text-white" id="editarPartidoModalLabel">
+              <span class="me-2">✏️</span> 
+              Editar Partido
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editar-partido-form">
+              <!-- Información básica del partido -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <label for="editar-fecha" class="form-label text-light">📅 Fecha</label>
+                  <input type="date" id="editar-fecha" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="editar-cancha" class="form-label text-light">🏟️ Cancha</label>
+                  <input type="text" id="editar-cancha" class="form-control" placeholder="Nombre de la cancha">
+                </div>
+                <div class="col-md-4">
+                  <label for="editar-temporada" class="form-label text-light">🏆 Temporada</label>
+                  <select id="editar-temporada" class="form-select">
+                    <option value="">Sin temporada</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Equipos -->
+              <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                  <h6 class="text-primary mb-3">🔵 Equipo 1</h6>
+                  <div id="editar-equipo1-container">
+                    <!-- Jugadores del equipo 1 se cargarán aquí -->
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="text-danger mb-3">🔴 Equipo 2</h6>
+                  <div id="editar-equipo2-container">
+                    <!-- Jugadores del equipo 2 se cargarán aquí -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Goles -->
+              <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="text-white mb-0">⚽ Goles del Partido</h6>
+                  <button type="button" class="btn btn-sm btn-success" onclick="agregarGolEdicion()">
+                    <i class="bi bi-plus"></i> Agregar Gol
+                  </button>
+                </div>
+                <div id="editar-goles-container">
+                  <!-- Goles se cargarán aquí -->
+                </div>
+              </div>
+
+              <!-- MVP y ACE -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <label for="editar-mvp" class="form-label text-light">👑 MVP</label>
+                  <select id="editar-mvp" class="form-select">
+                    <option value="">Sin MVP</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="editar-ace" class="form-label text-light">⭐ ACE</label>
+                  <select id="editar-ace" class="form-select">
+                    <option value="">Sin ACE</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="d-flex gap-3">
+                <button type="button" id="btn-guardar-cambios" class="btn btn-primary btn-enhanced flex-fill">
+                  <i class="bi bi-check-lg me-2"></i>
+                  Guardar Cambios
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
