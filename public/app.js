@@ -35,6 +35,10 @@ const initApp = () => {
   let filtroPartidosMinimos = 0; // filtro de partidos mínimos
   let equipo1 = [];
   let equipo2 = [];
+  
+  // Hacer los equipos disponibles globalmente para el tooltip
+  window.equipo1 = equipo1;
+  window.equipo2 = equipo2;
   let eventos = [];
   let jugadorEditando = null; // Para saber si estamos editando o agregando
   
@@ -188,6 +192,7 @@ const initApp = () => {
     const { data, error } = await supabase.from('jugadores').select(`
       id, 
       nombre,
+      pulmon,
       jugador_posicion (
         posicion_id,
         es_primaria,
@@ -391,6 +396,9 @@ const initApp = () => {
     document.getElementById('posicion-primaria').value = primaria ? primaria.posicion_id : '';
     document.getElementById('posicion-secundaria').value = secundaria ? secundaria.posicion_id : '';
     
+    // Pre-llenar pulmón
+    document.getElementById('pulmon').value = jugador.pulmon || '';
+    
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
     modal.show();
@@ -422,6 +430,8 @@ const initApp = () => {
       // Remover del armado de equipos si estaba agregado
       equipo1 = equipo1.filter(j => j.id !== jugadorId);
       equipo2 = equipo2.filter(j => j.id !== jugadorId);
+      window.equipo1 = equipo1; // Actualizar referencia global
+      window.equipo2 = equipo2; // Actualizar referencia global
       renderizarEquipos();
 
     } catch (error) {
@@ -726,6 +736,9 @@ const initApp = () => {
         chartInstances['chart-radar-equipo1'].destroy();
         delete chartInstances['chart-radar-equipo1'];
       }
+      // Ocultar también el contenedor de rendimiento
+      const rendimientoEquipo1 = document.getElementById('rendimiento-equipo1');
+      if (rendimientoEquipo1) rendimientoEquipo1.style.display = 'none';
     }
     
     if (equipo2.length > 0 && radarEquipo2Container) {
@@ -736,6 +749,9 @@ const initApp = () => {
         chartInstances['chart-radar-equipo2'].destroy();
         delete chartInstances['chart-radar-equipo2'];
       }
+      // Ocultar también el contenedor de rendimiento
+      const rendimientoEquipo2 = document.getElementById('rendimiento-equipo2');
+      if (rendimientoEquipo2) rendimientoEquipo2.style.display = 'none';
     }
     
     // Crear los gráficos después de que el HTML esté visible
@@ -749,9 +765,11 @@ const initApp = () => {
       // Gráficos de radar individuales
       if (equipo1.length > 0) {
         crearGraficoRadar('chart-radar-equipo1', equipo1);
+        mostrarRendimientoEquipo('rendimiento-equipo1', equipo1, 1);
       }
       if (equipo2.length > 0) {
         crearGraficoRadar('chart-radar-equipo2', equipo2);
+        mostrarRendimientoEquipo('rendimiento-equipo2', equipo2, 2);
       }
     }, 100);
   }
@@ -835,6 +853,10 @@ const initApp = () => {
     // Agregar al equipo destino
     equipoDestinoArray.push(jugador);
     
+    // Actualizar referencias globales
+    window.equipo1 = equipo1;
+    window.equipo2 = equipo2;
+    
     // Mostrar notificación
     const nombreEquipoDestino = equipoDestino === 'equipo1' ? 'Equipo 1' : 'Equipo 2';
     showToast(`${jugador.nombre} movido a ${nombreEquipoDestino}`, 'success');
@@ -847,10 +869,12 @@ const initApp = () => {
   let chartInstances = {}; // Para almacenar instancias de gráficos y poder destruirlas
 
   function crearGraficosSeparados() {
-    // Crear tres gráficos separados con escalas apropiadas
+    // Crear cinco gráficos separados con escalas apropiadas
     crearGraficoWinrate();
     crearGraficoGoles();
     crearGraficoAtajadas();
+    crearGraficoRendimiento();
+    crearGraficoPulmon();
   }
 
   function crearGraficoWinrate() {
@@ -1344,6 +1368,98 @@ const initApp = () => {
       });
     }
     
+    // Análisis de Rendimiento
+    const difRendimiento = statsEquipo1.rendimientoTotal - statsEquipo2.rendimientoTotal;
+    if (Math.abs(difRendimiento) > 15) { // Diferencia significativa
+      if (difRendimiento > 30) {
+        puntos.push({
+          icon: '⚡',
+          tipo: 'advantage-team1',
+          titulo: 'Supremacía total en rendimiento',
+          descripcion: `El Equipo 1 tiene un rendimiento abrumadoramente superior (+${difRendimiento.toFixed(1)} puntos). Su nivel general debería dominar el partido.`,
+          stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
+        });
+      } else if (difRendimiento > 0) {
+        puntos.push({
+          icon: '📈',
+          tipo: 'advantage-team1',
+          titulo: 'Ventaja clara en rendimiento',
+          descripcion: `El Equipo 1 tiene mejor rendimiento general (+${difRendimiento.toFixed(1)} puntos). Su nivel técnico puede hacer la diferencia.`,
+          stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
+        });
+      } else if (difRendimiento < -30) {
+        puntos.push({
+          icon: '⚡',
+          tipo: 'advantage-team2',
+          titulo: 'Supremacía total en rendimiento',
+          descripcion: `El Equipo 2 tiene un rendimiento abrumadoramente superior (+${Math.abs(difRendimiento).toFixed(1)} puntos). Su nivel general debería dominar el partido.`,
+          stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
+        });
+      } else {
+        puntos.push({
+          icon: '📈',
+          tipo: 'advantage-team2',
+          titulo: 'Ventaja clara en rendimiento',
+          descripcion: `El Equipo 2 tiene mejor rendimiento general (+${Math.abs(difRendimiento).toFixed(1)} puntos). Su nivel técnico puede hacer la diferencia.`,
+          stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
+        });
+      }
+    } else {
+      puntos.push({
+        icon: '⚽',
+        tipo: 'balanced',
+        titulo: 'Rendimiento equilibrado',
+        descripcion: `Ambos equipos tienen rendimiento general similar (diferencia de ${Math.abs(difRendimiento).toFixed(1)}). Se espera un partido muy parejo.`,
+        stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
+      });
+    }
+    
+    // Análisis de Pulmón
+    const difPulmon = statsEquipo1.pulmonPromedio - statsEquipo2.pulmonPromedio;
+    if (Math.abs(difPulmon) > 0.8) { // Diferencia significativa
+      if (difPulmon > 1.5) {
+        puntos.push({
+          icon: '🫁',
+          tipo: 'advantage-team1',
+          titulo: 'Superioridad física abrumadora',
+          descripcion: `El Equipo 1 tiene mucha más resistencia física (+${difPulmon.toFixed(1)} puntos). Esperá que dominen los tiempos largos del partido.`,
+          stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
+        });
+      } else if (difPulmon > 0) {
+        puntos.push({
+          icon: '💨',
+          tipo: 'advantage-team1',
+          titulo: 'Ventaja en resistencia física',
+          descripcion: `El Equipo 1 tiene mejor condición física (+${difPulmon.toFixed(1)} puntos). Pueden rendir mejor en los últimos minutos.`,
+          stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
+        });
+      } else if (difPulmon < -1.5) {
+        puntos.push({
+          icon: '🫁',
+          tipo: 'advantage-team2',
+          titulo: 'Superioridad física abrumadora',
+          descripcion: `El Equipo 2 tiene mucha más resistencia física (+${Math.abs(difPulmon).toFixed(1)} puntos). Esperá que dominen los tiempos largos del partido.`,
+          stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
+        });
+      } else {
+        puntos.push({
+          icon: '💨',
+          tipo: 'advantage-team2',
+          titulo: 'Ventaja en resistencia física',
+          descripcion: `El Equipo 2 tiene mejor condición física (+${Math.abs(difPulmon).toFixed(1)} puntos). Pueden rendir mejor en los últimos minutos.`,
+          stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
+        });
+      }
+    } else {
+      puntos.push({
+        icon: '🏃',
+        tipo: 'balanced',
+        titulo: 'Condición física pareja',
+        descripcion: `Ambos equipos tienen similar resistencia física (diferencia de ${Math.abs(difPulmon).toFixed(1)}). El cansancio no será un factor decisivo.`,
+        stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
+      });
+    }
+    
     // Generar HTML
     puntosContainer.innerHTML = puntos.map(punto => `
       <div class="analysis-point ${punto.tipo}">
@@ -1357,6 +1473,213 @@ const initApp = () => {
     `).join('');
   }
 
+  function crearGraficoRendimiento() {
+    const canvas = document.getElementById('chart-rendimiento');
+    if (!canvas) return;
+
+    // Destruir gráfico existente si existe
+    if (chartInstances['chart-rendimiento']) {
+      chartInstances['chart-rendimiento'].destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+
+    const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
+    const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
+
+    const datasets = [];
+
+    if (equipo1.length > 0) {
+      datasets.push({
+        label: `🔵 Equipo 1`,
+        data: [parseFloat(statsEquipo1.rendimientoTotal.toFixed(1))],
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 2,
+        barThickness: equipo2.length > 0 ? 45 : 55
+      });
+    }
+
+    if (equipo2.length > 0) {
+      datasets.push({
+        label: `🔴 Equipo 2`,
+        data: [parseFloat(statsEquipo2.rendimientoTotal.toFixed(1))],
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: 'rgba(239, 68, 68, 1)',
+        borderWidth: 2,
+        barThickness: equipo1.length > 0 ? 45 : 55
+      });
+    }
+
+    if (datasets.length === 0) {
+      canvas.style.display = 'none';
+      return;
+    }
+
+    canvas.style.display = 'block';
+
+    chartInstances['chart-rendimiento'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Rendimiento Total'],
+        datasets: datasets
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: equipo1.length > 0 && equipo2.length > 0,
+            position: 'bottom',
+            labels: {
+              color: 'rgba(255, 255, 255, 0.9)',
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: 'white',
+            bodyColor: 'white',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.parsed.x.toFixed(1)} puntos`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.9)',
+              callback: function(value) {
+                return value.toFixed(0) + ' pts';
+              }
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.9)'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function crearGraficoPulmon() {
+    const canvas = document.getElementById('chart-pulmon');
+    if (!canvas) return;
+
+    // Destruir gráfico existente si existe
+    if (chartInstances['chart-pulmon']) {
+      chartInstances['chart-pulmon'].destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+
+    const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
+    const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
+
+    const datasets = [];
+
+    if (equipo1.length > 0 && statsEquipo1.pulmonPromedio > 0) {
+      datasets.push({
+        label: `🔵 Equipo 1`,
+        data: [parseFloat(statsEquipo1.pulmonPromedio.toFixed(1))],
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 2,
+        barThickness: equipo2.length > 0 ? 45 : 55
+      });
+    }
+
+    if (equipo2.length > 0 && statsEquipo2.pulmonPromedio > 0) {
+      datasets.push({
+        label: `🔴 Equipo 2`,
+        data: [parseFloat(statsEquipo2.pulmonPromedio.toFixed(1))],
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: 'rgba(239, 68, 68, 1)',
+        borderWidth: 2,
+        barThickness: equipo1.length > 0 ? 45 : 55
+      });
+    }
+
+    if (datasets.length === 0) {
+      canvas.style.display = 'none';
+      return;
+    }
+
+    canvas.style.display = 'block';
+
+    chartInstances['chart-pulmon'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Pulmón Promedio'],
+        datasets: datasets
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: equipo1.length > 0 && equipo2.length > 0,
+            position: 'bottom',
+            labels: {
+              color: 'rgba(255, 255, 255, 0.9)',
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: 'white',
+            bodyColor: 'white',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.parsed.x.toFixed(1)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 10,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.9)',
+              callback: function(value) {
+                return value + '/10';
+              }
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.9)'
+            }
+          }
+        }
+      }
+    });
+  }
+
   // Función global para cerrar el análisis comparativo
   window.cerrarAnalisisComparativo = function() {
     const analisisContainer = document.getElementById('analisis-comparativo');
@@ -1365,13 +1688,86 @@ const initApp = () => {
     }
   };
 
+  // Función para mostrar el rendimiento del equipo debajo del radar
+  function mostrarRendimientoEquipo(containerId, equipo, equipoNum) {
+    const container = document.getElementById(containerId);
+    if (!container || !equipo || equipo.length === 0) {
+      if (container) container.style.display = 'none';
+      return;
+    }
+
+    let rendimientoTotal = 0;
+    let rendimientoAtaqueTotal = 0;
+    let rendimientoArqueroTotal = 0;
+    
+    equipo.forEach(jugador => {
+      const pj = jugador.pj || 1;
+      
+      // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 3) + (Puntos P/P * 2)
+      const golesPP = (jugador.goles || 0) / pj;
+      const mvpPP = (jugador.mvp_count || 0) / pj;
+      const acePP = (jugador.ace_count || 0) / pj;
+      const asistPP = (jugador.asistencias || 0) / pj;
+      const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
+      const puntosPP = (jugador.total_puntos || 0) / pj;
+      
+      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+      
+      // Rendimiento Arquero: atajadas por partido * 1.5
+      const atajadasPP = (jugador.atajadas || 0) / pj;
+      const rendArquero = atajadasPP * 1.5;
+      
+      rendimientoAtaqueTotal += rendAtaque;
+      rendimientoArqueroTotal += rendArquero;
+    });
+    
+    rendimientoTotal = rendimientoAtaqueTotal + rendimientoArqueroTotal;
+    
+    const colorClass = equipoNum === 1 ? 'primary' : 'danger';
+    
+    container.innerHTML = `
+      <div class="fw-bold text-${colorClass} mb-2 small">
+        📈 Rendimiento Total Equipo ${equipoNum}
+      </div>
+      <div class="row g-2 small">
+        <div class="col-12">
+          <div class="d-flex justify-content-between">
+            <span>🎯 <strong>Rendimiento Total:</strong></span>
+            <span class="text-white fw-bold">${rendimientoTotal.toFixed(1)} pts</span>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="d-flex justify-content-between">
+            <span>⚔️ Rendimiento Ataque:</span>
+            <span>${rendimientoAtaqueTotal.toFixed(1)} pts</span>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="d-flex justify-content-between">
+            <span>🥅 Rendimiento Arquero:</span>
+            <span>${rendimientoArqueroTotal.toFixed(1)} pts</span>
+          </div>
+        </div>
+        <div class="col-12 mt-1">
+          <div class="text-light-emphasis text-center small">
+            <em>${equipo.length} jugador(es) en el equipo</em>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    container.style.display = 'block';
+  }
+
   function calcularEstadisticasEquipo(equipo) {
     if (equipo.length === 0) {
       return {
         winrate: 0,
         golesPorPartido: 0,
         atajadasPorPartido: 0,
-        cagadasPorPartido: 0
+        cagadasPorPartido: 0,
+        rendimientoTotal: 0,
+        pulmonPromedio: 0
       };
     }
 
@@ -1381,6 +1777,11 @@ const initApp = () => {
     let totalCagadas = 0;
     let totalPartidos = 0;
     let jugadoresConDatos = 0;
+    
+    // Nuevas métricas
+    let rendimientoTotalEquipo = 0;
+    let totalPulmon = 0;
+    let jugadoresConPulmon = 0;
 
     equipo.forEach(jugador => {
       if (jugador.winrate !== null && jugador.winrate !== undefined) {
@@ -1399,18 +1800,42 @@ const initApp = () => {
       if (jugador.pj !== null && jugador.pj !== undefined) {
         totalPartidos += jugador.pj;
       }
+      
+      // Calcular rendimiento de cada jugador
+      const pj = jugador.pj || 1;
+      const golesPP = (jugador.goles || 0) / pj;
+      const mvpPP = (jugador.mvp_count || 0) / pj;
+      const acePP = (jugador.ace_count || 0) / pj;
+      const asistPP = (jugador.asistencias || 0) / pj;
+      const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
+      const puntosPP = (jugador.total_puntos || 0) / pj;
+      const atajadasPP = (jugador.atajadas || 0) / pj;
+      
+      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+      const rendArquero = atajadasPP * 1.5;
+      
+      rendimientoTotalEquipo += rendAtaque + rendArquero;
+      
+      // Pulmón
+      if (jugador.pulmon !== null && jugador.pulmon !== undefined) {
+        totalPulmon += jugador.pulmon;
+        jugadoresConPulmon++;
+      }
     });
 
     const winratePromedio = jugadoresConDatos > 0 ? totalWinrate / jugadoresConDatos : 0;
     const golesPorPartido = totalPartidos > 0 ? totalGoles / totalPartidos : 0;
     const atajadasPorPartido = totalPartidos > 0 ? totalAtajadas / totalPartidos : 0;
     const cagadasPorPartido = totalPartidos > 0 ? totalCagadas / totalPartidos : 0;
+    const pulmonPromedio = jugadoresConPulmon > 0 ? totalPulmon / jugadoresConPulmon : 0;
 
     return {
       winrate: winratePromedio,
       golesPorPartido: golesPorPartido,
       atajadasPorPartido: atajadasPorPartido,
-      cagadasPorPartido: cagadasPorPartido
+      cagadasPorPartido: cagadasPorPartido,
+      rendimientoTotal: rendimientoTotalEquipo,
+      pulmonPromedio: pulmonPromedio
     };
   }
 
@@ -1800,10 +2225,12 @@ const initApp = () => {
       if (equipo === 'equipo1') {
           const jugadorRemovido = equipo1[index];
           equipo1.splice(index, 1);
+          window.equipo1 = equipo1; // Actualizar referencia global
           showToast(`${jugadorRemovido.nombre} removido del Equipo 1`, 'info');
       } else {
           const jugadorRemovido = equipo2[index];
           equipo2.splice(index, 1);
+          window.equipo2 = equipo2; // Actualizar referencia global
           showToast(`${jugadorRemovido.nombre} removido del Equipo 2`, 'info');
       }
       renderizarEquipos();
@@ -1868,15 +2295,19 @@ const initApp = () => {
         asistencias: 0,
         atajadas: 0,
         winrate: 0
-      })
+      }),
+      // Asegurar que pulmon siempre se mantenga del jugador original
+      pulmon: jugadorExistente.pulmon
     };
     
     // Agregar el jugador al equipo
     if (equipo === 'equipo1') {
       equipo1.push(jugadorConEstadisticas);
+      window.equipo1 = equipo1; // Actualizar referencia global
       showToast(`${jugadorExistente.nombre} agregado al Equipo 1`, 'success');
     } else {
       equipo2.push(jugadorConEstadisticas);
+      window.equipo2 = equipo2; // Actualizar referencia global
       showToast(`${jugadorExistente.nombre} agregado al Equipo 2`, 'success');
     }
     
@@ -1963,6 +2394,7 @@ const initApp = () => {
           .select(`
             id,
             nombre,
+            pulmon,
             jugador_posicion (
               posicion_id,
               es_primaria,
@@ -2036,6 +2468,7 @@ const initApp = () => {
         jugadores: {
           id: jugador.id,
           nombre: jugador.nombre,
+          pulmon: jugador.pulmon,
           jugador_posicion: jugador.jugador_posicion
         }
       }));
@@ -2582,6 +3015,7 @@ const initApp = () => {
     const nombre = form.nombre.value.trim();
     const posicionPrimaria = form.posicion_primaria.value;
     const posicionSecundaria = form.posicion_secundaria.value;
+    const pulmon = parseFloat(form.pulmon.value) || null;
 
     if (!nombre) {
       showToast('Por favor ingresa el nombre del jugador.', 'warning');
@@ -2602,11 +3036,11 @@ const initApp = () => {
     try {
       if (jugadorEditando) {
         // MODO EDICIÓN
-        await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria);
+        await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria, pulmon);
         showToast('Jugador actualizado exitosamente!', 'success');
       } else {
         // MODO AGREGAR
-        await agregarJugador(nombre, posicionPrimaria, posicionSecundaria);
+        await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon);
         showToast('Jugador agregado exitosamente!', 'success');
       }
 
@@ -2629,11 +3063,16 @@ const initApp = () => {
   });
 
   // Función para agregar un nuevo jugador
-  async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria) {
+  async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
     // Insertar el jugador
+    const jugadorObject = { nombre: nombre };
+    if (pulmon !== null) {
+      jugadorObject.pulmon = pulmon;
+    }
+    
     const { data: jugadorData, error: jugadorError } = await supabase
       .from('jugadores')
-      .insert([{ nombre: nombre }])
+      .insert([jugadorObject])
       .select();
     
     if (jugadorError) {
@@ -2645,11 +3084,16 @@ const initApp = () => {
   }
 
   // Función para editar un jugador existente
-  async function editarJugador(jugadorId, nombre, posicionPrimaria, posicionSecundaria) {
+  async function editarJugador(jugadorId, nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
     // Actualizar nombre del jugador
+    const updateObject = { nombre: nombre };
+    if (pulmon !== null) {
+      updateObject.pulmon = pulmon;
+    }
+    
     const { error: jugadorError } = await supabase
       .from('jugadores')
-      .update({ nombre: nombre })
+      .update(updateObject)
       .eq('id', jugadorId);
     
     if (jugadorError) {

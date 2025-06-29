@@ -946,6 +946,10 @@
                     <div style="height: 180px;">
                       <canvas id="chart-radar-equipo1"></canvas>
                     </div>
+                    <!-- Información de Rendimiento -->
+                    <div id="rendimiento-equipo1" class="mt-2 p-2 rounded" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); display: none;">
+                      <!-- El contenido se genera dinámicamente -->
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1017,6 +1021,10 @@
                     <div style="height: 180px;">
                       <canvas id="chart-radar-equipo2"></canvas>
                     </div>
+                    <!-- Información de Rendimiento -->
+                    <div id="rendimiento-equipo2" class="mt-2 p-2 rounded" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: none;">
+                      <!-- El contenido se genera dinámicamente -->
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1069,6 +1077,32 @@
                       </div>
                       <div style="height: 200px; position: relative;">
                         <canvas id="chart-atajadas"></canvas>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Rendimiento Total -->
+                  <div class="col-lg-6 col-md-12">
+                    <div class="glass-effect rounded-3 p-3 border-top border-purple border-3" style="border-color: #8b5cf6 !important;">
+                      <div class="text-center mb-2">
+                        <h6 class="mb-1 fw-bold" style="color: #8b5cf6;">⚡ Rendimiento</h6>
+                        <p class="text-light-emphasis small mb-0">Puntos totales por equipo</p>
+                      </div>
+                      <div style="height: 200px; position: relative;">
+                        <canvas id="chart-rendimiento"></canvas>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Pulmón Promedio -->
+                  <div class="col-lg-6 col-md-12">
+                    <div class="glass-effect rounded-3 p-3 border-top border-3" style="border-color: #06b6d4 !important;">
+                      <div class="text-center mb-2">
+                        <h6 class="mb-1 fw-bold" style="color: #06b6d4;">🫁 Pulmón</h6>
+                        <p class="text-light-emphasis small mb-0">Resistencia física promedio (0-10)</p>
+                      </div>
+                      <div style="height: 200px; position: relative;">
+                        <canvas id="chart-pulmon"></canvas>
                       </div>
                     </div>
                   </div>
@@ -1237,6 +1271,12 @@
                 </div>
               </div>
               
+              <div class="mb-3">
+                <label for="pulmon" class="form-label text-light">🫁 Pulmón</label>
+                <input type="number" name="pulmon" id="pulmon" class="form-control" placeholder="Valor de pulmón (opcional)" min="0" max="10" step="0.1">
+                <div class="form-text text-light-emphasis">Resistencia física del jugador (0-10)</div>
+              </div>
+              
               <div class="d-flex gap-3">
                 <button type="submit" class="btn btn-primary btn-enhanced flex-fill" id="submit-btn">
                   <i class="bi bi-plus me-2" id="submit-icon"></i>
@@ -1266,35 +1306,7 @@
       display: none;
       border: 1px solid rgba(255, 255, 255, 0.2);
     ">
-      <div class="fw-bold mb-2">📊 Cálculo de Rendimiento (Promedio por Equipo)</div>
-      <div class="mb-2">
-        <strong class="text-info">🥅 Arquero:</strong><br>
-        <small>Ponderado: Mejor 80% + Resto 20%<br>
-        Fórmula: Winrate × 0.4 + (Atajadas/partido) × 25<br>
-        <em>Máx. teórico: 415 pts (15 ataj/partido = 100%)<br>
-        Referencia: 12 ataj/partido ≈ 85%</em></small>
-      </div>
-      <div class="mb-2">
-        <strong class="text-success">🛡️ Defensor:</strong><br>
-        <small>Principales: Winrate - (Cagadas/partido) × 10<br>
-        Secundarios: Contribuyen 65%<br>
-        <em>Máx. teórico: 100 pts (100%WR sin cagadas)</em></small>
-      </div>
-      <div class="mb-2">
-        <strong class="text-warning">⚡ Mediocampo:</strong><br>
-        <small>Principales: (G+A)/partido × 24 + Winrate × 0.5<br>
-        Secundarios: Contribuyen 65%<br>
-        <em>Máx. teórico: 145 pts<br>
-        Referencia: metox 5.6 G+A secundario = 80%</em></small>
-      </div>
-      <div>
-        <strong class="text-danger">⚽ Atacante:</strong><br>
-        <small>Ponderado: Principales 80% + Resto 20%<br>
-        Principales (Atac+Med): (G+A)/partido × 27 + Winrate<br>
-        Resto (Def+Arq): (G+A)/partido × 18 + Winrate × 0.5<br>
-        <em>Máx. teórico: 240 pts<br>
-        Referencia: metox 5.6 G+A principal = 80%</em></small>
-      </div>
+      <!-- El contenido se genera dinámicamente en JavaScript -->
     </div>
 
     <!-- Botón flotante para ir a equipos -->
@@ -1337,6 +1349,39 @@
             clearTimeout(currentTooltipTimeout);
             currentTooltipTimeout = null;
           }
+          
+          // Contenido del tooltip sin la información del rendimiento
+          tooltip.innerHTML = `
+            <div class="fw-bold mb-2">📊 Cálculo de Rendimiento (Promedio por Equipo)</div>
+            <div class="mb-2">
+              <strong class="text-info">🥅 Arquero:</strong><br>
+              <small>Ponderado: Mejor 80% + Resto 20%<br>
+              Fórmula: Winrate × 0.4 + (Atajadas/partido) × 25<br>
+              <em>Máx. teórico: 540 pts (20 ataj/partido = 100%)<br>
+              Referencia: 12 ataj/partido ≈ 70%</em></small>
+            </div>
+            <div class="mb-2">
+              <strong class="text-success">🛡️ Defensor:</strong><br>
+              <small>Principales + Secundarios (65%)<br>
+              Fórmula: Winrate - (Cagadas/partido) × 10<br>
+              <em>Máx. teórico: 100 pts (100%WR sin cagadas)</em></small>
+            </div>
+            <div class="mb-2">
+              <strong class="text-warning">⚡ Mediocampo:</strong><br>
+              <small>Principales + Secundarios (65%)<br>
+              Fórmula: (G+A)/partido × 24 + Winrate × 0.7<br>
+              <em>Máx. teórico: 145 pts<br>
+              Referencia: metox 5.6 G+A secundario = 70%</em></small>
+            </div>
+            <div>
+              <strong class="text-danger">⚽ Atacante:</strong><br>
+              <small>Ponderado: Principales 80% + Resto 20%<br>
+              Principales (Atac+Med): (G+A)/partido × 27 + Winrate<br>
+              Resto (Def+Arq): (G+A)/partido × 18 + Winrate × 0.5<br>
+              <em>Máx. teórico: 240 pts<br>
+              Referencia: metox 5.6 G+A principal = 80%</em></small>
+            </div>
+          `;
           
           const rect = element.getBoundingClientRect();
           const tooltipRect = tooltip.getBoundingClientRect();
