@@ -36,9 +36,17 @@ const initApp = () => {
   let equipo1 = [];
   let equipo2 = [];
   
-  // Hacer los equipos disponibles globalmente para el tooltip
+  // Hacer los equipos disponibles globalmente para el tooltip y algoritmo genético
   window.equipo1 = equipo1;
   window.equipo2 = equipo2;
+  window.datosJugadores = null; // Se inicializará cuando se carguen las estadísticas
+  window.renderizarEquipos = renderizarEquipos; // Hacer la función disponible globalmente
+
+  // Event listener para actualizaciones de equipos desde el algoritmo genético
+  document.addEventListener('equiposActualizados', function(event) {
+    console.log('Evento equiposActualizados recibido:', event.detail);
+    renderizarEquipos();
+  });
   let eventos = [];
   let jugadorEditando = null; // Para saber si estamos editando o agregando
   
@@ -1816,9 +1824,16 @@ const initApp = () => {
       
       rendimientoTotalEquipo += rendAtaque + rendArquero;
       
-      // Pulmón
+      // Pulmón - revisar en múltiples ubicaciones posibles
+      let pulmonJugador = null;
       if (jugador.pulmon !== null && jugador.pulmon !== undefined) {
-        totalPulmon += jugador.pulmon;
+        pulmonJugador = jugador.pulmon;
+      } else if (jugador.jugadores?.pulmon !== null && jugador.jugadores?.pulmon !== undefined) {
+        pulmonJugador = jugador.jugadores.pulmon;
+      }
+      
+      if (pulmonJugador !== null) {
+        totalPulmon += pulmonJugador;
         jugadoresConPulmon++;
       }
     });
@@ -2578,6 +2593,9 @@ const initApp = () => {
         nombre: jugadorData.jugador.nombre
       };
     });
+    
+    // Actualizar referencia global para el algoritmo genético
+    window.datosJugadores = datosJugadores;
     
     // Renderizar tabla ordenada
     renderizarTablaOrdenada();
