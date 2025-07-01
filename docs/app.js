@@ -20,6 +20,264 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   alert('Error de configuración: Faltan credenciales de Supabase');
 }
 
+// ==========================================
+// SISTEMA DE AUTENTICACIÓN Y PERMISOS
+// ==========================================
+
+// Estado global de autenticación
+let usuarioActual = null;
+let esAdmin = false;
+
+// Función para verificar estado de autenticación
+async function verificarAutenticacion() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    usuarioActual = user;
+    esAdmin = !!user; // Si hay usuario, es admin
+    
+    console.log('👤 Estado de autenticación:', { user: usuarioActual, esAdmin });
+    
+    // Actualizar UI según estado
+    actualizarUISegunPermisos();
+    
+    return esAdmin;
+  } catch (error) {
+    console.error('Error al verificar autenticación:', error);
+    usuarioActual = null;
+    esAdmin = false;
+    actualizarUISegunPermisos();
+    return false;
+  }
+}
+
+// Función para hacer login
+async function iniciarSesion() {
+  const email = document.getElementById('email-login').value;
+  const password = document.getElementById('password-login').value;
+  
+  if (!email || !password) {
+    showToast('Por favor ingresa email y contraseña', 'error');
+    return;
+  }
+  
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+    
+    if (error) throw error;
+    
+    usuarioActual = data.user;
+    esAdmin = true;
+    
+    showToast('✅ Sesión iniciada correctamente', 'success');
+    
+    // Cerrar modal de login
+    const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+    modal.hide();
+    
+    // Actualizar UI
+    actualizarUISegunPermisos();
+    
+  } catch (error) {
+    console.error('Error al iniciar sesión:', error);
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+// Función para cerrar sesión
+async function cerrarSesion() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    
+    usuarioActual = null;
+    esAdmin = false;
+    
+    showToast('👋 Sesión cerrada', 'info');
+    actualizarUISegunPermisos();
+    
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+// Función para actualizar UI según permisos
+function actualizarUISegunPermisos() {
+  const elementosAdminSolo = document.querySelectorAll('[data-admin-only]');
+  const botonesEdicion = document.querySelectorAll('.btn-editar, .btn-eliminar, .btn-agregar, .btn-outline-warning, .btn-outline-danger');
+  
+  // Elementos de escritorio
+  const botonLogin = document.getElementById('btn-login');
+  const botonLogout = document.getElementById('btn-logout');
+  const estadoUsuario = document.getElementById('estado-usuario');
+  
+  // Elementos móviles
+  const botonLoginMobile = document.getElementById('btn-login-mobile');
+  const botonLogoutMobile = document.getElementById('btn-logout-mobile');
+  const estadoUsuarioMobile = document.getElementById('estado-usuario-mobile');
+  
+  if (esAdmin) {
+    // Usuario con permisos - mostrar elementos de edición
+    elementosAdminSolo.forEach(el => el.style.display = '');
+    botonesEdicion.forEach(btn => {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.title = '';
+    });
+    
+    // Escritorio
+    if (botonLogin) botonLogin.style.display = 'none';
+    if (botonLogout) botonLogout.style.display = '';
+    if (estadoUsuario) {
+      estadoUsuario.innerHTML = `
+        <i class="bi bi-person-check text-success"></i>
+        <span class="text-success small">Admin: ${usuarioActual?.email || 'Usuario'}</span>
+      `;
+    }
+    
+    // Móvil
+    if (botonLoginMobile) botonLoginMobile.style.display = 'none';
+    if (botonLogoutMobile) botonLogoutMobile.style.display = '';
+    if (estadoUsuarioMobile) {
+      estadoUsuarioMobile.innerHTML = `
+        <i class="bi bi-person-check text-success"></i>
+        <span class="text-success">Admin: ${usuarioActual?.email || 'Usuario'}</span>
+      `;
+    }
+  } else {
+    // Usuario sin permisos - ocultar elementos de edición
+    elementosAdminSolo.forEach(el => el.style.display = 'none');
+    botonesEdicion.forEach(btn => {
+      btn.disabled = true;
+      btn.style.opacity = '0.3';
+      btn.title = 'Requiere permisos de administrador';
+    });
+    
+    // Escritorio
+    if (botonLogin) botonLogin.style.display = '';
+    if (botonLogout) botonLogout.style.display = 'none';
+    if (estadoUsuario) {
+      estadoUsuario.innerHTML = `
+        <i class="bi bi-person text-warning"></i>
+        <span class="text-warning small">Solo lectura</span>
+      `;
+    }
+    
+    // Móvil
+    if (botonLoginMobile) botonLoginMobile.style.display = '';
+    if (botonLogoutMobile) botonLogoutMobile.style.display = 'none';
+    if (estadoUsuarioMobile) {
+      estadoUsuarioMobile.innerHTML = `
+        <i class="bi bi-person text-warning"></i>
+        <span class="text-warning">Solo lectura</span>
+      `;
+    }
+  }
+}
+
+// Función para verificar permisos antes de operaciones críticas
+function verificarPermisosAdmin(operacion = 'esta operación') {
+  if (!esAdmin) {
+    showToast(`❌ Se requieren permisos de administrador para ${operacion}`, 'error');
+    
+    // Mostrar modal de login
+    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+    modal.show();
+    
+    return false;
+  }
+  return true;
+}
+
+// Escuchar cambios en el estado de autenticación
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('🔄 Cambio en autenticación:', event, session);
+  
+  if (event === 'SIGNED_IN') {
+    usuarioActual = session.user;
+    esAdmin = true;
+    actualizarUISegunPermisos();
+  } else if (event === 'SIGNED_OUT') {
+    usuarioActual = null;
+    esAdmin = false;
+    actualizarUISegunPermisos();
+  }
+});
+
+// Hacer funciones globales
+window.iniciarSesion = iniciarSesion;
+window.cerrarSesion = cerrarSesion;
+window.verificarPermisosAdmin = verificarPermisosAdmin;
+
+// ==========================================
+// SISTEMA DE NOTIFICACIONES TOAST (GLOBAL)
+// ==========================================
+
+// --- Sistema de notificaciones toast ---
+function showToast(message, type = 'success') {
+  const toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    console.error('Toast container not found');
+    return;
+  }
+
+  const toastId = 'toast-' + Date.now();
+  const iconMap = {
+    success: 'bi-check-circle-fill',
+    error: 'bi-x-circle-fill',
+    warning: 'bi-exclamation-triangle-fill',
+    info: 'bi-info-circle-fill'
+  };
+  
+  const colorMap = {
+    success: 'text-bg-success',
+    error: 'text-bg-danger',
+    warning: 'text-bg-warning',
+    info: 'text-bg-info'
+  };
+
+  const toast = document.createElement('div');
+  toast.id = toastId;
+  toast.className = `toast align-items-center ${colorMap[type]} border-0`;
+  toast.setAttribute('role', 'alert');
+  toast.setAttribute('aria-live', 'assertive');
+  toast.setAttribute('aria-atomic', 'true');
+  
+  toast.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body d-flex align-items-center">
+        <i class="bi ${iconMap[type]} me-2"></i>
+        <strong>${message}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // Inicializar y mostrar el toast de Bootstrap
+  const bsToast = new bootstrap.Toast(toast, {
+    autohide: true,
+    delay: 4000
+  });
+  bsToast.show();
+  
+  // Limpiar el DOM después de que se oculte
+  toast.addEventListener('hidden.bs.toast', () => {
+    toast.remove();
+  });
+}
+
+// Hacer showToast global
+window.showToast = showToast;
+
+// ==========================================
+// FIN SISTEMA DE AUTENTICACIÓN
+// ==========================================
+
 // --- Función principal que se ejecuta cuando el DOM está listo ---
 const initApp = () => {
   // --- Selección de elementos del DOM ---
@@ -65,60 +323,7 @@ const initApp = () => {
   let nombresPosiciones = {};
   let posicionesIds = {}; // Para mapear nombre -> UUID
 
-  // --- Sistema de notificaciones toast ---
-  function showToast(message, type = 'success') {
-    const toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-      console.error('Toast container not found');
-      return;
-    }
 
-    const toastId = 'toast-' + Date.now();
-    const iconMap = {
-      success: 'bi-check-circle-fill',
-      error: 'bi-x-circle-fill',
-      warning: 'bi-exclamation-triangle-fill',
-      info: 'bi-info-circle-fill'
-    };
-    
-    const colorMap = {
-      success: 'text-bg-success',
-      error: 'text-bg-danger',
-      warning: 'text-bg-warning',
-      info: 'text-bg-info'
-    };
-
-    const toast = document.createElement('div');
-    toast.id = toastId;
-    toast.className = `toast align-items-center ${colorMap[type]} border-0`;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    
-    toast.innerHTML = `
-      <div class="d-flex">
-        <div class="toast-body d-flex align-items-center">
-          <i class="bi ${iconMap[type]} me-2"></i>
-          <strong>${message}</strong>
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    // Inicializar y mostrar el toast de Bootstrap
-    const bsToast = new bootstrap.Toast(toast, {
-      autohide: true,
-      delay: 4000
-    });
-    bsToast.show();
-    
-    // Limpiar el DOM después de que se oculte
-    toast.addEventListener('hidden.bs.toast', () => {
-      toast.remove();
-    });
-  }
 
   // --- Funciones de ordenamiento ---
   function sortData(data, field, order) {
@@ -728,8 +933,6 @@ const initApp = () => {
         });
         html += '</div>';
       }
-      
-      html += '</div>';
       
       html += '</div>';
       return html;
@@ -2998,6 +3201,11 @@ const initApp = () => {
   }
 
   async function cargarPartido() {
+      // Verificar permisos de administrador
+      if (!verificarPermisosAdmin('guardar un partido')) {
+          return;
+      }
+      
       const fecha = document.getElementById('fecha-partido').value;
       const cancha = document.getElementById('cancha-partido').value;
       const resultado = document.getElementById('resultado-final').value;
@@ -3473,6 +3681,7 @@ const initApp = () => {
             )
           ),
           goles (
+            id,
             goleador_id,
             asistidor_id
           )
@@ -4566,6 +4775,11 @@ const initApp = () => {
 
   // Función para agregar un nuevo jugador
   async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
+    // Verificar permisos de administrador
+    if (!verificarPermisosAdmin('agregar un jugador')) {
+        return;
+    }
+    
     // Insertar el jugador
     const jugadorObject = { nombre: nombre };
     if (pulmon !== null) {
@@ -4587,6 +4801,11 @@ const initApp = () => {
 
   // Función para editar un jugador existente
   async function editarJugador(jugadorId, nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
+    // Verificar permisos de administrador
+    if (!verificarPermisosAdmin('editar un jugador')) {
+        return;
+    }
+    
     // Actualizar nombre del jugador
     const updateObject = { nombre: nombre };
     if (pulmon !== null) {
@@ -4645,493 +4864,14 @@ const initApp = () => {
     }
   }
 
-  // ===============================
-  // ANÁLISIS DE ÚLTIMAS ACTUALIZACIONES
-  // ===============================
-  
-  // Función para analizar cambios y actualizaciones recientes
-  async function analizarUltimasActualizaciones(partidos) {
-    if (!partidos || partidos.length < 1) {
-      return null; // No hay partidos para analizar
-    }
-    
-    const actualizaciones = {
-      cambios_score: [],
-      rachas_notables: [],
-      eventos_destacados: [],
-      cambios_ranking: []
-    };
-    
-    try {
-      // Obtener estadísticas actuales
-      const estadisticasActuales = window.datosJugadores || [];
-      
-      // Obtener el último partido
-      const ultimoPartido = partidos[0];
-      
-      // Analizar cambios de score basados en el último partido
-      await analizarCambiosScore(ultimoPartido, actualizaciones);
-      
-      // Analizar rachas de los jugadores
-      await analizarRachasNotables(estadisticasActuales, actualizaciones);
-      
-      // Analizar eventos destacados del último partido
-      analizarEventosDestacados(ultimoPartido, actualizaciones);
-      
-      // Analizar cambios de ranking
-      await analizarCambiosRanking(ultimoPartido, actualizaciones);
-      
-      return actualizaciones;
-      
-    } catch (error) {
-      console.error('Error al analizar actualizaciones:', error);
-      return null;
-    }
-  }
-  
-  // Analizar cambios de score en el último partido
-  async function analizarCambiosScore(partido, actualizaciones) {
-    if (!partido.jugador_partido) return;
-    
-    partido.jugador_partido.forEach(jp => {
-      let puntosPartido = 0;
-      
-      // Calcular puntos según resultado del partido
-      if (partido.equipo_ganador === jp.equipo) {
-        puntosPartido = 3; // Victoria
-      } else if (partido.equipo_ganador === null) {
-        puntosPartido = 1; // Empate
-      }
-      
-      // Contar goles y asistencias reales
-      const goles = partido.goles?.filter(g => g.goleador_id === jp.jugador_id).length || 0;
-      const asistencias = partido.goles?.filter(g => g.asistidor_id === jp.jugador_id).length || 0;
-      
-      let cambio = {
-        jugador: jp.jugadores?.nombre || 'Jugador',
-        puntos_partido: puntosPartido,
-        goles: goles,
-        asistencias: asistencias,
-        mvp: jp.mvp,
-        ace: jp.ace,
-        atajadas: jp.atajadas || 0,
-        cagadas: jp.cagadas || 0
-      };
-      
-      // Solo agregar si hubo actividad significativa
-      if (goles > 0 || asistencias > 0 || jp.mvp || jp.ace || (jp.atajadas && jp.atajadas > 0)) {
-        actualizaciones.cambios_score.push(cambio);
-      }
-    });
-  }
-  
-  // Analizar rachas notables
-  async function analizarRachasNotables(estadisticasActuales, actualizaciones) {
-    if (estadisticasActuales.length === 0) return;
-    
-    // Calcular rachas de todos los jugadores
-    const rachas = await calcularRachasJugadores(estadisticasActuales);
-    
-    Object.keys(rachas).forEach(jugadorId => {
-      const racha = rachas[jugadorId];
-      const jugador = estadisticasActuales.find(j => j.jugadores?.id === jugadorId);
-      
-      // Solo mostrar rachas significativas (3 o más)
-      if (racha.cantidad >= 3 && jugador) {
-        actualizaciones.rachas_notables.push({
-          jugador: jugador.jugadores.nombre,
-          tipo: racha.tipo,
-          cantidad: racha.cantidad,
-          emoji: racha.tipo === 'win' ? '🔥' : '❄️'
-        });
-      }
-    });
-  }
-  
-  // Analizar eventos destacados del último partido
-  function analizarEventosDestacados(partido, actualizaciones) {
-    // MVP y ACE
-    const mvp = partido.jugador_partido?.find(jp => jp.mvp);
-    const ace = partido.jugador_partido?.find(jp => jp.ace);
-    
-    if (mvp) {
-      actualizaciones.eventos_destacados.push({
-        tipo: 'mvp',
-        descripcion: `👑 ${mvp.jugadores?.nombre} fue elegido MVP`,
-        emoji: '👑',
-        jugador: mvp.jugadores?.nombre
-      });
-    }
-    
-    if (ace) {
-      actualizaciones.eventos_destacados.push({
-        tipo: 'ace',
-        descripcion: `⭐ ${ace.jugadores?.nombre} fue el ACE del partido`,
-        emoji: '⭐',
-        jugador: ace.jugadores?.nombre
-      });
-    }
-    
-    // Calcular marcador real
-    let goles1 = 0, goles2 = 0;
-    if (partido.goles) {
-      partido.goles.forEach(gol => {
-        const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
-        if (jugadorData) {
-          const esEnContra = gol.equipo !== jugadorData.equipo;
-          if (esEnContra) {
-            if (jugadorData.equipo === 1) goles2++;
-            else goles1++;
-          } else {
-            if (jugadorData.equipo === 1) goles1++;
-            else goles2++;
-          }
-        }
-      });
-    }
-    
-    // Goleadas
-    const diferencia = Math.abs(goles1 - goles2);
-    if (diferencia >= 4) {
-      const equipoGanador = goles1 > goles2 ? 'Equipo 1' : 'Equipo 2';
-      actualizaciones.eventos_destacados.push({
-        tipo: 'goleada',
-        descripcion: `🎯 ¡Goleada épica! ${equipoGanador} ganó ${Math.max(goles1, goles2)}-${Math.min(goles1, goles2)}`,
-        emoji: '🎯'
-      });
-    }
-    
-    // Hat-tricks
-    if (partido.goles) {
-      const golesPorJugador = {};
-      partido.goles.forEach(gol => {
-        if (gol.goleador_id) {
-          golesPorJugador[gol.goleador_id] = (golesPorJugador[gol.goleador_id] || 0) + 1;
-        }
-      });
-      
-      Object.keys(golesPorJugador).forEach(jugadorId => {
-        const goles = golesPorJugador[jugadorId];
-        if (goles >= 3) {
-          const jugador = partido.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
-          actualizaciones.eventos_destacados.push({
-            tipo: 'hat_trick',
-            descripcion: `⚽⚽⚽ ¡Hat-trick de ${jugador?.jugadores?.nombre}! (${goles} goles)`,
-            emoji: '⚽',
-            jugador: jugador?.jugadores?.nombre
-          });
-        }
-      });
-    }
-    
-    // Atajadas excepcionales
-    const atajadasDestacadas = partido.jugador_partido?.filter(jp => jp.atajadas && jp.atajadas >= 5);
-    atajadasDestacadas?.forEach(jp => {
-      actualizaciones.eventos_destacados.push({
-        tipo: 'atajadas',
-        descripcion: `🥅 ¡Actuación brillante de ${jp.jugadores?.nombre}! (${jp.atajadas} atajadas)`,
-        emoji: '🥅',
-        jugador: jp.jugadores?.nombre
-      });
-    });
-    
-    // Cagadas destacadas
-    const cagadasDestacadas = partido.jugador_partido?.filter(jp => jp.cagadas && jp.cagadas >= 3);
-    cagadasDestacadas?.forEach(jp => {
-      actualizaciones.eventos_destacados.push({
-        tipo: 'cagadas',
-        descripcion: `💥 ${jp.jugadores?.nombre} tuvo una tarde complicada (${jp.cagadas} cagadas)`,
-        emoji: '💥',
-        jugador: jp.jugadores?.nombre
-      });
-    });
-  }
-  
-  // Analizar cambios de ranking basados en el último partido
-  async function analizarCambiosRanking(ultimoPartido, actualizaciones) {
-    if (!ultimoPartido.jugador_partido || ultimoPartido.jugador_partido.length === 0) return;
-    
-    try {
-      // Obtener estadísticas actuales (con el último partido incluido)
-      const estadisticasActuales = window.datosJugadores || [];
-      if (estadisticasActuales.length === 0) return;
-      
-      // Función para calcular rendimiento individual
-      const calcularRendimiento = (jugador) => {
-        const pj = jugador.pj || 1;
-        
-        // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
-        const golesPP = (jugador.goles || 0) / pj;
-        const mvpPP = (jugador.mvp_count || 0) / pj;
-        const acePP = (jugador.ace_count || 0) / pj;
-        const asistPP = (jugador.asistencias || 0) / pj;
-        const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
-        const puntosPP = (jugador.total_puntos || 0) / pj;
-        const atajadasPP = (jugador.atajadas || 0) / pj;
-        
-        const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-        const rendArquero = atajadasPP * 1;
-        
-        return rendAtaque + rendArquero;
-      };
-      
-      // Crear ranking actual ordenado por rendimiento individual
-      const rankingActual = [...estadisticasActuales]
-        .sort((a, b) => calcularRendimiento(b) - calcularRendimiento(a))
-        .map((jugador, index) => ({
-          posicion: index + 1,
-          jugador_id: jugador.jugadores?.id,
-          nombre: jugador.jugadores?.nombre,
-          rendimiento: calcularRendimiento(jugador)
-        }));
-      
-      // Simular estadísticas anteriores (sin el último partido)
-      // Restamos las estadísticas del último partido para calcular el ranking anterior
-      const jugadoresDelPartido = new Set(ultimoPartido.jugador_partido.map(jp => jp.jugador_id));
-      const estadisticasAnteriores = estadisticasActuales.map(jugador => {
-        if (!jugadoresDelPartido.has(jugador.jugadores?.id)) {
-          return jugador; // No participó en el último partido, no cambió
-        }
-        
-        // Encontrar datos del jugador en el último partido
-        const jpData = ultimoPartido.jugador_partido.find(jp => jp.jugador_id === jugador.jugadores?.id);
-        if (!jpData) return jugador;
-        
-        // Calcular estadísticas del último partido
-        let puntosPartido = 0;
-        if (ultimoPartido.equipo_ganador === jpData.equipo) {
-          puntosPartido = 3; // Victoria
-        } else if (ultimoPartido.equipo_ganador === null) {
-          puntosPartido = 1; // Empate
-        }
-        
-        // Contar goles y asistencias reales del último partido
-        const golesUltimoPartido = ultimoPartido.goles?.filter(g => g.goleador_id === jpData.jugador_id).length || 0;
-        const asistenciasUltimoPartido = ultimoPartido.goles?.filter(g => g.asistidor_id === jpData.jugador_id).length || 0;
-        
-        // Restar estadísticas del último partido para simular estadísticas anteriores
-        return {
-          ...jugador,
-          pj: Math.max(1, (jugador.pj || 1) - 1),
-          total_puntos: Math.max(0, (jugador.total_puntos || 0) - puntosPartido),
-          goles: Math.max(0, (jugador.goles || 0) - golesUltimoPartido),
-          asistencias: Math.max(0, (jugador.asistencias || 0) - asistenciasUltimoPartido),
-          cagadas_en_gol: Math.max(0, (jugador.cagadas_en_gol || 0) - (jpData.cagadas || 0)),
-          atajadas: Math.max(0, (jugador.atajadas || 0) - (jpData.atajadas || 0)),
-          mvp_count: Math.max(0, (jugador.mvp_count || 0) - (jpData.mvp ? 1 : 0)),
-          ace_count: Math.max(0, (jugador.ace_count || 0) - (jpData.ace ? 1 : 0))
-        };
-      });
-      
-      // Crear ranking anterior basado en rendimiento
-      const rankingAnterior = [...estadisticasAnteriores]
-        .sort((a, b) => calcularRendimiento(b) - calcularRendimiento(a))
-        .map((jugador, index) => ({
-          posicion: index + 1,
-          jugador_id: jugador.jugadores?.id,
-          nombre: jugador.jugadores?.nombre,
-          rendimiento: calcularRendimiento(jugador)
-        }));
-      
-      // Comparar rankings y encontrar cambios
-      ultimoPartido.jugador_partido.forEach(jp => {
-        const jugadorId = jp.jugador_id;
-        const nombreJugador = jp.jugadores?.nombre;
-        
-        const datosActuales = rankingActual.find(r => r.jugador_id === jugadorId);
-        const datosAnteriores = rankingAnterior.find(r => r.jugador_id === jugadorId);
-        
-        const posicionActual = datosActuales?.posicion;
-        const posicionAnterior = datosAnteriores?.posicion;
-        const skillActual = datosActuales?.rendimiento || 0;
-        const skillAnterior = datosAnteriores?.rendimiento || 0;
-        const cambioSkill = skillActual - skillAnterior;
-        
-        if (posicionActual && posicionAnterior && posicionActual !== posicionAnterior) {
-          const cambio = posicionAnterior - posicionActual; // Positivo = subió, negativo = bajó
-          
-          actualizaciones.cambios_ranking.push({
-            jugador: nombreJugador,
-            posicion_actual: posicionActual,
-            posicion_anterior: posicionAnterior,
-            cambio: cambio,
-            skill_actual: skillActual,
-            skill_anterior: skillAnterior,
-            cambio_skill: cambioSkill,
-            subio: cambio > 0,
-            icono: cambio > 0 ? '📈' : '📉'
-          });
-        } else if (posicionActual && nombreJugador) {
-          // Jugador que participó pero sin cambio de posición
-          actualizaciones.cambios_ranking.push({
-            jugador: nombreJugador,
-            posicion_actual: posicionActual,
-            posicion_anterior: posicionActual,
-            cambio: 0,
-            skill_actual: skillActual,
-            skill_anterior: skillAnterior,
-            cambio_skill: cambioSkill,
-            subio: null,
-            icono: '➡️'
-          });
-        }
-      });
-      
-      // Ordenar por posición actual para mostrar desde el mejor
-      actualizaciones.cambios_ranking.sort((a, b) => a.posicion_actual - b.posicion_actual);
-      
-    } catch (error) {
-      console.error('Error al analizar cambios de ranking:', error);
-    }
-  }
+
   
 
   
-  // Función para renderizar la card de actualizaciones
-  function renderizarCardActualizaciones(actualizaciones) {
-    if (!actualizaciones) return '';
-    
-    const fecha = new Date().toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    
 
-    
-    let rankingHtml = '';
-    if (actualizaciones.cambios_ranking.length > 0) {
-      rankingHtml = actualizaciones.cambios_ranking.map(cambio => {
-        let badgeClass = 'bg-secondary';
-        let iconoGrande = cambio.icono;
-        let cambioTexto = '';
-        
-        if (cambio.cambio > 0) {
-          // Subidas - iconos dependiendo de la magnitud
-          if (cambio.cambio >= 5) {
-            iconoGrande = '🚀'; // Subida grande
-            cambioTexto = `<span class="text-success fw-bold small">🚀 ${cambio.cambio} posiciones</span>`;
-          } else if (cambio.cambio >= 3) {
-            iconoGrande = '⭐'; // Subida notable  
-            cambioTexto = `<span class="text-success fw-bold small">⭐ ${cambio.cambio} posiciones</span>`;
-          } else {
-            iconoGrande = '⬆️'; // Subida pequeña
-            cambioTexto = `<span class="text-success fw-bold small">⬆️ ${cambio.cambio} posiciones</span>`;
-          }
-        } else if (cambio.cambio < 0) {
-          // Bajadas - iconos dependiendo de la magnitud
-          const bajada = Math.abs(cambio.cambio);
-          if (bajada >= 5) {
-            iconoGrande = '💥'; // Bajada grande
-            cambioTexto = `<span class="text-danger fw-bold small">💥 ${bajada} posiciones</span>`;
-          } else if (bajada >= 3) {
-            iconoGrande = '⚡'; // Bajada notable
-            cambioTexto = `<span class="text-danger fw-bold small">⚡ ${bajada} posiciones</span>`;
-          } else {
-            iconoGrande = '⬇️'; // Bajada pequeña
-            cambioTexto = `<span class="text-danger fw-bold small">⬇️ ${bajada} posiciones</span>`;
-          }
-        } else {
-          iconoGrande = '⚖️';
-          cambioTexto = `<span class="text-info fw-bold small">⚖️ Sin cambios</span>`;
-        }
-        
-        // Formatear cambio de skill
-        const skillTexto = cambio.cambio_skill !== undefined ? 
-          `<div class="skill-change-text" style="font-size: 0.75rem;">
-            <span class="text-info fw-bold">⚡ ${cambio.skill_actual.toFixed(1)}</span>
-            ${cambio.cambio_skill > 0 ? 
-              `<span class="text-success fw-bold"> (+${cambio.cambio_skill.toFixed(1)})</span>` : 
-              cambio.cambio_skill < 0 ? 
-                `<span class="text-danger fw-bold"> (${cambio.cambio_skill.toFixed(1)})</span>` : 
-                `<span class="text-muted"> (sin cambio)</span>`
-            }
-          </div>` : '';
+  
 
-        return `
-          <div class="col-lg-4 col-md-6 mb-2">
-            <div class="ranking-change-item p-3 rounded border" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); min-height: 90px;">
-              <div class="d-flex align-items-start justify-content-between">
-                <div class="d-flex align-items-center">
-                  <div class="ranking-icon me-3" style="font-size: 1.8rem;">${iconoGrande}</div>
-                  <div>
-                    <div class="fw-bold text-white mb-1" style="font-size: 1rem;">${cambio.jugador}</div>
-                    <div class="text-light-emphasis" style="font-size: 0.8rem;">Posición #${cambio.posicion_actual}</div>
-                    ${skillTexto}
-                  </div>
-                </div>
-                <div class="text-end">
-                  <div style="font-size: 0.85rem;">
-                    ${cambioTexto}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-    
-    return `
-      <div class="col-12 mb-5">
-        <div class="glass-effect rounded-3 p-5 border-top border-5 border-primary" style="box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);">
-          <div class="d-flex align-items-center justify-content-between mb-4">
-            <h3 class="text-primary fw-bold mb-0" style="font-size: 1.8rem;">
-              <i class="bi bi-newspaper me-3"></i>📈 Últimas Actualizaciones
-            </h3>
-            <div class="text-light-emphasis" style="font-size: 1rem;">
-              <i class="bi bi-clock me-2"></i>${fecha}
-            </div>
-          </div>
-          
-          ${rankingHtml ? `
-            <div class="bg-primary bg-opacity-10 rounded-3 p-4 border border-primary border-opacity-25" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-              <div class="d-flex align-items-center justify-content-between mb-4">
-                <div>
-                  <h5 class="text-primary fw-bold mb-1 cursor-pointer" onclick="irARankingSkill()" style="font-size: 1.3rem;">
-                    📊 Cambios en el Ranking de Skill
-                  </h5>
-                  <small class="text-light-emphasis" style="font-size: 0.9rem;">${actualizaciones.cambios_ranking.length} jugadores participaron en el último partido</small>
-                </div>
-                <div class="text-primary" onclick="irARankingSkill()" style="cursor: pointer; font-size: 1.2rem;" title="Ver ranking completo">
-                  <i class="bi bi-box-arrow-up-right"></i>
-                </div>
-              </div>
-              <div class="ranking-changes-container">
-                <div class="row g-3 justify-content-center">
-                  ${rankingHtml}
-                </div>
-              </div>
-              <div class="mt-3 pt-3 border-top border-primary border-opacity-25">
-                <div class="text-center">
-                  <div class="text-light-emphasis" style="font-size: 0.9rem;">
-                    <div class="mb-1">
-                      <span class="text-success fw-bold">🚀⭐⬆️</span> Subió en ranking • 
-                      <span class="text-danger fw-bold">💥⚡⬇️</span> Bajó en ranking • 
-                      <span class="text-info fw-bold">⚖️</span> Mantuvo posición
-                    </div>
-                    <div class="small">
-                      <span class="text-muted">Skill = Rendimiento individual calculado por estadísticas del partido</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ` : ''}
-          
-          ${!rankingHtml ? `
-            <div class="text-center py-5">
-              <div class="text-light-emphasis" style="font-size: 1.1rem;">
-                <i class="bi bi-info-circle me-2 fs-4"></i>
-                <div class="mt-2">Registra más partidos para ver actualizaciones interesantes</div>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
-  }
+
 
   // --- Función para cargar historial de partidos ---
   async function cargarHistorialPartidos() {
@@ -5377,13 +5117,7 @@ const initApp = () => {
   async function mostrarPartidosBasicos(container, partidos) {
     console.log('🎨 Mostrando partidos con detalles completos:', partidos);
     
-    // Analizar actualizaciones y generar card
-    const actualizaciones = await analizarUltimasActualizaciones(partidos);
-    
     let html = '<div class="row g-4">';
-    
-    // Agregar card de actualizaciones al inicio
-    html += renderizarCardActualizaciones(actualizaciones);
     
     // Continuar con los partidos
     partidos.forEach((partido, index) => {
@@ -5954,6 +5688,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Hacer las funciones globales
   window.cargarHistorialPartidos = cargarHistorialPartidos;
   window.eliminarPartido = async function(partidoId) {
+    // Verificar permisos de administrador
+    if (!verificarPermisosAdmin('eliminar un partido')) {
+        return;
+    }
+    
     // Confirmación antes de eliminar
     const confirmacion = confirm('⚠️ ¿Estás seguro de que quieres eliminar este partido?\n\nEsta acción eliminará:\n• Los datos del partido\n• Todos los goles registrados\n• Todas las estadísticas de jugadores\n• Esta acción NO se puede deshacer');
     
@@ -6015,6 +5754,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
   // --- Inicialización de la app ---
   console.log('🚀 Inicializando aplicación...');
+  
+  // Verificar autenticación primero
+  verificarAutenticacion();
+  
+  // Actualizar UI según permisos inmediatamente
+  actualizarUISegunPermisos();
   
   // Cargar datos iniciales
   cargarTodosLosJugadores();

@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>T5 Papi Academy</title>
+    <title>⚽ T5 Papi Academy</title>
+    <!-- Favicon de pelotita -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1138,7 +1140,27 @@
         </div>
       </div>
       
-      <!-- Controles completamente a la derecha del header -->
+      <!-- Panel de Autenticación - Izquierda -->
+      <div class="d-none d-md-flex flex-column gap-2 position-absolute top-0 h-100 justify-content-center ps-3" style="left: 0;">
+        <!-- Estado de Usuario -->
+        <div id="estado-usuario" class="d-flex align-items-center gap-2 px-2 py-1 rounded" style="background: rgba(255, 255, 255, 0.1);">
+          <i class="bi bi-person text-warning"></i>
+          <span class="text-warning small">Solo lectura</span>
+        </div>
+        
+        <!-- Botones de Autenticación -->
+        <button id="btn-login" type="button" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2 px-3 py-1" data-bs-toggle="modal" data-bs-target="#loginModal">
+          <i class="bi bi-shield-lock"></i>
+          <span class="fw-semibold">Admin</span>
+        </button>
+        
+        <button id="btn-logout" type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2 px-3 py-1" onclick="cerrarSesion()" style="display: none;">
+          <i class="bi bi-box-arrow-right"></i>
+          <span class="fw-semibold">Salir</span>
+        </button>
+      </div>
+      
+      <!-- Controles Principales - Derecha -->
       <div class="d-none d-md-flex flex-column gap-2 position-absolute top-0 h-100 justify-content-center pe-3" style="right: 0;">
         <div class="d-flex align-items-center gap-2">
           <label for="selector-temporada" class="text-light small mb-0">🏆</label>
@@ -1146,7 +1168,8 @@
             <option value="">Todas las temporadas</option>
           </select>
         </div>
-        <button type="button" class="btn btn-primary btn-sm btn-enhanced d-flex align-items-center gap-2 px-3 py-1" onclick="abrirModalAgregar()">
+        
+        <button type="button" class="btn btn-primary btn-sm btn-enhanced btn-agregar d-flex align-items-center gap-2 px-3 py-1" onclick="abrirModalAgregar()" data-admin-only>
           <i class="bi bi-person-plus-fill"></i>
           <span class="fw-semibold">Agregar Jugador</span>
         </button>
@@ -1155,15 +1178,36 @@
         <!-- Controles móviles -->
         <div class="d-md-none mt-3">
           <div class="d-flex flex-column gap-2 align-items-center">
+            <!-- Estado de Usuario Mobile -->
+            <div id="estado-usuario-mobile" class="d-flex align-items-center gap-2 px-2 py-1 rounded small" style="background: rgba(255, 255, 255, 0.1);">
+              <i class="bi bi-person text-warning"></i>
+              <span class="text-warning">Solo lectura</span>
+            </div>
+            
+            <!-- Botones de Autenticación Mobile -->
+            <div class="d-flex gap-2">
+              <button id="btn-login-mobile" type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">
+                <i class="bi bi-shield-lock me-1"></i>Admin
+              </button>
+              
+              <button id="btn-logout-mobile" type="button" class="btn btn-outline-danger btn-sm" onclick="cerrarSesion()" style="display: none;">
+                <i class="bi bi-box-arrow-right me-1"></i>Salir
+              </button>
+            </div>
+            
+            <!-- Separador visual -->
+            <div class="w-50" style="height: 1px; background: rgba(255, 255, 255, 0.1); margin: 0.5rem 0;"></div>
+            
             <div class="d-flex align-items-center gap-2">
               <label for="selector-temporada-mobile" class="text-light small mb-0">🏆</label>
               <select id="selector-temporada-mobile" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
                 <option value="">Todas las temporadas</option>
               </select>
             </div>
-            <button type="button" class="btn btn-primary btn-sm btn-enhanced d-flex align-items-center gap-2 px-3 py-1" onclick="abrirModalAgregar()">
+            
+            <button type="button" class="btn btn-primary btn-sm btn-enhanced btn-agregar d-flex align-items-center gap-2 px-3 py-1" onclick="abrirModalAgregar()" data-admin-only>
               <i class="bi bi-person-plus-fill"></i>
-              <span class="fw-semibold">Agregar </span>
+              <span class="fw-semibold">Agregar Jugador</span>
             </button>
           </div>
         </div>
@@ -1531,7 +1575,7 @@
           <hr class="border-light-subtle my-5">
 
           <!-- Match Data -->
-          <div class="glass-effect rounded-3 p-4 mb-4">
+          <div class="glass-effect rounded-3 p-4 mb-4" data-admin-only>
             <h2 class="h4 text-white mb-4">
               <span class="me-2">📋</span>
               Información del Encuentro
@@ -1720,8 +1764,8 @@
             </div>
 
             <!-- Botón para cargar partido -->
-            <div class="d-grid mt-4">
-              <button id="btn-cargar-partido" class="btn btn-primary btn-lg btn-enhanced">
+            <div class="d-grid mt-4" data-admin-only>
+              <button id="btn-cargar-partido" class="btn btn-primary btn-lg btn-enhanced btn-agregar">
                 <i class="bi bi-save me-2"></i>
                 Cargar Partido Completo
               </button>
@@ -3709,5 +3753,41 @@
         });
       });
     </script>
+
+    <!-- Modal de Login -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+          <div class="modal-header border-secondary">
+            <h5 class="modal-title text-white" id="loginModalLabel">
+              <i class="bi bi-shield-lock me-2"></i>Acceso de Administrador
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="loginForm">
+              <div class="mb-3">
+                <label for="email-login" class="form-label text-light">Email</label>
+                <input type="email" class="form-control bg-dark border-secondary text-white" id="email-login" required>
+              </div>
+              <div class="mb-3">
+                <label for="password-login" class="form-label text-light">Contraseña</label>
+                <input type="password" class="form-control bg-dark border-secondary text-white" id="password-login" required onkeypress="if(event.key==='Enter') iniciarSesion()">
+              </div>
+            </form>
+            <div class="text-light-emphasis small">
+              <i class="bi bi-info-circle me-1"></i>
+              Solo los administradores pueden modificar datos. El acceso de solo lectura está disponible para todos.
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="iniciarSesion()">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
