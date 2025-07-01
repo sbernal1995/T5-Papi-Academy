@@ -1188,6 +1188,11 @@
             <i class="bi bi-lightning-charge me-2"></i>Ranking de Skill Individual
           </button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="paternidades-tab" data-bs-toggle="tab" data-bs-target="#paternidades-content" type="button" role="tab" aria-controls="paternidades-content" aria-selected="false">
+            <i class="bi bi-people me-2"></i>Paternidades
+          </button>
+        </li>
       </ul>
     </div>
 
@@ -1793,7 +1798,7 @@
             </h2>
             <div class="text-light-emphasis">
               <strong>Ranking basado en Skill Individual:</strong><br>
-              <small>Rendimiento calculado por partido: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×3 + Puntos×2 + Atajadas×1</small>
+              <small>Rendimiento calculado por partido: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×1</small>
             </div>
           </div>
           
@@ -1827,6 +1832,250 @@
         </div>
       </div>
       <!-- End Ranking de Skill Individual Tab -->
+
+      <!-- Paternidades Tab -->
+      <div class="tab-pane fade" id="paternidades-content" role="tabpanel" aria-labelledby="paternidades-tab">
+        <div class="container-fluid py-4">
+          
+          <!-- Header -->
+          <div class="text-center mb-4">
+            <h2 class="h3 text-primary fw-bold mb-2">
+              <i class="bi bi-people me-2"></i>🔍 Paternidades
+            </h2>
+            <div class="text-light-emphasis">
+              <strong>Análisis de enfrentamientos y estadísticas entre jugadores</strong><br>
+              <small>Busca a un jugador para ver sus estadísticas de enfrentamientos y utiliza el "versus" para comparar</small>
+            </div>
+          </div>
+          
+          <!-- Buscador de Jugador -->
+          <div class="row justify-content-center mb-5">
+            <div class="col-lg-8">
+              <div class="enhanced-card rounded-3 p-4">
+                <h5 class="text-white mb-3">
+                  <i class="bi bi-search me-2"></i>Buscar Jugador
+                </h5>
+                <div class="input-group mb-3">
+                                     <input 
+                     type="text" 
+                     id="buscar-jugador-paternidades" 
+                     class="form-control form-control-lg" 
+                     placeholder="Escribe el nombre del jugador..."
+                     onkeyup="buscarJugadorPaternidades()"
+                     onfocus="mostrarTodosLosJugadores()"
+                   >
+                  <button class="btn btn-primary" onclick="analizarJugador()">
+                    <i class="bi bi-search"></i> Analizar
+                  </button>
+                </div>
+                <div id="sugerencias-jugadores" class="mt-2">
+                  <!-- Sugerencias aparecerán aquí -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estadísticas del Jugador Seleccionado -->
+          <div id="estadisticas-jugador-container" style="display: none;">
+            <div class="enhanced-card rounded-3 p-4 mb-5">
+              <div class="text-center mb-4">
+                <h4 class="text-white" id="jugador-seleccionado-nombre">
+                  <i class="bi bi-person-circle me-2"></i>Estadísticas de Jugador
+                </h4>
+              </div>
+              
+              <div class="row g-4">
+                <!-- Dúos Más Exitosos -->
+                <div class="col-lg-6">
+                  <div class="enhanced-card p-4 h-100" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(34, 197, 94, 0.2);">
+                    <div class="d-flex align-items-center mb-4">
+                      <div class="me-3 p-2 rounded-circle" style="background: rgba(34, 197, 94, 0.2);">
+                        <i class="bi bi-people-fill text-success fs-5"></i>
+                      </div>
+                      <div>
+                        <h6 class="text-success fw-bold mb-0">Dúos Más Exitosos</h6>
+                        <small class="text-light-emphasis">Compañeros de equipo con mejor winrate</small>
+                      </div>
+                    </div>
+                    <div id="mejores-duos">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rivales Principales -->
+                <div class="col-lg-6">
+                  <div class="enhanced-card p-4 h-100" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <div class="d-flex align-items-center mb-4">
+                      <div class="me-3 p-2 rounded-circle" style="background: rgba(239, 68, 68, 0.2);">
+                        <i class="bi bi-person-x-fill text-danger fs-5"></i>
+                      </div>
+                      <div>
+                        <h6 class="text-danger fw-bold mb-0">Rivales Principales</h6>
+                        <small class="text-light-emphasis">Oponentes que más victorias tienen</small>
+                      </div>
+                    </div>
+                    <div id="rivales-principales">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Enfrentamientos Frecuentes -->
+                <div class="col-lg-6">
+                  <div class="enhanced-card p-4 h-100" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%); border: 1px solid rgba(245, 158, 11, 0.2);">
+                    <div class="d-flex align-items-center mb-4">
+                      <div class="me-3 p-2 rounded-circle" style="background: rgba(245, 158, 11, 0.2);">
+                        <i class="bi bi-lightning-fill text-warning fs-5"></i>
+                      </div>
+                      <div>
+                        <h6 class="text-warning fw-bold mb-0">Enfrentamientos Frecuentes</h6>
+                        <small class="text-light-emphasis">Oponentes más enfrentados</small>
+                      </div>
+                    </div>
+                    <div id="enfrentamientos-frecuentes">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- A Quien Más Le Gana -->
+                <div class="col-lg-6">
+                  <div class="enhanced-card p-4 h-100" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.2);">
+                    <div class="d-flex align-items-center mb-4">
+                      <div class="me-3 p-2 rounded-circle" style="background: rgba(16, 185, 129, 0.2);">
+                        <i class="bi bi-trophy-fill text-success fs-5"></i>
+                      </div>
+                      <div>
+                        <h6 class="text-success fw-bold mb-0">A Quien Más Domina</h6>
+                        <small class="text-light-emphasis">Oponentes con más de 50% winrate</small>
+                      </div>
+                    </div>
+                    <div id="nunca-enfrentados">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Estadísticas generales -->
+                <div class="col-12">
+                  <div class="glass-effect rounded-3 p-3 border-top border-primary border-3">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-graph-up me-2"></i>Estadísticas Generales de Enfrentamientos
+                    </h6>
+                    <div class="row g-3" id="estadisticas-generales">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comparador "Versus" -->
+          <div class="enhanced-card rounded-3 p-4">
+            <h5 class="text-white mb-4">
+              <i class="bi bi-lightning me-2"></i>⚔️ Comparador Versus
+            </h5>
+            
+            <div class="row g-4 align-items-center">
+              <!-- Jugador 1 -->
+              <div class="col-lg-5">
+                <div class="text-center">
+                  <h6 class="text-primary mb-3">Jugador 1</h6>
+                  <input 
+                    type="text" 
+                    id="versus-jugador1" 
+                    class="form-control form-control-lg text-center" 
+                                         placeholder="Nombre del jugador 1..."
+                     onkeyup="buscarJugadorVersus(1)"
+                     onfocus="mostrarTodosLosJugadoresVersus(1)"
+                   >
+                  <div id="sugerencias-versus1" class="mt-2">
+                    <!-- Sugerencias aparecerán aquí -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- VS Divider -->
+              <div class="col-lg-2 text-center">
+                <div class="vs-divider mx-auto rounded-circle d-flex align-items-center justify-content-center mb-3">
+                  <span class="text-white fw-bold fs-4">VS</span>
+                </div>
+                <button class="btn btn-warning btn-enhanced" onclick="compararJugadores()">
+                  <i class="bi bi-search me-2"></i>Comparar
+                </button>
+              </div>
+
+              <!-- Jugador 2 -->
+              <div class="col-lg-5">
+                <div class="text-center">
+                  <h6 class="text-danger mb-3">Jugador 2</h6>
+                  <input 
+                    type="text" 
+                    id="versus-jugador2" 
+                    class="form-control form-control-lg text-center" 
+                                         placeholder="Nombre del jugador 2..."
+                     onkeyup="buscarJugadorVersus(2)"
+                     onfocus="mostrarTodosLosJugadoresVersus(2)"
+                   >
+                  <div id="sugerencias-versus2" class="mt-2">
+                    <!-- Sugerencias aparecerán aquí -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resultados de la Comparación -->
+            <div id="resultados-versus" class="mt-5" style="display: none;">
+              <hr class="border-light-subtle my-4">
+              <h6 class="text-white text-center mb-4">
+                <i class="bi bi-graph-down me-2"></i>Resultados del Enfrentamiento
+              </h6>
+              
+              <div class="row g-4">
+                <!-- Historial de enfrentamientos -->
+                <div class="col-lg-6">
+                  <div class="glass-effect rounded-3 p-3">
+                    <h6 class="text-warning fw-bold mb-3">
+                      <i class="bi bi-clock-history me-2"></i>Historial Directo
+                    </h6>
+                    <div id="historial-directo">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Quién domina a quién -->
+                <div class="col-lg-6">
+                  <div class="glass-effect rounded-3 p-3">
+                    <h6 class="text-success fw-bold mb-3">
+                      <i class="bi bi-crown me-2"></i>Dominio y Paternidad
+                    </h6>
+                    <div id="dominio-paternidad">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Estadísticas comparadas -->
+                <div class="col-12">
+                  <div class="glass-effect rounded-3 p-3">
+                    <h6 class="text-info fw-bold mb-3">
+                      <i class="bi bi-bar-chart me-2"></i>Comparación de Estadísticas
+                    </h6>
+                    <div id="estadisticas-comparadas">
+                      <!-- Se llenará dinámicamente -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+      <!-- End Paternidades Tab -->
 
     </div>
     <!-- End Tab Content -->
@@ -2193,7 +2442,7 @@
                 <i class="bi bi-info-circle me-2"></i>
                                   <div>
                     <strong>Ranking basado en Skill Individual (por partido):</strong><br>
-                    <small>Rendimiento calculado por: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×3 + Puntos×2 + Atajadas×1</small>
+                    <small>Rendimiento calculado por: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×1</small>
                   </div>
               </div>
             </div>
@@ -2241,6 +2490,1057 @@
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
     <script type="module" src="./app.js"></script>
+    <!-- Funcionalidad de Paternidades -->
+    <script>
+    // ===============================
+    // FUNCIONALIDAD DE PATERNIDADES
+    // ===============================
+
+    // Variables globales para paternidades
+    let jugadoresDisponibles = [];
+    let jugadorSeleccionado = null;
+    let partidosData = [];
+
+              // Función para cargar todos los jugadores disponibles
+     async function cargarJugadoresPaternidades() {
+       console.log('🚀 Iniciando carga de jugadores para paternidades...');
+       
+       try {
+         console.log('📡 Verificando conexión a Supabase...', !!window.supabase);
+         
+         if (!window.supabase) {
+           console.error('❌ Supabase no está disponible');
+           return;
+         }
+
+         console.log('📊 Ejecutando consulta a la tabla jugadores...');
+         const { data: jugadores, error } = await window.supabase
+           .from('jugadores')
+           .select('*')
+           .order('nombre');
+
+         console.log('📥 Respuesta recibida. Error:', !!error, 'Data:', !!jugadores);
+         
+         if (error) {
+           console.error('❌ Error al cargar jugadores:', error);
+           return;
+         }
+
+         console.log('🔍 Datos raw recibidos:', jugadores);
+         
+         jugadoresDisponibles = jugadores || [];
+         console.log('✅ Jugadores cargados para paternidades:', jugadoresDisponibles.length);
+         
+         if (jugadoresDisponibles.length > 0) {
+           console.log('👥 Nombres de jugadores cargados:', jugadoresDisponibles.map(j => j.nombre));
+         } else {
+           console.warn('⚠️ No se encontraron jugadores en la base de datos');
+         }
+         
+       } catch (error) {
+         console.error('💥 Error completo al cargar jugadores:', error);
+       }
+     }
+
+         // Función para cargar todos los partidos con jugadores (con filtro de temporada)
+     async function cargarPartidosPaternidades() {
+       try {
+         // Obtener temporada seleccionada del selector principal
+         const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
+                                      document.getElementById('selector-temporada-mobile')?.value || '';
+
+         console.log('🏆 Cargando partidos para paternidades con temporada:', temporadaSeleccionada || 'Todas');
+
+         let query = window.supabase
+           .from('partidos')
+           .select(`
+             *,
+             jugador_partido (
+               jugador_id,
+               equipo,
+               mvp,
+               ace,
+               atajadas,
+               cagadas,
+               jugadores (
+                 id,
+                 nombre
+               )
+             ),
+             goles (
+               goleador_id,
+               asistidor_id
+             )
+           `)
+           .order('fecha', { ascending: false });
+
+         // Filtrar por temporada si está seleccionada
+         if (temporadaSeleccionada && temporadaSeleccionada !== '') {
+           query = query.eq('temporada_id', temporadaSeleccionada);
+           console.log('🎯 Aplicando filtro de temporada:', temporadaSeleccionada);
+         }
+
+         const { data: partidos, error } = await query;
+
+        if (error) {
+          console.error('Error al cargar partidos:', error);
+          return;
+        }
+
+        partidosData = partidos || [];
+        console.log('✅ Partidos cargados para paternidades:', partidosData.length, temporadaSeleccionada ? `(Temporada: ${temporadaSeleccionada})` : '(Todas las temporadas)');
+      } catch (error) {
+        console.error('Error al cargar partidos:', error);
+      }
+    }
+
+         // Función para buscar jugadores mientras se escribe
+     window.buscarJugadorPaternidades = function() {
+       const input = document.getElementById('buscar-jugador-paternidades');
+       const sugerenciasContainer = document.getElementById('sugerencias-jugadores');
+       const busqueda = input.value.toLowerCase().trim();
+
+       console.log('🔍 Buscando jugador:', busqueda);
+       console.log('📊 Jugadores disponibles:', jugadoresDisponibles.length);
+       console.log('👥 Lista de jugadores:', jugadoresDisponibles.map(j => j.nombre));
+
+       if (busqueda.length < 2) {
+         sugerenciasContainer.innerHTML = '';
+         return;
+       }
+
+       const jugadoresFiltrados = jugadoresDisponibles.filter(jugador =>
+         jugador.nombre.toLowerCase().includes(busqueda)
+       ).slice(0, 5);
+
+       console.log('🎯 Jugadores filtrados:', jugadoresFiltrados);
+
+       if (jugadoresFiltrados.length === 0) {
+         sugerenciasContainer.innerHTML = '<div class="text-muted small">No se encontraron jugadores (total disponibles: ' + jugadoresDisponibles.length + ')</div>';
+         return;
+       }
+
+       const sugerenciasHtml = jugadoresFiltrados.map(jugador => `
+         <div class="suggestion-item p-2 rounded mb-1" style="background: rgba(255, 255, 255, 0.1); cursor: pointer;" onclick="seleccionarJugador('${jugador.id}', '${jugador.nombre}')">
+           <i class="bi bi-person me-2"></i>${jugador.nombre}
+         </div>
+       `).join('');
+
+              sugerenciasContainer.innerHTML = sugerenciasHtml;
+     };
+
+     // Función para mostrar todos los jugadores disponibles
+     window.mostrarTodosLosJugadores = function() {
+       const input = document.getElementById('buscar-jugador-paternidades');
+       const sugerenciasContainer = document.getElementById('sugerencias-jugadores');
+       
+       // Si el input está vacío, mostrar todos los jugadores
+       if (!input.value.trim()) {
+         console.log('📋 Mostrando todos los jugadores disponibles');
+         
+         if (jugadoresDisponibles.length === 0) {
+           sugerenciasContainer.innerHTML = '<div class="text-muted small">Cargando jugadores...</div>';
+           return;
+         }
+
+         const todosLosJugadores = jugadoresDisponibles.slice(0, 10); // Mostrar solo los primeros 10
+         const sugerenciasHtml = todosLosJugadores.map(jugador => `
+           <div class="suggestion-item p-2 rounded mb-1" style="background: rgba(255, 255, 255, 0.1); cursor: pointer;" onclick="seleccionarJugador('${jugador.id}', '${jugador.nombre}')">
+             <i class="bi bi-person me-2"></i>${jugador.nombre}
+           </div>
+         `).join('');
+
+         if (jugadoresDisponibles.length > 10) {
+           sugerenciasContainer.innerHTML = sugerenciasHtml + `<div class="text-muted small p-2">... y ${jugadoresDisponibles.length - 10} más. Escribe para filtrar.</div>`;
+         } else {
+           sugerenciasContainer.innerHTML = sugerenciasHtml;
+         }
+       }
+     };
+
+     // Función para seleccionar un jugador de las sugerencias
+    window.seleccionarJugador = function(jugadorId, nombre) {
+      document.getElementById('buscar-jugador-paternidades').value = nombre;
+      document.getElementById('sugerencias-jugadores').innerHTML = '';
+      jugadorSeleccionado = { id: jugadorId, nombre: nombre };
+    };
+
+    // Función principal para analizar un jugador
+    window.analizarJugador = async function() {
+      if (!jugadorSeleccionado) {
+        const nombreInput = document.getElementById('buscar-jugador-paternidades').value.trim();
+        const jugadorEncontrado = jugadoresDisponibles.find(j => 
+          j.nombre.toLowerCase() === nombreInput.toLowerCase()
+        );
+        
+        if (!jugadorEncontrado) {
+          alert('Por favor selecciona un jugador válido de la lista');
+          return;
+        }
+        
+        jugadorSeleccionado = { id: jugadorEncontrado.id, nombre: jugadorEncontrado.nombre };
+      }
+
+      // Mostrar loading
+      document.getElementById('jugador-seleccionado-nombre').innerHTML = `
+        <i class="bi bi-hourglass-split me-2"></i>Analizando a ${jugadorSeleccionado.nombre}...
+      `;
+      document.getElementById('estadisticas-jugador-container').style.display = 'block';
+
+      // Analizar estadísticas
+      await analizarEstadisticasJugador(jugadorSeleccionado);
+    };
+
+    // Función para analizar las estadísticas de un jugador
+    async function analizarEstadisticasJugador(jugador) {
+      try {
+        // Actualizar título
+        document.getElementById('jugador-seleccionado-nombre').innerHTML = `
+          <i class="bi bi-person-circle me-2"></i>Estadísticas de ${jugador.nombre}
+        `;
+
+        // Analizar partidos del jugador
+        const partidosJugador = partidosData.filter(partido =>
+          partido.jugador_partido?.some(jp => jp.jugador_id === jugador.id)
+        );
+
+        if (partidosJugador.length === 0) {
+          document.getElementById('mejores-duos').innerHTML = '<div class="text-muted">No hay partidos registrados</div>';
+          document.getElementById('rivales-principales').innerHTML = '<div class="text-muted">No hay partidos registrados</div>';
+          document.getElementById('enfrentamientos-frecuentes').innerHTML = '<div class="text-muted">No hay partidos registrados</div>';
+          document.getElementById('nunca-enfrentados').innerHTML = '<div class="text-muted">No hay partidos registrados</div>';
+          document.getElementById('estadisticas-generales').innerHTML = '<div class="text-muted">No hay partidos registrados</div>';
+          return;
+        }
+
+        // Analizar dúos más exitosos
+        const mejoresDuos = analizarMejoresDuos(jugador, partidosJugador);
+        renderizarMejoresDuos(mejoresDuos);
+
+        // Analizar rivales principales
+        const rivales = analizarRivalesPrincipales(jugador, partidosJugador);
+        renderizarRivalesPrincipales(rivales);
+
+        // Analizar enfrentamientos frecuentes
+        const enfrentamientos = analizarEnfrentamientosFrecuentes(jugador, partidosJugador);
+        renderizarEnfrentamientosFrecuentes(enfrentamientos);
+
+        // Analizar a quien más le gana
+        const aQuienMasLeGana = analizarAQuienMasLeGana(jugador, partidosJugador);
+        renderizarAQuienMasLeGana(aQuienMasLeGana);
+
+        // Estadísticas generales
+        const estadisticasGenerales = calcularEstadisticasGenerales(jugador, partidosJugador);
+        renderizarEstadisticasGenerales(estadisticasGenerales);
+
+      } catch (error) {
+        console.error('Error al analizar jugador:', error);
+        alert('Error al analizar las estadísticas del jugador');
+      }
+    }
+
+         // Función para analizar los mejores dúos
+     function analizarMejoresDuos(jugador, partidos) {
+       const duos = {};
+
+       partidos.forEach(partido => {
+         const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugador.id);
+         if (!jugadorData) return;
+
+         const equipoJugador = jugadorData.equipo;
+         const compañeros = partido.jugador_partido?.filter(jp => 
+           jp.equipo === equipoJugador && jp.jugador_id !== jugador.id
+         ) || [];
+
+         const gano = partido.equipo_ganador === equipoJugador;
+
+         compañeros.forEach(compañero => {
+           const nombre = compañero.jugadores?.nombre;
+           if (!nombre) return;
+
+           if (!duos[nombre]) {
+             duos[nombre] = { nombre, partidos: 0, victorias: 0, derrotas: 0, empates: 0 };
+           }
+
+           duos[nombre].partidos++;
+           if (gano) duos[nombre].victorias++;
+           else if (partido.equipo_ganador === null) duos[nombre].empates++;
+           else duos[nombre].derrotas++;
+         });
+       });
+
+       // Calcular winrate y ordenar
+       const duosArray = Object.values(duos)
+         .filter(duo => duo.partidos >= 2)
+         .map(duo => ({
+           ...duo,
+           winrate: ((duo.victorias + duo.empates * 0.5) / duo.partidos * 100)
+         }))
+         .filter(duo => duo.winrate > 0) // No mostrar dúos con 0% winrate
+         .sort((a, b) => {
+           if (Math.abs(a.winrate - b.winrate) < 0.1) {
+             return b.partidos - a.partidos;
+           }
+           return b.winrate - a.winrate;
+         })
+         .slice(0, 5);
+
+       return duosArray;
+     }
+
+     // Función para analizar rivales principales
+     function analizarRivalesPrincipales(jugador, partidos) {
+       const rivales = {};
+
+       partidos.forEach(partido => {
+         const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugador.id);
+         if (!jugadorData) return;
+
+         const equipoJugador = jugadorData.equipo;
+         const oponentes = partido.jugador_partido?.filter(jp => jp.equipo !== equipoJugador) || [];
+         const perdio = partido.equipo_ganador !== null && partido.equipo_ganador !== equipoJugador;
+
+         oponentes.forEach(oponente => {
+           const nombre = oponente.jugadores?.nombre;
+           if (!nombre) return;
+
+           if (!rivales[nombre]) {
+             rivales[nombre] = { nombre, partidos: 0, derrotas: 0, victorias: 0, empates: 0 };
+           }
+
+           rivales[nombre].partidos++;
+           if (perdio) rivales[nombre].derrotas++;
+           else if (partido.equipo_ganador === equipoJugador) rivales[nombre].victorias++;
+           else rivales[nombre].empates++;
+         });
+       });
+
+       return Object.values(rivales)
+         .filter(rival => rival.partidos >= 2)
+         .map(rival => ({
+           ...rival,
+           porcentajeDerrota: (rival.derrotas / rival.partidos * 100)
+         }))
+         .filter(rival => rival.porcentajeDerrota > 0) // No mostrar rivales con 0% derrotas
+         .sort((a, b) => {
+           if (Math.abs(a.porcentajeDerrota - b.porcentajeDerrota) < 0.1) {
+             return b.partidos - a.partidos;
+           }
+           return b.porcentajeDerrota - a.porcentajeDerrota;
+         })
+         .slice(0, 5);
+     }
+
+     // Función para analizar enfrentamientos frecuentes
+     function analizarEnfrentamientosFrecuentes(jugador, partidos) {
+       const enfrentamientos = {};
+
+       partidos.forEach(partido => {
+         const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugador.id);
+         if (!jugadorData) return;
+
+         const equipoJugador = jugadorData.equipo;
+         const todosOponentes = partido.jugador_partido?.filter(jp => 
+           jp.equipo !== equipoJugador && jp.jugadores?.nombre
+         ) || [];
+
+         const gano = partido.equipo_ganador === equipoJugador;
+         const empato = partido.equipo_ganador === null;
+
+         todosOponentes.forEach(oponente => {
+           const nombre = oponente.jugadores.nombre;
+
+           if (!enfrentamientos[nombre]) {
+             enfrentamientos[nombre] = { 
+               nombre, 
+               partidos: 0, 
+               victorias: 0, 
+               derrotas: 0, 
+               empates: 0 
+             };
+           }
+
+           enfrentamientos[nombre].partidos++;
+           if (gano) enfrentamientos[nombre].victorias++;
+           else if (empato) enfrentamientos[nombre].empates++;
+           else enfrentamientos[nombre].derrotas++;
+         });
+       });
+
+       return Object.values(enfrentamientos)
+         .filter(enfrentamiento => enfrentamiento.partidos >= 3) // Mínimo 3 enfrentamientos
+         .map(enfrentamiento => ({
+           ...enfrentamiento,
+           winrate: ((enfrentamiento.victorias + enfrentamiento.empates * 0.5) / enfrentamiento.partidos * 100)
+         }))
+         .sort((a, b) => b.partidos - a.partidos)
+         .slice(0, 8);
+     }
+
+     // Función para analizar a quien más le gana (enfrentamientos directos)
+     function analizarAQuienMasLeGana(jugador, partidos) {
+       const oponentes = {};
+
+       partidos.forEach(partido => {
+         const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugador.id);
+         if (!jugadorData) return;
+
+         const equipoJugador = jugadorData.equipo;
+         
+         // Solo contar oponentes que estuvieron en el equipo contrario
+         const oponentesDirectos = partido.jugador_partido?.filter(jp => 
+           jp.equipo !== equipoJugador && jp.jugadores?.nombre
+         ) || [];
+
+         const gano = partido.equipo_ganador === equipoJugador;
+         const empato = partido.equipo_ganador === null;
+
+         oponentesDirectos.forEach(oponente => {
+           const nombre = oponente.jugadores.nombre;
+
+           if (!oponentes[nombre]) {
+             oponentes[nombre] = { 
+               nombre, 
+               partidos: 0, 
+               victorias: 0, 
+               derrotas: 0, 
+               empates: 0 
+             };
+           }
+
+           oponentes[nombre].partidos++;
+           if (gano) oponentes[nombre].victorias++;
+           else if (empato) oponentes[nombre].empates++;
+           else oponentes[nombre].derrotas++;
+         });
+       });
+
+       // Calcular winrate y filtrar/ordenar
+       const oponentesArray = Object.values(oponentes)
+         .filter(oponente => oponente.partidos >= 2) // Mínimo 2 enfrentamientos directos
+         .map(oponente => ({
+           ...oponente,
+           winrate: ((oponente.victorias + oponente.empates * 0.5) / oponente.partidos * 100)
+         }))
+         .filter(oponente => oponente.winrate > 50) // Solo mostrar a quienes les gana (>50%)
+         .sort((a, b) => {
+           // Ordenar por winrate primero, luego por victorias totales
+           if (Math.abs(a.winrate - b.winrate) < 0.1) {
+             return b.victorias - a.victorias;
+           }
+           return b.winrate - a.winrate;
+         })
+         .slice(0, 5);
+
+       return oponentesArray;
+     }
+
+     // Función para calcular estadísticas generales
+     function calcularEstadisticasGenerales(jugador, partidos) {
+       const stats = {
+         partidosJugados: partidos.length,
+         victorias: 0, derrotas: 0, empates: 0, mvpCount: 0, aceCount: 0
+       };
+
+       partidos.forEach(partido => {
+         const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugador.id);
+         if (!jugadorData) return;
+
+         if (partido.equipo_ganador === jugadorData.equipo) stats.victorias++;
+         else if (partido.equipo_ganador === null) stats.empates++;
+         else stats.derrotas++;
+
+         if (jugadorData.mvp) stats.mvpCount++;
+         if (jugadorData.ace) stats.aceCount++;
+       });
+
+       stats.winrate = stats.partidosJugados > 0 ? 
+         ((stats.victorias + stats.empates * 0.5) / stats.partidosJugados * 100) : 0;
+
+       return stats;
+     }
+
+     // Funciones de renderizado
+     function renderizarMejoresDuos(duos) {
+       const container = document.getElementById('mejores-duos');
+       
+       if (duos.length === 0) {
+         container.innerHTML = `
+           <div class="text-center py-4">
+             <i class="bi bi-people text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+             <p class="text-muted mb-0">No hay dúos exitosos disponibles</p>
+             <small class="text-light-emphasis">Mínimo 2 partidos con >0% winrate en temporada actual</small>
+           </div>
+         `;
+         return;
+       }
+
+       const html = duos.map(duo => `
+         <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="background: rgba(34, 197, 94, 0.1);">
+           <div>
+             <div class="fw-bold text-white">${duo.nombre}</div>
+             <div class="text-light-emphasis small">${duo.partidos} partidos juntos</div>
+           </div>
+           <div class="text-end">
+             <div class="text-success fw-bold">${duo.winrate.toFixed(1)}%</div>
+             <div class="text-light small">${duo.victorias}V-${duo.derrotas}D-${duo.empates}E</div>
+           </div>
+         </div>
+       `).join('');
+       
+       container.innerHTML = html;
+     }
+
+     function renderizarRivalesPrincipales(rivales) {
+       const container = document.getElementById('rivales-principales');
+       
+       if (rivales.length === 0) {
+         container.innerHTML = `
+           <div class="text-center py-4">
+             <i class="bi bi-shield-check text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+             <p class="text-muted mb-0">¡Sin rivales destacados!</p>
+             <small class="text-light-emphasis">Nadie le ha ganado de forma consistente</small>
+           </div>
+         `;
+         return;
+       }
+
+       const html = rivales.map(rival => `
+         <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="background: rgba(239, 68, 68, 0.1);">
+           <div>
+             <div class="fw-bold text-white">${rival.nombre}</div>
+             <div class="text-light-emphasis small">${rival.partidos} enfrentamientos</div>
+           </div>
+           <div class="text-end">
+             <div class="text-danger fw-bold">${rival.porcentajeDerrota.toFixed(1)}% derrotas</div>
+             <div class="text-light small">${rival.victorias}V-${rival.derrotas}D-${rival.empates}E</div>
+           </div>
+         </div>
+       `).join('');
+       
+       container.innerHTML = html;
+     }
+
+     function renderizarEnfrentamientosFrecuentes(enfrentamientos) {
+       const container = document.getElementById('enfrentamientos-frecuentes');
+       
+       if (enfrentamientos.length === 0) {
+         container.innerHTML = `
+           <div class="text-center py-4">
+             <i class="bi bi-lightning text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+             <p class="text-muted mb-0">No hay enfrentamientos frecuentes</p>
+             <small class="text-light-emphasis">Mínimo 3 partidos contra el mismo oponente</small>
+           </div>
+         `;
+         return;
+       }
+
+       const html = enfrentamientos.map(enfrentamiento => {
+         const winrateColor = enfrentamiento.winrate >= 60 ? 'success' : 
+                              enfrentamiento.winrate >= 40 ? 'warning' : 'danger';
+         
+         return `
+           <div class="d-flex justify-content-between align-items-center mb-1 p-2 rounded" style="background: rgba(245, 158, 11, 0.1);">
+             <div>
+               <span class="text-white fw-bold">${enfrentamiento.nombre}</span>
+               <div class="small text-light-emphasis">${enfrentamiento.victorias}V-${enfrentamiento.derrotas}D-${enfrentamiento.empates}E</div>
+             </div>
+             <div class="text-end">
+               <div class="text-warning fw-bold">${enfrentamiento.partidos} veces</div>
+               <div class="badge bg-${winrateColor} small">${enfrentamiento.winrate.toFixed(1)}%</div>
+             </div>
+           </div>
+         `;
+       }).join('');
+       
+       container.innerHTML = html;
+     }
+
+     function renderizarAQuienMasLeGana(aQuienMasLeGana) {
+       const container = document.getElementById('nunca-enfrentados'); // Reutilizamos el mismo container
+       
+       if (aQuienMasLeGana.length === 0) {
+         container.innerHTML = `
+           <div class="text-center py-4">
+             <i class="bi bi-trophy text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+             <p class="text-muted mb-0">No hay dominancia destacada</p>
+             <small class="text-light-emphasis">Mínimo 2 enfrentamientos con >50% winrate en temporada actual</small>
+           </div>
+         `;
+         return;
+       }
+
+       const html = `
+         <div class="list-group list-group-flush">
+           ${aQuienMasLeGana.map((oponente, index) => {
+             const dominanceLevel = oponente.winrate >= 80 ? 'danger' : 
+                                   oponente.winrate >= 70 ? 'warning' : 'success';
+             const position = index + 1;
+             
+             return `
+               <div class="list-group-item bg-transparent border-0 px-0 py-2">
+                 <div class="d-flex justify-content-between align-items-center">
+                   <div class="d-flex align-items-center">
+                     <span class="badge bg-secondary rounded-pill me-3 fs-6">${position}</span>
+                     <div>
+                       <h6 class="mb-0 text-white fw-bold">${oponente.nombre}</h6>
+                       <small class="text-light-emphasis">${oponente.partidos} enfrentamientos</small>
+                     </div>
+                   </div>
+                   <div class="text-end">
+                     <span class="badge bg-${dominanceLevel} fs-6">${oponente.winrate.toFixed(1)}%</span>
+                     <div class="small text-light-emphasis mt-1">${oponente.victorias}V-${oponente.derrotas}D-${oponente.empates}E</div>
+                   </div>
+                 </div>
+               </div>
+             `;
+           }).join('')}
+         </div>
+       `;
+       
+       container.innerHTML = html;
+     }
+
+     function renderizarEstadisticasGenerales(stats) {
+       const container = document.getElementById('estadisticas-generales');
+       
+       const html = `
+         <div class="col-md-3">
+           <div class="text-center p-2 rounded" style="background: rgba(59, 130, 246, 0.1);">
+             <div class="fw-bold text-primary">${stats.partidosJugados}</div>
+             <div class="small text-light-emphasis">Partidos</div>
+           </div>
+         </div>
+         <div class="col-md-3">
+           <div class="text-center p-2 rounded" style="background: rgba(34, 197, 94, 0.1);">
+             <div class="fw-bold text-success">${stats.winrate.toFixed(1)}%</div>
+             <div class="small text-light-emphasis">Winrate</div>
+           </div>
+         </div>
+         <div class="col-md-3">
+           <div class="text-center p-2 rounded" style="background: rgba(245, 158, 11, 0.1);">
+             <div class="fw-bold text-warning">${stats.mvpCount}</div>
+             <div class="small text-light-emphasis">MVP</div>
+           </div>
+         </div>
+         <div class="col-md-3">
+           <div class="text-center p-2 rounded" style="background: rgba(139, 92, 246, 0.1);">
+             <div class="fw-bold" style="color: #8b5cf6;">${stats.aceCount}</div>
+             <div class="small text-light-emphasis">ACE</div>
+           </div>
+         </div>
+       `;
+       
+       container.innerHTML = html;
+     }
+
+     // Funciones para el comparador versus
+     window.buscarJugadorVersus = function(numero) {
+       const input = document.getElementById(`versus-jugador${numero}`);
+       const sugerenciasContainer = document.getElementById(`sugerencias-versus${numero}`);
+       const busqueda = input.value.toLowerCase().trim();
+
+       if (busqueda.length < 2) {
+         sugerenciasContainer.innerHTML = '';
+         return;
+       }
+
+       const jugadoresFiltrados = jugadoresDisponibles.filter(jugador =>
+         jugador.nombre.toLowerCase().includes(busqueda)
+       ).slice(0, 5);
+
+       if (jugadoresFiltrados.length === 0) {
+         sugerenciasContainer.innerHTML = '<div class="text-muted small">No se encontraron jugadores</div>';
+         return;
+       }
+
+       const sugerenciasHtml = jugadoresFiltrados.map(jugador => `
+         <div class="suggestion-item p-2 rounded mb-1" style="background: rgba(255, 255, 255, 0.1); cursor: pointer;" onclick="seleccionarJugadorVersus(${numero}, '${jugador.id}', '${jugador.nombre}')">
+           <i class="bi bi-person me-2"></i>${jugador.nombre}
+         </div>
+       `).join('');
+
+       sugerenciasContainer.innerHTML = sugerenciasHtml;
+     };
+
+     // Función para mostrar todos los jugadores en el comparador versus
+     window.mostrarTodosLosJugadoresVersus = function(numero) {
+       const input = document.getElementById(`versus-jugador${numero}`);
+       const sugerenciasContainer = document.getElementById(`sugerencias-versus${numero}`);
+       
+       // Si el input está vacío, mostrar todos los jugadores
+       if (!input.value.trim()) {
+         if (jugadoresDisponibles.length === 0) {
+           sugerenciasContainer.innerHTML = '<div class="text-muted small">Cargando jugadores...</div>';
+           return;
+         }
+
+         const todosLosJugadores = jugadoresDisponibles.slice(0, 8); // Mostrar menos en el versus
+         const sugerenciasHtml = todosLosJugadores.map(jugador => `
+           <div class="suggestion-item p-2 rounded mb-1" style="background: rgba(255, 255, 255, 0.1); cursor: pointer;" onclick="seleccionarJugadorVersus(${numero}, '${jugador.id}', '${jugador.nombre}')">
+             <i class="bi bi-person me-2"></i>${jugador.nombre}
+           </div>
+         `).join('');
+
+         if (jugadoresDisponibles.length > 8) {
+           sugerenciasContainer.innerHTML = sugerenciasHtml + `<div class="text-muted small p-2">... y ${jugadoresDisponibles.length - 8} más.</div>`;
+         } else {
+           sugerenciasContainer.innerHTML = sugerenciasHtml;
+         }
+       }
+     };
+
+     window.seleccionarJugadorVersus = function(numero, jugadorId, nombre) {
+       document.getElementById(`versus-jugador${numero}`).value = nombre;
+       document.getElementById(`sugerencias-versus${numero}`).innerHTML = '';
+     };
+
+     // Función para comparar dos jugadores
+     window.compararJugadores = async function() {
+       const nombre1 = document.getElementById('versus-jugador1').value.trim();
+       const nombre2 = document.getElementById('versus-jugador2').value.trim();
+
+       if (!nombre1 || !nombre2) {
+         alert('Por favor ingresa los nombres de ambos jugadores');
+         return;
+       }
+
+       const jugador1 = jugadoresDisponibles.find(j => j.nombre.toLowerCase() === nombre1.toLowerCase());
+       const jugador2 = jugadoresDisponibles.find(j => j.nombre.toLowerCase() === nombre2.toLowerCase());
+
+       if (!jugador1 || !jugador2) {
+         alert('Uno o ambos jugadores no fueron encontrados');
+         return;
+       }
+
+       if (jugador1.id === jugador2.id) {
+         alert('No puedes comparar un jugador consigo mismo');
+         return;
+       }
+
+       // Analizar enfrentamientos directos
+       const enfrentamientosDirectos = analizarEnfrentamientosDirectos(jugador1, jugador2);
+       
+       // Mostrar resultados
+       document.getElementById('resultados-versus').style.display = 'block';
+       renderizarHistorialDirecto(enfrentamientosDirectos, jugador1.nombre, jugador2.nombre);
+       renderizarDominioPaternidad(enfrentamientosDirectos, jugador1.nombre, jugador2.nombre);
+       await renderizarEstadisticasComparadas(jugador1, jugador2);
+     };
+
+     function analizarEnfrentamientosDirectos(jugador1, jugador2) {
+       const enfrentamientos = {
+         partidos: [],
+         jugador1: { victorias: 0, derrotas: 0, empates: 0 },
+         jugador2: { victorias: 0, derrotas: 0, empates: 0 }
+       };
+
+       partidosData.forEach(partido => {
+         const jp1 = partido.jugador_partido?.find(jp => jp.jugador_id === jugador1.id);
+         const jp2 = partido.jugador_partido?.find(jp => jp.jugador_id === jugador2.id);
+
+         // Solo contar si ambos jugadores participaron Y estuvieron en equipos CONTRARIOS
+         if (jp1 && jp2 && jp1.equipo !== jp2.equipo) {
+           enfrentamientos.partidos.push({
+             fecha: partido.fecha,
+             equipo1: jp1.equipo,
+             equipo2: jp2.equipo,
+             ganador: partido.equipo_ganador,
+             mvp1: jp1.mvp, mvp2: jp2.mvp,
+             ace1: jp1.ace, ace2: jp2.ace
+           });
+
+           if (partido.equipo_ganador === jp1.equipo) {
+             enfrentamientos.jugador1.victorias++;
+             enfrentamientos.jugador2.derrotas++;
+           } else if (partido.equipo_ganador === jp2.equipo) {
+             enfrentamientos.jugador2.victorias++;
+             enfrentamientos.jugador1.derrotas++;
+           } else {
+             enfrentamientos.jugador1.empates++;
+             enfrentamientos.jugador2.empates++;
+           }
+         }
+       });
+
+       return enfrentamientos;
+     }
+
+     function renderizarHistorialDirecto(enfrentamientos, nombre1, nombre2) {
+       const container = document.getElementById('historial-directo');
+       
+       if (enfrentamientos.partidos.length === 0) {
+         container.innerHTML = '<div class="text-muted">Estos jugadores nunca se han enfrentado directamente</div>';
+         return;
+       }
+
+       const totalPartidos = enfrentamientos.partidos.length;
+       const winrate1 = ((enfrentamientos.jugador1.victorias + enfrentamientos.jugador1.empates * 0.5) / totalPartidos * 100);
+       const winrate2 = ((enfrentamientos.jugador2.victorias + enfrentamientos.jugador2.empates * 0.5) / totalPartidos * 100);
+
+       const html = `
+         <div class="mb-3">
+           <div class="row g-2 text-center">
+             <div class="col-5">
+               <div class="p-2 rounded" style="background: rgba(59, 130, 246, 0.1);">
+                 <div class="fw-bold text-primary">${nombre1}</div>
+                 <div class="text-light small">${enfrentamientos.jugador1.victorias}V-${enfrentamientos.jugador1.derrotas}D-${enfrentamientos.jugador1.empates}E</div>
+                 <div class="text-white">${winrate1.toFixed(1)}%</div>
+               </div>
+             </div>
+             <div class="col-2 d-flex align-items-center justify-content-center">
+               <div class="text-muted">${totalPartidos}<br><small>partidos</small></div>
+             </div>
+             <div class="col-5">
+               <div class="p-2 rounded" style="background: rgba(239, 68, 68, 0.1);">
+                 <div class="fw-bold text-danger">${nombre2}</div>
+                 <div class="text-light small">${enfrentamientos.jugador2.victorias}V-${enfrentamientos.jugador2.derrotas}D-${enfrentamientos.jugador2.empates}E</div>
+                 <div class="text-white">${winrate2.toFixed(1)}%</div>
+               </div>
+             </div>
+           </div>
+         </div>
+         
+         <div class="small">
+           <div class="fw-bold mb-2">Últimos 5 enfrentamientos:</div>
+           ${enfrentamientos.partidos.slice(0, 5).map(partido => {
+             const fecha = new Date(partido.fecha).toLocaleDateString();
+             let resultado = '';
+             if (partido.ganador === partido.equipo1) {
+               resultado = `<span class="text-success">${nombre1} ganó</span>`;
+             } else if (partido.ganador === partido.equipo2) {
+               resultado = `<span class="text-danger">${nombre2} ganó</span>`;
+             } else {
+               resultado = '<span class="text-warning">Empate</span>';
+             }
+             
+             const mvpAce = [];
+             if (partido.mvp1) mvpAce.push(`${nombre1} MVP`);
+             if (partido.mvp2) mvpAce.push(`${nombre2} MVP`);
+             if (partido.ace1) mvpAce.push(`${nombre1} ACE`);
+             if (partido.ace2) mvpAce.push(`${nombre2} ACE`);
+             
+             return `
+               <div class="d-flex justify-content-between align-items-center mb-1 p-1 rounded" style="background: rgba(255, 255, 255, 0.05);">
+                 <span>${fecha}</span>
+                 <span>${resultado}</span>
+                 ${mvpAce.length > 0 ? `<span class="text-info small">${mvpAce.join(', ')}</span>` : ''}
+               </div>
+             `;
+           }).join('')}
+         </div>
+       `;
+       
+       container.innerHTML = html;
+     }
+
+     function renderizarDominioPaternidad(enfrentamientos, nombre1, nombre2) {
+       const container = document.getElementById('dominio-paternidad');
+       
+       if (enfrentamientos.partidos.length === 0) {
+         container.innerHTML = '<div class="text-muted">No hay suficientes datos para determinar dominio</div>';
+         return;
+       }
+
+       const victorias1 = enfrentamientos.jugador1.victorias;
+       const victorias2 = enfrentamientos.jugador2.victorias;
+       
+       let dominancia = '';
+       let emoji = '';
+       
+       if (victorias1 > victorias2) {
+         const diferencia = victorias1 - victorias2;
+         if (diferencia >= 3) {
+           dominancia = `${nombre1} tiene <strong>dominio total</strong> sobre ${nombre2}`;
+           emoji = '👑';
+         } else if (diferencia >= 2) {
+           dominancia = `${nombre1} tiene <strong>ventaja clara</strong> sobre ${nombre2}`;
+           emoji = '⭐';
+         } else {
+           dominancia = `${nombre1} tiene <strong>ligera ventaja</strong> sobre ${nombre2}`;
+           emoji = '📈';
+         }
+       } else if (victorias2 > victorias1) {
+         const diferencia = victorias2 - victorias1;
+         if (diferencia >= 3) {
+           dominancia = `${nombre2} tiene <strong>dominio total</strong> sobre ${nombre1}`;
+           emoji = '👑';
+         } else if (diferencia >= 2) {
+           dominancia = `${nombre2} tiene <strong>ventaja clara</strong> sobre ${nombre1}`;
+           emoji = '⭐';
+         } else {
+           dominancia = `${nombre2} tiene <strong>ligera ventaja</strong> sobre ${nombre1}`;
+           emoji = '📈';
+         }
+       } else {
+         dominancia = `Hay <strong>equilibrio total</strong> entre ambos jugadores`;
+         emoji = '⚖️';
+       }
+
+       const html = `
+         <div class="text-center p-3 rounded" style="background: rgba(34, 197, 94, 0.1);">
+           <div style="font-size: 2rem;">${emoji}</div>
+           <div class="mt-2">${dominancia}</div>
+           ${enfrentamientos.partidos.length >= 5 ? 
+             '<div class="text-success small mt-1">✅ Muestra estadísticamente significativa</div>' : 
+             '<div class="text-warning small mt-1">⚠️ Pocos enfrentamientos para conclusiones definitivas</div>'
+           }
+         </div>
+       `;
+       
+       container.innerHTML = html;
+     }
+
+     async function renderizarEstadisticasComparadas(jugador1, jugador2) {
+       const container = document.getElementById('estadisticas-comparadas');
+       
+       try {
+         // Obtener estadísticas desde los datos ya cargados en la app principal
+         const stats1 = window.datosJugadores?.find(s => s.jugadores.id === jugador1.id) || {};
+         const stats2 = window.datosJugadores?.find(s => s.jugadores.id === jugador2.id) || {};
+
+         if (!stats1.jugadores || !stats2.jugadores) {
+            container.innerHTML = '<div class="text-warning">No se encontraron datos de estadísticas para uno o ambos jugadores. Asegúrate de que hayan jugado partidos.</div>';
+            return;
+         }
+
+         const comparaciones = [
+           { label: 'Partidos Jugados', key: 'pj', formato: 'numero' },
+           { label: 'Winrate', key: 'winrate', formato: 'porcentaje' },
+           { label: 'Goles', key: 'goles', formato: 'numero' },
+           { label: 'Asistencias', key: 'asistencias', formato: 'numero' },
+           { label: 'MVP', key: 'mvp_count', formato: 'numero' },
+           { label: 'ACE', key: 'ace_count', formato: 'numero' },
+           { label: 'Atajadas', key: 'atajadas', formato: 'numero' },
+           { label: 'Cagadas', key: 'cagadas_en_gol', formato: 'numero' }
+         ];
+
+         const html = comparaciones.map(comp => {
+           const valor1 = stats1[comp.key] || 0;
+           const valor2 = stats2[comp.key] || 0;
+           
+           let display1 = valor1;
+           let display2 = valor2;
+           
+           if (comp.formato === 'porcentaje') {
+             display1 = `${valor1.toFixed(1)}%`;
+             display2 = `${valor2.toFixed(1)}%`;
+           }
+           
+           let comparison = '';
+           if (valor1 > valor2) {
+             comparison = `<span class="text-success">▲ ${jugador1.nombre}</span>`;
+           } else if (valor2 > valor1) {
+             comparison = `<span class="text-danger">▲ ${jugador2.nombre}</span>`;
+           } else {
+             comparison = '<span class="text-warning">⚖️ Empate</span>';
+           }
+
+           return `
+             <div class="col-md-4 mb-3">
+               <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1);">
+                 <div class="text-center">
+                   <div class="fw-bold text-white mb-2 small">${comp.label}</div>
+                   <div class="row g-2 align-items-center">
+                     <div class="col-5">
+                       <div class="fw-bold fs-5 text-primary">${display1}</div>
+                       <div class="small text-light-emphasis">${jugador1.nombre}</div>
+                     </div>
+                     <div class="col-2 text-center">
+                       <div class="small">${comparison}</div>
+                     </div>
+                     <div class="col-5">
+                       <div class="fw-bold fs-5 text-danger">${display2}</div>
+                       <div class="small text-light-emphasis">${jugador2.nombre}</div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+           `;
+         }).join('');
+
+         container.innerHTML = `<div class="row">${html}</div>`;
+
+       } catch (error) {
+         console.error('Error al renderizar estadísticas comparadas:', error);
+         container.innerHTML = '<div class="text-danger">Error al cargar la comparación</div>';
+       }
+     }
+
+     // Función para esperar a que Supabase esté disponible
+     async function esperarSupabase() {
+       console.log('⏳ Esperando a que Supabase esté disponible...');
+       
+       return new Promise((resolve) => {
+         let intentos = 0;
+         const maxIntentos = 50; // 5 segundos máximo
+         
+         const checkSupabase = () => {
+           intentos++;
+           console.log(`🔄 Intento ${intentos}/${maxIntentos} - Supabase disponible:`, !!window.supabase);
+           
+           if (window.supabase) {
+             console.log('✅ Supabase encontrado!');
+             resolve(window.supabase);
+           } else if (intentos >= maxIntentos) {
+             console.error('❌ Timeout esperando Supabase después de', maxIntentos * 100, 'ms');
+             console.log('🔍 Estado actual de window.supabase:', window.supabase);
+             console.log('🔍 Tipo de window.supabase:', typeof window.supabase);
+             // Resolver de todas formas para que no se cuelgue
+             resolve(null);
+           } else {
+             setTimeout(checkSupabase, 100);
+           }
+         };
+         checkSupabase();
+       });
+     }
+
+     // Inicializar funcionalidad de paternidades cuando se abre la pestaña
+     document.addEventListener('DOMContentLoaded', function() {
+       const paternidadesTab = document.getElementById('paternidades-tab');
+       if (paternidadesTab) {
+         paternidadesTab.addEventListener('shown.bs.tab', async function() {
+           console.log('🔍 Abriendo pestaña Paternidades...');
+           
+           // Esperar a que Supabase esté disponible
+           const supabaseInstance = await esperarSupabase();
+           console.log('✅ Supabase disponible:', !!supabaseInstance);
+           
+           // Cargar jugadores siempre (para asegurar datos actualizados)
+           console.log('📊 Cargando jugadores...');
+           console.log('🎯 Ejecutando cargarJugadoresPaternidades desde tab event...');
+           await cargarJugadoresPaternidades();
+           
+           // Cargar partidos siempre (para aplicar filtros de temporada)
+           console.log('⚽ Cargando partidos con filtro de temporada...');
+           await cargarPartidosPaternidades();
+           
+           console.log('🎯 Inicialización de Paternidades completada');
+         });
+       }
+
+       // Listener para cambios de temporada: recargar paternidades si está activa
+       const selectorTemporada = document.getElementById('selector-temporada');
+       const selectorTemporadaMobile = document.getElementById('selector-temporada-mobile');
+       
+       function handleTemporadaChange() {
+         const paternidadesTab = document.getElementById('paternidades-tab');
+         if (paternidadesTab && paternidadesTab.classList.contains('active')) {
+           console.log('🔄 Temporada cambiada - Recargando datos de paternidades...');
+           cargarPartidosPaternidades();
+         }
+       }
+       
+       if (selectorTemporada) {
+         selectorTemporada.addEventListener('change', handleTemporadaChange);
+       }
+       if (selectorTemporadaMobile) {
+         selectorTemporadaMobile.addEventListener('change', handleTemporadaChange);
+       }
+     });
+     </script>
     <script>
       // Configuración de Supabase
       window.SUPABASE_URL = 'https://jqslerzbzxtycwozvtcy.supabase.co';

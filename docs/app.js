@@ -10,6 +10,10 @@ const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 console.log('Configurando Supabase:', { SUPABASE_URL, SUPABASE_ANON_KEY: SUPABASE_ANON_KEY ? 'PRESENTE' : 'FALTANTE' });
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Hacer Supabase disponible globalmente para paternidades
+window.supabase = supabase;
+console.log('✅ Supabase asignado a window.supabase');
+
 // Verificar que el cliente se creó correctamente
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('ERROR: Faltan credenciales de Supabase');
@@ -134,7 +138,7 @@ const initApp = () => {
           const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
-          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2) + (atajadasPP * 1);
+          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 1);
         };
         
         aVal = calcularSkill(a);
@@ -1738,7 +1742,7 @@ const initApp = () => {
     equipo.forEach(jugador => {
       const pj = jugador.pj || 1;
       
-      // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 3) + (Puntos P/P * 2)
+      // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
       const golesPP = (jugador.goles || 0) / pj;
       const mvpPP = (jugador.mvp_count || 0) / pj;
       const acePP = (jugador.ace_count || 0) / pj;
@@ -1746,7 +1750,7 @@ const initApp = () => {
       const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
       const puntosPP = (jugador.total_puntos || 0) / pj;
       
-      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       
       // Rendimiento Arquero: atajadas por partido * 1
       const atajadasPP = (jugador.atajadas || 0) / pj;
@@ -1902,7 +1906,7 @@ const initApp = () => {
       const puntosPP = stats.total_puntos / pj;
       const atajadasPP = stats.atajadas / pj;
       
-      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       const rendArquero = atajadasPP * 1;
       
       rendimientoTotalEquipo += rendAtaque + rendArquero;
@@ -3826,7 +3830,7 @@ const initApp = () => {
         icon: '🔥',
         jugador: mejorRachaVictorias ? mejorRachaVictorias.nombre : null,
         valor: mejorRachaVictorias ? mejorRachaVictorias.racha || 0 : 0,
-        sufijo: ' victorias',
+        sufijo: '',
         clase: 'racha-victorias'
       }
     ];
@@ -4306,7 +4310,7 @@ const initApp = () => {
       const puntosPP = (jugador.total_puntos || 0) / pj;
       const atajadasPP = (jugador.atajadas || 0) / pj;
       
-      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       const rendArquero = atajadasPP * 1;
       
       return rendAtaque + rendArquero;
@@ -4751,7 +4755,7 @@ const initApp = () => {
       const calcularRendimiento = (jugador) => {
         const pj = jugador.pj || 1;
         
-        // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 3) + (Puntos P/P * 2)
+        // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
         const golesPP = (jugador.goles || 0) / pj;
         const mvpPP = (jugador.mvp_count || 0) / pj;
         const acePP = (jugador.ace_count || 0) / pj;
@@ -4760,7 +4764,7 @@ const initApp = () => {
         const puntosPP = (jugador.total_puntos || 0) / pj;
         const atajadasPP = (jugador.atajadas || 0) / pj;
         
-        const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+        const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
         const rendArquero = atajadasPP * 1;
         
         return rendAtaque + rendArquero;
@@ -5519,7 +5523,7 @@ const initApp = () => {
       const calcularRendimiento = (jugador) => {
         const pj = jugador.pj || 1;
         
-        // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 3) + (Puntos P/P * 2)
+        // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
         const golesPP = (jugador.goles || 0) / pj;
         const mvpPP = (jugador.mvp_count || 0) / pj;
         const acePP = (jugador.ace_count || 0) / pj;
@@ -5528,7 +5532,7 @@ const initApp = () => {
         const puntosPP = (jugador.total_puntos || 0) / pj;
         const atajadasPP = (jugador.atajadas || 0) / pj;
         
-        const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+        const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
         const rendArquero = atajadasPP * 1;
         
         return rendAtaque + rendArquero;
@@ -5578,8 +5582,8 @@ const initApp = () => {
           } else if (field === 'ataque') {
             const pjA = a.pj || 1;
             const pjB = b.pj || 1;
-            const ataqueA = ((a.goles || 0) / pjA * 5) + ((a.mvp_count || 0) / pjA * 7) + ((a.ace_count || 0) / pjA * 6) + ((a.asistencias || 0) / pjA * 4) - ((a.cagadas_en_gol || 0) / pjA * 3) + ((a.total_puntos || 0) / pjA * 2);
-            const ataqueB = ((b.goles || 0) / pjB * 5) + ((b.mvp_count || 0) / pjB * 7) + ((b.ace_count || 0) / pjB * 6) + ((b.asistencias || 0) / pjB * 4) - ((b.cagadas_en_gol || 0) / pjB * 3) + ((b.total_puntos || 0) / pjB * 2);
+            const ataqueA = ((a.goles || 0) / pjA * 5) + ((a.mvp_count || 0) / pjA * 7) + ((a.ace_count || 0) / pjA * 6) + ((a.asistencias || 0) / pjA * 4) - ((a.cagadas_en_gol || 0) / pjA * 5) + ((a.total_puntos || 0) / pjA * 2);
+            const ataqueB = ((b.goles || 0) / pjB * 5) + ((b.mvp_count || 0) / pjB * 7) + ((b.ace_count || 0) / pjB * 6) + ((b.asistencias || 0) / pjB * 4) - ((b.cagadas_en_gol || 0) / pjB * 5) + ((b.total_puntos || 0) / pjB * 2);
             aVal = ataqueA;
             bVal = ataqueB;
           } else if (field === 'arquero') {
@@ -5651,7 +5655,7 @@ const initApp = () => {
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
           
-          const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+          const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
           const rendArquero = atajadasPP * 1;
           
           const tooltipContent = `Cálculo detallado (por partido):
@@ -5660,7 +5664,7 @@ ATAQUE:
 • MVP: ${mvpPP.toFixed(2)} × 7 = ${(mvpPP * 7).toFixed(1)}
 • ACE: ${acePP.toFixed(2)} × 6 = ${(acePP * 6).toFixed(1)}
 • Asistencias: ${asistPP.toFixed(2)} × 4 = ${(asistPP * 4).toFixed(1)}
-• Cagadas: ${cagadasPP.toFixed(2)} × (-3) = ${(cagadasPP * -3).toFixed(1)}
+• Cagadas: ${cagadasPP.toFixed(2)} × (-5) = ${(cagadasPP * -5).toFixed(1)}
 • Puntos: ${puntosPP.toFixed(2)} × 2 = ${(puntosPP * 2).toFixed(1)}
 Subtotal Ataque: ${rendAtaque.toFixed(1)}
 

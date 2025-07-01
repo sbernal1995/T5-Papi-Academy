@@ -53,7 +53,7 @@ class GeneticTeamOptimizer {
     const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
     const puntosPP = (jugador.total_puntos || 0) / pj;
     
-    return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 3) + (puntosPP * 2);
+    return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
   }
 
   /**
