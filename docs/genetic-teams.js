@@ -732,7 +732,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Intentar llamar a la función de renderizado global
         if (typeof window.renderizarEquipos === 'function') {
           console.log('Llamando a window.renderizarEquipos()');
-          window.renderizarEquipos();
+          window.renderizarEquipos().catch(error => {
+            console.error('Error al renderizar equipos:', error);
+          });
         } else {
           console.log('window.renderizarEquipos no está disponible, usando evento personalizado');
           // Si no existe la función global, buscar en el scope del módulo

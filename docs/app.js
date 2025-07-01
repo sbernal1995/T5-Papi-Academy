@@ -48,7 +48,9 @@ const initApp = () => {
   // Event listener para actualizaciones de equipos desde el algoritmo genético
   document.addEventListener('equiposActualizados', function(event) {
     console.log('Evento equiposActualizados recibido:', event.detail);
-    renderizarEquipos();
+    renderizarEquipos().catch(error => {
+      console.error('Error al renderizar equipos:', error);
+    });
   });
   let eventos = [];
   let jugadorEditando = null; // Para saber si estamos editando o agregando
@@ -296,7 +298,9 @@ const initApp = () => {
           
           // Si hay jugadores en los equipos, actualizar los gráficos
           if (equipo1.length > 0 || equipo2.length > 0) {
-            renderizarEquipos();
+            renderizarEquipos().catch(error => {
+              console.error('Error al renderizar equipos:', error);
+            });
           }
         });
       }
@@ -477,7 +481,9 @@ const initApp = () => {
       equipo2 = equipo2.filter(j => j.id !== jugadorId);
       window.equipo1 = equipo1; // Actualizar referencia global
       window.equipo2 = equipo2; // Actualizar referencia global
-      renderizarEquipos();
+      renderizarEquipos().catch(error => {
+        console.error('Error al renderizar equipos:', error);
+      });
 
     } catch (error) {
       console.error('Error al eliminar jugador:', error);
@@ -487,7 +493,9 @@ const initApp = () => {
 
   // --- Lógica de renderizado ---
 
-  function renderizarEquipos() {
+  async function renderizarEquipos() {
+    // Preservar posición del scroll antes del renderizado
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     const mostrarPosicionesJugador = (jugadorPosiciones) => {
       if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
         return '<span class="small text-muted">Sin pos.</span>';
@@ -504,6 +512,80 @@ const initApp = () => {
       if (secundaria) {
         const icono = iconosPosiciones[secundaria.posicion_id] || '❓';
         html += `<span class="badge bg-secondary badge-sm">${icono}</span>`;
+      }
+      
+      return html;
+    };
+
+    // Función para analizar rachas del equipo
+    const analizarRachasEquipo = async (equipo) => {
+      if (equipo.length === 0) return { victorias: [], derrotas: [] };
+      
+      // Obtener estadísticas de todos los jugadores para poder calcular rachas
+      const estadisticasActuales = window.datosJugadores || [];
+      if (estadisticasActuales.length === 0) return { victorias: [], derrotas: [] };
+      
+      // Calcular rachas usando la función existente
+      const rachas = await calcularRachasJugadores(estadisticasActuales);
+      
+      const jugadoresEnRachaVictoria = [];
+      const jugadoresEnRachaDerrota = [];
+      
+      equipo.forEach(jugador => {
+        const racha = rachas[jugador.id];
+        if (racha && racha.cantidad >= 2) {
+          if (racha.tipo === 'win') {
+            jugadoresEnRachaVictoria.push({
+              nombre: jugador.nombre,
+              cantidad: racha.cantidad
+            });
+          } else if (racha.tipo === 'defeat') {
+            jugadoresEnRachaDerrota.push({
+              nombre: jugador.nombre,
+              cantidad: racha.cantidad
+            });
+          }
+        }
+      });
+      
+      return {
+        victorias: jugadoresEnRachaVictoria,
+        derrotas: jugadoresEnRachaDerrota
+      };
+    };
+
+    // Función para crear warnings de rachas
+    const crearWarningsRachas = (rachas) => {
+      let html = '';
+      
+      // Warning para rachas de victoria
+      if (rachas.victorias.length > 0) {
+        html += '<div class="alert alert-success alert-sm mb-1 py-2 px-3" style="font-size: 0.8rem; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.1);">';
+        html += '<i class="bi bi-fire me-2" style="color: #f59e0b;"></i>';
+        if (rachas.victorias.length === 1) {
+          const jugador = rachas.victorias[0];
+          html += `<strong>${jugador.nombre}</strong> viene en racha de <strong>${jugador.cantidad} victorias</strong> 🔥`;
+        } else {
+          html += `<strong>${rachas.victorias.length} jugadores</strong> vienen en racha de victorias: `;
+          html += rachas.victorias.map(j => `<strong>${j.nombre}</strong> (${j.cantidad})`).join(', ');
+          html += ' 🔥';
+        }
+        html += '</div>';
+      }
+      
+      // Warning para rachas de derrota
+      if (rachas.derrotas.length > 0) {
+        html += '<div class="alert alert-info alert-sm mb-1 py-2 px-3" style="font-size: 0.8rem; border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1);">';
+        html += '<i class="bi bi-snow me-2" style="color: #06b6d4;"></i>';
+        if (rachas.derrotas.length === 1) {
+          const jugador = rachas.derrotas[0];
+          html += `<strong>${jugador.nombre}</strong> viene en racha de <strong>${jugador.cantidad} derrotas</strong> ❄️`;
+        } else {
+          html += `<strong>${rachas.derrotas.length} jugadores</strong> vienen en racha de derrotas: `;
+          html += rachas.derrotas.map(j => `<strong>${j.nombre}</strong> (${j.cantidad})`).join(', ');
+          html += ' ❄️';
+        }
+        html += '</div>';
       }
       
       return html;
@@ -653,7 +735,7 @@ const initApp = () => {
       return html;
     };
 
-    const renderEquipo = (equipo, containerId, colorClass) => {
+    const renderEquipo = async (equipo, containerId, colorClass) => {
       const container = document.getElementById(containerId);
       const conteos = contarPosiciones(equipo);
       
@@ -712,6 +794,15 @@ const initApp = () => {
         
         container.appendChild(jugadoresDiv);
         
+        // Analizar y mostrar warnings de rachas (MOVIDO HACIA ARRIBA)
+        const rachasEquipo = await analizarRachasEquipo(equipo);
+        if (rachasEquipo.victorias.length > 0 || rachasEquipo.derrotas.length > 0) {
+          const rachasEl = document.createElement('div');
+          rachasEl.className = 'mb-2 pb-2 border-bottom border-secondary';
+          rachasEl.innerHTML = crearWarningsRachas(rachasEquipo);
+          container.appendChild(rachasEl);
+        }
+        
         // Distribución de posiciones
         const distribucionEl = document.createElement('div');
         distribucionEl.innerHTML = mostrarDistribucion(conteos);
@@ -719,8 +810,9 @@ const initApp = () => {
       }
     };
 
-    renderEquipo(equipo1, 'equipo1-jugadores', 'primary');
-    renderEquipo(equipo2, 'equipo2-jugadores', 'danger');
+    // Renderizar equipos de forma asíncrona para incluir análisis de rachas
+    await renderEquipo(equipo1, 'equipo1-jugadores', 'primary');
+    await renderEquipo(equipo2, 'equipo2-jugadores', 'danger');
     
     // Renderizar gráficos fuera de las cards
     renderizarGraficos();
@@ -730,6 +822,11 @@ const initApp = () => {
       
       // Renderizar tabla de goles
       renderizarTablaGoles();
+      
+      // Restaurar posición del scroll después del renderizado
+      setTimeout(() => {
+        window.scrollTo(0, scrollTop);
+      }, 50);
     }
 
   function renderizarGraficos() {
@@ -901,7 +998,9 @@ const initApp = () => {
     showToast(`${jugador.nombre} movido a ${nombreEquipoDestino}`, 'success');
     
     // Re-renderizar equipos
-    renderizarEquipos();
+    renderizarEquipos().catch(error => {
+      console.error('Error al renderizar equipos:', error);
+    });
   }
 
   // --- Funciones de Gráficos ---
@@ -2648,7 +2747,9 @@ const initApp = () => {
           window.equipo2 = equipo2; // Actualizar referencia global
           showToast(`${jugadorRemovido.nombre} removido del Equipo 2`, 'info');
       }
-      renderizarEquipos();
+      renderizarEquipos().catch(error => {
+        console.error('Error al renderizar equipos:', error);
+      });
   };
 
   window.quitarEvento = (index) => {
@@ -2779,7 +2880,9 @@ const initApp = () => {
     }
     
     input.value = ''; // Limpiar el input
-    renderizarEquipos();
+    renderizarEquipos().catch(error => {
+      console.error('Error al renderizar equipos:', error);
+    });
   };
 
   function agregarEvento() {
@@ -4449,7 +4552,9 @@ const initApp = () => {
       jugadorEditando = null;
       cargarEstadisticas();
       cargarTodosLosJugadores(); // Actualizar lista de jugadores
-      renderizarEquipos(); // Actualizar equipos si hay jugadores cargados
+      renderizarEquipos().catch(error => {
+        console.error('Error al renderizar equipos:', error);
+      }); // Actualizar equipos si hay jugadores cargados
 
     } catch (error) {
       console.error('Error al procesar jugador:', error);
@@ -5725,8 +5830,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               <div class="text-warning fw-bold">${ranking[0]?.rendimiento?.toFixed(1) || '0.0'}</div>
             </div>
             <div class="col-md-3">
-              <div class="small text-light-emphasis">Skill/Partido</div>
-              <div class="text-info fw-bold">${ranking[0] ? (ranking[0].rendimiento / (ranking[0].pj || 1)).toFixed(1) : '0.0'}</div>
+              <div class="small text-light-emphasis">Skill Promedio</div>
+              <div class="text-info fw-bold">${ranking.length > 0 ? (ranking.reduce((sum, j) => sum + j.rendimiento, 0) / ranking.length).toFixed(1) : '0.0'}</div>
             </div>
           </div>
         </div>
