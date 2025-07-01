@@ -344,6 +344,7 @@
       .destacado-card.atajadas { border-top: 4px solid #3b82f6; }
       .destacado-card.asistencias { border-top: 4px solid #8b5cf6; }
       .destacado-card.winrate { border-top: 4px solid #f59e0b; }
+      .destacado-card.racha-victorias { border-top: 4px solid #8b5cf6; }
       
       .destacado-icon {
         font-size: 2.5rem;
@@ -378,6 +379,7 @@
       .atajadas .destacado-valor { color: #3b82f6; }
       .asistencias .destacado-valor { color: #8b5cf6; }
       .winrate .destacado-valor { color: #f59e0b; }
+      .racha-victorias .destacado-valor { color: #8b5cf6; }
 
       /* Cards de mejores por puesto */
       .mejor-puesto-card {
@@ -472,6 +474,16 @@
       .radar-info-icon:hover {
         transform: scale(1.1);
         transition: transform 0.2s ease;
+      }
+      
+      .cursor-pointer {
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .cursor-pointer:hover {
+        opacity: 0.8;
+        transform: translateY(-1px);
       }
 
       /* Responsive adjustments */
@@ -965,6 +977,145 @@
         color: white;
         transform: scale(1.1);
       }
+      
+      /* Estilos para tooltips de skill */
+      .skill-tooltip {
+        font-size: 0.85rem !important;
+        max-width: 350px !important;
+      }
+      
+      .skill-tooltip .tooltip-inner {
+        background-color: rgba(0, 0, 0, 0.95) !important;
+        color: #ffffff !important;
+        padding: 12px 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 8px !important;
+        text-align: left !important;
+        white-space: pre-line !important;
+        font-family: 'Courier New', monospace !important;
+        line-height: 1.4 !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+      }
+      
+      .skill-tooltip .tooltip-arrow::before {
+        border-right-color: rgba(0, 0, 0, 0.95) !important;
+      }
+      
+      /* Hover effect para filas del ranking */
+      .ranking-row {
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      
+      .ranking-row:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        transform: translateX(2px);
+      }
+      
+      /* Estilos para espectro de colores de skill */
+      .skill-excellent {
+        background: linear-gradient(135deg, #10b981, #34d399) !important;
+        color: white !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      }
+      
+      .skill-good {
+        background: linear-gradient(135deg, #22c55e, #4ade80) !important;
+        color: white !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+      }
+      
+      .skill-average {
+        background: linear-gradient(135deg, #eab308, #facc15) !important;
+        color: #1f2937 !important;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);
+      }
+      
+      .skill-below {
+        background: linear-gradient(135deg, #f97316, #fb923c) !important;
+        color: white !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+      }
+      
+      .skill-poor {
+        background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+        color: white !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+      }
+      
+      /* Estilos para cambios de ranking más visuales */
+      .ranking-change-item {
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .ranking-change-item:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        transform: translateX(3px);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+      
+      .ranking-icon {
+        transition: transform 0.2s ease;
+      }
+      
+      .ranking-change-item:hover .ranking-icon {
+        transform: scale(1.2);
+      }
+      
+      .ranking-changes-container {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 193, 7, 0.3) transparent;
+      }
+      
+      .ranking-changes-container::-webkit-scrollbar {
+        width: 4px;
+      }
+      
+      .ranking-changes-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      .ranking-changes-container::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 193, 7, 0.3);
+        border-radius: 2px;
+      }
+      
+      .ranking-changes-container::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 193, 7, 0.5);
+      }
+      
+      /* Estilo mejorado para cambios de ranking más grandes */
+      .ranking-change-item {
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+      }
+      
+      .ranking-change-item:hover {
+        background: rgba(255, 255, 255, 0.12) !important;
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      }
+      
+      .ranking-icon {
+        transition: transform 0.2s ease;
+      }
+      
+      .ranking-change-item:hover .ranking-icon {
+        transform: scale(1.15);
+      }
+      
+      .skill-change-text {
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.8);
+      }
     </style>
   </head>
   <body>
@@ -1030,6 +1181,11 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial-content" type="button" role="tab" aria-controls="historial-content" aria-selected="false">
             <i class="bi bi-calendar-event me-2"></i>Historial de Partidos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="ranking-skill-tab" data-bs-toggle="tab" data-bs-target="#ranking-skill-content" type="button" role="tab" aria-controls="ranking-skill-content" aria-selected="false" onclick="cargarRankingSkill()">
+            <i class="bi bi-lightning-charge me-2"></i>Ranking de Skill Individual
           </button>
         </li>
       </ul>
@@ -1112,6 +1268,7 @@
                               <thead>
                   <tr>
                     <th scope="col" class="fw-bold text-center" style="width: 60px;">#</th>
+                    <th scope="col" class="fw-bold text-center sortable" data-sort="skill" style="width: 80px;">⚡ Skill <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="fw-bold sortable" data-sort="nombre">👤 Nombre <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="fw-bold">🎯 Posiciones</th>
                     <th scope="col" class="text-center fw-bold sortable" data-sort="total_puntos">🏆 Total Puntos <i class="bi bi-arrow-down-up ms-1"></i></th>
@@ -1586,8 +1743,8 @@
               <p class="text-light-emphasis">Últimos partidos registrados con estadísticas detalladas</p>
             </div>
             
-            <!-- Selector de cantidad de partidos -->
-            <div class="d-flex justify-content-center mb-4">
+            <!-- Filtros -->
+            <div class="d-flex justify-content-center mb-4 gap-4 flex-wrap">
               <div class="d-flex align-items-center gap-2">
                 <label for="cantidad-partidos" class="text-light small mb-0">📅 Mostrar últimos:</label>
                 <select id="cantidad-partidos" class="form-select form-select-sm" style="width: 100px;" onchange="cargarHistorialPartidos()">
@@ -1596,6 +1753,17 @@
                   <option value="15">15 partidos</option>
                   <option value="20">20 partidos</option>
                 </select>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <label for="buscar-jugador" class="text-light small mb-0">🔍 Buscar jugador:</label>
+                <input 
+                  type="text" 
+                  id="buscar-jugador" 
+                  class="form-control form-control-sm" 
+                  style="width: 150px;" 
+                  placeholder="Ej: Kite"
+                  onkeyup="filtrarPartidosPorJugador()"
+                >
               </div>
             </div>
             
@@ -1612,7 +1780,53 @@
         </section>
       </main>
     </div>
-    <!-- End Historial Tab -->
+          <!-- End Historial Tab -->
+      
+      <!-- Ranking de Skill Individual Tab -->
+      <div class="tab-pane fade" id="ranking-skill-content" role="tabpanel" aria-labelledby="ranking-skill-tab">
+        <div class="container-fluid py-4">
+          
+          <!-- Header -->
+          <div class="text-center mb-4">
+            <h2 class="h3 text-warning fw-bold mb-2">
+              <i class="bi bi-lightning-charge me-2"></i>⚡ Ranking de Skill Individual
+            </h2>
+            <div class="text-light-emphasis">
+              <strong>Ranking basado en Skill Individual:</strong><br>
+              <small>Rendimiento calculado por partido: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×3 + Puntos×2 + Atajadas×1</small>
+            </div>
+          </div>
+          
+          <!-- Filtro por partidos -->
+          <div class="d-flex justify-content-center mb-4">
+            <div class="d-flex align-items-center gap-2">
+              <label for="filtro-partidos-ranking" class="text-light small mb-0">🎮 Min. partidos:</label>
+              <input 
+                type="number" 
+                id="filtro-partidos-ranking" 
+                class="form-control form-control-sm" 
+                style="width: 80px;" 
+                placeholder="0"
+                min="0"
+                value="0"
+                onchange="cargarRankingSkill()"
+              >
+            </div>
+          </div>
+          
+          <!-- Contenido del ranking -->
+          <div id="ranking-skill-container" class="enhanced-card rounded-3 p-4">
+            <div class="text-center py-4">
+              <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Cargando ranking...</span>
+              </div>
+              <p class="text-light-emphasis mt-2">Calculando posiciones...</p>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+      <!-- End Ranking de Skill Individual Tab -->
 
     </div>
     <!-- End Tab Content -->
@@ -1957,6 +2171,40 @@
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para Ver Ranking Completo -->
+    <div class="modal fade" id="rankingModal" tabindex="-1" aria-labelledby="rankingModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content enhanced-card border-0">
+          <div class="modal-header border-bottom border-light-subtle">
+            <h5 class="modal-title text-white" id="rankingModalLabel">
+              <span class="me-2">⚡</span> 
+              Ranking de Skill Individual
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <div class="alert alert-info d-flex align-items-center">
+                <i class="bi bi-info-circle me-2"></i>
+                                  <div>
+                    <strong>Ranking basado en Skill Individual (por partido):</strong><br>
+                    <small>Rendimiento calculado por: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×3 + Puntos×2 + Atajadas×1</small>
+                  </div>
+              </div>
+            </div>
+            
+            <div id="ranking-completo-container">
+              <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Cargando ranking...</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
