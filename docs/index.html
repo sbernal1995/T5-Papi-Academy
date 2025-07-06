@@ -2808,7 +2808,7 @@
 
            duos[nombre].partidos++;
            if (gano) duos[nombre].victorias++;
-           else if (partido.equipo_ganador === null) duos[nombre].empates++;
+           else if (partido.equipo_ganador === null || partido.equipo_ganador === 0) duos[nombre].empates++;
            else duos[nombre].derrotas++;
          });
        });
@@ -2842,7 +2842,7 @@
 
          const equipoJugador = jugadorData.equipo;
          const oponentes = partido.jugador_partido?.filter(jp => jp.equipo !== equipoJugador) || [];
-         const perdio = partido.equipo_ganador !== null && partido.equipo_ganador !== equipoJugador;
+         const perdio = partido.equipo_ganador !== null && partido.equipo_ganador !== 0 && partido.equipo_ganador !== equipoJugador;
 
          oponentes.forEach(oponente => {
            const nombre = oponente.jugadores?.nombre;
@@ -2889,7 +2889,7 @@
          ) || [];
 
          const gano = partido.equipo_ganador === equipoJugador;
-         const empato = partido.equipo_ganador === null;
+         const empato = partido.equipo_ganador === null || partido.equipo_ganador === 0;
 
          todosOponentes.forEach(oponente => {
            const nombre = oponente.jugadores.nombre;
@@ -2915,7 +2915,8 @@
          .filter(enfrentamiento => enfrentamiento.partidos >= 3) // Mínimo 3 enfrentamientos
          .map(enfrentamiento => ({
            ...enfrentamiento,
-           winrate: ((enfrentamiento.victorias + enfrentamiento.empates * 0.5) / enfrentamiento.partidos * 100)
+           // Calcular winrate basado en puntos (empates valen 1 punto)
+           winrate: Math.round(((enfrentamiento.victorias * 3 + enfrentamiento.empates * 1) / (enfrentamiento.partidos * 3)) * 100)
          }))
          .sort((a, b) => b.partidos - a.partidos)
          .slice(0, 8);
@@ -2937,7 +2938,7 @@
          ) || [];
 
          const gano = partido.equipo_ganador === equipoJugador;
-         const empato = partido.equipo_ganador === null;
+         const empato = partido.equipo_ganador === null || partido.equipo_ganador === 0;
 
          oponentesDirectos.forEach(oponente => {
            const nombre = oponente.jugadores.nombre;
@@ -2964,7 +2965,8 @@
          .filter(oponente => oponente.partidos >= 2) // Mínimo 2 enfrentamientos directos
          .map(oponente => ({
            ...oponente,
-           winrate: ((oponente.victorias + oponente.empates * 0.5) / oponente.partidos * 100)
+           // Calcular winrate basado en puntos (empates valen 1 punto)
+           winrate: Math.round(((oponente.victorias * 3 + oponente.empates * 1) / (oponente.partidos * 3)) * 100)
          }))
          .filter(oponente => oponente.winrate > 50) // Solo mostrar a quienes les gana (>50%)
          .sort((a, b) => {
@@ -2991,15 +2993,18 @@
          if (!jugadorData) return;
 
          if (partido.equipo_ganador === jugadorData.equipo) stats.victorias++;
-         else if (partido.equipo_ganador === null) stats.empates++;
+         else if (partido.equipo_ganador === null || partido.equipo_ganador === 0) stats.empates++;
          else stats.derrotas++;
 
          if (jugadorData.mvp) stats.mvpCount++;
          if (jugadorData.ace) stats.aceCount++;
        });
 
-       stats.winrate = stats.partidosJugados > 0 ? 
-         ((stats.victorias + stats.empates * 0.5) / stats.partidosJugados * 100) : 0;
+       // Calcular winrate basado en puntos (empates valen 1 punto)
+       const puntosObtenidos = (stats.victorias * 3) + (stats.empates * 1);
+       const puntosTotales = stats.partidosJugados * 3;
+       stats.winrate = puntosTotales > 0 ? 
+         Math.round((puntosObtenidos / puntosTotales) * 100) : 0;
 
        return stats;
      }
@@ -3300,7 +3305,7 @@
            } else if (partido.equipo_ganador === jp2.equipo) {
              enfrentamientos.jugador2.victorias++;
              enfrentamientos.jugador1.derrotas++;
-           } else {
+           } else if (partido.equipo_ganador === null || partido.equipo_ganador === 0) {
              enfrentamientos.jugador1.empates++;
              enfrentamientos.jugador2.empates++;
            }
@@ -3319,8 +3324,12 @@
        }
 
        const totalPartidos = enfrentamientos.partidos.length;
-       const winrate1 = ((enfrentamientos.jugador1.victorias + enfrentamientos.jugador1.empates * 0.5) / totalPartidos * 100);
-       const winrate2 = ((enfrentamientos.jugador2.victorias + enfrentamientos.jugador2.empates * 0.5) / totalPartidos * 100);
+       // Calcular winrate basado en puntos (empates valen 1 punto)
+       const puntosObtenidos1 = (enfrentamientos.jugador1.victorias * 3) + (enfrentamientos.jugador1.empates * 1);
+       const puntosObtenidos2 = (enfrentamientos.jugador2.victorias * 3) + (enfrentamientos.jugador2.empates * 1);
+       const puntosTotales = totalPartidos * 3;
+       const winrate1 = Math.round((puntosObtenidos1 / puntosTotales) * 100);
+       const winrate2 = Math.round((puntosObtenidos2 / puntosTotales) * 100);
 
        const html = `
          <div class="mb-3">

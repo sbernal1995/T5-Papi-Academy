@@ -3273,7 +3273,7 @@ const initApp = () => {
               fecha: fecha,
               cancha: cancha,
               resultado: resultado,
-              equipo_ganador: parseInt(equipo_ganador),
+              equipo_ganador: equipo_ganador === '0' ? null : parseInt(equipo_ganador), // Empate = null
               temporada_id: temporada_id
           };
 
@@ -3743,13 +3743,13 @@ const initApp = () => {
           const equipoGanador = partido.equipo_ganador;
           if (equipoGanador === jp.equipo) {
             stats.pg += 1;
-            stats.total_puntos += 3;
-          } else if (equipoGanador === null) {
+            stats.total_puntos += 3; // Victoria = 3 puntos
+          } else if (equipoGanador === null || equipoGanador === 0) {
             stats.pe += 1;
-            stats.total_puntos += 1;
+            stats.total_puntos += 1; // Empate = 1 punto (NO es derrota)
           } else {
             stats.pp += 1;
-            // 0 puntos por derrota
+            // Derrota = 0 puntos
           }
           
           // Sumar estadísticas individuales (SIN goles y asistencias aún)
@@ -3775,10 +3775,10 @@ const initApp = () => {
         });
       });
       
-      // Calcular winrate para cada jugador
+      // Calcular winrate para cada jugador (empates valen 1 punto)
       Object.values(jugadoresStats).forEach(stats => {
-        const puntosObtenidos = (stats.pg * 3) + (stats.pe * 1);
-        const puntosTotalesDisputados = stats.pj * 3;
+        const puntosObtenidos = (stats.pg * 3) + (stats.pe * 1); // Victoria=3pts, Empate=1pt, Derrota=0pts
+        const puntosTotalesDisputados = stats.pj * 3; // Puntos máximos posibles
         stats.winrate = puntosTotalesDisputados > 0 ? Math.round((puntosObtenidos / puntosTotalesDisputados) * 100) : 0;
       });
       
@@ -4019,13 +4019,13 @@ const initApp = () => {
             rachaActualVictorias++;
             rachaActualDerrota = 0;
             mejorRachaVictorias = Math.max(mejorRachaVictorias, rachaActualVictorias);
-          } else if (equipoGanador !== null) {
+          } else if (equipoGanador !== null && equipoGanador !== 0) {
             // Derrota
             rachaActualDerrota++;
             rachaActualVictorias = 0;
             mejorRachaDerrota = Math.max(mejorRachaDerrota, rachaActualDerrota);
           } else {
-            // Empate rompe cualquier racha
+            // Empate rompe cualquier racha - no cuenta como victoria ni derrota
             rachaActualVictorias = 0;
             rachaActualDerrota = 0;
           }
@@ -4492,13 +4492,13 @@ const initApp = () => {
           let resultado;
           if (equipoGanador === equipoJugador) {
             resultado = 'win';
-          } else if (equipoGanador === null) {
+          } else if (equipoGanador === null || equipoGanador === 0) {
             resultado = 'draw';
           } else {
             resultado = 'defeat';
           }
           
-          // Lógica de racha
+          // Lógica de racha - Los empates NO cuentan para rachas
           if (rachaActual === 0) {
             // Primer partido, establecer tipo de racha
             if (resultado === 'win') {
@@ -4508,7 +4508,7 @@ const initApp = () => {
               tipoRacha = 'defeat';
               rachaActual = 1;
             } else {
-              // Empate rompe cualquier racha potencial
+              // Empate rompe cualquier racha potencial - empates no son rachas
               break;
             }
           } else {
@@ -4517,7 +4517,7 @@ const initApp = () => {
                 (tipoRacha === 'defeat' && resultado === 'defeat')) {
               rachaActual++;
             } else {
-              // La racha se rompió
+              // La racha se rompió (incluyendo empates)
               break;
             }
           }
