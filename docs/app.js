@@ -3298,7 +3298,7 @@ const initApp = () => {
               fecha: fecha,
               cancha: cancha,
               resultado: resultado,
-              equipo_ganador: equipo_ganador === '0' ? null : parseInt(equipo_ganador), // Empate = null
+              equipo_ganador: parseInt(equipo_ganador), // 0 = empate, 1 = equipo1, 2 = equipo2
               temporada_id: temporada_id
           };
 
