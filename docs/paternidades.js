@@ -52,10 +52,11 @@ async function cargarPartidosPaternidades() {
             nombre
           )
         ),
-        goles (
-          goleador_id,
-          asistidor_id
-        )
+                     goles (
+               goleador_id,
+               asistidor_id,
+               es_gol_en_contra
+             )
       `)
       .order('fecha', { ascending: false });
 
@@ -416,6 +417,7 @@ function calcularEstadisticasJugador(jugadorId) {
     pe: 0,
     pp: 0,
     goles: 0,
+    goles_en_contra: 0,
     asistencias: 0,
     mvp_count: 0,
     ace_count: 0,
@@ -446,11 +448,17 @@ function calcularEstadisticasJugador(jugadorId) {
     stats.ace_count += jugadorData.ace ? 1 : 0;
   });
 
-  // Contar goles y asistencias desde tabla goles
+  // Contar goles y asistencias desde tabla goles (INCLUIR goles en contra por separado)
   partidosData.forEach(partido => {
     partido.goles?.forEach(gol => {
-      if (gol.goleador_id === jugadorId) stats.goles++;
-      if (gol.asistidor_id === jugadorId) stats.asistencias++;
+      if (gol.es_gol_en_contra) {
+        // Contar goles en contra
+        if (gol.goleador_id === jugadorId) stats.goles_en_contra++;
+      } else {
+        // Contar goles normales y asistencias
+        if (gol.goleador_id === jugadorId) stats.goles++;
+        if (gol.asistidor_id === jugadorId) stats.asistencias++;
+      }
     });
   });
 

@@ -2728,6 +2728,13 @@ const initApp = () => {
       const asistencia = evento.asistencia_id === 'nadie' ? 'Sin asistencia' : 
                         (todosLosJugadores.find(j => j.id == evento.asistencia_id)?.nombre || 'N/A');
       
+      // Determinar si es gol en contra (usar la marca explícita si está disponible)
+      const jugadoresDelPartido = [...equipo1, ...equipo2];
+      const goleadorObj = jugadoresDelPartido.find(j => j.id == evento.goleador_id);
+      const esEnContra = evento.es_en_contra !== undefined ? 
+        evento.es_en_contra : // Usar la marca explícita si está disponible
+        (goleadorObj && evento.equipo !== (equipo1.find(j => j.id == evento.goleador_id) ? 1 : 2)); // Fallback al cálculo anterior
+      
       return `
         <tr>
           <td><span class="fw-bold">${goleador}</span></td>
@@ -2738,8 +2745,8 @@ const initApp = () => {
             </span>
           </td>
           <td>
-            <span class="badge bg-success">
-              <i class="bi bi-check me-1"></i>Normal
+            <span class="badge ${esEnContra ? 'bg-warning text-dark' : 'bg-success'}">
+              ${esEnContra ? '<i class="bi bi-arrow-repeat me-1"></i>En Contra' : '<i class="bi bi-check me-1"></i>Normal'}
             </span>
           </td>
           <td>
@@ -3091,6 +3098,7 @@ const initApp = () => {
   function agregarEvento() {
       const goleador_id = document.getElementById('goleador').value;
       const asistencia_id = document.getElementById('asistencia').value;
+      const golEnContraChecked = document.getElementById('gol-en-contra').checked;
 
       if (!goleador_id) {
           showToast('Debes seleccionar un goleador.', 'warning');
@@ -3112,8 +3120,11 @@ const initApp = () => {
           return;
       }
 
-      // Determinar equipo (1 si está en equipo1, 2 si está en equipo2)
-      const equipo = equipo1.find(j => j.id === goleador_id) ? 1 : 2;
+      // Determinar equipo del goleador (1 si está en equipo1, 2 si está en equipo2)
+      const equipoGoleador = equipo1.find(j => j.id === goleador_id) ? 1 : 2;
+      
+      // Si es gol en contra, el gol se asigna al equipo contrario
+      const equipo = golEnContraChecked ? (equipoGoleador === 1 ? 2 : 1) : equipoGoleador;
       
       // Asegurar que el asistidor no sea el mismo que el goleador
       let asistencia_final = null;
@@ -3121,18 +3132,26 @@ const initApp = () => {
           asistencia_final = asistencia_id;
       }
       
-      eventos.push({ goleador_id, asistencia_id: asistencia_final, equipo });
+      // Marcar explícitamente si es gol en contra para claridad
+      eventos.push({ 
+          goleador_id, 
+          asistencia_id: asistencia_final, 
+          equipo,
+          es_en_contra: golEnContraChecked // Agregar esta marca para claridad
+      });
       
       const goleadorNombre = goleador.nombre;
       const asistidorNombre = asistencia_final 
           ? jugadoresDelPartido.find(j => j.id === asistencia_final)?.nombre || 'N/A'
           : null;
 
+      // Crear mensaje indicando si es gol en contra
+      const tipoGol = golEnContraChecked ? ' (EN CONTRA)' : '';
       const mensaje = asistidorNombre 
-          ? `Gol agregado: ${goleadorNombre} (Asist: ${asistidorNombre})`
-          : `Gol agregado: ${goleadorNombre}`;
+          ? `Gol agregado: ${goleadorNombre}${tipoGol} (Asist: ${asistidorNombre})`
+          : `Gol agregado: ${goleadorNombre}${tipoGol}`;
       
-      showToast(mensaje, 'success');
+      showToast(mensaje, golEnContraChecked ? 'warning' : 'success');
       renderizarTablaGoles();
       actualizarMarcadorAutomatico();
       
@@ -3160,6 +3179,12 @@ const initApp = () => {
           // Es un selector normal
           asistenciaElement.selectedIndex = 0;
         }
+      }
+      
+      // Resetear checkbox de gol en contra
+      const golEnContraElement = document.getElementById('gol-en-contra');
+      if (golEnContraElement) {
+        golEnContraElement.checked = false;
       }
   }
 
@@ -3359,7 +3384,7 @@ const initApp = () => {
 
           console.log('Jugadores del partido insertados:', jugadoresPartidoData.length);
 
-          // Insertar goles
+          // Insertar TODOS los goles (incluidos los en contra con flag especial)
           if (eventos.length > 0) {
               const golesData = eventos.map(evento => {
                   // Verificar que goleador y asistidor no sean la misma persona
@@ -3370,18 +3395,37 @@ const initApp = () => {
                       evento.asistencia_id !== evento.goleador_id) {
                       asistidor_id = evento.asistencia_id;
                   }
+
+                  // Determinar si es gol en contra
+                  const equipoRealGoleador = equipo1.find(j => j.id === evento.goleador_id) ? 1 : 2;
+                  const esGolEnContra = evento.es_en_contra || (evento.equipo !== equipoRealGoleador);
                   
                   return {
                       partido_id: partido_id,
                       goleador_id: evento.goleador_id,
                       asistidor_id: asistidor_id,
                       equipo: evento.equipo,
-                      minuto: null // Opcional: agregar minuto si lo necesitas
+                      es_gol_en_contra: esGolEnContra, // Nueva columna
+                      minuto: null
                   };
               });
 
+              // Contar goles normales vs en contra para logging
+              const golesNormales = golesData.filter(g => !g.es_gol_en_contra);
+              const golesEnContra = golesData.filter(g => g.es_gol_en_contra);
+              
+              console.log(`📊 Total goles: ${golesData.length} | Normales: ${golesNormales.length} | En contra: ${golesEnContra.length}`);
+              
+              if (golesEnContra.length > 0) {
+                  console.log('🔄 Goles en contra que se guardarán con flag especial:', 
+                      golesEnContra.map(g => {
+                          const goleadorNombre = [...equipo1, ...equipo2].find(j => j.id === g.goleador_id)?.nombre || 'N/A';
+                          return `${goleadorNombre} → Equipo ${g.equipo}`;
+                      }));
+              }
+
               const { error: golesError } = await supabase
-                  .from('goles') // Cambio de partido_goles a goles
+                  .from('goles')
                   .insert(golesData);
 
               if (golesError) {
@@ -3396,7 +3440,11 @@ const initApp = () => {
                   }
               }
 
-              console.log('Goles insertados:', golesData.length);
+              console.log('✅ Todos los goles insertados en la DB:', golesData.length);
+              
+              if (golesEnContra.length > 0) {
+                  showToast(`🔄 ${golesEnContra.length} gol(es) en contra registrados (aparecen en historial)`, 'info');
+              }
           }
 
           // Actualizar atajadas en jugador_partido
@@ -3535,6 +3583,7 @@ const initApp = () => {
               pe,
               pp,
               goles,
+              goles_en_contra,
               asistencias,
               cagadas_en_gol,
               mvp_count,
@@ -3610,6 +3659,7 @@ const initApp = () => {
                 pe: jugadorData.pe || 0,
                 pp: jugadorData.pp || 0,
                 goles: jugadorData.goles || 0,
+                goles_en_contra: jugadorData.goles_en_contra || 0,
                 asistencias: jugadorData.asistencias || 0,
                 cagadas_en_gol: jugadorData.cagadas_en_gol || 0,
                 mvp_count: jugadorData.mvp_count || 0,
@@ -3683,7 +3733,8 @@ const initApp = () => {
           goles (
             id,
             goleador_id,
-            asistidor_id
+            asistidor_id,
+            es_gol_en_contra
           )
         `);
       
@@ -3721,6 +3772,7 @@ const initApp = () => {
               pp: 0,
               total_puntos: 0,
               goles: 0,
+              goles_en_contra: 0,
               asistencias: 0,
               cagadas_en_gol: 0,
               mvp_count: 0,
@@ -3761,16 +3813,23 @@ const initApp = () => {
           stats.bita_defeat += jp.bita_defeat ? 1 : 0;
         });
         
-        // Procesar goles del partido para contar goles y asistencias reales
+        // Procesar goles del partido para contar goles y asistencias (INCLUIR goles en contra por separado)
         partido.goles?.forEach(gol => {
-          // Contar gol para el goleador
-          if (gol.goleador_id && jugadoresStats[gol.goleador_id]) {
-            jugadoresStats[gol.goleador_id].goles += 1;
-          }
-          
-          // Contar asistencia para el asistidor
-          if (gol.asistidor_id && jugadoresStats[gol.asistidor_id]) {
-            jugadoresStats[gol.asistidor_id].asistencias += 1;
+          if (gol.es_gol_en_contra) {
+            // Contar gol en contra para el goleador
+            if (gol.goleador_id && jugadoresStats[gol.goleador_id]) {
+              jugadoresStats[gol.goleador_id].goles_en_contra = (jugadoresStats[gol.goleador_id].goles_en_contra || 0) + 1;
+            }
+          } else {
+            // Contar gol normal para el goleador
+            if (gol.goleador_id && jugadoresStats[gol.goleador_id]) {
+              jugadoresStats[gol.goleador_id].goles += 1;
+            }
+            
+            // Contar asistencia para el asistidor (solo en goles normales)
+            if (gol.asistidor_id && jugadoresStats[gol.asistidor_id]) {
+              jugadoresStats[gol.asistidor_id].asistencias += 1;
+            }
           }
         });
       });
@@ -4930,7 +4989,8 @@ const initApp = () => {
             goleador_id,
             asistidor_id,
             equipo,
-            minuto
+            minuto,
+            es_gol_en_contra
           )
         `);
       
@@ -5222,9 +5282,13 @@ const initApp = () => {
                   <h6 class="text-primary fw-bold mb-2 small">🔵 Equipo 1 (${equipo1.length})</h6>
                   <div class="text-white small">
                     ${equipo1.map(jp => {
-                      // Calcular goles y asistencias reales desde la tabla goles
-                      const golesJugador = partido.goles?.filter(gol => gol.goleador_id === jp.jugador_id).length || 0;
-                      const asistenciasJugador = partido.goles?.filter(gol => gol.asistidor_id === jp.jugador_id).length || 0;
+                      // Calcular goles y asistencias reales desde la tabla goles (solo goles normales)
+                      const golesJugador = partido.goles?.filter(gol => 
+                        gol.goleador_id === jp.jugador_id && !gol.es_gol_en_contra
+                      ).length || 0;
+                      const asistenciasJugador = partido.goles?.filter(gol => 
+                        gol.asistidor_id === jp.jugador_id && !gol.es_gol_en_contra
+                      ).length || 0;
                       
                       const stats = [];
                       if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
@@ -5248,9 +5312,13 @@ const initApp = () => {
                   <h6 class="text-danger fw-bold mb-2 small">🔴 Equipo 2 (${equipo2.length})</h6>
                   <div class="text-white small">
                     ${equipo2.map(jp => {
-                      // Calcular goles y asistencias reales desde la tabla goles
-                      const golesJugador = partido.goles?.filter(gol => gol.goleador_id === jp.jugador_id).length || 0;
-                      const asistenciasJugador = partido.goles?.filter(gol => gol.asistidor_id === jp.jugador_id).length || 0;
+                      // Calcular goles y asistencias reales desde la tabla goles (solo goles normales)
+                      const golesJugador = partido.goles?.filter(gol => 
+                        gol.goleador_id === jp.jugador_id && !gol.es_gol_en_contra
+                      ).length || 0;
+                      const asistenciasJugador = partido.goles?.filter(gol => 
+                        gol.asistidor_id === jp.jugador_id && !gol.es_gol_en_contra
+                      ).length || 0;
                       
                       const stats = [];
                       if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
@@ -5820,11 +5888,6 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Event listeners para cargar partido
   if (btnCargarPartido) {
     btnCargarPartido.addEventListener('click', cargarPartido);
-  }
-
-  // Event listeners para agregar gol
-  if (btnAddGol) {
-    btnAddGol.addEventListener('click', agregarEvento);
   }
 
   // Event listeners para ordenamiento de tabla
