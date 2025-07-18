@@ -945,15 +945,29 @@
       }
       
       /* Estilos para botones de partido (editar y eliminar) */
-      .partido-card .btn-outline-warning,
-      .partido-card .btn-outline-danger {
+      .partido-card .btn-outline-warning {
         opacity: 0;
         transform: translateX(10px);
         transition: all 0.3s ease;
       }
       
+      /* Botones de administrador que aparecen solo en hover */
+      .partido-card .btn-outline-danger[title*="Eliminar"] {
+        opacity: 0;
+        transform: translateX(10px);
+        transition: all 0.3s ease;
+      }
+      
+      /* Botones de YouTube - siempre visibles */
+      .partido-card .btn-outline-danger[title*="YouTube"],
+      .partido-card .btn-outline-info {
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+        transition: all 0.3s ease;
+      }
+      
       .partido-card:hover .btn-outline-warning,
-      .partido-card:hover .btn-outline-danger {
+      .partido-card:hover .btn-outline-danger[title*="Eliminar"] {
         opacity: 1;
         transform: translateX(0);
       }
@@ -977,6 +991,13 @@
         background-color: #dc3545;
         border-color: #dc3545;
         color: white;
+        transform: scale(1.1);
+      }
+
+      .partido-card .btn-outline-info:hover {
+        background-color: #0dcaf0;
+        border-color: #0dcaf0;
+        color: #212529;
         transform: scale(1.1);
       }
       
