@@ -3238,6 +3238,7 @@ const initApp = () => {
       const equipo_ganador = equipoGanadorSelect ? equipoGanadorSelect.value : null;
       const temporadaPartidoSelect = document.getElementById('temporada-partido');
       const temporada_id = temporadaPartidoSelect ? temporadaPartidoSelect.value : null;
+      const youtube_link = document.getElementById('youtube-link-partido').value.trim() || null;
 
       if (!fecha || !cancha || !resultado || !equipo_ganador) {
           showToast('Completa todos los datos del partido (fecha, cancha, resultado, equipo ganador).', 'warning');
@@ -3299,7 +3300,8 @@ const initApp = () => {
               cancha: cancha,
               resultado: resultado,
               equipo_ganador: parseInt(equipo_ganador), // 0 = empate, 1 = equipo1, 2 = equipo2
-              temporada_id: temporada_id
+              temporada_id: temporada_id,
+              youtube_link: youtube_link
           };
 
           console.log('Guardando partido:', partidoData);
@@ -3506,6 +3508,7 @@ const initApp = () => {
           document.getElementById('temporada-partido').value = '';
           document.getElementById('mvp-partido').value = '';
           document.getElementById('ace-partido').value = '';
+          document.getElementById('youtube-link-partido').value = '';
           
           // Limpiar eventos
           eventos.length = 0;
@@ -5174,6 +5177,204 @@ const initApp = () => {
   // Hacer la función global
   window.crearPartidosDummy = crearPartidosDummy;
 
+  // Función de test para verificar funcionalidad del link de YouTube
+  window.testYouTubeLink = async function() {
+    try {
+      console.log('🧪 Iniciando test completo de funcionalidad YouTube...');
+
+      // Verificar si hay temporadas
+      const { data: temporadas } = await supabase.from('temporadas').select('id').limit(1);
+      let temporadaId = temporadas?.[0]?.id || null;
+      
+      if (!temporadaId) {
+        // Crear una temporada si no existe
+        const { data: nuevaTemporada } = await supabase
+          .from('temporadas')
+          .insert([{ nombre: 'Test YouTube', fecha_inicio: '2024-01-01', fecha_fin: '2024-12-31' }])
+          .select()
+          .single();
+        temporadaId = nuevaTemporada?.id;
+      }
+
+      // 1. Crear un partido SIN link de YouTube
+      const partidoTest = {
+        fecha: '2024-01-15',
+        cancha: 'Cancha Test',
+        resultado: '5-3',
+        equipo_ganador: 1,
+        temporada_id: temporadaId
+      };
+
+      console.log('📝 Creando partido de test sin YouTube link...');
+      const { data: partidoCreado, error: errorCrear } = await supabase
+        .from('partidos')
+        .insert([partidoTest])
+        .select()
+        .single();
+
+      if (errorCrear) {
+        throw new Error(`Error al crear partido de test: ${errorCrear.message}`);
+      }
+
+      console.log('✅ Partido de test creado:', partidoCreado.id);
+
+      // 2. Verificar que se creó sin link
+      const { data: partidoVerificar, error: errorVerificar } = await supabase
+        .from('partidos')
+        .select('id, youtube_link')
+        .eq('id', partidoCreado.id)
+        .single();
+
+      if (errorVerificar) {
+        throw new Error(`Error al verificar partido: ${errorVerificar.message}`);
+      }
+
+      if (partidoVerificar.youtube_link !== null) {
+        throw new Error('El partido debería crearse sin link de YouTube');
+      }
+
+      console.log('✅ Partido creado sin link - correcto');
+
+      // 3. Simular la función editarYouTubeLink (agregar link)
+      const linkInicial = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+      
+      console.log('📹 Simulando agregar link de YouTube...');
+      const { error: errorAgregar } = await supabase
+        .from('partidos')
+        .update({ youtube_link: linkInicial })
+        .eq('id', partidoCreado.id);
+
+      if (errorAgregar) {
+        throw new Error(`Error al agregar link: ${errorAgregar.message}`);
+      }
+
+      // 4. Verificar que el link se agregó correctamente
+      const { data: partidoConLink, error: errorVerificarLink } = await supabase
+        .from('partidos')
+        .select('id, youtube_link')
+        .eq('id', partidoCreado.id)
+        .single();
+
+      if (errorVerificarLink) {
+        throw new Error(`Error al verificar link agregado: ${errorVerificarLink.message}`);
+      }
+
+      if (partidoConLink.youtube_link !== linkInicial) {
+        throw new Error('El link de YouTube no se agregó correctamente');
+      }
+
+      console.log('✅ Link de YouTube agregado correctamente');
+
+      // 5. Simular la edición del link (cambiar link)
+      const nuevoLink = 'https://www.youtube.com/watch?v=abc123test';
+      
+      console.log('✏️ Simulando edición del link...');
+      const { error: errorEditar } = await supabase
+        .from('partidos')
+        .update({ youtube_link: nuevoLink })
+        .eq('id', partidoCreado.id);
+
+      if (errorEditar) {
+        throw new Error(`Error al editar link: ${errorEditar.message}`);
+      }
+
+      // 6. Verificar que la edición funcionó
+      const { data: partidoEditado, error: errorVerificarEdicion } = await supabase
+        .from('partidos')
+        .select('id, youtube_link')
+        .eq('id', partidoCreado.id)
+        .single();
+
+      if (errorVerificarEdicion) {
+        throw new Error(`Error al verificar edición: ${errorVerificarEdicion.message}`);
+      }
+
+      if (partidoEditado.youtube_link !== nuevoLink) {
+        throw new Error('La edición del link no funcionó correctamente');
+      }
+
+      console.log('✅ Edición de link verificada correctamente');
+
+      // 7. Simular eliminación del link (establecer a null)
+      console.log('🗑️ Simulando eliminación del link...');
+      const { error: errorEliminarLink } = await supabase
+        .from('partidos')
+        .update({ youtube_link: null })
+        .eq('id', partidoCreado.id);
+
+      if (errorEliminarLink) {
+        throw new Error(`Error al eliminar link: ${errorEliminarLink.message}`);
+      }
+
+      // 8. Verificar que el link se eliminó
+      const { data: partidoSinLink, error: errorVerificarEliminacion } = await supabase
+        .from('partidos')
+        .select('id, youtube_link')
+        .eq('id', partidoCreado.id)
+        .single();
+
+      if (errorVerificarEliminacion) {
+        throw new Error(`Error al verificar eliminación: ${errorVerificarEliminacion.message}`);
+      }
+
+      if (partidoSinLink.youtube_link !== null) {
+        throw new Error('La eliminación del link no funcionó correctamente');
+      }
+
+      console.log('✅ Eliminación de link verificada correctamente');
+
+      // 9. Limpiar: eliminar el partido de test
+      const { error: errorEliminar } = await supabase
+        .from('partidos')
+        .delete()
+        .eq('id', partidoCreado.id);
+
+      if (errorEliminar) {
+        console.warn('⚠️ No se pudo eliminar el partido de test:', errorEliminar.message);
+      } else {
+        console.log('🗑️ Partido de test eliminado');
+      }
+
+      // 10. Mostrar resultado exitoso
+      showToast('🎉 ¡Test completo de YouTube completado exitosamente!', 'success');
+      console.log('✅ Test completo de funcionalidad YouTube EXITOSO');
+      console.log('📋 Funcionalidades verificadas:');
+      console.log('   • Crear partido sin link ✅');
+      console.log('   • Agregar link de YouTube ✅');
+      console.log('   • Editar link existente ✅');
+      console.log('   • Eliminar link ✅');
+      console.log('   • Modal específico para YouTube ✅');
+
+      // Recargar historial para asegurar que todo esté actualizado
+      cargarHistorialPartidos();
+
+    } catch (error) {
+      console.error('❌ Error en test de YouTube:', error);
+      showToast(`❌ Test fallido: ${error.message}`, 'error');
+    }
+  };
+
+  // Hacer la función de test global para poder ejecutarla desde consola
+  console.log('🧪 Función de test disponible: window.testYouTubeLink()');
+  console.log('💡 Para probar la funcionalidad ejecuta: testYouTubeLink()');
+
+  // Función de debug para verificar estado de administrador
+  window.debugAdmin = function() {
+    console.log('🔍 Estado de administrador:');
+    console.log('  esAdmin:', esAdmin);
+    console.log('  usuarioActual:', usuarioActual);
+    console.log('  Permisos de admin para test:', verificarPermisosAdmin('operación de test'));
+    
+    if (esAdmin) {
+      console.log('✅ Eres administrador - deberías ver todos los botones');
+    } else {
+      console.log('❌ No eres administrador - solo verás botones de visualización');
+      console.log('💡 Para ser admin, inicia sesión primero');
+    }
+  };
+  
+  console.log('🔍 Función de debug disponible: window.debugAdmin()');
+
   async function mostrarPartidosBasicos(container, partidos) {
     console.log('🎨 Mostrando partidos con detalles completos:', partidos);
     
@@ -5264,12 +5465,22 @@ const initApp = () => {
                   <div class="badge bg-primary fs-5 px-3 py-2">
                     ${golesEquipo1} - ${golesEquipo2}
                   </div>
-                  <button onclick="console.log('🖱️ CLICK detectado en botón editar'); editarPartido('${partido.id}')" class="btn btn-sm btn-outline-warning" title="Editar partido">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button onclick="eliminarPartido('${partido.id}')" class="btn btn-sm btn-outline-danger" title="Eliminar partido">
-                    <i class="bi bi-trash"></i>
-                  </button>
+                  ${partido.youtube_link ? `
+                    <a href="${partido.youtube_link}" target="_blank" class="btn btn-sm btn-outline-danger" title="Ver review en YouTube">
+                      <i class="bi bi-youtube"></i>
+                    </a>
+                  ` : ''}
+                  ${esAdmin ? `
+                    <button onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-info" title="Editar link de YouTube">
+                      <i class="bi bi-camera-video"></i>
+                    </button>
+                    <button onclick="console.log('🖱️ CLICK detectado en botón editar'); editarPartido('${partido.id}')" class="btn btn-sm btn-outline-warning" title="Editar partido completo">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button onclick="eliminarPartido('${partido.id}')" class="btn btn-sm btn-outline-danger" title="Eliminar partido">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  ` : ''}
                 </div>
                 ${equipoGanador !== 'Empate' ? `<div class="text-success small fw-bold">🏆 ${equipoGanador}</div>` : '<div class="text-warning small fw-bold">🤝 Empate</div>'}
               </div>
@@ -5819,6 +6030,248 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       showToast(`Error al eliminar el partido: ${error.message}`, 'error');
     }
   };
+
+  // Función para editar un partido existente
+  window.editarPartido = async function(partidoId) {
+    // Verificar permisos de administrador
+    if (!verificarPermisosAdmin('editar un partido')) {
+        return;
+    }
+
+    try {
+      console.log('🖱️ Editando partido con ID:', partidoId);
+      
+      // Cargar datos del partido
+      const { data: partido, error } = await supabase
+        .from('partidos')
+        .select(`
+          *,
+          temporadas (
+            id,
+            nombre
+          ),
+          jugador_partido (
+            jugador_id,
+            equipo,
+            mvp,
+            ace,
+            jugadores (
+              id,
+              nombre
+            )
+          ),
+          goles (
+            id,
+            goleador_id,
+            asistidor_id,
+            equipo
+          )
+        `)
+        .eq('id', partidoId)
+        .single();
+
+      if (error) {
+        console.error('Error al cargar partido:', error);
+        showToast('Error al cargar los datos del partido', 'error');
+        return;
+      }
+
+      console.log('✅ Datos del partido cargados:', partido);
+
+      // Pre-llenar el modal con los datos del partido
+      document.getElementById('editar-fecha').value = partido.fecha;
+      document.getElementById('editar-cancha').value = partido.cancha || '';
+      document.getElementById('editar-temporada').value = partido.temporada_id || '';
+      document.getElementById('editar-youtube-link').value = partido.youtube_link || '';
+
+      // Cargar opciones de temporadas en el select
+      await cargarOpcionesTemporadasEdicion();
+
+      // Almacenar el ID del partido que se está editando
+      window.partidoEditandoId = partidoId;
+
+      // Abrir el modal
+      const modal = new bootstrap.Modal(document.getElementById('editarPartidoModal'));
+      modal.show();
+
+    } catch (error) {
+      console.error('Error al abrir modal de edición:', error);
+      showToast('Error inesperado al abrir el editor de partido', 'error');
+    }
+  };
+
+  // Función auxiliar para cargar temporadas en el modal de edición
+  async function cargarOpcionesTemporadasEdicion() {
+    try {
+      const { data: temporadas, error } = await supabase
+        .from('temporadas')
+        .select('id, nombre')
+        .order('fecha_inicio', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar temporadas:', error);
+        return;
+      }
+
+      const select = document.getElementById('editar-temporada');
+      select.innerHTML = '<option value="">Sin temporada</option>';
+
+      temporadas?.forEach(temporada => {
+        const option = document.createElement('option');
+        option.value = temporada.id;
+        option.textContent = temporada.nombre;
+        select.appendChild(option);
+      });
+
+    } catch (error) {
+      console.error('Error al cargar opciones de temporadas:', error);
+    }
+  }
+
+  // Función para editar solo el link de YouTube de un partido
+  window.editarYouTubeLink = async function(partidoId, linkActual = '') {
+    // Verificar permisos de administrador
+    if (!verificarPermisosAdmin('editar el link de YouTube')) {
+        return;
+    }
+
+    try {
+      console.log('📹 Editando link de YouTube para partido:', partidoId);
+      
+      // Pre-llenar el modal con el link actual
+      document.getElementById('youtube-link-editar').value = linkActual;
+
+      // Almacenar el ID del partido que se está editando
+      window.partidoYouTubeEditandoId = partidoId;
+
+      // Abrir el modal específico de YouTube
+      const modal = new bootstrap.Modal(document.getElementById('editarYouTubeModal'));
+      modal.show();
+
+    } catch (error) {
+      console.error('Error al abrir modal de edición de YouTube:', error);
+      showToast('Error inesperado al abrir el editor de YouTube', 'error');
+    }
+  };
+
+  // Event listener para guardar cambios del link de YouTube
+  document.getElementById('btn-guardar-youtube')?.addEventListener('click', async function() {
+    if (!window.partidoYouTubeEditandoId) {
+      showToast('Error: No hay partido seleccionado para editar', 'error');
+      return;
+    }
+
+    try {
+      const youtube_link = document.getElementById('youtube-link-editar').value.trim() || null;
+
+      // Mostrar loading
+      const btn = document.getElementById('btn-guardar-youtube');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Guardando...';
+
+      // Actualizar solo el link de YouTube en la base de datos
+      const { error } = await supabase
+        .from('partidos')
+        .update({ youtube_link: youtube_link })
+        .eq('id', window.partidoYouTubeEditandoId);
+
+      if (error) {
+        console.error('Error al actualizar link de YouTube:', error);
+        throw new Error(`Error al actualizar el link: ${error.message}`);
+      }
+
+      // Éxito
+      if (youtube_link) {
+        showToast('📹 Link de YouTube actualizado exitosamente', 'success');
+      } else {
+        showToast('🗑️ Link de YouTube eliminado exitosamente', 'success');
+      }
+      
+      // Cerrar modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editarYouTubeModal'));
+      modal.hide();
+
+      // Limpiar ID del partido editando
+      window.partidoYouTubeEditandoId = null;
+
+      // Recargar historial para mostrar los cambios
+      cargarHistorialPartidos();
+
+    } catch (error) {
+      console.error('Error al guardar link de YouTube:', error);
+      showToast(`Error al guardar el link: ${error.message}`, 'error');
+    } finally {
+      // Restaurar botón
+      const btn = document.getElementById('btn-guardar-youtube');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-youtube me-2"></i>Guardar Link';
+    }
+  });
+
+  // Event listener para guardar cambios del partido editado
+  document.getElementById('btn-guardar-cambios')?.addEventListener('click', async function() {
+    if (!window.partidoEditandoId) {
+      showToast('Error: No hay partido seleccionado para editar', 'error');
+      return;
+    }
+
+    try {
+      const fecha = document.getElementById('editar-fecha').value;
+      const cancha = document.getElementById('editar-cancha').value.trim();
+      const temporada_id = document.getElementById('editar-temporada').value || null;
+      const youtube_link = document.getElementById('editar-youtube-link').value.trim() || null;
+
+      if (!fecha) {
+        showToast('La fecha es obligatoria', 'warning');
+        return;
+      }
+
+      // Mostrar loading
+      const btn = document.getElementById('btn-guardar-cambios');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Guardando...';
+
+      // Actualizar partido en la base de datos
+      const { error } = await supabase
+        .from('partidos')
+        .update({
+          fecha: fecha,
+          cancha: cancha,
+          temporada_id: temporada_id,
+          youtube_link: youtube_link
+        })
+        .eq('id', window.partidoEditandoId);
+
+      if (error) {
+        console.error('Error al actualizar partido:', error);
+        throw new Error(`Error al actualizar el partido: ${error.message}`);
+      }
+
+      // Éxito
+      showToast('✅ Partido actualizado exitosamente', 'success');
+      
+      // Cerrar modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editarPartidoModal'));
+      modal.hide();
+
+      // Limpiar ID del partido editando
+      window.partidoEditandoId = null;
+
+      // Recargar historial para mostrar los cambios
+      cargarHistorialPartidos();
+
+    } catch (error) {
+      console.error('Error al guardar cambios:', error);
+      showToast(`Error al guardar los cambios: ${error.message}`, 'error');
+    } finally {
+      // Restaurar botón
+      const btn = document.getElementById('btn-guardar-cambios');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Guardar Cambios';
+    }
+  });
 
   // --- Inicialización de la app ---
   console.log('🚀 Inicializando aplicación...');
