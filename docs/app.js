@@ -345,7 +345,7 @@ const initApp = () => {
           const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
-          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 1);
+          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.66);
         };
         
         aVal = calcularSkill(a);
@@ -2054,9 +2054,9 @@ const initApp = () => {
       
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       
-      // Rendimiento Arquero: atajadas por partido * 1
+      // Rendimiento Arquero: atajadas por partido * 0.66
       const atajadasPP = (jugador.atajadas || 0) / pj;
-      const rendArquero = atajadasPP * 1;
+      const rendArquero = atajadasPP * 0.66;
       
       rendimientoAtaqueTotal += rendAtaque;
       rendimientoArqueroTotal += rendArquero;
@@ -2209,7 +2209,7 @@ const initApp = () => {
       const atajadasPP = stats.atajadas / pj;
       
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-      const rendArquero = atajadasPP * 1;
+      const rendArquero = atajadasPP * 0.66;
       
       rendimientoTotalEquipo += rendAtaque + rendArquero;
       
@@ -4685,7 +4685,7 @@ const initApp = () => {
       const atajadasPP = (jugador.atajadas || 0) / pj;
       
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-      const rendArquero = atajadasPP * 1;
+      const rendArquero = atajadasPP * 0.66;
       
       return rendAtaque + rendArquero;
     };
@@ -5651,7 +5651,7 @@ const initApp = () => {
         const atajadasPP = (jugador.atajadas || 0) / pj;
         
         const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-        const rendArquero = atajadasPP * 1;
+        const rendArquero = atajadasPP * 0.66;
         
         return rendAtaque + rendArquero;
       };
@@ -5787,7 +5787,7 @@ ATAQUE:
 Subtotal Ataque: ${rendAtaque.toFixed(1)}
 
 ARQUERO:
-• Atajadas: ${atajadasPP.toFixed(2)} × 1 = ${rendArquero.toFixed(1)}
+• Atajadas: ${atajadasPP.toFixed(2)} × 0.66 = ${rendArquero.toFixed(1)}
 
 TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           

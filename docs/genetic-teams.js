@@ -62,7 +62,7 @@ class GeneticTeamOptimizer {
   calcularRendimientoArquero(jugador) {
     const pj = jugador.pj || 1;
     const atajadasPP = (jugador.atajadas || 0) / pj;
-    return atajadasPP * 1;
+    return atajadasPP * 0.66;
   }
 
   /**
