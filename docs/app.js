@@ -6362,6 +6362,671 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     });
   }
 
+  // ===============================
+  // FUNCIONALIDAD MUNDIALITO T5
+  // ===============================
+
+  // Variables globales del mundialito
+  let mundialPartidos = [];
+  let jugadoresMundial = new Map(); // Map<jugadorId, data>
+  let temporadasMundial = [];
+
+  // Estructura de progreso del jugador
+  const crearJugadorMundial = (jugador) => ({
+    id: jugador.id,
+    nombre: jugador.nombre,
+    fase: 'grupos', // grupos, 8vos, 4tos, semis, final, campeon
+    victorias: 0,
+    derrotas: 0,
+    empates: 0,
+    partidosGrupos: 0, // para fase de grupos (necesita 3 partidos)
+    victoriasGrupos: 0, // victorias específicas en fase de grupos
+    empatesGrupos: 0, // empates específicos en fase de grupos  
+    derrotasGrupos: 0, // derrotas específicas en fase de grupos
+    tieneBonus: false, // bonus por ganar 3 partidos en grupos
+    eliminado: false,
+    campeon: false,
+    ultimoPartido: null,
+    historialFases: [] // historial de fases alcanzadas
+  });
+
+  // Obtener badge de fase
+  const obtenerBadgeFase = (jugador) => {
+    if (jugador.campeon) {
+      const bonus = jugador.tieneBonus ? ' ⭐' : '';
+      return { badge: 'bg-success', text: `👑 Campeón${bonus}`, descripcion: 'Ganó el mundial' };
+    }
+    
+    switch (jugador.fase) {
+      case 'grupos': {
+        const record = `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`;
+        return { badge: 'bg-secondary', text: '👥 Grupos', descripcion: `${record} (${jugador.partidosGrupos}/3)` };
+      }
+      case '8vos': {
+        const bonus = jugador.tieneBonus ? ' ⭐' : '';
+        return { badge: 'bg-primary', text: `🏃 8vos${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+      }
+      case '4tos': {
+        const bonus = jugador.tieneBonus ? ' ⭐' : '';
+        return { badge: 'bg-info', text: `🚀 4tos${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+      }
+      case 'semis': {
+        const bonus = jugador.tieneBonus ? ' ⭐' : '';
+        return { badge: 'bg-warning text-dark', text: `⭐ Semis${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+      }
+      case 'final': {
+        const bonus = jugador.tieneBonus ? ' ⭐' : '';
+        return { badge: 'bg-danger', text: `🔥 Final${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+      }
+      default: return { badge: 'bg-dark', text: '❓ Indefinido', descripcion: 'Error' };
+    }
+  };
+
+  // Determinar el resultado de un jugador en un partido
+  const determinarResultadoJugador = (partido, jugadorId) => {
+    const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
+    if (!jugadorData) return null;
+
+    const equipoJugador = jugadorData.equipo;
+    const equipoGanador = partido.equipo_ganador;
+
+    if (equipoGanador === null || equipoGanador === 0) {
+      return 'empate';
+    } else if (equipoGanador === equipoJugador) {
+      return 'victoria';
+    } else {
+      return 'derrota';
+    }
+  };
+
+  // Función de hash simple para generar seed determinística
+  const hashCode = (str) => {
+    let hash = 0;
+    if (str.length === 0) return hash;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+  };
+
+  // Generador de números pseudoaleatorios seeded (Linear Congruential Generator)
+  const createSeededRandom = (seed) => {
+    let state = seed;
+    return () => {
+      state = (state * 1664525 + 1013904223) % (2 ** 32);
+      return state / (2 ** 32);
+    };
+  };
+
+  // Función para tirar moneda determinística (50% probabilidad)
+  // Usa partido ID + jugador ID + fase para generar seed única y reproducible
+  const tirarMonedaDeterministica = (partidoId, jugadorId, fase) => {
+    const seedString = `${partidoId}-${jugadorId}-${fase}`;
+    const seed = hashCode(seedString);
+    const seededRandom = createSeededRandom(seed);
+    return seededRandom() < 0.5;
+  };
+
+  // Función para evaluar si pasa de fase de grupos
+  const evaluarPaseGrupos = (jugador) => {
+    const { victoriasGrupos, empatesGrupos, derrotasGrupos } = jugador;
+    
+    // Si ganó 2 o más partidos, pasa automáticamente
+    // Incluye: 2V-1D, 2V-1E, 3V-0D
+    if (victoriasGrupos >= 2) {
+      // Si ganó los 3, obtiene bonus para playoffs
+      if (victoriasGrupos === 3) {
+        jugador.tieneBonus = true;
+      }
+      return true;
+    }
+    
+    // Si perdió 2 o más partidos, no pasa
+    if (derrotasGrupos >= 2) {
+      return false;
+    }
+    
+    // Si tiene 1V-2E-0D, pasa automáticamente (nueva regla)
+    if (victoriasGrupos === 1 && empatesGrupos === 2 && derrotasGrupos === 0) {
+      return true;
+    }
+    
+    // Si tiene 1V-1E-1D, tirar moneda
+    if (victoriasGrupos === 1 && empatesGrupos === 1 && derrotasGrupos === 1) {
+      // Usar último partido para generar seed determinística
+      const partidoId = jugador.ultimoPartido?.id || 0;
+      return tirarMonedaDeterministica(partidoId, jugador.id, 'grupos');
+    }
+    
+    // Otros casos no deberían ocurrir, pero por seguridad
+    return false;
+  };
+
+  // Función para evaluar si pasa en fases eliminatorias  
+  const evaluarPasePlayoffs = (jugador, resultado) => {
+    // Si tiene bonus (ganó 3 en grupos) y empata, pasa automáticamente
+    if (jugador.tieneBonus && resultado === 'empate') {
+      return true;
+    }
+    
+    // Si gana, pasa automáticamente
+    if (resultado === 'victoria') {
+      return true;
+    }
+    
+    // Si pierde, no pasa
+    if (resultado === 'derrota') {
+      return false;
+    }
+    
+    // Si empata sin bonus, tirar moneda
+    if (resultado === 'empate') {
+      // Usar último partido para generar seed determinística
+      const partidoId = jugador.ultimoPartido?.id || 0;
+      return tirarMonedaDeterministica(partidoId, jugador.id, jugador.fase);
+    }
+    
+    return false;
+  };
+
+  // Resetear jugador a fase de grupos
+  const resetearAGrupos = (jugador) => {
+    jugador.fase = 'grupos';
+    jugador.victorias = 0;
+    jugador.derrotas = 0;
+    jugador.empates = 0;
+    jugador.partidosGrupos = 0;
+    jugador.victoriasGrupos = 0;
+    jugador.empatesGrupos = 0;
+    jugador.derrotasGrupos = 0;
+    jugador.tieneBonus = false;
+  };
+
+  // Procesar un partido para el mundialito
+  const procesarPartidoMundial = (partido) => {
+    if (!partido.jugador_partido) return;
+
+    partido.jugador_partido.forEach(jp => {
+      const jugadorId = jp.jugador_id;
+      let jugador = jugadoresMundial.get(jugadorId);
+
+      // Si es la primera vez que vemos este jugador, crearlo
+      if (!jugador) {
+        jugador = crearJugadorMundial({
+          id: jugadorId,
+          nombre: jp.jugadores?.nombre || `Jugador ${jugadorId}`
+        });
+        jugadoresMundial.set(jugadorId, jugador);
+      }
+
+      const resultado = determinarResultadoJugador(partido, jugadorId);
+      if (!resultado) return;
+
+      jugador.ultimoPartido = {
+        id: partido.id,
+        fecha: partido.fecha,
+        resultado: resultado
+      };
+
+            // Procesar resultado según la fase actual
+      if (jugador.fase === 'grupos') {
+        jugador.partidosGrupos++;
+        
+        // Contar resultado específico de grupos
+        if (resultado === 'victoria') {
+          jugador.victoriasGrupos++;
+          jugador.victorias++;
+        } else if (resultado === 'empate') {
+          jugador.empatesGrupos++;
+          jugador.empates++;
+        } else if (resultado === 'derrota') {
+          jugador.derrotasGrupos++;
+          jugador.derrotas++;
+        }
+
+        // NUEVA REGLA: Eliminación inmediata con 2 derrotas
+        if (jugador.derrotasGrupos >= 2) {
+          // Eliminado inmediatamente, no espera el tercer partido
+          resetearAGrupos(jugador);
+          jugador.historialFases.push({ 
+            fase: 'eliminado_grupos', 
+            completada: false, 
+            fecha: partido.fecha,
+            razon: '2 derrotas seguidas - Eliminación inmediata',
+            metodo: 'automatico',
+            partidoId: partido.id
+          });
+        }
+        // Clasificación inmediata con 2 victorias
+        else if (jugador.victoriasGrupos >= 2) {
+          // Avanza a 8vos inmediatamente
+          jugador.fase = '8vos';
+          
+          // Si ganó los 3 (aunque esto solo sería posible si ya jugó los 3)
+          if (jugador.victoriasGrupos === 3) {
+            jugador.tieneBonus = true;
+          }
+          
+          jugador.historialFases.push({ 
+            fase: 'grupos', 
+            completada: true, 
+            fecha: partido.fecha,
+            record: `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`,
+            bonus: jugador.tieneBonus,
+            metodo: 'automatico',
+            partidoId: partido.id
+          });
+        }
+        // Evaluar si completó los 3 partidos de grupos (solo para casos como 1V-1E-1D)
+        else if (jugador.partidosGrupos >= 3) {
+          const pasa = evaluarPaseGrupos(jugador);
+          
+          if (pasa) {
+            // Avanza a 8vos
+            jugador.fase = '8vos';
+            
+            // Determinar si fue por moneda
+            const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
+            
+            jugador.historialFases.push({ 
+              fase: 'grupos', 
+              completada: true, 
+              fecha: partido.fecha,
+              record: `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`,
+              bonus: jugador.tieneBonus,
+              metodo: fueMoneda ? 'moneda' : 'automatico',
+              partidoId: partido.id
+            });
+          } else {
+            // No pasa, resetear a grupos
+            const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
+            
+            resetearAGrupos(jugador);
+            jugador.historialFases.push({ 
+              fase: 'eliminado_grupos', 
+              completada: false, 
+              fecha: partido.fecha,
+              razon: 'No clasificó de grupos',
+              metodo: fueMoneda ? 'moneda' : 'automatico',
+              partidoId: partido.id
+            });
+          }
+        }
+      } else {
+        // Fases eliminatorias (8vos, 4tos, semis, final)
+        const pasa = evaluarPasePlayoffs(jugador, resultado);
+        
+        // Contar estadísticas generales
+        if (resultado === 'victoria') {
+          jugador.victorias++;
+        } else if (resultado === 'empate') {
+          jugador.empates++;
+        } else if (resultado === 'derrota') {
+          jugador.derrotas++;
+        }
+        
+        if (pasa) {
+          // Avanza a la siguiente fase
+          const faseAnterior = jugador.fase;
+          
+          if (jugador.fase === '8vos') {
+            jugador.fase = '4tos';
+          } else if (jugador.fase === '4tos') {
+            jugador.fase = 'semis';
+          } else if (jugador.fase === 'semis') {
+            jugador.fase = 'final';
+          } else if (jugador.fase === 'final') {
+            jugador.fase = 'campeon';
+            jugador.campeon = true;
+          }
+          
+          // Determinar si fue por moneda (empate sin bonus)
+          const fueMoneda = (resultado === 'empate' && !jugador.tieneBonus);
+          
+          jugador.historialFases.push({ 
+            fase: faseAnterior, 
+            completada: true, 
+            fecha: partido.fecha,
+            resultado: resultado,
+            bonus: jugador.tieneBonus,
+            metodo: fueMoneda ? 'moneda' : 'automatico',
+            partidoId: partido.id
+          });
+        } else {
+          // No pasa, vuelve a grupos
+          const faseAnterior = jugador.fase;
+          
+          // Determinar si fue por moneda (empate sin bonus)
+          const fueMoneda = (resultado === 'empate' && !jugador.tieneBonus);
+          
+          resetearAGrupos(jugador);
+          jugador.historialFases.push({ 
+            fase: `eliminado_${faseAnterior}`, 
+            completada: false, 
+            fecha: partido.fecha,
+            resultado: resultado,
+            razon: `Eliminado en ${faseAnterior}`,
+            metodo: fueMoneda ? 'moneda' : 'automatico',
+            partidoId: partido.id
+          });
+        }
+      }
+    });
+  };
+
+  // Cargar partidos para mundialito
+  const cargarPartidosMundialito = async () => {
+    try {
+      const temporadaSelect = document.getElementById('mundialito-temporada');
+      const temporadaSeleccionada = temporadaSelect?.value;
+      
+      let query = supabase
+        .from('partidos')
+        .select(`*, jugador_partido(*, jugadores(id, nombre))`)
+        .order('fecha', { ascending: true });
+
+      if (temporadaSeleccionada && temporadaSeleccionada !== 'all') {
+        query = query.eq('temporada_id', temporadaSeleccionada);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error cargando partidos:', error);
+      return [];
+    }
+  };
+
+  // Procesar mundialito completo
+  const procesarMundialito = async () => {
+    try {
+      const container = document.getElementById('mundialito-fixture');
+      if (container) {
+        container.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-warning"></div><p class="text-light-emphasis mt-2">Procesando...</p></div>`;
+      }
+      
+      jugadoresMundial.clear();
+      mundialPartidos = await cargarPartidosMundialito();
+      
+      if (mundialPartidos.length === 0) {
+        if (container) {
+          container.innerHTML = `<div class="text-center py-4"><i class="bi bi-exclamation-triangle text-warning fs-2"></i><p class="text-light-emphasis mt-2">No se encontraron partidos</p></div>`;
+        }
+        return;
+      }
+
+      mundialPartidos.forEach(partido => procesarPartidoMundial(partido));
+      
+      mostrarFixtureMundialito();
+      actualizarEstadisticasMundialito();
+      
+    } catch (error) {
+      console.error('❌ Error procesando mundialito:', error);
+    }
+  };
+
+  // Mostrar fixture del mundialito
+  const mostrarFixtureMundialito = () => {
+    const container = document.getElementById('mundialito-fixture');
+    if (!container || jugadoresMundial.size === 0) return;
+
+    const jugadoresPorFase = {
+      campeon: [],
+      final: [],
+      semis: [],
+      '4tos': [],
+      '8vos': [],
+      grupos: []
+    };
+
+    jugadoresMundial.forEach(jugador => {
+      if (jugador.campeon) {
+        jugadoresPorFase.campeon.push(jugador);
+      } else {
+        jugadoresPorFase[jugador.fase]?.push(jugador);
+      }
+    });
+
+    Object.keys(jugadoresPorFase).forEach(fase => {
+      jugadoresPorFase[fase].sort((a, b) => b.victorias - a.victorias);
+    });
+
+    let html = '';
+
+    // Función para generar contenido del tooltip con historial
+    const generarTooltipHistorial = (jugador) => {
+      let tooltip = `<div class="fw-bold mb-2">🏆 Historial Mundial - ${jugador.nombre}</div>`;
+      
+      // Estadísticas actuales
+      tooltip += `<div class="mb-2">`;
+      tooltip += `<strong>📊 Estado Actual:</strong><br>`;
+      tooltip += `• Fase: ${obtenerBadgeFase(jugador).text}<br>`;
+      tooltip += `• Record Total: ${jugador.victorias}V-${jugador.empates}E-${jugador.derrotas}D<br>`;
+      if (jugador.tieneBonus) {
+        tooltip += `• ⭐ Bonus de Grupos Activo<br>`;
+      }
+      tooltip += `</div>`;
+
+      // Historial de fases
+      if (jugador.historialFases && jugador.historialFases.length > 0) {
+        tooltip += `<div class="mb-2">`;
+        tooltip += `<strong>📜 Historial de Fases:</strong><br>`;
+        
+        jugador.historialFases.forEach((fase, index) => {
+          const fecha = new Date(fase.fecha).toLocaleDateString('es-ES');
+          
+          if (fase.completada) {
+            if (fase.fase === 'grupos') {
+              tooltip += `${index + 1}. ✅ Clasificó de Grupos (${fecha})`;
+              if (fase.record) tooltip += `<br>   Record: ${fase.record}`;
+              if (fase.bonus) tooltip += `<br>   ⭐ Obtuvo Bonus`;
+              if (fase.metodo === 'moneda') tooltip += `<br>   🪙 Por moneda`;
+            } else if (fase.fase === 'campeon') {
+              tooltip += `${index + 1}. 👑 ¡CAMPEÓN! (${fecha})`;
+            } else {
+              tooltip += `${index + 1}. ✅ Pasó de ${fase.fase} (${fecha})`;
+              if (fase.resultado) tooltip += `<br>   Resultado: ${fase.resultado}`;
+              if (fase.metodo === 'moneda') tooltip += `<br>   🪙 Por moneda`;
+            }
+          } else {
+            if (fase.fase.startsWith('eliminado_')) {
+              const faseEliminada = fase.fase.replace('eliminado_', '');
+              tooltip += `${index + 1}. ❌ Eliminado en ${faseEliminada} (${fecha})`;
+              if (fase.resultado) tooltip += `<br>   Resultado: ${fase.resultado}`;
+              if (fase.metodo === 'moneda') tooltip += `<br>   🪙 Por moneda`;
+            } else {
+              tooltip += `${index + 1}. ❌ ${fase.razon || 'Eliminado'} (${fecha})`;
+              if (fase.metodo === 'moneda') tooltip += `<br>   🪙 Por moneda`;
+            }
+          }
+          tooltip += `<br>`;
+        });
+        tooltip += `</div>`;
+      }
+
+      // Último partido jugado
+      if (jugador.ultimoPartido) {
+        const fechaUltimo = new Date(jugador.ultimoPartido.fecha).toLocaleDateString('es-ES');
+        tooltip += `<div class="small text-light-emphasis">`;
+        tooltip += `<strong>⚽ Último partido:</strong> ${jugador.ultimoPartido.resultado} (${fechaUltimo})`;
+        tooltip += `</div>`;
+      }
+
+      return tooltip;
+    };
+
+    // Campeones
+    if (jugadoresPorFase.campeon.length > 0) {
+      html += `
+        <div class="col-12 mb-4">
+          <h6 class="text-success mb-3">👑 Campeones (${jugadoresPorFase.campeon.length})</h6>
+          <div class="row g-2">
+            ${jugadoresPorFase.campeon.map((jugador, index) => {
+              const badge = obtenerBadgeFase(jugador);
+              const tooltipContent = generarTooltipHistorial(jugador);
+              return `
+                <div class="col-md-4 col-lg-3">
+                  <div class="card bg-success bg-opacity-25 border-success mundialito-card" 
+                       data-bs-toggle="tooltip" 
+                       data-bs-placement="top" 
+                       data-bs-html="true"
+                       data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
+                    <div class="card-body p-3">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold text-white">${jugador.nombre}</span>
+                        ${index === 0 ? '<i class="bi bi-trophy text-warning"></i>' : ''}
+                      </div>
+                      <span class="badge ${badge.badge} mb-1">${badge.text}</span>
+                      <div class="small text-light-emphasis">${jugador.victorias} victorias</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Otras fases
+    const fases = [
+      { key: 'final', title: '🔥 Finalistas', color: 'danger' },
+      { key: 'semis', title: '⭐ Semifinalistas', color: 'warning' },
+      { key: '4tos', title: '🚀 Cuartos de Final', color: 'info' },
+      { key: '8vos', title: '🏃 Octavos de Final', color: 'primary' },
+      { key: 'grupos', title: '👥 Fase de Grupos', color: 'secondary' }
+    ];
+
+    fases.forEach(fase => {
+      const jugadores = jugadoresPorFase[fase.key];
+      if (jugadores.length === 0) return;
+
+      html += `
+        <div class="col-12 mb-4">
+          <h6 class="text-${fase.color} mb-3">${fase.title} (${jugadores.length})</h6>
+          <div class="row g-2">
+            ${jugadores.map(jugador => {
+              const badge = obtenerBadgeFase(jugador);
+              const tooltipContent = generarTooltipHistorial(jugador);
+              return `
+                <div class="col-md-4 col-lg-3">
+                  <div class="card bg-${fase.color} bg-opacity-10 border-${fase.color} border-opacity-25 mundialito-card" 
+                       data-bs-toggle="tooltip" 
+                       data-bs-placement="top" 
+                       data-bs-html="true"
+                       data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
+                    <div class="card-body p-3">
+                      <div class="fw-bold text-white mb-2">${jugador.nombre}</div>
+                      <span class="badge ${badge.badge} mb-1">${badge.text}</span>
+                      <div class="small text-light-emphasis">${badge.descripcion}</div>
+                      <div class="small text-light-emphasis mt-1">
+                        ${jugador.victorias}V - ${jugador.empates}E - ${jugador.derrotas}D
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html || '<div class="col-12"><div class="text-center py-4"><p class="text-light-emphasis">No hay jugadores para mostrar</p></div></div>';
+    
+    // Inicializar tooltips después de actualizar el contenido
+    setTimeout(() => {
+      const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+      tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+          html: true,
+          trigger: 'hover focus',
+          customClass: 'mundialito-tooltip',
+          template: '<div class="tooltip mundialito-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start" style="white-space: pre-line; max-width: 400px;"></div></div>'
+        });
+      });
+    }, 100);
+  };
+
+  // Actualizar estadísticas globales
+  const actualizarEstadisticasMundialito = () => {
+    const totalPlayers = document.getElementById('total-players');
+    const playersGroups = document.getElementById('players-groups');
+    const champions = document.getElementById('champions');
+
+    if (totalPlayers) totalPlayers.textContent = jugadoresMundial.size;
+    if (playersGroups) playersGroups.textContent = Array.from(jugadoresMundial.values()).filter(j => j.fase === 'grupos').length;
+    if (champions) champions.textContent = Array.from(jugadoresMundial.values()).filter(j => j.campeon).length;
+  };
+
+  // Cargar temporadas
+  const cargarTemporadasMundialito = async () => {
+    try {
+      const { data, error } = await supabase.from('temporadas').select('*').order('nombre');
+      if (error) throw error;
+
+      const select = document.getElementById('mundialito-temporada');
+      if (select) {
+        select.innerHTML = '<option value="all">Todas las temporadas</option>';
+        data?.forEach(temporada => {
+          const option = document.createElement('option');
+          option.value = temporada.id;
+          option.textContent = temporada.nombre;
+          select.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error cargando temporadas:', error);
+    }
+  };
+
+  // Reset mundialito
+  const resetMundialito = () => {
+    jugadoresMundial.clear();
+    mundialPartidos = [];
+    
+    const container = document.getElementById('mundialito-fixture');
+    if (container) {
+      container.innerHTML = `<div class="text-center py-4"><p class="text-light-emphasis">Presiona "Procesar Mundial" para generar el fixture</p></div>`;
+    }
+
+    ['total-players', 'players-groups', 'champions'].forEach(id => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = '-';
+    });
+  };
+
+  // Event listeners
+  const btnReset = document.getElementById('btn-reset-mundialito');
+  if (btnReset) btnReset.addEventListener('click', resetMundialito);
+
+  const mundialTab = document.getElementById('mundialito-tab');
+  if (mundialTab) {
+    mundialTab.addEventListener('shown.bs.tab', () => {
+      cargarTemporadasMundialito();
+      // Procesar automáticamente después de cargar temporadas
+      setTimeout(() => {
+        procesarMundialito();
+      }, 100);
+    });
+  }
+
+  const temporadaSelect = document.getElementById('mundialito-temporada');
+  if (temporadaSelect) {
+    temporadaSelect.addEventListener('change', () => {
+      // Procesar automáticamente al cambiar temporada
+      procesarMundialito();
+    });
+  }
+
+  // ===============================
+  // FIN FUNCIONALIDAD MUNDIALITO T5
+  // ===============================
+
   console.log('✅ Aplicación inicializada correctamente');
 };
 
