@@ -5581,6 +5581,9 @@ const initApp = () => {
                 </div>
               ` : ''}
             </div>
+            
+            <!-- Leyenda del Mundialito para este partido -->
+            ${typeof generarLeyendaMundialito === 'function' ? generarLeyendaMundialito(partido) : ''}
           </div>
         </div>
       `;
@@ -5589,6 +5592,231 @@ const initApp = () => {
     html += '</div>';
     container.innerHTML = html;
   }
+
+  // Función para generar la leyenda del mundialito para un partido específico
+  const generarLeyendaMundialito = (partido) => {
+    try {
+      // Verificar que tenemos datos válidos
+      if (!partido || !partido.jugador_partido || partido.jugador_partido.length === 0) {
+        return '';
+      }
+
+      // Simular el mundialito hasta este partido para obtener cambios
+      const cambios = simularMundialitoHastaPartido(partido);
+      
+      if (!cambios || cambios.length === 0) {
+        return '';
+      }
+
+      const clasificados = cambios.filter(c => c.tipo === 'clasificado');
+      const eliminados = cambios.filter(c => c.tipo === 'eliminado');
+
+      if (clasificados.length === 0 && eliminados.length === 0) {
+        return '';
+      }
+
+      let leyendaHtml = '<div class="mt-3 pt-2 border-top border-secondary">';
+      leyendaHtml += '<div class="small text-light-emphasis mb-2"><i class="bi bi-trophy me-1"></i><strong>Mundialito T5:</strong></div>';
+      
+      if (clasificados.length > 0) {
+        leyendaHtml += '<div class="d-flex flex-wrap gap-1 mb-1">';
+        clasificados.forEach(c => {
+          const icono = c.fase === 'campeon' ? '👑' : '✅';
+          const faseTexto = c.fase === 'campeon' ? 'Campeón' : 
+                           c.fase === 'final' ? 'Final' :
+                           c.fase === 'semis' ? 'Semis' :
+                           c.fase === '4tos' ? 'Cuartos' :
+                           c.fase === '8vos' ? '8vos' : c.fase;
+          leyendaHtml += `<span class="badge bg-success small">${icono} ${c.jugador} → ${faseTexto}</span>`;
+        });
+        leyendaHtml += '</div>';
+      }
+
+      if (eliminados.length > 0) {
+        leyendaHtml += '<div class="d-flex flex-wrap gap-1">';
+        eliminados.forEach(e => {
+          const faseTexto = e.fase === 'grupos' ? 'Grupos' :
+                           e.fase === 'final' ? 'Final' :
+                           e.fase === 'semis' ? 'Semis' :
+                           e.fase === '4tos' ? 'Cuartos' :
+                           e.fase === '8vos' ? '8vos' : e.fase;
+          leyendaHtml += `<span class="badge bg-danger small">❌ ${e.jugador} (${faseTexto})</span>`;
+        });
+        leyendaHtml += '</div>';
+      }
+
+      leyendaHtml += '</div>';
+      return leyendaHtml;
+    } catch (error) {
+      console.warn('Error generando leyenda mundialito:', error);
+      return ''; // Retornar string vacío en caso de error
+    }
+  };
+
+  // Función para simular el mundialito hasta un partido específico
+  const simularMundialitoHastaPartido = (partidoObjetivo) => {
+    try {
+      // Si no hay partidos del mundialito cargados, no mostrar leyenda
+      if (!mundialPartidos || mundialPartidos.length === 0) return [];
+
+      // Crear un Map temporal para la simulación
+      const jugadoresTemp = new Map();
+      
+      // Procesar partidos hasta encontrar el partido objetivo
+      for (const partido of mundialPartidos) {
+        if (partido.id === partidoObjetivo.id) {
+          // Procesar este partido y retornar los cambios
+          const cambios = procesarPartidoMundialTemp(partido, jugadoresTemp);
+          return cambios;
+        } else {
+          // Procesar partido sin registrar cambios
+          procesarPartidoMundialTemp(partido, jugadoresTemp);
+        }
+      }
+      
+      return [];
+    } catch (error) {
+      console.warn('Error simulando mundialito para historial:', error);
+      return [];
+    }
+  };
+
+  // Versión temporal de procesarPartidoMundial para simulación
+  const procesarPartidoMundialTemp = (partido, jugadoresMap) => {
+    if (!partido.jugador_partido) return [];
+
+    const cambiosFase = [];
+
+    partido.jugador_partido.forEach(jp => {
+      const jugadorId = jp.jugador_id;
+      let jugador = jugadoresMap.get(jugadorId);
+
+      if (!jugador) {
+        jugador = crearJugadorMundial({
+          id: jugadorId,
+          nombre: jp.jugadores?.nombre || `Jugador ${jugadorId}`
+        });
+        jugadoresMap.set(jugadorId, jugador);
+      }
+
+      const resultado = determinarResultadoJugador(partido, jugadorId);
+      if (!resultado) return;
+
+      const faseAnterior = jugador.fase;
+
+      jugador.ultimoPartido = {
+        id: partido.id,
+        fecha: partido.fecha,
+        resultado: resultado
+      };
+
+      // Misma lógica que procesarPartidoMundial pero registrando cambios
+      if (jugador.fase === 'grupos') {
+        jugador.partidosGrupos++;
+        
+        if (resultado === 'victoria') {
+          jugador.victoriasGrupos++;
+          jugador.victorias++;
+        } else if (resultado === 'empate') {
+          jugador.empatesGrupos++;
+          jugador.empates++;
+        } else if (resultado === 'derrota') {
+          jugador.derrotasGrupos++;
+          jugador.derrotas++;
+        }
+
+        if (jugador.derrotasGrupos >= 2) {
+          resetearAGruposTemp(jugador);
+          cambiosFase.push({
+            jugador: jugador.nombre,
+            tipo: 'eliminado',
+            fase: 'grupos',
+            razon: '2 derrotas'
+          });
+        }
+        else if (jugador.partidosGrupos >= 3) {
+          const pasa = evaluarPaseGrupos(jugador);
+          if (pasa) {
+            jugador.fase = '8vos';
+            const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
+            cambiosFase.push({
+              jugador: jugador.nombre,
+              tipo: 'clasificado',
+              fase: '8vos',
+              razon: fueMoneda ? 'moneda' : '1V+2E'
+            });
+          } else {
+            resetearAGruposTemp(jugador);
+            const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
+            cambiosFase.push({
+              jugador: jugador.nombre,
+              tipo: 'eliminado',
+              fase: 'grupos',
+              razon: fueMoneda ? 'moneda' : 'no clasificó'
+            });
+          }
+        }
+      } else {
+        const pasa = evaluarPasePlayoffs(jugador, resultado);
+        
+        if (resultado === 'victoria') {
+          jugador.victorias++;
+        } else if (resultado === 'empate') {
+          jugador.empates++;
+        } else if (resultado === 'derrota') {
+          jugador.derrotas++;
+        }
+        
+        if (pasa) {
+          const faseAnterior = jugador.fase;
+          
+          if (jugador.fase === '8vos') {
+            jugador.fase = '4tos';
+          } else if (jugador.fase === '4tos') {
+            jugador.fase = 'semis';
+          } else if (jugador.fase === 'semis') {
+            jugador.fase = 'final';
+          } else if (jugador.fase === 'final') {
+            jugador.fase = 'campeon';
+            jugador.campeon = true;
+          }
+          
+          const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
+          cambiosFase.push({
+            jugador: jugador.nombre,
+            tipo: 'clasificado',
+            fase: jugador.fase,
+            razon: fueMoneda ? 'moneda' : resultado
+          });
+        } else {
+          const faseAnterior = jugador.fase;
+          resetearAGruposTemp(jugador);
+          const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
+          cambiosFase.push({
+            jugador: jugador.nombre,
+            tipo: 'eliminado',
+            fase: faseAnterior,
+            razon: fueMoneda ? 'moneda' : resultado
+          });
+        }
+      }
+    });
+
+    return cambiosFase;
+  };
+
+  // Versión temporal de resetearAGrupos
+  const resetearAGruposTemp = (jugador) => {
+    jugador.fase = 'grupos';
+    jugador.victorias = 0;
+    jugador.derrotas = 0;
+    jugador.empates = 0;
+    jugador.partidosGrupos = 0;
+    jugador.victoriasGrupos = 0;
+    jugador.empatesGrupos = 0;
+    jugador.derrotasGrupos = 0;
+    jugador.bonusCount = 0;
+  };
 
   // Función para ir a la pestaña de ranking desde el historial
   window.irARankingSkill = function() {
@@ -6362,6 +6590,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     });
   }
 
+  // Event listener para la pestaña de historial
+  const historialTab = document.getElementById('historial-tab');
+  if (historialTab) {
+    historialTab.addEventListener('shown.bs.tab', function (e) {
+      // Cargar historial cuando se muestra la pestaña
+      cargarHistorialPartidos();
+    });
+  }
+
   // ===============================
   // FUNCIONALIDAD MUNDIALITO T5
   // ===============================
@@ -6383,7 +6620,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     victoriasGrupos: 0, // victorias específicas en fase de grupos
     empatesGrupos: 0, // empates específicos en fase de grupos  
     derrotasGrupos: 0, // derrotas específicas en fase de grupos
-    tieneBonus: false, // bonus por ganar 3 partidos en grupos
+    bonusCount: 0, // cantidad de bonus: 0, 1 (2V+1E) o 2 (3V)
     eliminado: false,
     campeon: false,
     ultimoPartido: null,
@@ -6393,7 +6630,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Obtener badge de fase
   const obtenerBadgeFase = (jugador) => {
     if (jugador.campeon) {
-      const bonus = jugador.tieneBonus ? ' ⭐' : '';
+      const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
       return { badge: 'bg-success', text: `👑 Campeón${bonus}`, descripcion: 'Ganó el mundial' };
     }
     
@@ -6403,20 +6640,20 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         return { badge: 'bg-secondary', text: '👥 Grupos', descripcion: `${record} (${jugador.partidosGrupos}/3)` };
       }
       case '8vos': {
-        const bonus = jugador.tieneBonus ? ' ⭐' : '';
-        return { badge: 'bg-primary', text: `🏃 8vos${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+        const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
+        return { badge: 'bg-primary', text: `🏃 8vos${bonus}`, descripcion: jugador.bonusCount > 0 ? `Con ${jugador.bonusCount} bonus` : 'Sin bonus' };
       }
       case '4tos': {
-        const bonus = jugador.tieneBonus ? ' ⭐' : '';
-        return { badge: 'bg-info', text: `🚀 4tos${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+        const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
+        return { badge: 'bg-info', text: `🚀 4tos${bonus}`, descripcion: jugador.bonusCount > 0 ? `Con ${jugador.bonusCount} bonus` : 'Sin bonus' };
       }
       case 'semis': {
-        const bonus = jugador.tieneBonus ? ' ⭐' : '';
-        return { badge: 'bg-warning text-dark', text: `⭐ Semis${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+        const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
+        return { badge: 'bg-warning text-dark', text: `⭐ Semis${bonus}`, descripcion: jugador.bonusCount > 0 ? `Con ${jugador.bonusCount} bonus` : 'Sin bonus' };
       }
       case 'final': {
-        const bonus = jugador.tieneBonus ? ' ⭐' : '';
-        return { badge: 'bg-danger', text: `🔥 Final${bonus}`, descripcion: jugador.tieneBonus ? 'Con bonus de grupos' : 'Sin bonus' };
+        const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
+        return { badge: 'bg-danger', text: `🔥 Final${bonus}`, descripcion: jugador.bonusCount > 0 ? `Con ${jugador.bonusCount} bonus` : 'Sin bonus' };
       }
       default: return { badge: 'bg-dark', text: '❓ Indefinido', descripcion: 'Error' };
     }
@@ -6473,45 +6710,50 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const evaluarPaseGrupos = (jugador) => {
     const { victoriasGrupos, empatesGrupos, derrotasGrupos } = jugador;
     
-    // Si ganó 2 o más partidos, pasa automáticamente
-    // Incluye: 2V-1D, 2V-1E, 3V-0D
-    if (victoriasGrupos >= 2) {
-      // Si ganó los 3, obtiene bonus para playoffs
-      if (victoriasGrupos === 3) {
-        jugador.tieneBonus = true;
-      }
+    // 3 victorias = 2 bonus (pasa directo sin moneda en 2 eliminatorias)
+    if (victoriasGrupos === 3) {
+      jugador.bonusCount = 2;
       return true;
     }
     
-    // Si perdió 2 o más partidos, no pasa
-    if (derrotasGrupos >= 2) {
-      return false;
-    }
-    
-    // Si tiene 1V-2E-0D, pasa automáticamente (nueva regla)
-    if (victoriasGrupos === 1 && empatesGrupos === 2 && derrotasGrupos === 0) {
+    // 2 victorias + 1 empate = 1 bonus (pasa)
+    if (victoriasGrupos === 2 && empatesGrupos === 1) {
+      jugador.bonusCount = 1;
       return true;
     }
     
-    // Si tiene 1V-1E-1D, tirar moneda
+    // 2 victorias + 1 derrota = pasa sin bonus
+    if (victoriasGrupos === 2 && derrotasGrupos === 1) {
+      jugador.bonusCount = 0;
+      return true;
+    }
+    
+    // 1 victoria + 2 empates = pasa sin bonus
+    if (victoriasGrupos === 1 && empatesGrupos === 2) {
+      jugador.bonusCount = 0;
+      return true;
+    }
+    
+    // 1 victoria + 1 empate + 1 derrota = tirar moneda para pasar
     if (victoriasGrupos === 1 && empatesGrupos === 1 && derrotasGrupos === 1) {
       // Usar último partido para generar seed determinística
       const partidoId = jugador.ultimoPartido?.id || 0;
       return tirarMonedaDeterministica(partidoId, jugador.id, 'grupos');
     }
     
-    // Otros casos no deberían ocurrir, pero por seguridad
+    // 1 victoria + 2 derrotas = afuera
+    if (victoriasGrupos === 1 && derrotasGrupos === 2) {
+      return false;
+    }
+    
+    // Cualquier otra combinación de empates/derrotas = afuera
+    // Esto incluye: 0V, solo empates, 2+ derrotas, etc.
     return false;
   };
 
   // Función para evaluar si pasa en fases eliminatorias  
   const evaluarPasePlayoffs = (jugador, resultado) => {
-    // Si tiene bonus (ganó 3 en grupos) y empata, pasa automáticamente
-    if (jugador.tieneBonus && resultado === 'empate') {
-      return true;
-    }
-    
-    // Si gana, pasa automáticamente
+    // Si gana, pasa automáticamente sin consumir bonus
     if (resultado === 'victoria') {
       return true;
     }
@@ -6519,6 +6761,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     // Si pierde, no pasa
     if (resultado === 'derrota') {
       return false;
+    }
+    
+    // Si empata y tiene bonus, consume 1 bonus y pasa automáticamente
+    if (resultado === 'empate' && jugador.bonusCount > 0) {
+      jugador.bonusCount--; // Consume 1 bonus
+      return true;
     }
     
     // Si empata sin bonus, tirar moneda
@@ -6541,12 +6789,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     jugador.victoriasGrupos = 0;
     jugador.empatesGrupos = 0;
     jugador.derrotasGrupos = 0;
-    jugador.tieneBonus = false;
+    jugador.bonusCount = 0;
   };
 
-  // Procesar un partido para el mundialito
+    // Procesar un partido para el mundialito
   const procesarPartidoMundial = (partido) => {
     if (!partido.jugador_partido) return;
+
+    const cambiosFase = []; // Array para registrar cambios de fase en este partido
 
     partido.jugador_partido.forEach(jp => {
       const jugadorId = jp.jugador_id;
@@ -6564,13 +6814,16 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const resultado = determinarResultadoJugador(partido, jugadorId);
       if (!resultado) return;
 
+      // Guardar fase anterior para detectar cambios
+      const faseAnterior = jugador.fase;
+
       jugador.ultimoPartido = {
         id: partido.id,
         fecha: partido.fecha,
         resultado: resultado
       };
 
-            // Procesar resultado según la fase actual
+      // Procesar resultado según la fase actual
       if (jugador.fase === 'grupos') {
         jugador.partidosGrupos++;
         
@@ -6588,38 +6841,26 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
         // NUEVA REGLA: Eliminación inmediata con 2 derrotas
         if (jugador.derrotasGrupos >= 2) {
-          // Eliminado inmediatamente, no espera el tercer partido
+      
           resetearAGrupos(jugador);
           jugador.historialFases.push({ 
             fase: 'eliminado_grupos', 
             completada: false, 
             fecha: partido.fecha,
-            razon: '2 derrotas seguidas - Eliminación inmediata',
+            razon: '2 derrotas - Eliminación inmediata',
             metodo: 'automatico',
             partidoId: partido.id
           });
-        }
-        // Clasificación inmediata con 2 victorias
-        else if (jugador.victoriasGrupos >= 2) {
-          // Avanza a 8vos inmediatamente
-          jugador.fase = '8vos';
           
-          // Si ganó los 3 (aunque esto solo sería posible si ya jugó los 3)
-          if (jugador.victoriasGrupos === 3) {
-            jugador.tieneBonus = true;
-          }
-          
-          jugador.historialFases.push({ 
-            fase: 'grupos', 
-            completada: true, 
-            fecha: partido.fecha,
-            record: `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`,
-            bonus: jugador.tieneBonus,
-            metodo: 'automatico',
-            partidoId: partido.id
+          // Registrar cambio de fase
+          cambiosFase.push({
+            jugador: jugador.nombre,
+            tipo: 'eliminado',
+            fase: 'grupos',
+            razon: '2 derrotas'
           });
         }
-        // Evaluar si completó los 3 partidos de grupos (solo para casos como 1V-1E-1D)
+        // Evaluar si completó los 3 partidos de grupos
         else if (jugador.partidosGrupos >= 3) {
           const pasa = evaluarPaseGrupos(jugador);
           
@@ -6635,9 +6876,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               completada: true, 
               fecha: partido.fecha,
               record: `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`,
-              bonus: jugador.tieneBonus,
+              bonus: jugador.bonusCount,
               metodo: fueMoneda ? 'moneda' : 'automatico',
               partidoId: partido.id
+            });
+            
+            // Registrar cambio de fase
+            cambiosFase.push({
+              jugador: jugador.nombre,
+              tipo: 'clasificado',
+              fase: '8vos',
+              razon: fueMoneda ? 'moneda' : 'clasificó'
             });
           } else {
             // No pasa, resetear a grupos
@@ -6651,6 +6900,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               razon: 'No clasificó de grupos',
               metodo: fueMoneda ? 'moneda' : 'automatico',
               partidoId: partido.id
+            });
+            
+            // Registrar cambio de fase
+            cambiosFase.push({
+              jugador: jugador.nombre,
+              tipo: 'eliminado',
+              fase: 'grupos',
+              razon: fueMoneda ? 'moneda' : 'no clasificó'
             });
           }
         }
@@ -6683,23 +6940,31 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           }
           
           // Determinar si fue por moneda (empate sin bonus)
-          const fueMoneda = (resultado === 'empate' && !jugador.tieneBonus);
+          const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
           
           jugador.historialFases.push({ 
             fase: faseAnterior, 
             completada: true, 
             fecha: partido.fecha,
             resultado: resultado,
-            bonus: jugador.tieneBonus,
+            bonus: jugador.bonusCount,
             metodo: fueMoneda ? 'moneda' : 'automatico',
             partidoId: partido.id
+          });
+          
+          // Registrar cambio de fase
+          cambiosFase.push({
+            jugador: jugador.nombre,
+            tipo: 'clasificado',
+            fase: jugador.fase,
+            razon: fueMoneda ? 'moneda' : resultado
           });
         } else {
           // No pasa, vuelve a grupos
           const faseAnterior = jugador.fase;
           
           // Determinar si fue por moneda (empate sin bonus)
-          const fueMoneda = (resultado === 'empate' && !jugador.tieneBonus);
+          const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
           
           resetearAGrupos(jugador);
           jugador.historialFases.push({ 
@@ -6711,9 +6976,21 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             metodo: fueMoneda ? 'moneda' : 'automatico',
             partidoId: partido.id
           });
+          
+          // Registrar cambio de fase
+          cambiosFase.push({
+            jugador: jugador.nombre,
+            tipo: 'eliminado',
+            fase: faseAnterior,
+            razon: fueMoneda ? 'moneda' : resultado
+          });
         }
       }
     });
+
+    // Guardar cambios de fase para este partido
+    partido.cambiosMundialito = cambiosFase;
+    return cambiosFase;
   };
 
   // Cargar partidos para mundialito
@@ -6806,8 +7083,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       tooltip += `<strong>📊 Estado Actual:</strong><br>`;
       tooltip += `• Fase: ${obtenerBadgeFase(jugador).text}<br>`;
       tooltip += `• Record Total: ${jugador.victorias}V-${jugador.empates}E-${jugador.derrotas}D<br>`;
-      if (jugador.tieneBonus) {
-        tooltip += `• ⭐ Bonus de Grupos Activo<br>`;
+      if (jugador.bonusCount > 0) {
+        tooltip += `• ⭐ ${jugador.bonusCount} Bonus Activos<br>`;
       }
       tooltip += `</div>`;
 
@@ -6817,7 +7094,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         tooltip += `<strong>📜 Historial de Fases:</strong><br>`;
         
         jugador.historialFases.forEach((fase, index) => {
-          const fecha = new Date(fase.fecha).toLocaleDateString('es-ES');
+          const fechaCorregida = new Date(fase.fecha + 'T12:00:00');
+          const fecha = fechaCorregida.toLocaleDateString('es-ES');
           
           if (fase.completada) {
             if (fase.fase === 'grupos') {
@@ -6850,7 +7128,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Último partido jugado
       if (jugador.ultimoPartido) {
-        const fechaUltimo = new Date(jugador.ultimoPartido.fecha).toLocaleDateString('es-ES');
+        const fechaUltimoCorregida = new Date(jugador.ultimoPartido.fecha + 'T12:00:00');
+        const fechaUltimo = fechaUltimoCorregida.toLocaleDateString('es-ES');
         tooltip += `<div class="small text-light-emphasis">`;
         tooltip += `<strong>⚽ Último partido:</strong> ${jugador.ultimoPartido.resultado} (${fechaUltimo})`;
         tooltip += `</div>`;
