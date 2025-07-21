@@ -5774,7 +5774,7 @@ const initApp = () => {
           const atajadasPP = (jugador.atajadas || 0) / pj;
           
           const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-          const rendArquero = atajadasPP * 1;
+          const rendArquero = atajadasPP * 0.66;
           
           const tooltipContent = `Cálculo detallado (por partido):
 ATAQUE:
