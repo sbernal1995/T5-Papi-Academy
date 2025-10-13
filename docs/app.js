@@ -5509,7 +5509,14 @@ const initApp = () => {
                       
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
-                          <span>${jp.jugadores?.nombre || 'Jugador'}</span>
+                          <span>
+                            ${jp.jugadores?.nombre || 'Jugador'}
+                            <button class="btn btn-sm btn-outline-warning ms-2"
+                                    title="Forzar pase en Mundialito"
+                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
+                              🪙
+                            </button>
+                          </span>
                           ${stats.length > 0 ? `<span class="text-light-emphasis small">${stats.join(' ')}</span>` : ''}
                         </div>
                       `;
@@ -5539,7 +5546,14 @@ const initApp = () => {
                       
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
-                          <span>${jp.jugadores?.nombre || 'Jugador'}</span>
+                          <span>
+                            ${jp.jugadores?.nombre || 'Jugador'}
+                            <button class="btn btn-sm btn-outline-warning ms-2"
+                                    title="Forzar pase en Mundialito"
+                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
+                              🪙
+                            </button>
+                          </span>
                           ${stats.length > 0 ? `<span class="text-light-emphasis small">${stats.join(' ')}</span>` : ''}
                         </div>
                       `;
@@ -6697,13 +6711,171 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     };
   };
 
+  // Overrides de moneda para el mundialito (persistidos en base de datos)
+  window.mundialitoMonedaOverridesExact = {};
+  window.mundialitoMonedaOverridesJugadorFase = {};
+  window.mundialitoUmbralMoneda = 0.5;
+  window.mundialitoSalt = '';
+
+  const loadOverridesFromDatabase = async () => {
+    try {
+      console.log('🔄 Cargando overrides de moneda desde la base de datos...');
+      
+      const { data: overrides, error } = await supabase
+        .from('mundialito_moneda_overrides')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error cargando overrides desde BD:', error);
+        return;
+      }
+
+      // Limpiar overrides actuales
+      window.mundialitoMonedaOverridesExact = {};
+      window.mundialitoMonedaOverridesJugadorFase = {};
+
+      // Procesar overrides desde la base de datos
+      overrides.forEach(override => {
+        if (override.tipo_override === 'exacto') {
+          const key = `${override.partido_id}-${override.jugador_id}-${override.fase}`;
+          window.mundialitoMonedaOverridesExact[key] = override.pasa;
+        } else if (override.tipo_override === 'jugador_fase') {
+          const key = `${override.jugador_id}-${override.fase}`;
+          window.mundialitoMonedaOverridesJugadorFase[key] = override.pasa;
+        }
+      });
+
+      console.log(`✅ Cargados ${overrides.length} overrides desde la base de datos`);
+      console.log('📋 Overrides exactos:', Object.keys(window.mundialitoMonedaOverridesExact).length);
+      console.log('📋 Overrides jugador-fase:', Object.keys(window.mundialitoMonedaOverridesJugadorFase).length);
+      
+    } catch (error) {
+      console.error('Error cargando overrides desde BD:', error);
+    }
+  };
+
+  // Cargar overrides al inicializar
+  loadOverridesFromDatabase();
+
+  // Helpers para setear/limpiar overrides desde la consola (ahora con base de datos)
+  window.setMonedaOverrideExact = async (partidoId, jugadorId, fase, pasa) => {
+    try {
+      // Guardar en base de datos
+      const { error } = await supabase
+        .from('mundialito_moneda_overrides')
+        .upsert({
+          partido_id: partidoId,
+          jugador_id: jugadorId,
+          fase: fase,
+          pasa: !!pasa,
+          tipo_override: 'exacto'
+        }, {
+          onConflict: 'partido_id,jugador_id,fase'
+        });
+
+      if (error) {
+        console.error('Error guardando override exacto:', error);
+        return;
+      }
+
+      // Actualizar cache local
+      window.mundialitoMonedaOverridesExact[`${partidoId}-${jugadorId}-${fase}`] = !!pasa;
+      console.log(`✅ Override exacto guardado en BD: ${partidoId}-${jugadorId}-${fase} = ${pasa}`);
+      
+    } catch (error) {
+      console.error('Error en setMonedaOverrideExact:', error);
+    }
+  };
+  
+  window.setMonedaOverrideJugadorFase = async (jugadorId, fase, pasa) => {
+    try {
+      // Guardar en base de datos
+      const { error } = await supabase
+        .from('mundialito_moneda_overrides')
+        .upsert({
+          partido_id: null, // Para overrides jugador-fase no necesitamos partido específico
+          jugador_id: jugadorId,
+          fase: fase,
+          pasa: !!pasa,
+          tipo_override: 'jugador_fase'
+        }, {
+          onConflict: 'jugador_id,fase'
+        });
+
+      if (error) {
+        console.error('Error guardando override jugador-fase:', error);
+        return;
+      }
+
+      // Actualizar cache local
+      window.mundialitoMonedaOverridesJugadorFase[`${jugadorId}-${fase}`] = !!pasa;
+      console.log(`✅ Override jugador-fase guardado en BD: ${jugadorId}-${fase} = ${pasa}`);
+      
+    } catch (error) {
+      console.error('Error en setMonedaOverrideJugadorFase:', error);
+    }
+  };
+  
+  window.clearMonedaOverrides = async () => {
+    try {
+      // Limpiar de base de datos
+      const { error } = await supabase
+        .from('mundialito_moneda_overrides')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Eliminar todos
+
+      if (error) {
+        console.error('Error limpiando overrides:', error);
+        return;
+      }
+
+      // Limpiar cache local
+      window.mundialitoMonedaOverridesExact = {};
+      window.mundialitoMonedaOverridesJugadorFase = {};
+      console.log('✅ Todos los overrides han sido limpiados de la BD');
+      
+    } catch (error) {
+      console.error('Error en clearMonedaOverrides:', error);
+    }
+  };
+
+  // Función para ver overrides actuales
+  window.verMonedaOverrides = () => {
+    console.log('📋 Overrides exactos:', window.mundialitoMonedaOverridesExact);
+    console.log('📋 Overrides jugador-fase:', window.mundialitoMonedaOverridesJugadorFase);
+    console.log('📋 Umbral global:', window.mundialitoUmbralMoneda);
+    console.log('📋 Salt:', window.mundialitoSalt);
+  };
+
+  // Función para recargar overrides desde la base de datos
+  window.recargarMonedaOverrides = async () => {
+    await loadOverridesFromDatabase();
+  };
+
   // Función para tirar moneda determinística (50% probabilidad)
   // Usa partido ID + jugador ID + fase para generar seed única y reproducible
+  // Ahora respeta overrides manuales y los persiste
   const tirarMonedaDeterministica = (partidoId, jugadorId, fase) => {
-    const seedString = `${partidoId}-${jugadorId}-${fase}`;
+    const keyExact = `${partidoId}-${jugadorId}-${fase}`;
+    const keyJugadorFase = `${jugadorId}-${fase}`;
+    
+    // Verificar overrides exactos primero
+    if (keyExact in window.mundialitoMonedaOverridesExact) {
+      return window.mundialitoMonedaOverridesExact[keyExact];
+    }
+    
+    // Verificar overrides por jugador-fase
+    if (keyJugadorFase in window.mundialitoMonedaOverridesJugadorFase) {
+      return window.mundialitoMonedaOverridesJugadorFase[keyJugadorFase];
+    }
+
+    // Si no hay override, usar lógica determinística original
+    const seedString = `${partidoId}-${jugadorId}-${fase}-${(window.mundialitoSalt||'')}`;
     const seed = hashCode(seedString);
     const seededRandom = createSeededRandom(seed);
-    return seededRandom() < 0.5;
+    const umbral = (typeof window.mundialitoUmbralMoneda === 'number') ? window.mundialitoUmbralMoneda : 0.5;
+    return seededRandom() < umbral;
   };
 
   // Función para evaluar si pasa de fase de grupos
@@ -7305,6 +7477,65 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // ===============================
   // FIN FUNCIONALIDAD MUNDIALITO T5
   // ===============================
+
+  // Función para forzar moneda desde el historial de partidos
+  window.forzarMonedaDesdeHistorial = async (partidoId, jugadorId, nombreJugador) => {
+    const fasesValidas = ['grupos', '8vos', '4tos', 'semis', 'final'];
+    const fase = prompt(
+      `Fase para forzar pase por moneda a favor de ${nombreJugador}:\n(grupos | 8vos | 4tos | semis | final)`,
+      '8vos'
+    );
+    
+    if (!fase || !fasesValidas.includes(fase)) {
+      alert('Fase inválida. Usa: grupos, 8vos, 4tos, semis o final.');
+      return;
+    }
+    
+    // Las funciones de override ya están disponibles globalmente
+    
+    // Setear el override
+    await window.setMonedaOverrideExact(partidoId, jugadorId, fase, true);
+    
+    // Reprocesar el mundialito si está disponible
+    if (typeof window.procesarMundialito === 'function') {
+      window.procesarMundialito();
+    } else {
+      alert('Listo. Ve a la pestaña Mundialito y presiona "Reset Mundial" para reprocesar.');
+    }
+    
+    alert(`Se forzó moneda ganadora para ${nombreJugador} en ${fase} del partido #${partidoId}.`);
+  };
+
+  // Función de test para verificar overrides de moneda
+  window.testMonedaOverrides = () => {
+    console.log('🧪 Iniciando test de overrides de moneda...');
+    
+    // Test 1: Override exacto
+    const partidoId = 1, jugadorId = 1, fase = '8vos';
+    window.setMonedaOverrideExact(partidoId, jugadorId, fase, true);
+    const resultado1 = tirarMonedaDeterministica(partidoId, jugadorId, fase);
+    console.assert(resultado1 === true, 'Override exacto debería devolver true');
+    
+    // Test 2: Override por jugador-fase
+    const jugadorId2 = 2, fase2 = '4tos';
+    window.setMonedaOverrideJugadorFase(jugadorId2, fase2, false);
+    const resultado2 = tirarMonedaDeterministica(999, jugadorId2, fase2); // partidoId diferente
+    console.assert(resultado2 === false, 'Override por jugador-fase debería devolver false');
+    
+    // Test 3: Sin override (debería usar lógica determinística)
+    const resultado3 = tirarMonedaDeterministica(999, 999, 'semis');
+    console.log('Resultado sin override (determinístico):', resultado3);
+    
+    // Test 4: Limpiar overrides
+    window.clearMonedaOverrides();
+    const resultado4 = tirarMonedaDeterministica(partidoId, jugadorId, fase);
+    console.log('Resultado después de limpiar overrides:', resultado4);
+    
+    console.log('✅ Test de overrides completado. Revisa la consola para ver los resultados.');
+    
+    // Limpiar después del test
+    window.clearMonedaOverrides();
+  };
 
   console.log('✅ Aplicación inicializada correctamente');
 };
