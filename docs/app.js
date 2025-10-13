@@ -4730,7 +4730,10 @@ const initApp = () => {
         </td>
         <td class="fw-bold text-white">
           <div class="d-flex align-items-center justify-content-start">
-            <span class="text-truncate me-1">${jugadorData.jugadores.nombre}</span>
+            <span class="text-truncate me-1">
+              ${jugadorData.jugadores.nombre}
+              ${window.esCampeonMundial(jugadorData.jugadores.id) ? ' ⭐' : ''}
+            </span>
             ${crearIconoRacha(jugadorData.jugadores.id)}
           </div>
         </td>
@@ -4767,6 +4770,13 @@ const initApp = () => {
     setTimeout(() => {
       updateSortIndicators();
     }, 10);
+    
+    // Actualizar campeones después de renderizar la tabla
+    setTimeout(async () => {
+      if (typeof window.actualizarCampeonesEnEstadisticas === 'function') {
+        await window.actualizarCampeonesEnEstadisticas();
+      }
+    }, 500);
   }
 
   // --- Event Listeners ---
@@ -6717,6 +6727,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   window.mundialitoUmbralMoneda = 0.5;
   window.mundialitoSalt = '';
 
+  // Cache de campeones mundiales
+  window.campeonesMundiales = new Set();
+
   const loadOverridesFromDatabase = async () => {
     try {
       console.log('🔄 Cargando overrides de moneda desde la base de datos...');
@@ -6755,8 +6768,223 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     }
   };
 
-  // Cargar overrides al inicializar
+  // Función para cargar campeones mundiales
+  const loadCampeonesMundiales = async () => {
+    try {
+      console.log('🔄 Cargando campeones mundiales...');
+      console.log('🔍 jugadoresMundial existe:', typeof jugadoresMundial !== 'undefined');
+      console.log('🔍 jugadoresMundial size:', typeof jugadoresMundial !== 'undefined' ? jugadoresMundial.size : 'undefined');
+      
+      // Limpiar cache anterior
+      window.campeonesMundiales.clear();
+      
+      // Buscar campeones en el mundialito actual
+      if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
+        console.log('🔍 Revisando jugadores del mundialito...');
+        let campeonesEncontrados = 0;
+        
+        jugadoresMundial.forEach(jugador => {
+          console.log(`🔍 Jugador: ${jugador.nombre}, campeon: ${jugador.campeon}, fase: ${jugador.fase}`);
+          if (jugador.campeon) {
+            window.campeonesMundiales.add(jugador.id);
+            campeonesEncontrados++;
+            console.log(`🏆 Campeón detectado: ${jugador.nombre} (ID: ${jugador.id})`);
+          }
+        });
+        
+        console.log(`🔍 Total campeones encontrados: ${campeonesEncontrados}`);
+      } else {
+        console.log('⚠️ jugadoresMundial no está disponible o está vacío');
+      }
+
+      console.log(`✅ Cargados ${window.campeonesMundiales.size} campeones mundiales`);
+      
+    } catch (error) {
+      console.error('Error cargando campeones mundiales:', error);
+    }
+  };
+
+  // Función para verificar si un jugador es campeón mundial
+  window.esCampeonMundial = (jugadorId) => {
+    return window.campeonesMundiales.has(jugadorId);
+  };
+
+  // Función para renderizar campeones mundiales
+  const renderizarCampeonesMundiales = async () => {
+    const container = document.getElementById('campeones-container');
+    if (!container) {
+      console.log('⚠️ Container campeones-container no encontrado');
+      return;
+    }
+
+    try {
+      console.log('🔄 Renderizando campeones mundiales...');
+      
+      // Recargar campeones desde el mundialito actual
+      await loadCampeonesMundiales();
+      
+      console.log('🔍 Campeones en cache:', window.campeonesMundiales.size);
+      
+      if (window.campeonesMundiales.size === 0) {
+        console.log('⚠️ No hay campeones en cache, ocultando sección');
+        container.innerHTML = '';
+        return;
+      }
+
+      // Obtener información de los campeones
+      const campeonesInfo = [];
+      if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
+        jugadoresMundial.forEach(jugador => {
+          if (jugador.campeon) {
+            campeonesInfo.push({
+              id: jugador.id,
+              nombre: jugador.nombre,
+              victorias: jugador.victorias,
+              ultimoPartido: jugador.ultimoPartido
+            });
+          }
+        });
+      }
+
+      console.log('🔍 Campeones info encontrados:', campeonesInfo.length);
+
+      if (campeonesInfo.length === 0) {
+        console.log('⚠️ No hay campeones en jugadoresMundial, ocultando sección');
+        container.innerHTML = '';
+        return;
+      }
+
+      console.log('🎨 Renderizando campeones:', campeonesInfo);
+
+      // Renderizar campeones centrados
+      const html = campeonesInfo.map((campeon, index) => {
+        const fechaUltimo = campeon.ultimoPartido ? 
+          new Date(campeon.ultimoPartido.fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }) : 'Fecha no disponible';
+
+        return `
+          <div class="col-md-6 col-lg-4">
+            <div class="card bg-warning bg-opacity-10 border-warning border-opacity-25 h-100">
+              <div class="card-body text-center p-4">
+                <div class="mb-3">
+                  <i class="bi bi-trophy text-warning fs-1"></i>
+                </div>
+                <h5 class="text-warning fw-bold mb-2">
+                  ${campeon.nombre} ⭐
+                </h5>
+                <p class="text-light-emphasis mb-2">
+                  <i class="bi bi-calendar me-1"></i>
+                  ${fechaUltimo}
+                </p>
+                <div class="small text-light-emphasis">
+                  ${campeon.victorias} victorias
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      console.log('🎨 HTML generado:', html);
+      container.innerHTML = html;
+      console.log('✅ Campeones renderizados correctamente');
+
+    } catch (error) {
+      console.error('Error renderizando campeones mundiales:', error);
+      container.innerHTML = '<div class="col-12 text-center py-4"><p class="text-light-emphasis">Error cargando campeones</p></div>';
+    }
+  };
+
+  // Cargar overrides y campeones al inicializar
   loadOverridesFromDatabase();
+  loadCampeonesMundiales();
+  
+  // Función para cargar campeones automáticamente
+  const cargarCampeonesAutomaticamente = async () => {
+    try {
+      console.log('🔄 Cargando campeones automáticamente...');
+      
+      // Intentar cargar campeones desde el mundialito actual
+      if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
+        console.log('✅ Mundialito ya procesado, cargando campeones...');
+        await loadCampeonesMundiales();
+        await renderizarCampeonesMundiales();
+        return;
+      }
+      
+      // Si no hay mundialito procesado, intentar procesarlo automáticamente
+      console.log('🔄 Mundialito no procesado, intentando procesar automáticamente...');
+      
+      try {
+        // Procesar mundialito automáticamente
+        if (typeof window.procesarMundialito === 'function') {
+          console.log('🔄 Procesando mundialito automáticamente...');
+          await window.procesarMundialito();
+          
+          // Esperar un poco para que se procesen los datos
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Después de procesar, cargar campeones
+          console.log('🔄 Mundialito procesado, cargando campeones...');
+          await loadCampeonesMundiales();
+          await renderizarCampeonesMundiales();
+          return;
+        } else {
+          console.log('⚠️ Función procesarMundialito no disponible');
+        }
+      } catch (error) {
+        console.log('⚠️ Error procesando mundialito automáticamente:', error);
+      }
+      
+      // Si no se pudo procesar, ocultar sección
+      console.log('🔄 No se pudo procesar mundialito, ocultando sección...');
+      const container = document.getElementById('campeones-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+      
+    } catch (error) {
+      console.error('Error cargando campeones automáticamente:', error);
+    }
+  };
+  
+  // Cargar campeones después de que se carguen todos los datos
+  setTimeout(async () => {
+    await cargarCampeonesAutomaticamente();
+  }, 2000);
+
+  // Función para hacer carga invisible del mundialito
+  const cargarMundialitoInvisible = async () => {
+    try {
+      console.log('🔄 Cargando mundialito invisiblemente...');
+      
+      // Procesar mundialito sin mostrar interfaz
+      if (typeof window.procesarMundialito === 'function') {
+        await window.procesarMundialito();
+        console.log('✅ Mundialito procesado invisiblemente');
+        
+        // Esperar un poco para que se procesen los datos
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Después de procesar, cargar campeones
+        await loadCampeonesMundiales();
+        await renderizarCampeonesMundiales();
+        console.log('✅ Campeones cargados después de procesamiento invisible');
+      } else {
+        console.log('⚠️ Función procesarMundialito no disponible para carga invisible');
+      }
+    } catch (error) {
+      console.log('⚠️ Error en carga invisible del mundialito:', error);
+    }
+  };
+
+  // Ejecutar carga invisible del mundialito al inicio
+  setTimeout(async () => {
+    await cargarMundialitoInvisible();
+  }, 3000);
 
   // Helpers para setear/limpiar overrides desde la consola (ahora con base de datos)
   window.setMonedaOverrideExact = async (partidoId, jugadorId, fase, pasa) => {
@@ -6852,6 +7080,31 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   window.recargarMonedaOverrides = async () => {
     await loadOverridesFromDatabase();
   };
+
+  // Función para forzar actualización de campeones
+  window.actualizarCampeones = async () => {
+    console.log('🔄 Forzando actualización de campeones...');
+    await loadCampeonesMundiales();
+    await renderizarCampeonesMundiales();
+    console.log('✅ Campeones actualizados');
+  };
+
+  // Función para actualizar campeones cuando se cambie a la pestaña de estadísticas
+  window.actualizarCampeonesEnEstadisticas = async () => {
+    console.log('🔄 Actualizando campeones en pestaña estadísticas...');
+    await cargarCampeonesAutomaticamente();
+  };
+
+  // Event listener para la pestaña de estadísticas
+  const estadisticasTab = document.getElementById('estadisticas-tab');
+  if (estadisticasTab) {
+    estadisticasTab.addEventListener('shown.bs.tab', function (e) {
+      // Actualizar campeones cuando se muestra la pestaña de estadísticas
+      if (typeof window.actualizarCampeonesEnEstadisticas === 'function') {
+        window.actualizarCampeonesEnEstadisticas();
+      }
+    });
+  }
 
   // Función para tirar moneda determinística (50% probabilidad)
   // Usa partido ID + jugador ID + fase para generar seed única y reproducible
@@ -7191,7 +7444,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   };
 
   // Procesar mundialito completo
-  const procesarMundialito = async () => {
+  window.procesarMundialito = async () => {
     try {
       const container = document.getElementById('mundialito-fixture');
       if (container) {
@@ -7212,6 +7465,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       
       mostrarFixtureMundialito();
       actualizarEstadisticasMundialito();
+      
+      // Actualizar campeones mundiales después de procesar
+      await loadCampeonesMundiales();
+      
+      // Renderizar campeones en la página principal
+      await renderizarCampeonesMundiales();
       
     } catch (error) {
       console.error('❌ Error procesando mundialito:', error);
@@ -7328,7 +7587,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
                       <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold text-white">${jugador.nombre}</span>
+                        <span class="fw-bold text-white">${jugador.nombre} ⭐</span>
                         ${index === 0 ? '<i class="bi bi-trophy text-warning"></i>' : ''}
                       </div>
                       <span class="badge ${badge.badge} mb-1">${badge.text}</span>

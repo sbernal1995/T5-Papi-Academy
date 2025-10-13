@@ -1326,8 +1326,31 @@
       <div class="tab-pane fade show active" id="estadisticas-content" role="tabpanel" aria-labelledby="estadisticas-tab">
         <!-- Main Content -->
         <main class="container-fluid py-5">
+      <!-- Campeones Mundiales Section -->
+      <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.05s">
+        <div class="enhanced-card rounded-3 p-4">
+          <div class="text-center mb-4">
+            <h2 class="text-warning fw-bold mb-2">
+              <i class="bi bi-trophy me-2"></i>
+              Campeones Mundiales
+            </h2>
+            <p class="text-light-emphasis">Los reyes del Mundialito T5</p>
+          </div>
+          
+          <div class="row g-3 mb-0" id="campeones-container">
+            <!-- Las cards se generarán dinámicamente -->
+            <div class="col-12 text-center py-4">
+              <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="text-light-emphasis mt-2 mb-0">Cargando campeones mundiales...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Destacados Section -->
-      <section class="mb-5 animate-fade-in-up">
+      <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.1s">
         <div class="enhanced-card rounded-3 p-4">
           <div class="text-center mb-4">
             <h2 class="h3 text-white mb-2">
@@ -1348,6 +1371,7 @@
           </div>
         </div>
       </section>
+
 
       <!-- Mejores por Puesto Section -->
       <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.05s">
