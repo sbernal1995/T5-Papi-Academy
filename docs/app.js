@@ -6809,6 +6809,102 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     return window.campeonesMundiales.has(jugadorId);
   };
 
+  // Función para renderizar el último campeón
+  const renderizarUltimoCampeon = async () => {
+    const container = document.getElementById('ultimo-campeon-container');
+    if (!container) {
+      console.log('⚠️ Container ultimo-campeon-container no encontrado');
+      return;
+    }
+
+    try {
+      console.log('🔄 Renderizando último campeón...');
+      
+      // Recargar campeones desde el mundialito actual
+      await loadCampeonesMundiales();
+      
+      if (window.campeonesMundiales.size === 0) {
+        console.log('⚠️ No hay campeones, ocultando sección último campeón');
+        container.innerHTML = '';
+        return;
+      }
+
+      // Obtener información del último campeón
+      let ultimoCampeon = null;
+      if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
+        jugadoresMundial.forEach(jugador => {
+          if (jugador.campeon) {
+            ultimoCampeon = {
+              id: jugador.id,
+              nombre: jugador.nombre,
+              victorias: jugador.victorias,
+              ultimoPartido: jugador.ultimoPartido
+            };
+          }
+        });
+      }
+
+      if (!ultimoCampeon) {
+        console.log('⚠️ No se encontró último campeón, ocultando sección');
+        container.innerHTML = '';
+        return;
+      }
+
+      console.log('🎨 Renderizando último campeón:', ultimoCampeon);
+
+      const fechaUltimo = ultimoCampeon.ultimoPartido ? 
+        new Date(ultimoCampeon.ultimoPartido.fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }) : 'Fecha no disponible';
+
+      // Verificar si es Kite para mostrar su imagen especial
+      const esKite = ultimoCampeon.nombre.toLowerCase().includes('kite');
+      const imagenCampeon = esKite ? 'kite_campeon.jpg' : null;
+
+      const html = `
+        <div class="col-12">
+          <div class="card bg-dark bg-opacity-25 border-light border-2 h-100">
+            <div class="card-body text-center p-4">
+              <div class="mb-4">
+                ${imagenCampeon ? `
+                  <img src="${imagenCampeon}" alt="${ultimoCampeon.nombre} Campeón" 
+                       class="img-fluid mb-3" 
+                       style="max-height: 400px; border-radius: 10px;">
+                ` : `
+                  <i class="bi bi-trophy text-warning" style="font-size: 4rem;"></i>
+                `}
+              </div>
+              <h3 class="text-white fw-bold mb-3">
+                ${ultimoCampeon.nombre} ⭐
+              </h3>
+              <p class="text-light-emphasis mb-3 fs-5">
+                <i class="bi bi-calendar me-2"></i>
+                ${fechaUltimo}
+              </p>
+              <div class="row justify-content-center">
+                <div class="col-md-4">
+                  <div class="badge bg-success fs-6 px-3 py-2">
+                    <i class="bi bi-trophy me-1"></i>
+                    ${ultimoCampeon.victorias} victorias
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      console.log('✅ Último campeón renderizado correctamente');
+
+    } catch (error) {
+      console.error('Error renderizando último campeón:', error);
+      container.innerHTML = '';
+    }
+  };
+
   // Función para renderizar campeones mundiales
   const renderizarCampeonesMundiales = async () => {
     const container = document.getElementById('campeones-container');
@@ -6865,13 +6961,25 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             day: 'numeric'
           }) : 'Fecha no disponible';
 
+        // Verificar si es Kite para mostrar su imagen especial
+        const esKite = campeon.nombre.toLowerCase().includes('kite');
+        const imagenCampeon = esKite ? 'kite_campeon.jpg' : null;
+
         return `
           <div class="col-md-6 col-lg-4">
             <div class="card bg-warning bg-opacity-10 border-warning border-opacity-25 h-100">
               <div class="card-body text-center p-4">
-                <div class="mb-3">
-                  <i class="bi bi-trophy text-warning fs-1"></i>
-                </div>
+                ${imagenCampeon ? `
+                  <div class="mb-3">
+                    <img src="${imagenCampeon}" alt="${campeon.nombre} Campeón" 
+                         class="img-fluid rounded-circle" 
+                         style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #ffc107;">
+                  </div>
+                ` : `
+                  <div class="mb-3">
+                    <i class="bi bi-trophy text-warning fs-1"></i>
+                  </div>
+                `}
                 <h5 class="text-warning fw-bold mb-2">
                   ${campeon.nombre} ⭐
                 </h5>
@@ -6911,6 +7019,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
         console.log('✅ Mundialito ya procesado, cargando campeones...');
         await loadCampeonesMundiales();
+        await renderizarUltimoCampeon();
         await renderizarCampeonesMundiales();
         return;
       }
@@ -6930,6 +7039,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           // Después de procesar, cargar campeones
           console.log('🔄 Mundialito procesado, cargando campeones...');
           await loadCampeonesMundiales();
+          await renderizarUltimoCampeon();
           await renderizarCampeonesMundiales();
           return;
         } else {
@@ -6971,6 +7081,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         
         // Después de procesar, cargar campeones
         await loadCampeonesMundiales();
+        await renderizarUltimoCampeon();
         await renderizarCampeonesMundiales();
         console.log('✅ Campeones cargados después de procesamiento invisible');
       } else {
@@ -7085,6 +7196,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   window.actualizarCampeones = async () => {
     console.log('🔄 Forzando actualización de campeones...');
     await loadCampeonesMundiales();
+    await renderizarUltimoCampeon();
     await renderizarCampeonesMundiales();
     console.log('✅ Campeones actualizados');
   };
