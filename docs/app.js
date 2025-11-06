@@ -6653,7 +6653,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
   // Obtener badge de fase
   const obtenerBadgeFase = (jugador) => {
-    if (jugador.campeon) {
+    if (jugador.fase === 'campeon') {
       const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
       return { badge: 'bg-success', text: `👑 Campeón${bonus}`, descripcion: 'Ganó el mundial' };
     }
@@ -7348,6 +7348,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         jugadoresMundial.set(jugadorId, jugador);
       }
 
+      // Si el jugador fue campeón, el siguiente partido reinicia su ciclo a grupos
+      if (jugador.fase === 'campeon') {
+        // Mantener la marca histórica de campeón, pero reiniciar su ruta competitiva
+        resetearAGrupos(jugador);
+      }
+
       const resultado = determinarResultadoJugador(partido, jugadorId);
       if (!resultado) return;
 
@@ -7474,6 +7480,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           } else if (jugador.fase === 'final') {
             jugador.fase = 'campeon';
             jugador.campeon = true;
+            // Registrar logro de campeonato en historial
+            jugador.historialFases.push({
+              fase: 'campeon',
+              completada: true,
+              fecha: partido.fecha,
+              resultado: 'victoria',
+              metodo: 'automatico',
+              partidoId: partido.id
+            });
           }
           
           // Determinar si fue por moneda (empate sin bonus)
@@ -7604,7 +7619,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     };
 
     jugadoresMundial.forEach(jugador => {
-      if (jugador.campeon) {
+      if (jugador.fase === 'campeon') {
         jugadoresPorFase.campeon.push(jugador);
       } else {
         jugadoresPorFase[jugador.fase]?.push(jugador);
