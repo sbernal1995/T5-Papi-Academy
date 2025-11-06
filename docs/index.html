@@ -2320,19 +2320,60 @@
             </div>
           </div>
 
-          <!-- Fixture Display -->
-          <div class="row">
-            <div class="col-12">
-              <div class="enhanced-card rounded-3 p-4">
-                <h5 class="text-warning mb-3">
-                  <i class="bi bi-diagram-3 me-2"></i>🏟️ Fixture del Mundial
-                </h5>
-                <div id="mundialito-fixture" class="row">
-                  <div class="text-center py-4">
-                    <div class="spinner-border text-warning" role="status">
-                      <span class="visually-hidden">Cargando fixture...</span>
+          <!-- Subtabs -->
+          <div class="mb-3">
+            <ul class="nav nav-pills" id="mundialito-subtabs">
+              <li class="nav-item">
+                <button class="nav-link active" id="mundialito-sub-tab-fixture" type="button">Fixture</button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" id="mundialito-sub-tab-estadisticas" type="button">Estadísticas</button>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Subtab: Fixture Display -->
+          <div id="mundialito-sub-fixture">
+            <div class="row">
+              <div class="col-12">
+                <div class="enhanced-card rounded-3 p-4">
+                  <h5 class="text-warning mb-3">
+                    <i class="bi bi-diagram-3 me-2"></i>🏟️ Fixture del Mundial
+                  </h5>
+                  <div id="mundialito-fixture" class="row">
+                    <div class="text-center py-4">
+                      <div class="spinner-border text-warning" role="status">
+                        <span class="visually-hidden">Cargando fixture...</span>
+                      </div>
+                      <p class="text-light-emphasis mt-2">Presiona "Procesar Mundial" para generar el fixture</p>
                     </div>
-                    <p class="text-light-emphasis mt-2">Presiona "Procesar Mundial" para generar el fixture</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtab: Estadísticas -->
+          <div id="mundialito-sub-estadisticas" class="d-none">
+            <div class="row">
+              <div class="col-12">
+                <div class="enhanced-card rounded-3 p-4">
+                  <h5 class="text-info mb-3">
+                    <i class="bi bi-bar-chart-line me-2"></i>📈 Estadísticas de Llegada (Histograma)
+                  </h5>
+                  <div class="row">
+                    <div class="col-12 col-lg-8">
+                      <canvas id="mundialito-histograma" height="140"></canvas>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                      <div class="small text-light-emphasis">
+                        <p>Distribución de hasta dónde llegan los jugadores en el Mundialito T5.</p>
+                        <ul class="mb-0">
+                          <li>Grupos → 8vos → 4tos → Semis → Final → Campeón</li>
+                          <li>Se toma la fase más alta alcanzada por jugador (incluye la actual).</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

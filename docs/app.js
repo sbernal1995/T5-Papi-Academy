@@ -7599,6 +7599,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       // Renderizar campeones en la página principal
       await renderizarCampeonesMundiales();
       
+      // Renderizar estadísticas (histograma) si la pestaña existe
+      renderizarEstadisticasMundialito();
+      
     } catch (error) {
       console.error('❌ Error procesando mundialito:', error);
     }
@@ -7789,6 +7792,87 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     }, 100);
   };
 
+  // Renderizar estadísticas: Histograma de llegada por fase máxima alcanzada
+  const renderizarEstadisticasMundialito = () => {
+    const canvas = document.getElementById('mundialito-histograma');
+    if (!canvas) return;
+
+    const fasesOrden = ['grupos', '8vos', '4tos', 'semis', 'final', 'campeon'];
+    const labels = ['Grupos', '8vos', '4tos', 'Semis', 'Final', 'Campeón'];
+    const counts = [0, 0, 0, 0, 0, 0];
+
+    jugadoresMundial.forEach((jugador) => {
+      // Contabilizar cada ocurrencia histórica de fases (completadas o eliminaciones)
+      if (Array.isArray(jugador.historialFases)) {
+        jugador.historialFases.forEach((f) => {
+          const faseRaw = (f && f.fase) ? f.fase : '';
+          let faseKey = faseRaw;
+          if (faseRaw.startsWith('eliminado_')) {
+            faseKey = faseRaw.replace('eliminado_', '');
+          }
+          const idx = fasesOrden.indexOf(faseKey);
+          if (idx >= 0) counts[idx]++;
+        });
+      }
+
+      // Contabilizar también la fase actual del jugador
+      const idxActual = fasesOrden.indexOf(jugador.fase);
+      if (idxActual >= 0) counts[idxActual]++;
+    });
+
+    // Destruir instancia previa si existe
+    if (chartInstances && chartInstances['mundialito-histograma']) {
+      try { chartInstances['mundialito-histograma'].destroy(); } catch (e) {}
+    }
+
+    const ctx = canvas.getContext('2d');
+    chartInstances['mundialito-histograma'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Jugadores',
+          data: counts,
+          backgroundColor: [
+            'rgba(108,117,125,0.6)', // Grupos - secondary
+            'rgba(13,110,253,0.6)',  // 8vos - primary
+            'rgba(13,202,240,0.6)',  // 4tos - info
+            'rgba(255,193,7,0.6)',   // Semis - warning
+            'rgba(220,53,69,0.6)',   // Final - danger
+            'rgba(25,135,84,0.7)'    // Campeón - success
+          ],
+          borderColor: [
+            'rgba(108,117,125,1)',
+            'rgba(13,110,253,1)',
+            'rgba(13,202,240,1)',
+            'rgba(255,193,7,1)',
+            'rgba(220,53,69,1)',
+            'rgba(25,135,84,1)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y} jugadores`
+            }
+          }
+        }
+      }
+    });
+  };
+
   // Actualizar estadísticas globales
   const actualizarEstadisticasMundialito = () => {
     const totalPlayers = document.getElementById('total-players');
@@ -7859,6 +7943,29 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       procesarMundialito();
     });
   }
+
+  // Subtabs: Fixture / Estadísticas
+  const subFixtureBtn = document.getElementById('mundialito-sub-tab-fixture');
+  const subStatsBtn = document.getElementById('mundialito-sub-tab-estadisticas');
+  const subFixture = document.getElementById('mundialito-sub-fixture');
+  const subStats = document.getElementById('mundialito-sub-estadisticas');
+  const activarSubtab = (tab) => {
+    if (!subFixtureBtn || !subStatsBtn || !subFixture || !subStats) return;
+    if (tab === 'estadisticas') {
+      subStatsBtn.classList.add('active');
+      subFixtureBtn.classList.remove('active');
+      subStats.classList.remove('d-none');
+      subFixture.classList.add('d-none');
+      renderizarEstadisticasMundialito();
+    } else {
+      subFixtureBtn.classList.add('active');
+      subStatsBtn.classList.remove('active');
+      subFixture.classList.remove('d-none');
+      subStats.classList.add('d-none');
+    }
+  };
+  if (subFixtureBtn) subFixtureBtn.addEventListener('click', () => activarSubtab('fixture'));
+  if (subStatsBtn) subStatsBtn.addEventListener('click', () => activarSubtab('estadisticas'));
 
   // ===============================
   // FIN FUNCIONALIDAD MUNDIALITO T5
