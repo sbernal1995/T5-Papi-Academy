@@ -345,7 +345,7 @@ const initApp = () => {
           const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
-          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.66);
+          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.4);
         };
         
         aVal = calcularSkill(a);
@@ -2056,7 +2056,7 @@ const initApp = () => {
       
       // Rendimiento Arquero: atajadas por partido * 0.66
       const atajadasPP = (jugador.atajadas || 0) / pj;
-      const rendArquero = atajadasPP * 0.66;
+      const rendArquero = atajadasPP * 0.4;
       
       rendimientoAtaqueTotal += rendAtaque;
       rendimientoArqueroTotal += rendArquero;
@@ -4971,7 +4971,8 @@ const initApp = () => {
       
       // Obtener cantidad de partidos a mostrar
       const cantidadElement = document.getElementById('cantidad-partidos');
-      const cantidad = parseInt(cantidadElement?.value) || 5;
+      const valorCantidad = cantidadElement?.value || '5';
+      const cantidad = (valorCantidad === 'all') ? null : (parseInt(valorCantidad) || 5);
       
       // Construir consulta con filtro de temporada si está seleccionada
       let query = supabase
@@ -5014,9 +5015,11 @@ const initApp = () => {
       }
       
       // Aplicar orden y límite
-      const { data: partidos, error } = await query
-        .order('fecha', { ascending: false })
-        .limit(cantidad);
+      let ejecutar = query.order('fecha', { ascending: false });
+      if (typeof cantidad === 'number' && cantidad > 0) {
+        ejecutar = ejecutar.limit(cantidad);
+      }
+      const { data: partidos, error } = await ejecutar;
       
       console.log('📊 Resultado consulta partidos:', { partidos, error });
 
@@ -5903,7 +5906,7 @@ const initApp = () => {
         const atajadasPP = (jugador.atajadas || 0) / pj;
         
         const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-        const rendArquero = atajadasPP * 0.66;
+        const rendArquero = atajadasPP * 0.4;
         
         return rendAtaque + rendArquero;
       };
@@ -6026,7 +6029,7 @@ const initApp = () => {
           const atajadasPP = (jugador.atajadas || 0) / pj;
           
           const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-          const rendArquero = atajadasPP * 0.66;
+          const rendArquero = atajadasPP * 0.4;
           
           const tooltipContent = `Cálculo detallado (por partido):
 ATAQUE:
@@ -6039,7 +6042,7 @@ ATAQUE:
 Subtotal Ataque: ${rendAtaque.toFixed(1)}
 
 ARQUERO:
-• Atajadas: ${atajadasPP.toFixed(2)} × 0.66 = ${rendArquero.toFixed(1)}
+• Atajadas: ${atajadasPP.toFixed(2)} × 0.4 = ${rendArquero.toFixed(1)}
 
 TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           
@@ -6190,9 +6193,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       });
     }
     
-    // Aplicar límite de cantidad
-    const cantidad = parseInt(document.getElementById('cantidad-partidos')?.value) || 5;
-    partidosFiltrados = partidosFiltrados.slice(0, cantidad);
+    // Aplicar límite de cantidad (permitiendo 'Todos')
+    const valorCantidad = document.getElementById('cantidad-partidos')?.value || '5';
+    if (valorCantidad !== 'all') {
+      const cantidad = parseInt(valorCantidad) || 5;
+      partidosFiltrados = partidosFiltrados.slice(0, cantidad);
+    }
     
     // Mostrar partidos filtrados
     mostrarPartidosBasicos(container, partidosFiltrados);
@@ -6829,19 +6835,35 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         return;
       }
 
-      // Obtener información del último campeón
+      // Obtener información del último campeón (por fecha de campeonato)
       let ultimoCampeon = null;
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
+        const candidatos = [];
         jugadoresMundial.forEach(jugador => {
           if (jugador.campeon) {
-            ultimoCampeon = {
-              id: jugador.id,
-              nombre: jugador.nombre,
-              victorias: jugador.victorias,
-              ultimoPartido: jugador.ultimoPartido
-            };
+            // Buscar la fecha en la que se registró el campeonato en el historial
+            let fechaCampeon = null;
+            if (Array.isArray(jugador.historialFases)) {
+              const entry = jugador.historialFases.find(h => h && h.fase === 'campeon' && h.completada);
+              if (entry && entry.fecha) fechaCampeon = entry.fecha;
+            }
+            // Fallback (no ideal): usar fecha del último partido si no hay marca de campeón
+            if (!fechaCampeon && jugador.ultimoPartido && jugador.ultimoPartido.fecha) {
+              fechaCampeon = jugador.ultimoPartido.fecha;
+            }
+            if (fechaCampeon) {
+              candidatos.push({
+                id: jugador.id,
+                nombre: jugador.nombre,
+                victorias: jugador.victorias,
+                fechaCampeon: fechaCampeon
+              });
+            }
           }
         });
+        // Elegir el más reciente por fechaCampeon
+        candidatos.sort((a, b) => new Date(a.fechaCampeon) - new Date(b.fechaCampeon));
+        ultimoCampeon = candidatos[candidatos.length - 1] || null;
       }
 
       if (!ultimoCampeon) {
@@ -6852,8 +6874,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       console.log('🎨 Renderizando último campeón:', ultimoCampeon);
 
-      const fechaUltimo = ultimoCampeon.ultimoPartido ? 
-        new Date(ultimoCampeon.ultimoPartido.fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+      const fechaUltimo = ultimoCampeon.fechaCampeon ? 
+        new Date(ultimoCampeon.fechaCampeon + 'T12:00:00').toLocaleDateString('es-ES', {
           year: 'numeric',
           month: 'long',
           day: 'numeric'
@@ -6883,14 +6905,6 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                 <i class="bi bi-calendar me-2"></i>
                 ${fechaUltimo}
               </p>
-              <div class="row justify-content-center">
-                <div class="col-md-4">
-                  <div class="badge bg-success fs-6 px-3 py-2">
-                    <i class="bi bi-trophy me-1"></i>
-                    ${ultimoCampeon.victorias} victorias
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -6927,16 +6941,24 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         return;
       }
 
-      // Obtener información de los campeones
+      // Obtener información de los campeones con su fecha de campeonato
       const campeonesInfo = [];
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
         jugadoresMundial.forEach(jugador => {
           if (jugador.campeon) {
+            let fechaCampeon = null;
+            if (Array.isArray(jugador.historialFases)) {
+              const entry = jugador.historialFases.find(h => h && h.fase === 'campeon' && h.completada);
+              if (entry && entry.fecha) fechaCampeon = entry.fecha;
+            }
+            if (!fechaCampeon && jugador.ultimoPartido && jugador.ultimoPartido.fecha) {
+              fechaCampeon = jugador.ultimoPartido.fecha;
+            }
             campeonesInfo.push({
               id: jugador.id,
               nombre: jugador.nombre,
               victorias: jugador.victorias,
-              ultimoPartido: jugador.ultimoPartido
+              fechaCampeon: fechaCampeon
             });
           }
         });
@@ -6954,8 +6976,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Renderizar campeones centrados
       const html = campeonesInfo.map((campeon, index) => {
-        const fechaUltimo = campeon.ultimoPartido ? 
-          new Date(campeon.ultimoPartido.fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+        const fechaUltimo = campeon.fechaCampeon ? 
+          new Date(campeon.fechaCampeon + 'T12:00:00').toLocaleDateString('es-ES', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -6987,9 +7009,6 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                   <i class="bi bi-calendar me-1"></i>
                   ${fechaUltimo}
                 </p>
-                <div class="small text-light-emphasis">
-                  ${campeon.victorias} victorias
-                </div>
               </div>
             </div>
           </div>
