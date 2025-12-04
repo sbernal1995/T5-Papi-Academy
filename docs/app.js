@@ -4601,7 +4601,7 @@ const initApp = () => {
     }
   }
 
-  async function renderizarTablaConDatos(data) {
+async function renderizarTablaConDatos(data) {
     const tbody = document.getElementById('stats-table-body');
     tbody.innerHTML = '';
     
@@ -4995,7 +4995,14 @@ const initApp = () => {
             puntos,
             jugadores (
               id,
-              nombre
+              nombre,
+              jugador_posicion (
+                es_primaria,
+                posicion (
+                  id,
+                  nombre
+                )
+              )
             )
           ),
           goles (
@@ -5391,6 +5398,30 @@ const initApp = () => {
   async function mostrarPartidosBasicos(container, partidos) {
     console.log('🎨 Mostrando partidos con detalles completos:', partidos);
     
+    const calcularSkillPartido = ({
+      goles = 0,
+      asistencias = 0,
+      mvp = 0,
+      ace = 0,
+      cagadas = 0,
+      puntos = 0,
+      atajadas = 0
+    } = {}) => {
+      const rendAtaque = (goles * 5) + (mvp * 7) + (ace * 6) + (asistencias * 4) - (cagadas * 5) + (puntos * 2);
+      const rendArquero = atajadas * 0.4;
+      return rendAtaque + rendArquero;
+    };
+
+    const PENALIZACION_DEFENSOR_POR_GOL = 1.5;
+
+    const obtenerPosicionPrimariaJugador = (jugador) => {
+      const posiciones = jugador?.jugador_posicion || [];
+      const primaria = posiciones.find(pos => pos.es_primaria);
+      return primaria?.posicion?.nombre || null;
+    };
+
+    const esDefensor = (jugador) => obtenerPosicionPrimariaJugador(jugador) === 'Defensor';
+    
     let html = '<div class="row g-4">';
     
     // Continuar con los partidos
@@ -5457,6 +5488,58 @@ const initApp = () => {
       // Calcular estadísticas totales
       const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.cagadas || 0), 0) || 0;
       const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
+
+      const statsJugadorCache = new Map();
+
+      const obtenerStatsJugadorPartido = (jp) => {
+        if (statsJugadorCache.has(jp.jugador_id)) {
+          return statsJugadorCache.get(jp.jugador_id);
+        }
+
+        const golesJugador = partido.goles?.filter(gol =>
+          gol.goleador_id === jp.jugador_id && gol.equipo === jp.equipo
+        ).length || 0;
+
+        const asistenciasJugador = partido.goles?.filter(gol =>
+          gol.asistidor_id === jp.jugador_id && gol.equipo === jp.equipo
+        ).length || 0;
+
+        let skill = calcularSkillPartido({
+          goles: golesJugador,
+          asistencias: asistenciasJugador,
+          mvp: jp.mvp ? 1 : 0,
+          ace: jp.ace ? 1 : 0,
+          cagadas: jp.cagadas || 0,
+          puntos: jp.puntos || 0,
+          atajadas: jp.atajadas || 0
+        });
+
+        const perdioPartido = (partido.equipo_ganador === 1 || partido.equipo_ganador === 2) && partido.equipo_ganador !== jp.equipo;
+        const aportaAtaque = (golesJugador + asistenciasJugador) > 0;
+
+        if (esDefensor(jp.jugadores) && !aportaAtaque && perdioPartido) {
+          const golesRecibidos = jp.equipo === 1 ? golesEquipo2 : golesEquipo1;
+          skill -= golesRecibidos * PENALIZACION_DEFENSOR_POR_GOL;
+        }
+
+        const dataJugador = { golesJugador, asistenciasJugador, skill };
+        statsJugadorCache.set(jp.jugador_id, dataJugador);
+        return dataJugador;
+      };
+
+      const skillValoresPartido = (partido.jugador_partido || []).map(jp => obtenerStatsJugadorPartido(jp).skill);
+      const promedioSkill = skillValoresPartido.length
+        ? skillValoresPartido.reduce((acc, val) => acc + val, 0) / skillValoresPartido.length
+        : 0;
+
+      const skillEquipo = (jugadores) => {
+        if (!jugadores || jugadores.length === 0) return 0;
+        const total = jugadores.reduce((sum, jp) => sum + (obtenerStatsJugadorPartido(jp).skill || 0), 0);
+        return total / jugadores.length;
+      };
+
+      const skillEquipo1 = skillEquipo(equipo1);
+      const skillEquipo2 = skillEquipo(equipo2);
       
       html += `
         <div class="col-lg-6 col-md-12">
@@ -5465,7 +5548,7 @@ const initApp = () => {
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div>
                 <h5 class="text-white fw-bold mb-1">
-                  ${iconoResultado} Partido #${partidos.length - index}
+                  ${iconoResultado} Partido #${partidos.length - index} (Skill Promedio — ${promedioSkill.toFixed(1)})
                 </h5>
                 <div class="text-light-emphasis small">
                   <i class="bi bi-calendar me-1"></i>${fecha}
@@ -5503,27 +5586,25 @@ const initApp = () => {
             <div class="row g-3 mb-3">
               <div class="col-6">
                 <div class="bg-primary bg-opacity-10 rounded-2 p-2">
-                  <h6 class="text-primary fw-bold mb-2 small">🔵 Equipo 1 (${equipo1.length})</h6>
+                  <h6 class="text-primary fw-bold mb-2 small">🔵 Equipo 1 (${equipo1.length}) — Skill ${skillEquipo1.toFixed(1)}</h6>
                   <div class="text-white small">
                     ${equipo1.map(jp => {
-                      // Calcular goles y asistencias reales desde la tabla goles (solo goles normales)
-                      const golesJugador = partido.goles?.filter(gol => 
-                        gol.goleador_id === jp.jugador_id && !gol.es_gol_en_contra
-                      ).length || 0;
-                      const asistenciasJugador = partido.goles?.filter(gol => 
-                        gol.asistidor_id === jp.jugador_id && !gol.es_gol_en_contra
-                      ).length || 0;
+                      const { golesJugador, asistenciasJugador, skill } = obtenerStatsJugadorPartido(jp);
                       
                       const stats = [];
                       if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
                       if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
+                      const skillLabel = Number.isFinite(skill)
+                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)}</span>`
+                        : '';
                       
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
                             ${jp.jugadores?.nombre || 'Jugador'}
+                            ${skillLabel}
                             <button class="btn btn-sm btn-outline-warning ms-2"
                                     title="Forzar pase en Mundialito"
                                     onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
@@ -5540,27 +5621,25 @@ const initApp = () => {
               </div>
               <div class="col-6">
                 <div class="bg-danger bg-opacity-10 rounded-2 p-2">
-                  <h6 class="text-danger fw-bold mb-2 small">🔴 Equipo 2 (${equipo2.length})</h6>
+                  <h6 class="text-danger fw-bold mb-2 small">🔴 Equipo 2 (${equipo2.length}) — Skill ${skillEquipo2.toFixed(1)}</h6>
                   <div class="text-white small">
                     ${equipo2.map(jp => {
-                      // Calcular goles y asistencias reales desde la tabla goles (solo goles normales)
-                      const golesJugador = partido.goles?.filter(gol => 
-                        gol.goleador_id === jp.jugador_id && !gol.es_gol_en_contra
-                      ).length || 0;
-                      const asistenciasJugador = partido.goles?.filter(gol => 
-                        gol.asistidor_id === jp.jugador_id && !gol.es_gol_en_contra
-                      ).length || 0;
+                      const { golesJugador, asistenciasJugador, skill } = obtenerStatsJugadorPartido(jp);
                       
                       const stats = [];
                       if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
                       if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
+                      const skillLabel = Number.isFinite(skill)
+                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)}</span>`
+                        : '';
                       
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
                             ${jp.jugadores?.nombre || 'Jugador'}
+                            ${skillLabel}
                             <button class="btn btn-sm btn-outline-warning ms-2"
                                     title="Forzar pase en Mundialito"
                                     onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
