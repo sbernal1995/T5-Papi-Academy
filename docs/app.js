@@ -4601,7 +4601,7 @@ const initApp = () => {
     }
   }
 
-async function renderizarTablaConDatos(data) {
+  async function renderizarTablaConDatos(data) {
     const tbody = document.getElementById('stats-table-body');
     tbody.innerHTML = '';
     
@@ -5000,7 +5000,7 @@ async function renderizarTablaConDatos(data) {
                 es_primaria,
                 posicion (
                   id,
-                  nombre
+              nombre
                 )
               )
             )
@@ -5413,6 +5413,8 @@ async function renderizarTablaConDatos(data) {
     };
 
     const PENALIZACION_DEFENSOR_POR_GOL = 1.5;
+    const UMBRAL_TENDENCIA_SKILL = 0.75;
+    const UMBRAL_SKILL_REFERENCIA = 0.5;
 
     const obtenerPosicionPrimariaJugador = (jugador) => {
       const posiciones = jugador?.jugador_posicion || [];
@@ -5421,6 +5423,60 @@ async function renderizarTablaConDatos(data) {
     };
 
     const esDefensor = (jugador) => obtenerPosicionPrimariaJugador(jugador) === 'Defensor';
+    
+    const obtenerSkillEsperadoJugador = (jugadorId) => {
+      try {
+        const datos = window.datosJugadores || [];
+        const estadisticas = datos.find(dj => dj.jugadores?.id === jugadorId || dj.id === jugadorId);
+        if (!estadisticas) return null;
+
+        const pj = estadisticas.pj || 1;
+        const golesPP = (estadisticas.goles || 0) / pj;
+        const mvpPP = (estadisticas.mvp_count || 0) / pj;
+        const acePP = (estadisticas.ace_count || 0) / pj;
+        const asistPP = (estadisticas.asistencias || 0) / pj;
+        const cagadasPP = (estadisticas.cagadas_en_gol || 0) / pj;
+        const puntosPP = (estadisticas.total_puntos || 0) / pj;
+        const atajadasPP = (estadisticas.atajadas || 0) / pj;
+
+        const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
+        const rendArquero = atajadasPP * 0.4;
+
+        return rendAtaque + rendArquero;
+      } catch (e) {
+        console.warn('Error obteniendo skill esperado para jugador', jugadorId, e);
+        return null;
+      }
+    };
+    const datosRanking = Array.isArray(window.datosJugadores) ? window.datosJugadores : [];
+    const skillRankingMap = new Map();
+
+    const calcularSkillReferencia = (jugadorStats) => {
+      const pj = jugadorStats.pj || 1;
+      const golesPP = (jugadorStats.goles || 0) / pj;
+      const mvpPP = (jugadorStats.mvp_count || 0) / pj;
+      const acePP = (jugadorStats.ace_count || 0) / pj;
+      const asistPP = (jugadorStats.asistencias || 0) / pj;
+      const cagadasPP = (jugadorStats.cagadas_en_gol || 0) / pj;
+      const puntosPP = (jugadorStats.total_puntos || 0) / pj;
+      const atajadasPP = (jugadorStats.atajadas || 0) / pj;
+
+      const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
+      const rendArquero = atajadasPP * 0.66;
+      return rendAtaque + rendArquero;
+    };
+
+    datosRanking.forEach(jugador => {
+      const jugadorId = jugador.jugadores?.id || jugador.id || jugador.jugador_id;
+      if (!jugadorId) return;
+      const skill = calcularSkillReferencia(jugador);
+      skillRankingMap.set(jugadorId, skill);
+    });
+
+    const obtenerSkillReferencia = (jugadorId) => {
+      if (!jugadorId) return null;
+      return skillRankingMap.get(jugadorId) ?? null;
+    };
     
     let html = '<div class="row g-4">';
     
@@ -5488,6 +5544,9 @@ async function renderizarTablaConDatos(data) {
       // Calcular estadísticas totales
       const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.cagadas || 0), 0) || 0;
       const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
+      const promedioAtajadasJugador = (partido.jugador_partido && partido.jugador_partido.length)
+        ? totalAtajadas / partido.jugador_partido.length
+        : 0;
 
       const statsJugadorCache = new Map();
 
@@ -5516,13 +5575,21 @@ async function renderizarTablaConDatos(data) {
 
         const perdioPartido = (partido.equipo_ganador === 1 || partido.equipo_ganador === 2) && partido.equipo_ganador !== jp.equipo;
         const aportaAtaque = (golesJugador + asistenciasJugador) > 0;
+        const atajaSobrePromedio = (jp.atajadas || 0) > promedioAtajadasJugador;
 
-        if (esDefensor(jp.jugadores) && !aportaAtaque && perdioPartido) {
+        if (esDefensor(jp.jugadores) && !aportaAtaque && perdioPartido && !atajaSobrePromedio) {
           const golesRecibidos = jp.equipo === 1 ? golesEquipo2 : golesEquipo1;
           skill -= golesRecibidos * PENALIZACION_DEFENSOR_POR_GOL;
         }
 
-        const dataJugador = { golesJugador, asistenciasJugador, skill };
+        const skillEsperado = obtenerSkillEsperadoJugador(jp.jugador_id);
+        let tendencia = '=';
+        if (skillEsperado !== null && Number.isFinite(skillEsperado)) {
+          if (skill > skillEsperado + UMBRAL_TENDENCIA_SKILL) tendencia = '↑';
+          else if (skill < skillEsperado - UMBRAL_TENDENCIA_SKILL) tendencia = '↓';
+        }
+
+        const dataJugador = { golesJugador, asistenciasJugador, skill, tendencia };
         statsJugadorCache.set(jp.jugador_id, dataJugador);
         return dataJugador;
       };
@@ -5589,15 +5656,16 @@ async function renderizarTablaConDatos(data) {
                   <h6 class="text-primary fw-bold mb-2 small">🔵 Equipo 1 (${equipo1.length}) — Skill ${skillEquipo1.toFixed(1)}</h6>
                   <div class="text-white small">
                     ${equipo1.map(jp => {
-                      const { golesJugador, asistenciasJugador, skill } = obtenerStatsJugadorPartido(jp);
+                      const { golesJugador, asistenciasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
                       
                       const stats = [];
                       if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
                       if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
+                      const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
                       const skillLabel = Number.isFinite(skill)
-                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)}</span>`
+                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
                         : '';
                       
                       return `
@@ -5624,15 +5692,16 @@ async function renderizarTablaConDatos(data) {
                   <h6 class="text-danger fw-bold mb-2 small">🔴 Equipo 2 (${equipo2.length}) — Skill ${skillEquipo2.toFixed(1)}</h6>
                   <div class="text-white small">
                     ${equipo2.map(jp => {
-                      const { golesJugador, asistenciasJugador, skill } = obtenerStatsJugadorPartido(jp);
+                      const { golesJugador, asistenciasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
                       
                       const stats = [];
                       if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
                       if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
+                      const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
                       const skillLabel = Number.isFinite(skill)
-                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)}</span>`
+                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
                         : '';
                       
                       return `
