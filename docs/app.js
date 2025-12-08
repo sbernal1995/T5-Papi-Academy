@@ -1,6 +1,6 @@
 // src/app.js
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 // Cargar variables de entorno desde .env (solo para desarrollo local, en producción usar variables de entorno del build)
 const SUPABASE_URL = window.SUPABASE_URL || '';
