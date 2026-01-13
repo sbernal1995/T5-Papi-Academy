@@ -1853,6 +1853,7 @@
                           <th scope="col">🎯 Asistencia</th>
                           <th scope="col">👕 Equipo</th>
                           <th scope="col">🔄 Tipo</th>
+                          <th scope="col">⏱️ Tiempo</th>
                           <th scope="col">🗑️</th>
                         </tr>
                       </thead>
@@ -1861,17 +1862,25 @@
                   </div>
                   
                   <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                       <label class="form-label text-light">⚽ Goleador</label>
                       <select id="goleador" class="form-select searchable-select">
                         <option value="">Seleccionar goleador</option>
                       </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                       <label class="form-label text-light">🎯 Asistencia</label>
                       <select id="asistencia" class="form-select searchable-select">
                         <option value="">Sin asistencia</option>
                       </select>
+                    </div>
+                    <div class="col-md-1">
+                      <label class="form-label text-light">⏱️ Min</label>
+                      <input type="number" id="minuto-gol" class="form-control" placeholder="0" min="0" max="120">
+                    </div>
+                    <div class="col-md-1">
+                      <label class="form-label text-light">⏱️ Seg</label>
+                      <input type="number" id="segundo-gol" class="form-control" placeholder="0" min="0" max="59">
                     </div>
                     <div class="col-md-2">
                       <label class="form-label text-light">👕 Equipo</label>

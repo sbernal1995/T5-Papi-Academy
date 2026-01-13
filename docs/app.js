@@ -213,6 +213,83 @@ window.cerrarSesion = cerrarSesion;
 window.verificarPermisosAdmin = verificarPermisosAdmin;
 
 // ==========================================
+// FUNCIONES AUXILIARES PARA LINKS DE YOUTUBE CON TIMESTAMP
+// ==========================================
+
+/**
+ * Convierte un link de YouTube a formato con timestamp
+ * @param {string} youtubeLink - Link original de YouTube
+ * @param {number} segundosTotales - Tiempo del gol en segundos totales
+ * @returns {string} Link con timestamp o null si no es posible generar
+ */
+function generarLinkConTimestamp(youtubeLink, segundosTotales) {
+  if (!youtubeLink || segundosTotales === null || segundosTotales === undefined) {
+    return null;
+  }
+
+  // El valor ya está en segundos totales, no necesita conversión
+  const segundos = segundosTotales;
+
+  // Detectar formato del link y convertir a formato con timestamp
+  let videoId = null;
+
+  // Formato: https://www.youtube.com/watch?v=VIDEO_ID
+  if (youtubeLink.includes('youtube.com/watch?v=')) {
+    videoId = youtubeLink.split('watch?v=')[1].split('&')[0];
+  }
+  // Formato: https://youtu.be/VIDEO_ID
+  else if (youtubeLink.includes('youtu.be/')) {
+    videoId = youtubeLink.split('youtu.be/')[1].split('?')[0];
+  }
+
+  // Si se pudo extraer el ID, generar link con timestamp
+  if (videoId) {
+    return `https://youtu.be/${videoId}?t=${segundos}`;
+  }
+
+  // Si no se pudo parsear, devolver el link original con parámetro t
+  return `${youtubeLink}${youtubeLink.includes('?') ? '&' : '?'}t=${segundos}`;
+}
+
+/**
+ * Genera HTML para mostrar múltiples íconos de goles o asistencias con links
+ * @param {Array} golesArray - Array de objetos gol del jugador
+ * @param {string} youtubeLink - Link del video de YouTube del partido
+ * @param {string} tipo - 'gol' o 'asistencia'
+ * @returns {string} HTML con los íconos
+ */
+function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
+  if (!golesArray || golesArray.length === 0) {
+    return '';
+  }
+
+  const icono = tipo === 'gol' ? '⚽' : '🅰️';
+  const total = golesArray.length;
+
+  // Generar un ícono por cada gol/asistencia
+  const iconos = golesArray.map(item => {
+    const segundosTotales = item.minuto; // En realidad son segundos totales
+    const tieneTiempo = segundosTotales !== null && segundosTotales !== undefined;
+    const tieneVideo = youtubeLink !== null && youtubeLink !== undefined && youtubeLink !== '';
+
+    // Si tiene tiempo Y video, crear link clickeable
+    if (tieneTiempo && tieneVideo) {
+      const linkConTimestamp = generarLinkConTimestamp(youtubeLink, segundosTotales);
+      const mins = Math.floor(segundosTotales / 60);
+      const secs = segundosTotales % 60;
+      const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
+      return `<a href="${linkConTimestamp}" target="_blank" class="text-decoration-none" title="Ver ${tipo} en ${timeStr}">${icono}</a>`;
+    } else {
+      // Si no tiene tiempo o no hay video, solo mostrar el ícono sin link
+      return icono;
+    }
+  }).join('');
+
+  // Agregar el total entre paréntesis
+  return `${iconos}(${total})`;
+}
+
+// ==========================================
 // SISTEMA DE NOTIFICACIONES TOAST (GLOBAL)
 // ==========================================
 
@@ -484,7 +561,15 @@ const initApp = () => {
         const option = `<option value="${temporada.id}">${temporada.nombre}</option>`;
         sel.innerHTML += option;
       });
-      
+
+      // Seleccionar Temporada 3 por defecto en el selector de partido
+      if (sel.id === 'temporada-partido') {
+        const temporada3 = todasLasTemporadas.find(t => t.nombre === 'Temporada 3');
+        if (temporada3) {
+          sel.value = temporada3.id;
+        }
+      }
+
       // Agregar event listener solo para los selectores de filtro (no para el de partido)
       if (sel.id !== 'temporada-partido') {
         sel.addEventListener('change', async (e) => {
@@ -2714,7 +2799,7 @@ const initApp = () => {
     if (eventos.length === 0) {
       tablaGoles.innerHTML = `
         <tr>
-          <td colspan="5" class="text-center text-muted py-3">
+          <td colspan="6" class="text-center text-muted py-3">
             <i class="bi bi-plus-circle me-2"></i>
             No se han registrado goles aún
           </td>
@@ -2748,6 +2833,14 @@ const initApp = () => {
             <span class="badge ${esEnContra ? 'bg-warning text-dark' : 'bg-success'}">
               ${esEnContra ? '<i class="bi bi-arrow-repeat me-1"></i>En Contra' : '<i class="bi bi-check me-1"></i>Normal'}
             </span>
+          </td>
+          <td>
+            ${evento.minuto !== null && evento.minuto !== undefined ? (() => {
+              const mins = Math.floor(evento.minuto / 60);
+              const secs = evento.minuto % 60;
+              const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
+              return `<span class="badge bg-secondary">${timeStr}</span>`;
+            })() : '<span class="text-muted small">—</span>'}
           </td>
           <td>
             <button onclick="quitarEvento(${index})" class="btn btn-sm btn-outline-danger">
@@ -3131,13 +3224,24 @@ const initApp = () => {
       if (asistencia_id && asistencia_id !== 'nadie' && asistencia_id !== goleador_id) {
           asistencia_final = asistencia_id;
       }
-      
+
+      // Capturar minuto y segundo, convertir a segundos totales
+      const minutoInput = document.getElementById('minuto-gol');
+      const segundoInput = document.getElementById('segundo-gol');
+
+      const minutos = minutoInput && minutoInput.value ? parseInt(minutoInput.value) : 0;
+      const segundos = segundoInput && segundoInput.value ? parseInt(segundoInput.value) : 0;
+
+      // Convertir todo a segundos totales (guardamos en la columna "minuto" pero es en segundos)
+      const tiempoEnSegundos = (minutos > 0 || segundos > 0) ? (minutos * 60 + segundos) : null;
+
       // Marcar explícitamente si es gol en contra para claridad
-      eventos.push({ 
-          goleador_id, 
-          asistencia_id: asistencia_final, 
+      eventos.push({
+          goleador_id,
+          asistencia_id: asistencia_final,
           equipo,
-          es_en_contra: golEnContraChecked // Agregar esta marca para claridad
+          es_en_contra: golEnContraChecked, // Agregar esta marca para claridad
+          minuto: tiempoEnSegundos  // Guardamos el tiempo total en segundos
       });
       
       const goleadorNombre = goleador.nombre;
@@ -3185,6 +3289,16 @@ const initApp = () => {
       const golEnContraElement = document.getElementById('gol-en-contra');
       if (golEnContraElement) {
         golEnContraElement.checked = false;
+      }
+
+      // Resetear campos de minuto y segundo
+      const minutoElement = document.getElementById('minuto-gol');
+      const segundoElement = document.getElementById('segundo-gol');
+      if (minutoElement) {
+        minutoElement.value = '';
+      }
+      if (segundoElement) {
+        segundoElement.value = '';
       }
   }
 
@@ -3408,7 +3522,7 @@ const initApp = () => {
                       asistidor_id: asistidor_id,
                       equipo: evento.equipo,
                       es_gol_en_contra: esGolEnContra, // Nueva columna
-                      minuto: null
+                      minuto: evento.minuto !== undefined ? evento.minuto : null
                   };
               });
 
@@ -5555,13 +5669,16 @@ const initApp = () => {
           return statsJugadorCache.get(jp.jugador_id);
         }
 
-        const golesJugador = partido.goles?.filter(gol =>
+        const golesDelJugador = partido.goles?.filter(gol =>
           gol.goleador_id === jp.jugador_id && gol.equipo === jp.equipo
-        ).length || 0;
+        ) || [];
 
-        const asistenciasJugador = partido.goles?.filter(gol =>
+        const asistenciasDelJugador = partido.goles?.filter(gol =>
           gol.asistidor_id === jp.jugador_id && gol.equipo === jp.equipo
-        ).length || 0;
+        ) || [];
+
+        const golesJugador = golesDelJugador.length;
+        const asistenciasJugador = asistenciasDelJugador.length;
 
         let skill = calcularSkillPartido({
           goles: golesJugador,
@@ -5589,7 +5706,7 @@ const initApp = () => {
           else if (skill < skillEsperado - UMBRAL_TENDENCIA_SKILL) tendencia = '↓';
         }
 
-        const dataJugador = { golesJugador, asistenciasJugador, skill, tendencia };
+        const dataJugador = { golesJugador, asistenciasJugador, golesDelJugador, asistenciasDelJugador, skill, tendencia };
         statsJugadorCache.set(jp.jugador_id, dataJugador);
         return dataJugador;
       };
@@ -5656,11 +5773,15 @@ const initApp = () => {
                   <h6 class="text-primary fw-bold mb-2 small">🔵 Equipo 1 (${equipo1.length}) — Skill ${skillEquipo1.toFixed(1)}</h6>
                   <div class="text-white small">
                     ${equipo1.map(jp => {
-                      const { golesJugador, asistenciasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
-                      
+                      const { golesDelJugador, asistenciasDelJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+
                       const stats = [];
-                      if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
-                      if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
+                      if (golesDelJugador.length > 0) {
+                        stats.push(generarIconosConLinks(golesDelJugador, partido.youtube_link, 'gol'));
+                      }
+                      if (asistenciasDelJugador.length > 0) {
+                        stats.push(generarIconosConLinks(asistenciasDelJugador, partido.youtube_link, 'asistencia'));
+                      }
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
                       const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
@@ -5692,11 +5813,15 @@ const initApp = () => {
                   <h6 class="text-danger fw-bold mb-2 small">🔴 Equipo 2 (${equipo2.length}) — Skill ${skillEquipo2.toFixed(1)}</h6>
                   <div class="text-white small">
                     ${equipo2.map(jp => {
-                      const { golesJugador, asistenciasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
-                      
+                      const { golesDelJugador, asistenciasDelJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+
                       const stats = [];
-                      if (golesJugador > 0) stats.push(`⚽${golesJugador}`);
-                      if (asistenciasJugador > 0) stats.push(`🅰️${asistenciasJugador}`);
+                      if (golesDelJugador.length > 0) {
+                        stats.push(generarIconosConLinks(golesDelJugador, partido.youtube_link, 'gol'));
+                      }
+                      if (asistenciasDelJugador.length > 0) {
+                        stats.push(generarIconosConLinks(asistenciasDelJugador, partido.youtube_link, 'asistencia'));
+                      }
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
                       const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
