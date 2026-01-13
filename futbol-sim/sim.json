@@ -1,0 +1,251 @@
+{
+  "team1": [
+    "Cogorno",
+    "Kite",
+    "Berni",
+    "Renzo",
+    "Darmian"
+  ],
+  "team2": [
+    "Fachita",
+    "Boska",
+    "Mexa",
+    "Colidio",
+    "Ggasti"
+  ],
+  "score": [
+    7,
+    8
+  ],
+  "breakdown": {
+    "play_goals": [
+      7,
+      8
+    ],
+    "cagadas": [
+      1,
+      0
+    ],
+    "error_goals_from_cagadas": [
+      0,
+      0
+    ],
+    "p_goal_from_cagada": 0.49557065963745117,
+    "lambda_play": [
+      4.39133758998473,
+      5.1585938259730755
+    ],
+    "eta_cagadas": [
+      1.2129181823256248,
+      1.1657546766153326
+    ]
+  },
+  "goals_by_player": {
+    "team1": {
+      "Cogorno": 3,
+      "Renzo": 1,
+      "Darmian": 3
+    },
+    "team2": {
+      "Boska": 6,
+      "Mexa": 2
+    }
+  },
+  "events": [
+    {
+      "t": 1.45,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Cogorno"
+    },
+    {
+      "t": 3.04,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Cogorno",
+      "origin": "play"
+    },
+    {
+      "t": 3.66,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Cogorno"
+    },
+    {
+      "t": 5.06,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Cogorno",
+      "origin": "play"
+    },
+    {
+      "t": 7.22,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Renzo"
+    },
+    {
+      "t": 8.89,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Renzo",
+      "origin": "play"
+    },
+    {
+      "t": 10.96,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Darmian"
+    },
+    {
+      "t": 11.93,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Darmian",
+      "origin": "play"
+    },
+    {
+      "t": 13.77,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Darmian"
+    },
+    {
+      "t": 14.84,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Darmian",
+      "origin": "play"
+    },
+    {
+      "t": 16.91,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Darmian"
+    },
+    {
+      "t": 18.02,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Darmian",
+      "origin": "play"
+    },
+    {
+      "t": 18.75,
+      "type": "SHOT",
+      "team": 1,
+      "player": "Cogorno"
+    },
+    {
+      "t": 20.34,
+      "type": "GOAL",
+      "team": 1,
+      "player": "Cogorno",
+      "origin": "play"
+    },
+    {
+      "t": 22.24,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Boska"
+    },
+    {
+      "t": 23.13,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Boska",
+      "origin": "play"
+    },
+    {
+      "t": 23.76,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Boska"
+    },
+    {
+      "t": 24.41,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Boska",
+      "origin": "play"
+    },
+    {
+      "t": 25.81,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Boska"
+    },
+    {
+      "t": 26.63,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Boska",
+      "origin": "play"
+    },
+    {
+      "t": 27.23,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Boska"
+    },
+    {
+      "t": 28.48,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Boska",
+      "origin": "play"
+    },
+    {
+      "t": 29.8,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Mexa"
+    },
+    {
+      "t": 31.82,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Mexa",
+      "origin": "play"
+    },
+    {
+      "t": 32.88,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Mexa"
+    },
+    {
+      "t": 34.86,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Mexa",
+      "origin": "play"
+    },
+    {
+      "t": 36.75,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Boska"
+    },
+    {
+      "t": 38.31,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Boska",
+      "origin": "play"
+    },
+    {
+      "t": 39.58,
+      "type": "SHOT",
+      "team": 2,
+      "player": "Boska"
+    },
+    {
+      "t": 40.22,
+      "type": "GOAL",
+      "team": 2,
+      "player": "Boska",
+      "origin": "play"
+    }
+  ]
+}

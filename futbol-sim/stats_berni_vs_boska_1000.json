@@ -1,0 +1,132 @@
+{
+  "n": 1000,
+  "team1": [
+    "Cogorno",
+    "Kite",
+    "Renzo",
+    "Berni",
+    "Darmian"
+  ],
+  "team2": [
+    "Fachita",
+    "Boska",
+    "Mexa",
+    "Colidio",
+    "Ggasti"
+  ],
+  "win_prob": {
+    "team1": 0.351,
+    "team2": 0.534,
+    "draw": 0.115
+  },
+  "goals": {
+    "team1": {
+      "mean": 5.049,
+      "std": 2.257121839865983,
+      "p10": 2.0,
+      "p50": 5.0,
+      "p90": 8.0
+    },
+    "team2": {
+      "mean": 5.838,
+      "std": 2.40244791827003,
+      "p10": 3.0,
+      "p50": 6.0,
+      "p90": 9.0
+    },
+    "total": {
+      "mean": 10.887,
+      "std": 3.3286980938499062
+    }
+  },
+  "goal_diff": {
+    "mean": -0.789,
+    "std": 3.263813566979585
+  },
+  "most_common_scores": [
+    {
+      "score": [
+        4,
+        6
+      ],
+      "count": 36,
+      "freq": 0.036
+    },
+    {
+      "score": [
+        5,
+        5
+      ],
+      "count": 35,
+      "freq": 0.035
+    },
+    {
+      "score": [
+        4,
+        5
+      ],
+      "count": 30,
+      "freq": 0.03
+    },
+    {
+      "score": [
+        5,
+        6
+      ],
+      "count": 30,
+      "freq": 0.03
+    },
+    {
+      "score": [
+        4,
+        7
+      ],
+      "count": 29,
+      "freq": 0.029
+    },
+    {
+      "score": [
+        6,
+        4
+      ],
+      "count": 27,
+      "freq": 0.027
+    },
+    {
+      "score": [
+        5,
+        4
+      ],
+      "count": 25,
+      "freq": 0.025
+    },
+    {
+      "score": [
+        6,
+        5
+      ],
+      "count": 24,
+      "freq": 0.024
+    },
+    {
+      "score": [
+        6,
+        3
+      ],
+      "count": 21,
+      "freq": 0.021
+    },
+    {
+      "score": [
+        6,
+        7
+      ],
+      "count": 21,
+      "freq": 0.021
+    }
+  ],
+  "most_likely_winner": {
+    "team": 2,
+    "p_win": 0.534
+  }
+}
