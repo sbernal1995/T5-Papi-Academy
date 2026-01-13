@@ -219,16 +219,16 @@ window.verificarPermisosAdmin = verificarPermisosAdmin;
 /**
  * Convierte un link de YouTube a formato con timestamp
  * @param {string} youtubeLink - Link original de YouTube
- * @param {number} segundosTotales - Tiempo del gol en segundos totales
+ * @param {number} minutosDecimales - Tiempo del gol en minutos decimales (ej: 5.5 = 5:30)
  * @returns {string} Link con timestamp o null si no es posible generar
  */
-function generarLinkConTimestamp(youtubeLink, segundosTotales) {
-  if (!youtubeLink || segundosTotales === null || segundosTotales === undefined) {
+function generarLinkConTimestamp(youtubeLink, minutosDecimales) {
+  if (!youtubeLink || minutosDecimales === null || minutosDecimales === undefined) {
     return null;
   }
 
-  // El valor ya está en segundos totales, no necesita conversión
-  const segundos = segundosTotales;
+  // Convertir minutos decimales a segundos totales
+  const segundos = Math.round(minutosDecimales * 60);
 
   // Detectar formato del link y convertir a formato con timestamp
   let videoId = null;
@@ -268,15 +268,15 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
 
   // Generar un ícono por cada gol/asistencia
   const iconos = golesArray.map(item => {
-    const segundosTotales = item.minuto; // En realidad son segundos totales
-    const tieneTiempo = segundosTotales !== null && segundosTotales !== undefined;
+    const minutosDecimales = item.minuto; // Minutos en formato decimal
+    const tieneTiempo = minutosDecimales !== null && minutosDecimales !== undefined;
     const tieneVideo = youtubeLink !== null && youtubeLink !== undefined && youtubeLink !== '';
 
     // Si tiene tiempo Y video, crear link clickeable
     if (tieneTiempo && tieneVideo) {
-      const linkConTimestamp = generarLinkConTimestamp(youtubeLink, segundosTotales);
-      const mins = Math.floor(segundosTotales / 60);
-      const secs = segundosTotales % 60;
+      const linkConTimestamp = generarLinkConTimestamp(youtubeLink, minutosDecimales);
+      const mins = Math.floor(minutosDecimales);
+      const secs = Math.round((minutosDecimales - mins) * 60);
       const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
       return `<a href="${linkConTimestamp}" target="_blank" class="text-decoration-none" title="Ver ${tipo} en ${timeStr}">${icono}</a>`;
     } else {
@@ -2836,8 +2836,8 @@ const initApp = () => {
           </td>
           <td>
             ${evento.minuto !== null && evento.minuto !== undefined ? (() => {
-              const mins = Math.floor(evento.minuto / 60);
-              const secs = evento.minuto % 60;
+              const mins = Math.floor(evento.minuto);
+              const secs = Math.round((evento.minuto - mins) * 60);
               const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
               return `<span class="badge bg-secondary">${timeStr}</span>`;
             })() : '<span class="text-muted small">—</span>'}
@@ -3225,15 +3225,15 @@ const initApp = () => {
           asistencia_final = asistencia_id;
       }
 
-      // Capturar minuto y segundo, convertir a segundos totales
+      // Capturar minuto y segundo, convertir a minutos decimales
       const minutoInput = document.getElementById('minuto-gol');
       const segundoInput = document.getElementById('segundo-gol');
 
       const minutos = minutoInput && minutoInput.value ? parseInt(minutoInput.value) : 0;
       const segundos = segundoInput && segundoInput.value ? parseInt(segundoInput.value) : 0;
 
-      // Convertir todo a segundos totales (guardamos en la columna "minuto" pero es en segundos)
-      const tiempoEnSegundos = (minutos > 0 || segundos > 0) ? (minutos * 60 + segundos) : null;
+      // Convertir a minutos decimales (ej: 5:30 = 5.5, 15:45 = 15.75)
+      const tiempoEnMinutos = (minutos > 0 || segundos > 0) ? (minutos + segundos / 60) : null;
 
       // Marcar explícitamente si es gol en contra para claridad
       eventos.push({
@@ -3241,7 +3241,7 @@ const initApp = () => {
           asistencia_id: asistencia_final,
           equipo,
           es_en_contra: golEnContraChecked, // Agregar esta marca para claridad
-          minuto: tiempoEnSegundos  // Guardamos el tiempo total en segundos
+          minuto: tiempoEnMinutos  // Guardamos el tiempo en minutos decimales
       });
       
       const goleadorNombre = goleador.nombre;
@@ -6571,7 +6571,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     try {
       console.log('🖱️ Editando partido con ID:', partidoId);
-      
+
       // Cargar datos del partido
       const { data: partido, error } = await supabase
         .from('partidos')
@@ -6586,6 +6586,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             equipo,
             mvp,
             ace,
+            atajadas,
+            cagadas,
             jugadores (
               id,
               nombre
@@ -6595,7 +6597,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             id,
             goleador_id,
             asistidor_id,
-            equipo
+            equipo,
+            minuto
           )
         `)
         .eq('id', partidoId)
@@ -6609,17 +6612,38 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       console.log('✅ Datos del partido cargados:', partido);
 
+      // Almacenar el ID del partido y los datos para usarlos después
+      window.partidoEditandoId = partidoId;
+      window.partidoEditandoDatos = partido;
+
+      // Cargar opciones de temporadas en el select
+      await cargarOpcionesTemporadasEdicion();
+
       // Pre-llenar el modal con los datos del partido
       document.getElementById('editar-fecha').value = partido.fecha;
       document.getElementById('editar-cancha').value = partido.cancha || '';
       document.getElementById('editar-temporada').value = partido.temporada_id || '';
       document.getElementById('editar-youtube-link').value = partido.youtube_link || '';
 
-      // Cargar opciones de temporadas en el select
-      await cargarOpcionesTemporadasEdicion();
+      // Separar jugadores por equipo
+      const jugadoresEquipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
+      const jugadoresEquipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
 
-      // Almacenar el ID del partido que se está editando
-      window.partidoEditandoId = partidoId;
+      // Renderizar equipos
+      renderizarEquiposEdicion(jugadoresEquipo1, jugadoresEquipo2);
+
+      // Poblar selects de MVP y ACE con todos los jugadores del partido
+      poblarSelectsMVPACEEdicion(partido.jugador_partido || []);
+
+      // Seleccionar MVP y ACE actuales
+      const mvpActual = partido.jugador_partido?.find(jp => jp.mvp);
+      const aceActual = partido.jugador_partido?.find(jp => jp.ace);
+
+      document.getElementById('editar-mvp').value = mvpActual?.jugador_id || '';
+      document.getElementById('editar-ace').value = aceActual?.jugador_id || '';
+
+      // Renderizar los goles con sus tiempos
+      renderizarGolesEdicion(partido.goles || [], partido.jugador_partido || []);
 
       // Abrir el modal
       const modal = new bootstrap.Modal(document.getElementById('editarPartidoModal'));
@@ -6630,6 +6654,243 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       showToast('Error inesperado al abrir el editor de partido', 'error');
     }
   };
+
+  // Función para renderizar los equipos en el modal de edición
+  function renderizarEquiposEdicion(equipo1, equipo2) {
+    const container1 = document.getElementById('editar-equipo1-container');
+    const container2 = document.getElementById('editar-equipo2-container');
+
+    if (container1) {
+      container1.innerHTML = equipo1.length > 0
+        ? equipo1.map(jp => `
+            <div class="badge bg-primary bg-opacity-25 text-primary me-1 mb-1 p-2">
+              ${jp.jugadores?.nombre || 'Jugador'}
+              ${jp.atajadas > 0 ? `<span class="ms-1">🥅${jp.atajadas}</span>` : ''}
+              ${jp.cagadas > 0 ? `<span class="ms-1">💥${jp.cagadas}</span>` : ''}
+            </div>
+          `).join('')
+        : '<span class="text-muted small">Sin jugadores</span>';
+    }
+
+    if (container2) {
+      container2.innerHTML = equipo2.length > 0
+        ? equipo2.map(jp => `
+            <div class="badge bg-danger bg-opacity-25 text-danger me-1 mb-1 p-2">
+              ${jp.jugadores?.nombre || 'Jugador'}
+              ${jp.atajadas > 0 ? `<span class="ms-1">🥅${jp.atajadas}</span>` : ''}
+              ${jp.cagadas > 0 ? `<span class="ms-1">💥${jp.cagadas}</span>` : ''}
+            </div>
+          `).join('')
+        : '<span class="text-muted small">Sin jugadores</span>';
+    }
+  }
+
+  // Función para poblar los selects de MVP y ACE en edición
+  function poblarSelectsMVPACEEdicion(jugadores) {
+    const selectMVP = document.getElementById('editar-mvp');
+    const selectACE = document.getElementById('editar-ace');
+
+    if (!selectMVP || !selectACE) return;
+
+    // Limpiar y agregar opción vacía
+    selectMVP.innerHTML = '<option value="">Sin MVP</option>';
+    selectACE.innerHTML = '<option value="">Sin ACE</option>';
+
+    // Ordenar jugadores por nombre
+    const jugadoresOrdenados = [...jugadores].sort((a, b) =>
+      (a.jugadores?.nombre || '').localeCompare(b.jugadores?.nombre || '')
+    );
+
+    // Agregar todos los jugadores del partido
+    jugadoresOrdenados.forEach(jp => {
+      const nombre = jp.jugadores?.nombre || 'Jugador';
+      const equipo = jp.equipo === 1 ? '🔵' : '🔴';
+
+      const optionMVP = document.createElement('option');
+      optionMVP.value = jp.jugador_id;
+      optionMVP.textContent = `${equipo} ${nombre}`;
+      selectMVP.appendChild(optionMVP);
+
+      const optionACE = document.createElement('option');
+      optionACE.value = jp.jugador_id;
+      optionACE.textContent = `${equipo} ${nombre}`;
+      selectACE.appendChild(optionACE);
+    });
+  }
+
+  // Función para renderizar goles en el modal de edición
+  function renderizarGolesEdicion(goles, jugadores) {
+    const container = document.getElementById('editar-goles-container');
+    if (!container) return;
+
+    if (goles.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-3">
+          <i class="bi bi-info-circle me-2"></i>
+          No hay goles registrados en este partido
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = goles.map((gol, index) => {
+      const minutosDecimales = gol.minuto || 0;
+      const minutos = Math.floor(minutosDecimales);
+      const segundos = Math.round((minutosDecimales - minutos) * 60);
+
+      // Buscar nombres de jugadores desde el array de jugador_partido
+      const goleador = jugadores.find(j => j.jugador_id === gol.goleador_id);
+      const asistidor = gol.asistidor_id ? jugadores.find(j => j.jugador_id === gol.asistidor_id) : null;
+
+      const goleadorNombre = goleador?.jugadores?.nombre || 'Desconocido';
+      const asistidorNombre = asistidor?.jugadores?.nombre || 'Sin asistencia';
+
+      return `
+        <div class="card bg-dark border-secondary mb-2" data-gol-id="${gol.id}">
+          <div class="card-body p-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-md-3">
+                <small class="text-light-emphasis d-block mb-1">⚽ Goleador</small>
+                <strong class="text-white">${goleadorNombre}</strong>
+              </div>
+              <div class="col-md-3">
+                <small class="text-light-emphasis d-block mb-1">🎯 Asistencia</small>
+                <span class="text-white">${asistidorNombre}</span>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label text-light small mb-1">⏱️ Min</label>
+                <input type="number"
+                       class="form-control form-control-sm gol-minuto"
+                       value="${minutos}"
+                       min="0"
+                       max="120"
+                       data-gol-id="${gol.id}">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label text-light small mb-1">⏱️ Seg</label>
+                <input type="number"
+                       class="form-control form-control-sm gol-segundo"
+                       value="${segundos}"
+                       min="0"
+                       max="59"
+                       data-gol-id="${gol.id}">
+              </div>
+              <div class="col-md-2 text-end">
+                <small class="text-light-emphasis d-block mb-1">👕 Equipo</small>
+                <span class="badge ${gol.equipo === 1 ? 'bg-primary' : 'bg-danger'}">
+                  ${gol.equipo === 1 ? '🔵 Equipo 1' : '🔴 Equipo 2'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Función para actualizar los tiempos de los goles
+  async function actualizarTiemposGoles() {
+    const container = document.getElementById('editar-goles-container');
+    if (!container) return;
+
+    // Obtener todos los inputs de minutos y segundos
+    const inputsMinutos = container.querySelectorAll('.gol-minuto');
+    const inputsSegundos = container.querySelectorAll('.gol-segundo');
+
+    // Crear array de updates
+    const updates = [];
+
+    inputsMinutos.forEach((inputMin, index) => {
+      const inputSeg = inputsSegundos[index];
+      const golId = inputMin.getAttribute('data-gol-id');
+
+      const minutos = parseInt(inputMin.value) || 0;
+      const segundos = parseInt(inputSeg.value) || 0;
+      const minutosDecimales = minutos + (segundos / 60);
+
+      // Redondear a 2 decimales para evitar problemas de precisión
+      const minutosRedondeados = Math.round(minutosDecimales * 100) / 100;
+
+      // Validar que esté en rango 0-120
+      const minutosValidos = (minutosRedondeados >= 0 && minutosRedondeados <= 120) ? minutosRedondeados : null;
+
+      console.log(`📝 Gol ${golId}: ${minutos}min ${segundos}seg = ${minutosRedondeados} minutos decimales (válido: ${minutosValidos})`);
+
+      updates.push({
+        id: golId,
+        minuto: minutosValidos > 0 ? minutosValidos : null
+      });
+    });
+
+    // Actualizar cada gol en la base de datos
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('goles')
+        .update({ minuto: update.minuto })
+        .eq('id', update.id);
+
+      if (error) {
+        console.error('Error al actualizar tiempo del gol:', error);
+        throw new Error(`Error al actualizar tiempos de goles: ${error.message}`);
+      }
+    }
+
+    console.log('✅ Tiempos de goles actualizados:', updates);
+  }
+
+  // Función para actualizar MVP y ACE en el partido
+  async function actualizarMVPACE() {
+    const selectMVP = document.getElementById('editar-mvp');
+    const selectACE = document.getElementById('editar-ace');
+
+    if (!selectMVP || !selectACE || !window.partidoEditandoId) return;
+
+    const nuevoMVP = selectMVP.value || null;
+    const nuevoACE = selectACE.value || null;
+
+    console.log('📝 Actualizando MVP/ACE:', { nuevoMVP, nuevoACE, partidoId: window.partidoEditandoId });
+
+    // Primero, quitar MVP y ACE de todos los jugadores del partido
+    const { error: errorReset } = await supabase
+      .from('jugador_partido')
+      .update({ mvp: false, ace: false })
+      .eq('partido_id', window.partidoEditandoId);
+
+    if (errorReset) {
+      console.error('Error al resetear MVP/ACE:', errorReset);
+      throw new Error(`Error al resetear MVP/ACE: ${errorReset.message}`);
+    }
+
+    // Establecer nuevo MVP si hay uno seleccionado
+    if (nuevoMVP) {
+      const { error: errorMVP } = await supabase
+        .from('jugador_partido')
+        .update({ es_mvp: true })
+        .eq('partido_id', window.partidoEditandoId)
+        .eq('jugador_id', nuevoMVP);
+
+      if (errorMVP) {
+        console.error('Error al establecer MVP:', errorMVP);
+        throw new Error(`Error al establecer MVP: ${errorMVP.message}`);
+      }
+    }
+
+    // Establecer nuevo ACE si hay uno seleccionado
+    if (nuevoACE) {
+      const { error: errorACE } = await supabase
+        .from('jugador_partido')
+        .update({ es_ace: true })
+        .eq('partido_id', window.partidoEditandoId)
+        .eq('jugador_id', nuevoACE);
+
+      if (errorACE) {
+        console.error('Error al establecer ACE:', errorACE);
+        throw new Error(`Error al establecer ACE: ${errorACE.message}`);
+      }
+    }
+
+    console.log('✅ MVP/ACE actualizados correctamente');
+  }
 
   // Función auxiliar para cargar temporadas en el modal de edición
   async function cargarOpcionesTemporadasEdicion() {
@@ -6779,6 +7040,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         console.error('Error al actualizar partido:', error);
         throw new Error(`Error al actualizar el partido: ${error.message}`);
       }
+
+      // Actualizar tiempos de los goles
+      await actualizarTiemposGoles();
+
+      // Actualizar MVP y ACE
+      await actualizarMVPACE();
 
       // Éxito
       showToast('✅ Partido actualizado exitosamente', 'success');
