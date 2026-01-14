@@ -562,11 +562,14 @@ const initApp = () => {
         sel.innerHTML += option;
       });
 
-      // Seleccionar Temporada 3 por defecto en el selector de partido
-      if (sel.id === 'temporada-partido') {
-        const temporada3 = todasLasTemporadas.find(t => t.nombre === 'Temporada 3');
-        if (temporada3) {
-          sel.value = temporada3.id;
+      // Seleccionar Temporada 3 por defecto en TODOS los selectores
+      const temporada3 = todasLasTemporadas.find(t => t.nombre === 'Temporada 3');
+      if (temporada3) {
+        sel.value = temporada3.id;
+
+        // Para los selectores de filtro, también actualizar la variable global
+        if (sel.id !== 'temporada-partido') {
+          temporadaSeleccionada = temporada3.id;
         }
       }
 
@@ -3619,7 +3622,9 @@ const initApp = () => {
           document.getElementById('cancha-partido').value = '';
           document.getElementById('resultado-final').value = '';
           document.getElementById('equipo-ganador').value = '';
-          document.getElementById('temporada-partido').value = '';
+          // Volver a seleccionar Temporada 3 como default
+          const temporada3 = todasLasTemporadas.find(t => t.nombre === 'Temporada 3');
+          document.getElementById('temporada-partido').value = temporada3?.id || '';
           document.getElementById('mvp-partido').value = '';
           document.getElementById('ace-partido').value = '';
           document.getElementById('youtube-link-partido').value = '';
@@ -6865,7 +6870,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (nuevoMVP) {
       const { error: errorMVP } = await supabase
         .from('jugador_partido')
-        .update({ es_mvp: true })
+        .update({ mvp: true })
         .eq('partido_id', window.partidoEditandoId)
         .eq('jugador_id', nuevoMVP);
 
@@ -6879,7 +6884,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (nuevoACE) {
       const { error: errorACE } = await supabase
         .from('jugador_partido')
-        .update({ es_ace: true })
+        .update({ ace: true })
         .eq('partido_id', window.partidoEditandoId)
         .eq('jugador_id', nuevoACE);
 
@@ -7082,13 +7087,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   
   // Cargar datos iniciales
   cargarTodosLosJugadores();
-  cargarTemporadas();
   inicializarPosiciones();
   configurarFiltroPartidos();
-  cargarEstadisticas();
-  
-  // Cargar historial de partidos automáticamente
-  cargarHistorialPartidos();
+
+  // Cargar temporadas primero, luego estadísticas e historial (en secuencia)
+  cargarTemporadas().then(() => {
+    console.log('📅 Temporada por defecto:', temporadaSeleccionada);
+    cargarEstadisticas();
+    cargarHistorialPartidos();
+  });
 
   // Event listeners para el formulario de jugadores
   if (playerForm) {
