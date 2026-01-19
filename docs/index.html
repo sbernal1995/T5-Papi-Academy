@@ -1210,6 +1210,25 @@
           <p class="text-light fs-6 mb-3 opacity-75" style="font-weight: 300; letter-spacing: 0.5px;">
           </p>
           <div class="mx-auto" style="width: 120px; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); border-radius: 2px; box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);"></div>
+
+          <!-- Selector de Vista: Dashboard / Jugador -->
+          <div class="d-flex justify-content-center align-items-center gap-3 mt-3">
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-outline-light active" id="btn-vista-dashboard">
+                <i class="bi bi-grid-3x3-gap me-1"></i>Dashboard
+              </button>
+              <button type="button" class="btn btn-outline-light" id="btn-vista-jugador">
+                <i class="bi bi-person me-1"></i>Jugador
+              </button>
+            </div>
+
+            <!-- Selector de jugador (oculto hasta seleccionar vista Jugador) -->
+            <div class="d-none" id="selector-jugador-container">
+              <select id="selector-jugador-perfil" class="form-select searchable-select" style="min-width: 200px;">
+                <option value="">Buscar jugador...</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -1288,7 +1307,7 @@
     </header>
 
     <!-- Navigation Tabs -->
-    <div class="container-fluid mb-4">
+    <div class="container-fluid mb-4" id="mainTabsContainer">
       <ul class="nav nav-tabs nav-dark justify-content-center" id="mainTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="estadisticas-tab" data-bs-toggle="tab" data-bs-target="#estadisticas-content" type="button" role="tab" aria-controls="estadisticas-content" aria-selected="true">
@@ -2497,6 +2516,125 @@
     </div>
     <!-- End Tab Content -->
 
+    <!-- ============================================= -->
+    <!-- VISTA DE PERFIL DE JUGADOR (oculta por defecto) -->
+    <!-- ============================================= -->
+    <div id="vista-perfil-jugador" class="container-fluid py-4 d-none">
+
+      <!-- Header del perfil -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <button class="btn btn-outline-secondary" onclick="volverDashboard()">
+              <i class="bi bi-arrow-left me-2"></i>Volver
+            </button>
+            <h4 class="mb-0 text-warning" id="perfil-nombre-jugador">
+              <i class="bi bi-person-circle me-2"></i>Perfil de Jugador
+            </h4>
+            <div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info principal -->
+      <div class="row mb-4">
+        <!-- Card de avatar y posición -->
+        <div class="col-md-3 mb-3 mb-md-0">
+          <div class="card bg-dark border-secondary h-100">
+            <div class="card-body text-center py-4">
+              <div class="display-1 mb-3" id="perfil-avatar">🏃‍♂️</div>
+              <h4 class="text-white mb-2" id="perfil-nombre">Jugador</h4>
+              <div id="perfil-posiciones" class="mb-3"></div>
+              <div class="badge bg-info fs-6" id="perfil-pulmon">
+                <i class="bi bi-heart-pulse me-1"></i>Pulmón: --
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats principales -->
+        <div class="col-md-9">
+          <div class="row g-3" id="perfil-stats-principales">
+            <!-- Se llena dinámicamente con cards de stats -->
+            <div class="col-12 text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="text-muted mt-2">Cargando estadísticas...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs del perfil -->
+      <ul class="nav nav-tabs nav-fill" id="perfil-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-perfil-videos" data-bs-toggle="tab" data-bs-target="#perfil-videos" type="button" role="tab">
+            <i class="bi bi-play-circle me-1"></i>Mis Goles
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-estadisticas" data-bs-toggle="tab" data-bs-target="#perfil-estadisticas" type="button" role="tab">
+            <i class="bi bi-bar-chart me-1"></i>Estadísticas
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-sinergias" data-bs-toggle="tab" data-bs-target="#perfil-sinergias" type="button" role="tab">
+            <i class="bi bi-people me-1"></i>Sinergias
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-rivalidades" data-bs-toggle="tab" data-bs-target="#perfil-rivalidades" type="button" role="tab">
+            <i class="bi bi-lightning me-1"></i>Rivalidades
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content mt-4" id="perfil-tab-content">
+        <!-- Tab Videos -->
+        <div class="tab-pane fade show active" id="perfil-videos" role="tabpanel">
+          <div class="row g-3" id="perfil-videos-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-camera-video display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus goles</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Estadísticas -->
+        <div class="tab-pane fade" id="perfil-estadisticas" role="tabpanel">
+          <div id="perfil-estadisticas-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-bar-chart display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus estadísticas</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Sinergias -->
+        <div class="tab-pane fade" id="perfil-sinergias" role="tabpanel">
+          <div id="perfil-sinergias-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-people display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus sinergias</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Rivalidades -->
+        <div class="tab-pane fade" id="perfil-rivalidades" role="tabpanel">
+          <div id="perfil-rivalidades-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-lightning display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus rivalidades</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- End Vista Perfil Jugador -->
+
     <!-- Footer -->
     <footer class="text-center py-5 mt-5">
       <div class="text-light-emphasis">
@@ -2506,6 +2644,32 @@
       </div>
     </footer>
     
+    <!-- Modal para Seleccionar Jugador (Perfil) -->
+    <div class="modal fade" id="seleccionarJugadorModal" tabindex="-1" aria-labelledby="seleccionarJugadorModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content enhanced-card border-0">
+          <div class="modal-header border-bottom border-light-subtle">
+            <h5 class="modal-title text-white" id="seleccionarJugadorModalLabel">
+              <i class="bi bi-person-circle me-2"></i>Seleccionar Jugador
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-light-emphasis mb-3">Busca y selecciona un jugador para ver su perfil completo:</p>
+            <select id="selector-jugador-modal" class="form-select form-select-lg searchable-select">
+              <option value="">Buscar jugador...</option>
+            </select>
+          </div>
+          <div class="modal-footer border-top border-light-subtle">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btn-ver-perfil-modal" disabled>
+              <i class="bi bi-eye me-2"></i>Ver Perfil
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal para Agregar Jugador -->
     <div class="modal fade" id="playerModal" tabindex="-1" aria-labelledby="playerModalLabel" aria-hidden="true">
       <div class="modal-dialog">
