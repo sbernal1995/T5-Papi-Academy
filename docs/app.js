@@ -6992,11 +6992,19 @@ const initApp = () => {
       // Si no hay partidos del mundialito cargados, no mostrar leyenda
       if (!mundialPartidos || mundialPartidos.length === 0) return [];
 
+      // Filtrar partidos solo de la temporada del partido objetivo
+      const temporadaObjetivo = partidoObjetivo.temporada_id;
+      const partidosTemporada = mundialPartidos.filter(p =>
+        p.temporada_id === temporadaObjetivo
+      );
+
+      if (partidosTemporada.length === 0) return [];
+
       // Crear un Map temporal para la simulación
       const jugadoresTemp = new Map();
-      
+
       // Procesar partidos hasta encontrar el partido objetivo
-      for (const partido of mundialPartidos) {
+      for (const partido of partidosTemporada) {
         if (partido.id === partidoObjetivo.id) {
           // Procesar este partido y retornar los cambios
           const cambios = procesarPartidoMundialTemp(partido, jugadoresTemp);
@@ -7006,7 +7014,7 @@ const initApp = () => {
           procesarPartidoMundialTemp(partido, jugadoresTemp);
         }
       }
-      
+
       return [];
     } catch (error) {
       console.warn('Error simulando mundialito para historial:', error);
