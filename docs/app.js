@@ -1614,9 +1614,10 @@ const initApp = () => {
             }
           });
           
-          // Cargar estadísticas y actualizar gráficos del armador
+          // Cargar estadísticas, historial y actualizar gráficos del armador
           await cargarEstadisticas();
-          
+          cargarHistorialPartidos();
+
           // Si hay jugadores en los equipos, actualizar los gráficos
           if (equipo1.length > 0 || equipo2.length > 0) {
             renderizarEquipos().catch(error => {
@@ -6231,20 +6232,12 @@ const initApp = () => {
       
       // Guardar todos los partidos para el filtrado
       todosLosPartidos = partidos;
-      
-      // Aplicar filtro de búsqueda si existe
-      const busqueda = document.getElementById('buscar-jugador')?.value?.toLowerCase().trim() || '';
-      let partidosAMostrar = partidos;
-      
-      if (busqueda) {
-        partidosAMostrar = partidos.filter(partido => {
-          return partido.jugador_partido?.some(jp => 
-            jp.jugadores?.nombre?.toLowerCase().includes(busqueda)
-          );
-        });
-      }
-      
-      mostrarPartidosBasicos(container, partidosAMostrar);
+
+      // Poblar selectores de filtro
+      if (typeof poblarFiltrosHistorial === 'function') poblarFiltrosHistorial();
+
+      // Aplicar filtros avanzados
+      filtrarPartidosAvanzado();
       
     } catch (error) {
       console.warn('Error al cargar historial (esperado en versión simplificada):', error);
@@ -7489,55 +7482,252 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Variable global para almacenar todos los partidos cargados
   let todosLosPartidos = [];
 
-  // Función para filtrar partidos por nombre de jugador
-  window.filtrarPartidosPorJugador = function() {
-    const busqueda = document.getElementById('buscar-jugador')?.value?.toLowerCase().trim() || '';
+  // ===== Tag Input System =====
+  const tagInputState = {
+    companero: { selected: [] },  // [{ id, nombre }]
+    rival: { selected: [] }
+  };
+
+  function initTagInput(key) {
+    const input = document.getElementById(`${key}-input`);
+    const dropdown = document.getElementById(`${key}-dropdown`);
+    const wrapper = document.getElementById(`${key}-wrapper`);
+    if (!input || !dropdown || !wrapper) return;
+
+    let activeIndex = -1;
+
+    wrapper.addEventListener('click', () => input.focus());
+
+    input.addEventListener('input', () => {
+      const texto = input.value.toLowerCase().trim();
+      if (!texto) { dropdown.classList.remove('show'); return; }
+      const selIds = tagInputState[key].selected.map(s => s.id);
+      const jugadores = todosLosJugadoresGlobal
+        .filter(j => !selIds.includes(j.id) && j.nombre.toLowerCase().includes(texto))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+        .slice(0, 8);
+      if (jugadores.length === 0) { dropdown.classList.remove('show'); return; }
+      activeIndex = -1;
+      dropdown.innerHTML = jugadores.map((j, i) =>
+        `<div class="tag-input-option" data-id="${j.id}" data-nombre="${j.nombre}">${j.nombre}</div>`
+      ).join('');
+      dropdown.classList.add('show');
+
+      dropdown.querySelectorAll('.tag-input-option').forEach(opt => {
+        opt.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          agregarTag(key, opt.dataset.id, opt.dataset.nombre);
+        });
+      });
+    });
+
+    input.addEventListener('keydown', (e) => {
+      const options = dropdown.querySelectorAll('.tag-input-option');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, options.length - 1);
+        options.forEach((o, i) => o.classList.toggle('active', i === activeIndex));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        options.forEach((o, i) => o.classList.toggle('active', i === activeIndex));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex >= 0 && options[activeIndex]) {
+          agregarTag(key, options[activeIndex].dataset.id, options[activeIndex].dataset.nombre);
+        }
+      } else if (e.key === 'Backspace' && !input.value) {
+        const sel = tagInputState[key].selected;
+        if (sel.length > 0) {
+          sel.pop();
+          renderTags(key);
+          filtrarPartidosAvanzado();
+        }
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => dropdown.classList.remove('show'), 150);
+    });
+  }
+
+  function agregarTag(key, id, nombre) {
+    if (tagInputState[key].selected.some(s => s.id === id)) return;
+    tagInputState[key].selected.push({ id, nombre });
+    renderTags(key);
+    const input = document.getElementById(`${key}-input`);
+    if (input) { input.value = ''; }
+    const dropdown = document.getElementById(`${key}-dropdown`);
+    if (dropdown) dropdown.classList.remove('show');
+    filtrarPartidosAvanzado();
+  }
+
+  function removerTag(key, id) {
+    tagInputState[key].selected = tagInputState[key].selected.filter(s => s.id !== id);
+    renderTags(key);
+    filtrarPartidosAvanzado();
+  }
+
+  function renderTags(key) {
+    const container = document.getElementById(`${key}-tags`);
+    if (!container) return;
+    container.innerHTML = tagInputState[key].selected.map(s =>
+      `<span class="tag-input-tag">${s.nombre}<span class="tag-remove" onclick="removerTagHistorial('${key}','${s.id}')">&times;</span></span>`
+    ).join('');
+  }
+
+  window.removerTagHistorial = function(key, id) { removerTag(key, id); };
+
+  // Inicializar los tag inputs
+  initTagInput('companero');
+  initTagInput('rival');
+
+  // Poblar solo el selector simple de jugador
+  window.poblarFiltrosHistorial = function() {
+    const jugadores = [...todosLosJugadoresGlobal].sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const sel = document.getElementById('filtro-jugador');
+    if (!sel) return;
+    const valorActual = sel.value;
+    sel.innerHTML = '<option value="">Todos</option>';
+    jugadores.forEach(j => {
+      sel.innerHTML += `<option value="${j.id}">${j.nombre}</option>`;
+    });
+    if (valorActual) sel.value = valorActual;
+  };
+
+  // Filtro avanzado: jugador (1) + compañeros (N) + rivales (N)
+  window.filtrarPartidosAvanzado = function() {
+    const jugadorId = document.getElementById('filtro-jugador')?.value || '';
+    const companeroIds = tagInputState.companero.selected.map(s => s.id);
+    const rivalIds = tagInputState.rival.selected.map(s => s.id);
     const container = document.getElementById('historial-partidos-container');
-    
-    if (!todosLosPartidos || todosLosPartidos.length === 0) {
-      return; // No hay partidos para filtrar
-    }
-    
+
+    if (!todosLosPartidos || todosLosPartidos.length === 0) return;
+
     let partidosFiltrados = todosLosPartidos;
-    
-    // Si hay búsqueda, filtrar por jugador
-    if (busqueda) {
-      partidosFiltrados = todosLosPartidos.filter(partido => {
-        // Buscar en jugador_partido si algún jugador coincide con la búsqueda
-        return partido.jugador_partido?.some(jp => 
-          jp.jugadores?.nombre?.toLowerCase().includes(busqueda)
-        );
+
+    // Filtrar por jugador principal
+    if (jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p =>
+        p.jugador_partido?.some(jp => jp.jugador_id === jugadorId)
+      );
+    }
+
+    // Filtrar por compañeros (todos deben estar en el mismo equipo que el jugador)
+    if (companeroIds.length > 0 && jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p => {
+        const jpJugador = p.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
+        if (!jpJugador) return false;
+        return companeroIds.every(cId => {
+          const jpComp = p.jugador_partido?.find(jp => jp.jugador_id === cId);
+          return jpComp && jpComp.equipo === jpJugador.equipo;
+        });
+      });
+    } else if (companeroIds.length > 0 && !jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p => {
+        const jps = companeroIds.map(cId => p.jugador_partido?.find(jp => jp.jugador_id === cId));
+        if (jps.some(jp => !jp)) return false;
+        return jps.every(jp => jp.equipo === jps[0].equipo);
       });
     }
-    
-    // Aplicar límite de cantidad (permitiendo 'Todos')
-    const valorCantidad = document.getElementById('cantidad-partidos')?.value || '5';
+
+    // Filtrar por rivales (todos deben estar en equipo contrario al jugador)
+    if (rivalIds.length > 0 && jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p => {
+        const jpJugador = p.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
+        if (!jpJugador) return false;
+        return rivalIds.every(rId => {
+          const jpRival = p.jugador_partido?.find(jp => jp.jugador_id === rId);
+          return jpRival && jpRival.equipo !== jpJugador.equipo;
+        });
+      });
+    } else if (rivalIds.length > 0 && !jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p =>
+        rivalIds.every(rId => p.jugador_partido?.some(jp => jp.jugador_id === rId))
+      );
+    }
+
+    // Filtrar por resultado (ganado/perdido/empate) respecto al jugador
+    const resultado = document.getElementById('filtro-resultado')?.value || '';
+    if (resultado && jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p => {
+        const jpJugador = p.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
+        if (!jpJugador) return false;
+        const equipoJugador = jpJugador.equipo;
+        if (resultado === 'empate') return !p.equipo_ganador || (p.equipo_ganador !== 1 && p.equipo_ganador !== 2);
+        if (resultado === 'ganado') return p.equipo_ganador === equipoJugador;
+        if (resultado === 'perdido') return p.equipo_ganador && p.equipo_ganador !== equipoJugador && (p.equipo_ganador === 1 || p.equipo_ganador === 2);
+        return true;
+      });
+    } else if (resultado && !jugadorId) {
+      partidosFiltrados = partidosFiltrados.filter(p => {
+        if (resultado === 'empate') return !p.equipo_ganador || (p.equipo_ganador !== 1 && p.equipo_ganador !== 2);
+        if (resultado === 'ganado') return p.equipo_ganador === 1;
+        if (resultado === 'perdido') return p.equipo_ganador === 2;
+        return true;
+      });
+    }
+
+    // Total antes de limitar
+    const totalResultados = partidosFiltrados.length;
+
+    // Aplicar limite de cantidad
+    const valorCantidad = document.getElementById('cantidad-partidos')?.value || 'all';
     if (valorCantidad !== 'all') {
       const cantidad = parseInt(valorCantidad) || 5;
       partidosFiltrados = partidosFiltrados.slice(0, cantidad);
     }
-    
-    // Mostrar partidos filtrados
+
     mostrarPartidosBasicos(container, partidosFiltrados);
-    
-    // Mostrar mensaje si no hay resultados
-    if (busqueda && partidosFiltrados.length === 0) {
+
+    // Mostrar contador de resultados
+    const hayFiltros = jugadorId || companeroIds.length > 0 || rivalIds.length > 0 || resultado;
+    const contadorEl = document.getElementById('filtro-resultado-count');
+    if (contadorEl) {
+      if (hayFiltros) {
+        contadorEl.textContent = `${totalResultados} partido${totalResultados !== 1 ? 's' : ''} encontrado${totalResultados !== 1 ? 's' : ''}`;
+        contadorEl.classList.remove('d-none');
+      } else {
+        contadorEl.textContent = `${totalResultados} partido${totalResultados !== 1 ? 's' : ''}`;
+        contadorEl.classList.remove('d-none');
+      }
+    }
+    if (hayFiltros && partidosFiltrados.length === 0) {
       container.innerHTML = `
         <div class="text-center py-5">
           <i class="bi bi-search fs-1 text-muted mb-3"></i>
           <h5 class="text-muted">No se encontraron partidos</h5>
           <p class="text-light-emphasis mb-4">
-            No hay partidos donde participe "<strong>${busqueda}</strong>".<br>
-            Intenta con otro nombre o revisa la ortografía.
+            No hay partidos con los filtros seleccionados.
           </p>
-          <button onclick="document.getElementById('buscar-jugador').value=''; filtrarPartidosPorJugador();" class="btn btn-outline-primary btn-sm">
+          <button onclick="limpiarFiltrosHistorial()" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-x-circle me-2"></i>
-            Limpiar búsqueda
+            Limpiar filtros
           </button>
         </div>
       `;
     }
   };
+
+  // Limpiar todos los filtros
+  window.limpiarFiltrosHistorial = function() {
+    const selJugador = document.getElementById('filtro-jugador');
+    if (selJugador) selJugador.value = '';
+    const selResultado = document.getElementById('filtro-resultado');
+    if (selResultado) selResultado.value = '';
+    tagInputState.companero.selected = [];
+    tagInputState.rival.selected = [];
+    renderTags('companero');
+    renderTags('rival');
+    const inputComp = document.getElementById('companero-input');
+    const inputRival = document.getElementById('rival-input');
+    if (inputComp) inputComp.value = '';
+    if (inputRival) inputRival.value = '';
+    filtrarPartidosAvanzado();
+  };
+
+  // Mantener compatibilidad con la funcion vieja
+  window.filtrarPartidosPorJugador = window.filtrarPartidosAvanzado;
 
   // Hacer las funciones globales
   window.cargarHistorialPartidos = cargarHistorialPartidos;

@@ -1957,10 +1957,10 @@
             </div>
             
             <!-- Filtros -->
-            <div class="d-flex justify-content-center mb-4 gap-4 flex-wrap">
-              <div class="d-flex align-items-center gap-2">
-                <label for="cantidad-partidos" class="text-light small mb-0">📅 Mostrar últimos:</label>
-                <select id="cantidad-partidos" class="form-select form-select-sm" style="width: 100px;" onchange="cargarHistorialPartidos()">
+            <div class="row g-2 mb-4 justify-content-center align-items-end">
+              <div class="col-auto">
+                <label for="cantidad-partidos" class="form-label text-light small mb-1">📅 Mostrar:</label>
+                <select id="cantidad-partidos" class="form-select form-select-sm" style="width: 110px;" onchange="cargarHistorialPartidos()">
                   <option value="all">Todos</option>
                   <option value="5">5 partidos</option>
                   <option value="10">10 partidos</option>
@@ -1968,18 +1968,130 @@
                   <option value="20">20 partidos</option>
                 </select>
               </div>
-              <div class="d-flex align-items-center gap-2">
-                <label for="buscar-jugador" class="text-light small mb-0">🔍 Buscar jugador:</label>
-                <input 
-                  type="text" 
-                  id="buscar-jugador" 
-                  class="form-control form-control-sm" 
-                  style="width: 150px;" 
-                  placeholder="Ej: Kite"
-                  onkeyup="filtrarPartidosPorJugador()"
-                >
+              <div class="col-auto">
+                <label for="filtro-jugador" class="form-label text-light small mb-1">🔍 Jugador:</label>
+                <select id="filtro-jugador" class="form-select form-select-sm" style="width: 160px;" onchange="filtrarPartidosAvanzado()">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="col-auto">
+                <label class="form-label text-light small mb-1">🤝 Jugó con:</label>
+                <div class="tag-input-wrapper" id="companero-wrapper">
+                  <div class="tag-input-tags" id="companero-tags"></div>
+                  <input type="text" class="tag-input-field" id="companero-input" placeholder="Buscar..." autocomplete="off">
+                  <div class="tag-input-dropdown" id="companero-dropdown"></div>
+                </div>
+              </div>
+              <div class="col-auto">
+                <label class="form-label text-light small mb-1">⚔️ Contra:</label>
+                <div class="tag-input-wrapper" id="rival-wrapper">
+                  <div class="tag-input-tags" id="rival-tags"></div>
+                  <input type="text" class="tag-input-field" id="rival-input" placeholder="Buscar..." autocomplete="off">
+                  <div class="tag-input-dropdown" id="rival-dropdown"></div>
+                </div>
+              </div>
+              <div class="col-auto">
+                <label for="filtro-resultado" class="form-label text-light small mb-1">🏆 Resultado:</label>
+                <select id="filtro-resultado" class="form-select form-select-sm" style="width: 120px;" onchange="filtrarPartidosAvanzado()">
+                  <option value="">Todos</option>
+                  <option value="ganado">Ganado</option>
+                  <option value="perdido">Perdido</option>
+                  <option value="empate">Empate</option>
+                </select>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltrosHistorial()" title="Limpiar filtros">
+                  <i class="bi bi-x-circle me-1"></i>Limpiar
+                </button>
               </div>
             </div>
+            <div class="text-center mb-3">
+              <small class="text-light-emphasis d-none" id="filtro-resultado-count"></small>
+            </div>
+
+            <style>
+              .tag-input-wrapper {
+                position: relative;
+                min-width: 200px;
+                max-width: 300px;
+                background: var(--bs-body-bg, #212529);
+                border: 1px solid rgba(255,255,255,0.2);
+                border-radius: 0.375rem;
+                padding: 4px 6px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 4px;
+                cursor: text;
+              }
+              .tag-input-wrapper:focus-within {
+                border-color: #86b7fe;
+                box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
+              }
+              .tag-input-tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+              }
+              .tag-input-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                background: #0d6efd;
+                color: #fff;
+                border-radius: 0.25rem;
+                padding: 1px 8px;
+                font-size: 0.78rem;
+                white-space: nowrap;
+                animation: tagIn 0.15s ease;
+              }
+              @keyframes tagIn {
+                from { transform: scale(0.8); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+              }
+              .tag-input-tag .tag-remove {
+                cursor: pointer;
+                font-size: 0.85rem;
+                opacity: 0.7;
+                line-height: 1;
+              }
+              .tag-input-tag .tag-remove:hover { opacity: 1; }
+              .tag-input-field {
+                border: none;
+                outline: none;
+                background: transparent;
+                color: #fff;
+                font-size: 0.82rem;
+                min-width: 60px;
+                flex: 1;
+                padding: 2px 0;
+              }
+              .tag-input-field::placeholder { color: rgba(255,255,255,0.4); }
+              .tag-input-dropdown {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #2b3035;
+                border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 0 0 0.375rem 0.375rem;
+                max-height: 180px;
+                overflow-y: auto;
+                z-index: 1050;
+              }
+              .tag-input-dropdown.show { display: block; }
+              .tag-input-option {
+                padding: 6px 10px;
+                font-size: 0.82rem;
+                color: #dee2e6;
+                cursor: pointer;
+              }
+              .tag-input-option:hover, .tag-input-option.active {
+                background: #0d6efd;
+                color: #fff;
+              }
+            </style>
             
             <!-- Contenedor del historial -->
             <div id="historial-partidos-container">
