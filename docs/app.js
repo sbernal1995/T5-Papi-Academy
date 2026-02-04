@@ -8127,12 +8127,22 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   configurarFiltroPartidos();
 
   // Cargar temporadas primero, luego estadísticas e historial (en secuencia)
-  cargarTemporadas().then(() => {
+  cargarTemporadas().then(async () => {
     console.log('📅 Temporada por defecto:', temporadaSeleccionada);
     cargarEstadisticas();
     cargarHistorialPartidos();
     // Poblar selector de jugadores en el header
     poblarSelectorJugadoresPerfil();
+
+    // Precargar Mundialito T5 con la temporada seleccionada
+    await cargarTemporadasMundialito();
+    if (temporadaSeleccionada) {
+      const selectMundialito = document.getElementById('mundialito-temporada');
+      if (selectMundialito) {
+        selectMundialito.value = temporadaSeleccionada;
+      }
+    }
+    procesarMundialito();
   });
 
   // --- Event Listeners para Perfil de Jugador ---
