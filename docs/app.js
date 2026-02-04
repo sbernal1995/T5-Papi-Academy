@@ -6764,8 +6764,11 @@ const initApp = () => {
             <!-- Header del partido -->
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div>
-                <h5 class="text-white fw-bold mb-1">
-                  ${iconoResultado} Partido #${partidos.length - index} (Skill Promedio — ${promedioSkill.toFixed(1)})
+                <h5 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
+                  ${iconoResultado} Partido #${partidos.length - index}
+                  <span style="cursor:pointer" onclick="mostrarGolesPartido('${partido.id}')" title="Click para ver repeticion de los goles" class="badge bg-danger bg-opacity-75 fw-normal" role="button">
+                    <i class="bi bi-camera-video me-1"></i><em>Ver repeticion de los goles</em>
+                  </span>
                 </h5>
                 <div class="text-light-emphasis small">
                   <i class="bi bi-calendar me-1"></i>${fecha}
@@ -7538,6 +7541,197 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
   // Hacer las funciones globales
   window.cargarHistorialPartidos = cargarHistorialPartidos;
+
+  // Popup de goles del partido
+  window.mostrarGolesPartido = function(partidoId) {
+    const partido = todosLosPartidos.find(p => p.id === partidoId);
+    if (!partido) return;
+
+    const goles = partido.goles || [];
+    const youtubeLink = partido.youtube_link || null;
+
+    // Calcular marcador
+    let golesEq1 = 0, golesEq2 = 0;
+    goles.forEach(gol => {
+      const jp = partido.jugador_partido?.find(j => j.jugador_id === gol.goleador_id);
+      if (jp) {
+        const esEnContra = gol.equipo !== jp.equipo;
+        if (esEnContra) {
+          if (jp.equipo === 1) golesEq2++; else golesEq1++;
+        } else {
+          if (jp.equipo === 1) golesEq1++; else golesEq2++;
+        }
+      }
+    });
+
+    // Titulo del modal
+    const fecha = new Date(partido.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    document.getElementById('golesPartidoModalLabel').innerHTML =
+      `<i class="bi bi-trophy me-2"></i>Goles del Partido — ${fecha} <span class="badge bg-primary ms-2">${golesEq1} - ${golesEq2}</span>`;
+
+    // Ordenar goles cronologicamente
+    const golesOrdenados = [...goles].sort((a, b) => {
+      const minA = a.minuto ?? 999;
+      const minB = b.minuto ?? 999;
+      return minA - minB;
+    });
+
+    // Helpers
+    const nombreJugador = (id) => {
+      const jp = partido.jugador_partido?.find(j => j.jugador_id === id);
+      return jp?.jugadores?.nombre || 'Desconocido';
+    };
+
+    const equipoJugador = (id) => {
+      const jp = partido.jugador_partido?.find(j => j.jugador_id === id);
+      return jp?.equipo || null;
+    };
+
+    let html = '';
+
+    if (golesOrdenados.length === 0) {
+      html = `
+        <div class="text-center py-5">
+          <i class="bi bi-emoji-neutral display-4 text-muted"></i>
+          <p class="text-muted mt-3">No hay goles registrados en este partido</p>
+        </div>
+      `;
+    } else {
+      // Timeline de goles
+      html += `<div class="row g-0 align-items-center">`;
+
+      // Header
+      html += `
+        <div class="col-5 text-end pe-2">
+          <h6 class="text-primary fw-bold mb-3">🔵 Equipo 1</h6>
+        </div>
+        <div class="col-2 text-center">
+          <h6 class="text-muted fw-bold mb-3">Min</h6>
+        </div>
+        <div class="col-5 ps-2">
+          <h6 class="text-danger fw-bold mb-3">🔴 Equipo 2</h6>
+        </div>
+      `;
+
+      // Marcador acumulado
+      let acumEq1 = 0, acumEq2 = 0;
+
+      golesOrdenados.forEach(gol => {
+        const goleador = nombreJugador(gol.goleador_id);
+        const asistidor = gol.asistidor_id ? nombreJugador(gol.asistidor_id) : null;
+        const eqJugador = equipoJugador(gol.goleador_id);
+        const esEnContra = gol.equipo !== eqJugador;
+
+        // Actualizar marcador acumulado
+        if (gol.equipo === 1) acumEq1++; else acumEq2++;
+
+        // Formatear minuto
+        let minutoStr = '—';
+        if (gol.minuto !== null && gol.minuto !== undefined) {
+          const mins = Math.floor(gol.minuto);
+          const secs = Math.round((gol.minuto - mins) * 60);
+          minutoStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
+        }
+
+        // Contenido del gol
+        let golContent = `<strong>${goleador}</strong>`;
+        if (esEnContra) golContent += ` <span class="badge bg-warning text-dark" style="font-size:0.65em">EC</span>`;
+        if (asistidor) golContent += `<br><small class="text-muted">Asist: ${asistidor}</small>`;
+
+        // Boton de video
+        let videoBtn = '';
+        if (youtubeLink && gol.minuto !== null && gol.minuto !== undefined) {
+          const videoId = extraerVideoId(youtubeLink);
+          const segundos = Math.round(gol.minuto * 60);
+          if (videoId) {
+            videoBtn = `<br><button class="btn btn-sm btn-outline-danger mt-1 btn-play-gol"
+              data-video-id="${videoId}" data-start="${segundos}">
+              <i class="bi bi-play-fill"></i> Ver
+            </button>`;
+          }
+        }
+
+        const sumaAEquipo = gol.equipo;
+
+        if (sumaAEquipo === 1) {
+          html += `
+            <div class="col-5 text-end pe-2">
+              <div class="p-2 bg-primary bg-opacity-10 rounded mb-2">
+                ${golContent}${videoBtn}
+              </div>
+            </div>
+            <div class="col-2 text-center">
+              <div class="mb-2">
+                <span class="badge bg-secondary">${minutoStr}</span>
+                <br><small class="text-muted" style="font-size:0.7em">${acumEq1} - ${acumEq2}</small>
+              </div>
+            </div>
+            <div class="col-5 ps-2"><div class="mb-2"></div></div>
+          `;
+        } else {
+          html += `
+            <div class="col-5 text-end pe-2"><div class="mb-2"></div></div>
+            <div class="col-2 text-center">
+              <div class="mb-2">
+                <span class="badge bg-secondary">${minutoStr}</span>
+                <br><small class="text-muted" style="font-size:0.7em">${acumEq1} - ${acumEq2}</small>
+              </div>
+            </div>
+            <div class="col-5 ps-2">
+              <div class="p-2 bg-danger bg-opacity-10 rounded mb-2">
+                ${golContent}${videoBtn}
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      html += `</div>`;
+
+      // Video player
+      if (youtubeLink) {
+        html += `
+          <div id="gol-video-player" class="mt-4 d-none">
+            <div class="ratio ratio-16x9">
+              <iframe id="gol-video-iframe" src="" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    document.getElementById('golesPartidoModalBody').innerHTML = html;
+
+    // Event listeners para botones de video
+    document.querySelectorAll('#golesPartidoModalBody .btn-play-gol').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const videoId = btn.dataset.videoId;
+        const start = btn.dataset.start;
+        const player = document.getElementById('gol-video-player');
+        const iframe = document.getElementById('gol-video-iframe');
+        if (player && iframe) {
+          iframe.src = `https://www.youtube.com/embed/${videoId}?start=${start}&autoplay=1`;
+          player.classList.remove('d-none');
+          player.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('golesPartidoModal'));
+    modal.show();
+
+    // Limpiar iframe al cerrar
+    document.getElementById('golesPartidoModal').addEventListener('hidden.bs.modal', () => {
+      const iframe = document.getElementById('gol-video-iframe');
+      if (iframe) iframe.src = '';
+      const player = document.getElementById('gol-video-player');
+      if (player) player.classList.add('d-none');
+    }, { once: true });
+  };
+
   window.eliminarPartido = async function(partidoId) {
     // Verificar permisos de administrador
     if (!verificarPermisosAdmin('eliminar un partido')) {
