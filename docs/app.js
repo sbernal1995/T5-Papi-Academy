@@ -299,6 +299,12 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
   return `${iconos}(${total})`;
 }
 
+function esErrorColumnaCagadaFaltante(error) {
+  const textoError = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+  return textoError.includes('cagada_jugador_id') &&
+    (textoError.includes('does not exist') || textoError.includes('schema cache') || textoError.includes('column'));
+}
+
 // ==========================================
 // SISTEMA DE PERFIL DE JUGADOR
 // ==========================================
@@ -431,16 +437,32 @@ async function cargarPerfilJugador(jugadorId) {
       participacionesFiltradas = participacionesFiltradas.filter(p => p.partidos.temporada_id === temporadaPerfilSeleccionada);
     }
 
-    // Cargar goles del jugador (como goleador o asistente)
-    const { data: goles, error: errorGoles } = await supabase
+    // Cargar goles del jugador (como goleador, asistidor o autor de la cagada)
+    let goles = [];
+    const consultaGolesConCagada = await supabase
       .from('goles')
       .select(`
         *,
         partidos (youtube_link, fecha, temporada_id)
       `)
-      .or(`goleador_id.eq.${jugadorId},asistidor_id.eq.${jugadorId}`);
+      .or(`goleador_id.eq.${jugadorId},asistidor_id.eq.${jugadorId},cagada_jugador_id.eq.${jugadorId}`);
 
-    if (errorGoles) throw errorGoles;
+    if (consultaGolesConCagada.error && esErrorColumnaCagadaFaltante(consultaGolesConCagada.error)) {
+      console.warn('⚠️ La columna goles.cagada_jugador_id no existe todavía. Se usa fallback sin cagadas en gol.');
+      const consultaGolesFallback = await supabase
+        .from('goles')
+        .select(`
+          *,
+          partidos (youtube_link, fecha, temporada_id)
+        `)
+        .or(`goleador_id.eq.${jugadorId},asistidor_id.eq.${jugadorId}`);
+
+      if (consultaGolesFallback.error) throw consultaGolesFallback.error;
+      goles = consultaGolesFallback.data || [];
+    } else {
+      if (consultaGolesConCagada.error) throw consultaGolesConCagada.error;
+      goles = consultaGolesConCagada.data || [];
+    }
 
     // Filtrar goles por temporada si está seleccionada
     let golesFiltrados = goles.filter(g => g.partidos !== null);
@@ -448,16 +470,18 @@ async function cargarPerfilJugador(jugadorId) {
       golesFiltrados = golesFiltrados.filter(g => g.partidos.temporada_id === temporadaPerfilSeleccionada);
     }
 
-    // Contar goles y asistencias desde la tabla goles (más preciso)
+    // Contar goles, asistencias y cagadas en gol desde la tabla goles
     const golesCount = golesFiltrados.filter(g => g.goleador_id === jugadorId).length;
     const asistenciasCount = golesFiltrados.filter(g => g.asistidor_id === jugadorId).length;
+    const cagadasEnGolCount = golesFiltrados.filter(g => g.cagada_jugador_id === jugadorId).length;
 
     datosPerfilJugador = {
       jugador,
       participaciones: participacionesFiltradas,
       goles: golesFiltrados,
       golesCount,
-      asistenciasCount
+      asistenciasCount,
+      cagadasEnGolCount
     };
 
     console.log('📊 Datos perfil cargados:', {
@@ -465,13 +489,16 @@ async function cargarPerfilJugador(jugadorId) {
       temporada: temporadaPerfilSeleccionada || 'Todas',
       participaciones: participacionesFiltradas.length,
       goles: golesCount,
-      asistencias: asistenciasCount
+      asistencias: asistenciasCount,
+      cagadasEnGol: cagadasEnGolCount
     });
 
     // Renderizar el perfil
     renderizarPerfilBasico();
     renderizarStatsMainPerfil();
     renderizarVideosGoles();
+    renderizarVideosAsistencias();
+    renderizarVideosCagadas();
     renderizarEstadisticasDetalladas();
 
     // Las sinergias y rivalidades se cargan bajo demanda cuando se hace click en el tab
@@ -629,36 +656,54 @@ function renderizarStatsMainPerfil() {
   `;
 }
 
-/**
- * Renderiza los videos de goles del jugador
- */
-function renderizarVideosGoles() {
-  const container = document.getElementById('perfil-videos-container');
-  const goles = datosPerfilJugador.goles.filter(g => g.goleador_id === jugadorPerfilActual);
+function obtenerNombreJugadorPorId(jugadorId) {
+  if (!jugadorId) return null;
+  return todosLosJugadoresGlobal.find(j => j.id === jugadorId)?.nombre || null;
+}
 
-  if (goles.length === 0) {
+function renderizarEventosConVideoPerfil({
+  containerId,
+  eventos,
+  tituloEvento,
+  iconoLinea,
+  emptyMessage,
+  detalleExtraFn = null
+}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!eventos || eventos.length === 0) {
     container.innerHTML = `
       <div class="col-12 text-center py-5">
         <i class="bi bi-camera-video-off display-4 text-muted"></i>
-        <p class="text-muted mt-3">No hay goles registrados</p>
+        <p class="text-muted mt-3">${emptyMessage}</p>
       </div>
     `;
     return;
   }
 
-  // Filtrar goles con video y minuto
-  const golesConVideo = goles.filter(g => g.partidos?.youtube_link && g.minuto !== null);
-  const golesSinVideo = goles.filter(g => !g.partidos?.youtube_link || g.minuto === null);
+  const tieneVideoConTimestamp = (evento) => {
+    const tieneMinuto = evento.minuto !== null && evento.minuto !== undefined;
+    const youtubeLink = evento.partidos?.youtube_link;
+    return !!(tieneMinuto && youtubeLink && extraerVideoId(youtubeLink));
+  };
+
+  const eventosConVideo = eventos.filter(tieneVideoConTimestamp);
+  const eventosSinVideo = eventos.filter(evento => !tieneVideoConTimestamp(evento));
 
   let html = '';
 
-  if (golesConVideo.length > 0) {
-    html += golesConVideo.map((gol, index) => {
-      const videoId = extraerVideoId(gol.partidos.youtube_link);
-      const segundos = Math.round((gol.minuto || 0) * 60);
-      const fecha = new Date(gol.partidos.fecha).toLocaleDateString('es-AR');
-      const minutos = Math.floor(gol.minuto || 0);
-      const segs = Math.round(((gol.minuto || 0) - minutos) * 60);
+  if (eventosConVideo.length > 0) {
+    html += eventosConVideo.map((evento, index) => {
+      const youtubeLink = evento.partidos?.youtube_link || '';
+      const videoId = extraerVideoId(youtubeLink);
+      const segundos = Math.round((evento.minuto || 0) * 60);
+      const fecha = evento.partidos?.fecha
+        ? new Date(evento.partidos.fecha).toLocaleDateString('es-AR')
+        : 'Fecha desconocida';
+      const minutos = Math.floor(evento.minuto || 0);
+      const segs = Math.round(((evento.minuto || 0) - minutos) * 60);
+      const detalleExtra = detalleExtraFn ? detalleExtraFn(evento) : '';
 
       return `
         <div class="col-md-4 col-lg-3">
@@ -666,7 +711,7 @@ function renderizarVideosGoles() {
             <div class="ratio ratio-16x9">
               <iframe
                 src="https://www.youtube.com/embed/${videoId}?start=${segundos}"
-                title="Gol ${index + 1}"
+                title="${tituloEvento} ${index + 1}"
                 frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen>
@@ -674,7 +719,8 @@ function renderizarVideosGoles() {
             </div>
             <div class="card-body py-2">
               <small class="text-muted">${fecha}</small>
-              <p class="mb-0 small">⚽ Minuto ${minutos}'${segs > 0 ? segs.toString().padStart(2, '0') : ''}</p>
+              <p class="mb-0 small">${iconoLinea} Minuto ${minutos}'${segs > 0 ? segs.toString().padStart(2, '0') : ''}</p>
+              ${detalleExtra}
             </div>
           </div>
         </div>
@@ -682,28 +728,85 @@ function renderizarVideosGoles() {
     }).join('');
   }
 
-  // Mostrar resumen de goles sin video
-  if (golesSinVideo.length > 0) {
+  if (eventosSinVideo.length > 0) {
     html += `
       <div class="col-12 mt-4">
         <div class="alert alert-secondary">
           <i class="bi bi-info-circle me-2"></i>
-          <strong>${golesSinVideo.length}</strong> gol(es) adicionales sin video disponible
+          <strong>${eventosSinVideo.length}</strong> evento(s) adicionales sin video disponible
         </div>
       </div>
     `;
   }
 
-  if (golesConVideo.length === 0) {
+  if (eventosConVideo.length === 0) {
     html = `
       <div class="col-12 text-center py-5">
         <i class="bi bi-camera-video-off display-4 text-muted"></i>
-        <p class="text-muted mt-3">${goles.length} gol(es) registrados, pero ninguno tiene video con timestamp</p>
+        <p class="text-muted mt-3">${eventos.length} evento(s) registrados, pero ninguno tiene video con timestamp</p>
       </div>
     `;
   }
 
   container.innerHTML = html;
+}
+
+/**
+ * Renderiza los videos de goles del jugador
+ */
+function renderizarVideosGoles() {
+  const goles = datosPerfilJugador.goles.filter(g => g.goleador_id === jugadorPerfilActual);
+
+  renderizarEventosConVideoPerfil({
+    containerId: 'perfil-videos-container',
+    eventos: goles,
+    tituloEvento: 'Gol',
+    iconoLinea: '⚽',
+    emptyMessage: 'No hay goles registrados',
+    detalleExtraFn: (gol) => {
+      const asistidorNombre = obtenerNombreJugadorPorId(gol.asistidor_id);
+      const detalleAsistencia = asistidorNombre ? `🎯 Asistencia: ${asistidorNombre}` : 'Sin asistencia';
+      const enContraBadge = gol.es_gol_en_contra
+        ? '<span class="badge bg-warning text-dark mt-1 mb-1">En contra</span>'
+        : '';
+      return `
+        ${enContraBadge}
+        <p class="mb-0 small text-light-emphasis">${detalleAsistencia}</p>
+      `;
+    }
+  });
+}
+
+function renderizarVideosAsistencias() {
+  const asistencias = datosPerfilJugador.goles.filter(g => g.asistidor_id === jugadorPerfilActual);
+
+  renderizarEventosConVideoPerfil({
+    containerId: 'perfil-asistencias-container',
+    eventos: asistencias,
+    tituloEvento: 'Asistencia',
+    iconoLinea: '🎯',
+    emptyMessage: 'No hay asistencias registradas',
+    detalleExtraFn: (gol) => {
+      const goleadorNombre = obtenerNombreJugadorPorId(gol.goleador_id) || 'N/A';
+      return `<p class="mb-0 small text-light-emphasis">⚽ Gol de: ${goleadorNombre}</p>`;
+    }
+  });
+}
+
+function renderizarVideosCagadas() {
+  const cagadasEnGol = datosPerfilJugador.goles.filter(g => g.cagada_jugador_id === jugadorPerfilActual);
+
+  renderizarEventosConVideoPerfil({
+    containerId: 'perfil-cagadas-container',
+    eventos: cagadasEnGol,
+    tituloEvento: 'Cagada',
+    iconoLinea: '💥',
+    emptyMessage: 'No hay cagadas en gol registradas',
+    detalleExtraFn: (gol) => {
+      const goleadorNombre = obtenerNombreJugadorPorId(gol.goleador_id) || 'N/A';
+      return `<p class="mb-0 small text-light-emphasis">⚽ Gol convertido por: ${goleadorNombre}</p>`;
+    }
+  });
 }
 
 /**
@@ -725,6 +828,7 @@ function renderizarEstadisticasDetalladas() {
   const ace = participaciones.filter(p => p.ace).length;
   const atajadas = participaciones.reduce((sum, p) => sum + (p.atajadas || 0), 0);
   const cagadas = participaciones.reduce((sum, p) => sum + (p.cagadas || 0), 0);
+  const cagadasEnGol = datosPerfilJugador.cagadasEnGolCount || 0;
   const winrate = pj > 0 ? ((pg / pj) * 100).toFixed(1) : 0;
   const golesPP = pj > 0 ? (goles / pj).toFixed(2) : '0.00';
   const asistPP = pj > 0 ? (asistencias / pj).toFixed(2) : '0.00';
@@ -789,6 +893,7 @@ function renderizarEstadisticasDetalladas() {
               <tbody>
                 <tr><td>🧤 Atajadas</td><td class="text-end text-success">${atajadas}</td></tr>
                 <tr><td>💥 Cagadas</td><td class="text-end text-danger">${cagadas}</td></tr>
+                <tr><td>💥 Cagadas en gol</td><td class="text-end text-danger">${cagadasEnGol}</td></tr>
                 <tr><td>Atajadas/Partido</td><td class="text-end">${pj > 0 ? (atajadas / pj).toFixed(2) : '0.00'}</td></tr>
               </tbody>
             </table>
@@ -3831,7 +3936,7 @@ const initApp = () => {
     if (eventos.length === 0) {
       tablaGoles.innerHTML = `
         <tr>
-          <td colspan="6" class="text-center text-muted py-3">
+          <td colspan="7" class="text-center text-muted py-3">
             <i class="bi bi-plus-circle me-2"></i>
             No se han registrado goles aún
           </td>
@@ -3842,8 +3947,10 @@ const initApp = () => {
 
     tablaGoles.innerHTML = eventos.map((evento, index) => {
       const goleador = todosLosJugadores.find(j => j.id == evento.goleador_id)?.nombre || 'N/A';
-      const asistencia = evento.asistencia_id === 'nadie' ? 'Sin asistencia' : 
+      const asistencia = evento.asistencia_id === 'nadie' || !evento.asistencia_id ? 'Sin asistencia' : 
                         (todosLosJugadores.find(j => j.id == evento.asistencia_id)?.nombre || 'N/A');
+      const cagada = evento.cagada_id === 'nadie' || !evento.cagada_id ? 'Sin cagada' :
+                     (todosLosJugadores.find(j => j.id == evento.cagada_id)?.nombre || 'N/A');
       
       // Determinar si es gol en contra (usar la marca explícita si está disponible)
       const jugadoresDelPartido = [...equipo1, ...equipo2];
@@ -3856,6 +3963,7 @@ const initApp = () => {
         <tr>
           <td><span class="fw-bold">${goleador}</span></td>
           <td>${asistencia}</td>
+          <td>${cagada}</td>
           <td>
             <span class="badge ${evento.equipo === 1 ? 'bg-primary' : 'bg-danger'}">
               ${evento.equipo === 1 ? '🔵 Equipo 1' : '🔴 Equipo 2'}
@@ -3897,6 +4005,7 @@ const initApp = () => {
     const selectores = [
       { id: 'goleador', placeholder: 'Seleccionar goleador' },
       { id: 'asistencia', placeholder: 'Seleccionar asistencia', extraOption: '<option value="nadie">Nadie</option>' },
+      { id: 'cagada-gol', placeholder: 'Seleccionar cagada', extraOption: '<option value="nadie">Nadie</option>' },
       { id: 'mvp-partido', placeholder: 'Seleccionar MVP' },
       { id: 'ace-partido', placeholder: 'Seleccionar ACE' }
     ];
@@ -4223,6 +4332,7 @@ const initApp = () => {
   function agregarEvento() {
       const goleador_id = document.getElementById('goleador').value;
       const asistencia_id = document.getElementById('asistencia').value;
+      const cagada_id = document.getElementById('cagada-gol').value;
       const golEnContraChecked = document.getElementById('gol-en-contra').checked;
 
       if (!goleador_id) {
@@ -4257,6 +4367,11 @@ const initApp = () => {
           asistencia_final = asistencia_id;
       }
 
+      let cagada_final = null;
+      if (cagada_id && cagada_id !== 'nadie') {
+          cagada_final = cagada_id;
+      }
+
       // Capturar minuto y segundo, convertir a minutos decimales
       const minutoInput = document.getElementById('minuto-gol');
       const segundoInput = document.getElementById('segundo-gol');
@@ -4271,6 +4386,7 @@ const initApp = () => {
       eventos.push({
           goleador_id,
           asistencia_id: asistencia_final,
+          cagada_id: cagada_final,
           equipo,
           es_en_contra: golEnContraChecked, // Agregar esta marca para claridad
           minuto: tiempoEnMinutos  // Guardamos el tiempo en minutos decimales
@@ -4280,11 +4396,17 @@ const initApp = () => {
       const asistidorNombre = asistencia_final 
           ? jugadoresDelPartido.find(j => j.id === asistencia_final)?.nombre || 'N/A'
           : null;
+      const cagadaNombre = cagada_final
+          ? jugadoresDelPartido.find(j => j.id === cagada_final)?.nombre || 'N/A'
+          : null;
 
       // Crear mensaje indicando si es gol en contra
       const tipoGol = golEnContraChecked ? ' (EN CONTRA)' : '';
-      const mensaje = asistidorNombre 
-          ? `Gol agregado: ${goleadorNombre}${tipoGol} (Asist: ${asistidorNombre})`
+      const detalles = [];
+      if (asistidorNombre) detalles.push(`Asist: ${asistidorNombre}`);
+      if (cagadaNombre) detalles.push(`Cagada: ${cagadaNombre}`);
+      const mensaje = detalles.length > 0
+          ? `Gol agregado: ${goleadorNombre}${tipoGol} (${detalles.join(' | ')})`
           : `Gol agregado: ${goleadorNombre}${tipoGol}`;
       
       showToast(mensaje, golEnContraChecked ? 'warning' : 'success');
@@ -4294,6 +4416,7 @@ const initApp = () => {
       // Resetear inputs (tanto selectores como inputs buscables)
       const goleadorElement = document.getElementById('goleador');
       const asistenciaElement = document.getElementById('asistencia');
+      const cagadaElement = document.getElementById('cagada-gol');
       
       if (goleadorElement) {
         if (goleadorElement.style.display === 'none') {
@@ -4314,6 +4437,15 @@ const initApp = () => {
         } else {
           // Es un selector normal
           asistenciaElement.selectedIndex = 0;
+        }
+      }
+
+      if (cagadaElement) {
+        if (cagadaElement.style.display === 'none') {
+          const inputCagada = document.getElementById('cagada-gol_input');
+          if (inputCagada) inputCagada.value = '';
+        } else {
+          cagadaElement.selectedIndex = 0;
         }
       }
       
@@ -4544,6 +4676,13 @@ const initApp = () => {
                       asistidor_id = evento.asistencia_id;
                   }
 
+                  let cagada_jugador_id = null;
+                  if (evento.cagada_id &&
+                      evento.cagada_id !== 'nadie' &&
+                      evento.cagada_id !== '') {
+                      cagada_jugador_id = evento.cagada_id;
+                  }
+
                   // Determinar si es gol en contra
                   const equipoRealGoleador = equipo1.find(j => j.id === evento.goleador_id) ? 1 : 2;
                   const esGolEnContra = evento.es_en_contra || (evento.equipo !== equipoRealGoleador);
@@ -4552,6 +4691,7 @@ const initApp = () => {
                       partido_id: partido_id,
                       goleador_id: evento.goleador_id,
                       asistidor_id: asistidor_id,
+                      cagada_jugador_id: cagada_jugador_id,
                       equipo: evento.equipo,
                       es_gol_en_contra: esGolEnContra, // Nueva columna
                       minuto: evento.minuto !== undefined ? evento.minuto : null
@@ -4572,9 +4712,24 @@ const initApp = () => {
                       }));
               }
 
-              const { error: golesError } = await supabase
+              let { error: golesError } = await supabase
                   .from('goles')
                   .insert(golesData);
+
+              if (golesError && esErrorColumnaCagadaFaltante(golesError)) {
+                  console.warn('⚠️ La columna goles.cagada_jugador_id no existe. Reintentando sin ese campo...');
+                  const golesSinCagada = golesData.map(({ cagada_jugador_id, ...resto }) => resto);
+
+                  const { error: reintentoError } = await supabase
+                      .from('goles')
+                      .insert(golesSinCagada);
+
+                  golesError = reintentoError;
+
+                  if (!golesError) {
+                      showToast('Se guardaron los goles, pero falta la columna cagada_jugador_id. Ejecutá add_cagada_jugador_id.sql.', 'warning');
+                  }
+              }
 
               if (golesError) {
                   console.error('Error al insertar goles:', golesError);
@@ -4665,8 +4820,10 @@ const initApp = () => {
           // Limpiar inputs buscables
           const inputGoleador = document.getElementById('goleador_input');
           const inputAsistencia = document.getElementById('asistencia_input');
+          const inputCagada = document.getElementById('cagada-gol_input');
           if (inputGoleador) inputGoleador.value = '';
           if (inputAsistencia) inputAsistencia.value = '';
+          if (inputCagada) inputCagada.value = '';
           
           // Limpiar atajadas y cagadas extra (mantener solo una fila)
           document.querySelectorAll('.atajadas-row').forEach((row, index) => {
@@ -4708,6 +4865,61 @@ const initApp = () => {
     const temporadaSeleccionada = selectorTemporada?.value || selectorTemporadaMobile?.value || '';
     
     console.log('📊 Cargando estadísticas con temporada:', temporadaSeleccionada);
+
+    // Determina a qué equipo se le suma un gol, con fallback para datos viejos.
+    const obtenerEquipoGolEnPartido = (gol, jugadoresPartido = []) => {
+      if (gol?.equipo === 1 || gol?.equipo === 2) {
+        return gol.equipo;
+      }
+
+      const goleadorEnPartido = jugadoresPartido.find(jp => jp.jugador_id === gol?.goleador_id);
+      if (!goleadorEnPartido || (goleadorEnPartido.equipo !== 1 && goleadorEnPartido.equipo !== 2)) {
+        return null;
+      }
+
+      if (gol?.es_gol_en_contra) {
+        return goleadorEnPartido.equipo === 1 ? 2 : 1;
+      }
+
+      return goleadorEnPartido.equipo;
+    };
+
+    // Suma, por jugador, cuántos goles hizo y recibió su equipo en los partidos que jugó.
+    const calcularGolesEquipoPorJugador = (partidos = []) => {
+      const resultado = {};
+
+      partidos.forEach(partido => {
+        const jugadoresPartido = partido.jugador_partido || [];
+
+        let golesEquipo1 = 0;
+        let golesEquipo2 = 0;
+
+        (partido.goles || []).forEach(gol => {
+          const equipoGol = obtenerEquipoGolEnPartido(gol, jugadoresPartido);
+          if (equipoGol === 1) golesEquipo1 += 1;
+          if (equipoGol === 2) golesEquipo2 += 1;
+        });
+
+        jugadoresPartido.forEach(jp => {
+          if (!resultado[jp.jugador_id]) {
+            resultado[jp.jugador_id] = {
+              goles_favor_equipo: 0,
+              goles_recibidos_equipo: 0
+            };
+          }
+
+          if (jp.equipo === 1) {
+            resultado[jp.jugador_id].goles_favor_equipo += golesEquipo1;
+            resultado[jp.jugador_id].goles_recibidos_equipo += golesEquipo2;
+          } else if (jp.equipo === 2) {
+            resultado[jp.jugador_id].goles_favor_equipo += golesEquipo2;
+            resultado[jp.jugador_id].goles_recibidos_equipo += golesEquipo1;
+          }
+        });
+      });
+
+      return resultado;
+    };
     
     // PARCHE ESPECIAL PARA TEMPORADA 1: Usar vista_estadisticas_por_temporada
     if (temporadaSeleccionada && temporadaSeleccionada !== '') {
@@ -4755,6 +4967,33 @@ const initApp = () => {
             console.log('⚠️ No se encontraron datos en estadisticas_temporada para temporada 1');
             throw new Error('Sin datos en estadisticas_temporada');
           }
+
+          // Calcular goles de equipo (a favor/recibidos) por jugador para la temporada seleccionada.
+          const { data: partidosTempData, error: partidosTempError } = await supabase
+            .from('partidos')
+            .select(`
+              id,
+              temporada_id,
+              jugador_partido (
+                jugador_id,
+                equipo
+              ),
+              goles (
+                id,
+                goleador_id,
+                equipo,
+                es_gol_en_contra
+              )
+            `)
+            .eq('temporada_id', temporadaSeleccionada);
+
+          if (partidosTempError) {
+            console.warn('⚠️ No se pudieron calcular goles de equipo para temporada 1:', partidosTempError);
+          }
+
+          const golesEquipoPorJugador = partidosTempError
+            ? {}
+            : calcularGolesEquipoPorJugador(partidosTempData || []);
           
           // Luego obtener la información de los jugadores por separado
           const jugadorIds = statsData.map(stat => stat.jugador_id);
@@ -4803,6 +5042,11 @@ const initApp = () => {
             
             // Transformar a formato compatible
             datosJugadores = datosVista.map((jugadorData) => {
+              const golesEquipoJugador = golesEquipoPorJugador[jugadorData.jugador_id] || {
+                goles_favor_equipo: 0,
+                goles_recibidos_equipo: 0
+              };
+
               const stats = {
                 total_puntos: jugadorData.total_puntos || 0,
                 pj: jugadorData.pj || 0,
@@ -4811,6 +5055,8 @@ const initApp = () => {
                 pp: jugadorData.pp || 0,
                 goles: jugadorData.goles || 0,
                 goles_en_contra: jugadorData.goles_en_contra || 0,
+                goles_favor_equipo: golesEquipoJugador.goles_favor_equipo || 0,
+                goles_recibidos_equipo: golesEquipoJugador.goles_recibidos_equipo || 0,
                 asistencias: jugadorData.asistencias || 0,
                 cagadas_en_gol: jugadorData.cagadas_en_gol || 0,
                 mvp_count: jugadorData.mvp_count || 0,
@@ -4885,6 +5131,7 @@ const initApp = () => {
             id,
             goleador_id,
             asistidor_id,
+            equipo,
             es_gol_en_contra
           )
         `);
@@ -4908,8 +5155,18 @@ const initApp = () => {
       const jugadoresStats = {};
       
       result.data?.forEach(partido => {
+        const jugadoresPartido = partido.jugador_partido || [];
+
+        let golesEquipo1 = 0;
+        let golesEquipo2 = 0;
+        partido.goles?.forEach(gol => {
+          const equipoGol = obtenerEquipoGolEnPartido(gol, jugadoresPartido);
+          if (equipoGol === 1) golesEquipo1 += 1;
+          if (equipoGol === 2) golesEquipo2 += 1;
+        });
+
         // Procesar cada jugador que participó en este partido
-        partido.jugador_partido?.forEach(jp => {
+        jugadoresPartido.forEach(jp => {
           const jugadorId = jp.jugador_id;
           
           if (!jugadoresStats[jugadorId]) {
@@ -4924,6 +5181,8 @@ const initApp = () => {
               total_puntos: 0,
               goles: 0,
               goles_en_contra: 0,
+              goles_favor_equipo: 0,
+              goles_recibidos_equipo: 0,
               asistencias: 0,
               cagadas_en_gol: 0,
               mvp_count: 0,
@@ -4953,6 +5212,15 @@ const initApp = () => {
           } else {
             stats.pp += 1;
             // Derrota = 0 puntos
+          }
+
+          // Goles del equipo del jugador en este partido
+          if (jp.equipo === 1) {
+            stats.goles_favor_equipo += golesEquipo1;
+            stats.goles_recibidos_equipo += golesEquipo2;
+          } else if (jp.equipo === 2) {
+            stats.goles_favor_equipo += golesEquipo2;
+            stats.goles_recibidos_equipo += golesEquipo1;
           }
           
           // Sumar estadísticas individuales (SIN goles y asistencias aún)
@@ -5034,6 +5302,8 @@ const initApp = () => {
         pe: 0,
         pp: 0,
         goles: 0,
+        goles_favor_equipo: 0,
+        goles_recibidos_equipo: 0,
         asistencias: 0,
         cagadas_en_gol: 0,
         mvp_count: 0,
@@ -5111,6 +5381,8 @@ const initApp = () => {
         pe: jugadorData.pe || 0,
         pp: jugadorData.pp || 0,
         goles: jugadorData.goles || 0,
+        goles_favor_equipo: jugadorData.goles_favor_equipo || 0,
+        goles_recibidos_equipo: jugadorData.goles_recibidos_equipo || 0,
         asistencias: jugadorData.asistencias || 0,
         cagadas_en_gol: jugadorData.cagadas_en_gol || 0,
         mvp_count: jugadorData.mvp_count || 0,
@@ -5898,8 +6170,8 @@ const initApp = () => {
         <td class="text-center"><span class="badge bg-primary">${jugadorData.mvp_count}</span></td>
         <td class="text-center"><span class="badge bg-secondary">${jugadorData.ace_count}</span></td>
         <td class="text-center fw-semibold text-warning">${jugadorData.atajadas}</td>
-        <td class="text-center fw-semibold text-light">${jugadorData.capitan_defeat}</td>
-        <td class="text-center fw-semibold text-light">${jugadorData.bita_defeat}</td>
+        <td class="text-center fw-semibold text-success">${jugadorData.goles_favor_equipo || 0}</td>
+        <td class="text-center fw-semibold text-danger">${jugadorData.goles_recibidos_equipo || 0}</td>
         <td class="text-center">
           <div class="btn-group" role="group">
             <button onclick="abrirModalEditar('${jugadorData.jugadores.id}')" class="btn btn-sm btn-outline-primary" title="Editar jugador">
@@ -7997,37 +8269,83 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     try {
       console.log('🖱️ Editando partido con ID:', partidoId);
 
-      // Cargar datos del partido
-      const { data: partido, error } = await supabase
-        .from('partidos')
-        .select(`
-          *,
-          temporadas (
+      // Cargar datos del partido (incluye cagada_jugador_id si la columna existe)
+      const selectPartidoConCagada = `
+        *,
+        temporadas (
+          id,
+          nombre
+        ),
+        jugador_partido (
+          jugador_id,
+          equipo,
+          mvp,
+          ace,
+          atajadas,
+          cagadas,
+          jugadores (
             id,
             nombre
-          ),
-          jugador_partido (
-            jugador_id,
-            equipo,
-            mvp,
-            ace,
-            atajadas,
-            cagadas,
-            jugadores (
-              id,
-              nombre
-            )
-          ),
-          goles (
-            id,
-            goleador_id,
-            asistidor_id,
-            equipo,
-            minuto
           )
-        `)
+        ),
+        goles (
+          id,
+          goleador_id,
+          asistidor_id,
+          equipo,
+          minuto,
+          cagada_jugador_id
+        )
+      `;
+
+      const selectPartidoSinCagada = `
+        *,
+        temporadas (
+          id,
+          nombre
+        ),
+        jugador_partido (
+          jugador_id,
+          equipo,
+          mvp,
+          ace,
+          atajadas,
+          cagadas,
+          jugadores (
+            id,
+            nombre
+          )
+        ),
+        goles (
+          id,
+          goleador_id,
+          asistidor_id,
+          equipo,
+          minuto
+        )
+      `;
+
+      let consultaPartido = await supabase
+        .from('partidos')
+        .select(selectPartidoConCagada)
         .eq('id', partidoId)
         .single();
+
+      window.edicionSoportaCagadaEnGol = true;
+
+      if (consultaPartido.error && esErrorColumnaCagadaFaltante(consultaPartido.error)) {
+        console.warn('⚠️ La columna goles.cagada_jugador_id no existe. Se deshabilita la edición de cagada en goles.');
+
+        consultaPartido = await supabase
+          .from('partidos')
+          .select(selectPartidoSinCagada)
+          .eq('id', partidoId)
+          .single();
+
+        window.edicionSoportaCagadaEnGol = false;
+      }
+
+      const { data: partido, error } = consultaPartido;
 
       if (error) {
         console.error('Error al cargar partido:', error);
@@ -8067,7 +8385,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       document.getElementById('editar-mvp').value = mvpActual?.jugador_id || '';
       document.getElementById('editar-ace').value = aceActual?.jugador_id || '';
 
-      // Renderizar los goles con sus tiempos
+      // Renderizar los goles con sus tiempos y cagadas
       renderizarGolesEdicion(partido.goles || [], partido.jugador_partido || []);
 
       // Abrir el modal
@@ -8147,6 +8465,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   function renderizarGolesEdicion(goles, jugadores) {
     const container = document.getElementById('editar-goles-container');
     if (!container) return;
+    const edicionCagadaHabilitada = window.edicionSoportaCagadaEnGol !== false;
 
     if (goles.length === 0) {
       container.innerHTML = `
@@ -8166,23 +8485,41 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       // Buscar nombres de jugadores desde el array de jugador_partido
       const goleador = jugadores.find(j => j.jugador_id === gol.goleador_id);
       const asistidor = gol.asistidor_id ? jugadores.find(j => j.jugador_id === gol.asistidor_id) : null;
+      const cagadaSeleccionada = gol.cagada_jugador_id ? String(gol.cagada_jugador_id) : '';
 
       const goleadorNombre = goleador?.jugadores?.nombre || 'Desconocido';
       const asistidorNombre = asistidor?.jugadores?.nombre || 'Sin asistencia';
+      const opcionesCagada = jugadores.map(j => {
+        const jugadorId = String(j.jugador_id || '');
+        const nombre = j.jugadores?.nombre || 'Jugador';
+        const equipo = j.equipo === 1 ? '🔵' : '🔴';
+        const selected = jugadorId === cagadaSeleccionada ? 'selected' : '';
+        return `<option value="${jugadorId}" ${selected}>${equipo} ${nombre}</option>`;
+      }).join('');
 
       return `
         <div class="card bg-dark border-secondary mb-2" data-gol-id="${gol.id}">
           <div class="card-body p-3">
             <div class="row g-2 align-items-center">
-              <div class="col-md-3">
+              <div class="col-lg-2 col-md-3">
                 <small class="text-light-emphasis d-block mb-1">⚽ Goleador</small>
                 <strong class="text-white">${goleadorNombre}</strong>
               </div>
-              <div class="col-md-3">
+              <div class="col-lg-2 col-md-3">
                 <small class="text-light-emphasis d-block mb-1">🎯 Asistencia</small>
                 <span class="text-white">${asistidorNombre}</span>
               </div>
-              <div class="col-md-2">
+              <div class="col-lg-3 col-md-6">
+                <label class="form-label text-light small mb-1">💥 Cagada</label>
+                <select class="form-select form-select-sm gol-cagada"
+                        data-gol-id="${gol.id}"
+                        ${edicionCagadaHabilitada ? '' : 'disabled'}>
+                  <option value="">Sin cagada</option>
+                  ${opcionesCagada}
+                </select>
+                ${edicionCagadaHabilitada ? '' : '<small class="text-warning">No disponible en esta base</small>'}
+              </div>
+              <div class="col-lg-1 col-md-2">
                 <label class="form-label text-light small mb-1">⏱️ Min</label>
                 <input type="number"
                        class="form-control form-control-sm gol-minuto"
@@ -8191,7 +8528,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        max="120"
                        data-gol-id="${gol.id}">
               </div>
-              <div class="col-md-2">
+              <div class="col-lg-1 col-md-2">
                 <label class="form-label text-light small mb-1">⏱️ Seg</label>
                 <input type="number"
                        class="form-control form-control-sm gol-segundo"
@@ -8200,7 +8537,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        max="59"
                        data-gol-id="${gol.id}">
               </div>
-              <div class="col-md-2 text-end">
+              <div class="col-lg-3 col-md-4 text-end">
                 <small class="text-light-emphasis d-block mb-1">👕 Equipo</small>
                 <span class="badge ${gol.equipo === 1 ? 'bg-primary' : 'bg-danger'}">
                   ${gol.equipo === 1 ? '🔵 Equipo 1' : '🔴 Equipo 2'}
@@ -8213,25 +8550,28 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     }).join('');
   }
 
-  // Función para actualizar los tiempos de los goles
+  // Función para actualizar los datos editables de los goles
   async function actualizarTiemposGoles() {
     const container = document.getElementById('editar-goles-container');
     if (!container) return;
 
-    // Obtener todos los inputs de minutos y segundos
+    // Obtener todos los inputs de minutos, segundos y cagadas
     const inputsMinutos = container.querySelectorAll('.gol-minuto');
     const inputsSegundos = container.querySelectorAll('.gol-segundo');
+    const inputsCagadas = container.querySelectorAll('.gol-cagada');
 
     // Crear array de updates
     const updates = [];
 
     inputsMinutos.forEach((inputMin, index) => {
       const inputSeg = inputsSegundos[index];
+      const inputCagada = inputsCagadas[index];
       const golId = inputMin.getAttribute('data-gol-id');
 
       const minutos = parseInt(inputMin.value) || 0;
       const segundos = parseInt(inputSeg.value) || 0;
       const minutosDecimales = minutos + (segundos / 60);
+      const cagada_jugador_id = inputCagada?.value ? inputCagada.value : null;
 
       // Redondear a 2 decimales para evitar problemas de precisión
       const minutosRedondeados = Math.round(minutosDecimales * 100) / 100;
@@ -8243,16 +8583,42 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       updates.push({
         id: golId,
-        minuto: minutosValidos > 0 ? minutosValidos : null
+        minuto: minutosValidos > 0 ? minutosValidos : null,
+        cagada_jugador_id
       });
     });
 
+    let columnaCagadaDisponible = window.edicionSoportaCagadaEnGol !== false;
+    let avisoCagadaMostrado = false;
+
     // Actualizar cada gol en la base de datos
     for (const update of updates) {
-      const { error } = await supabase
+      const payload = { minuto: update.minuto };
+      if (columnaCagadaDisponible) {
+        payload.cagada_jugador_id = update.cagada_jugador_id;
+      }
+
+      let { error } = await supabase
         .from('goles')
-        .update({ minuto: update.minuto })
+        .update(payload)
         .eq('id', update.id);
+
+      if (error && columnaCagadaDisponible && esErrorColumnaCagadaFaltante(error)) {
+        columnaCagadaDisponible = false;
+        window.edicionSoportaCagadaEnGol = false;
+
+        const { error: reintentoError } = await supabase
+          .from('goles')
+          .update({ minuto: update.minuto })
+          .eq('id', update.id);
+
+        error = reintentoError;
+
+        if (!error && !avisoCagadaMostrado) {
+          showToast('Se guardaron los tiempos, pero falta la columna cagada_jugador_id para editar la cagada.', 'warning');
+          avisoCagadaMostrado = true;
+        }
+      }
 
       if (error) {
         console.error('Error al actualizar tiempo del gol:', error);

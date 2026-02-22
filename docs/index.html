@@ -1478,8 +1478,8 @@
                     <th scope="col" class="text-center fw-bold sortable" data-sort="mvp_count" data-bs-toggle="tooltip" title="Jugador Más Valioso">👑 MVP <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="text-center fw-bold sortable" data-sort="ace_count" data-bs-toggle="tooltip" title="Ace (Jugadas decisivas)">🔥 ACE <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="text-center fw-bold sortable" data-sort="atajadas">🥅 Atajadas <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="capitan_defeat">🎭 Cap. Defeat <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="bita_defeat">💀 Bita Defeat <i class="bi bi-arrow-down-up ms-1"></i></th>
+                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_favor_equipo">⚽ Goles a favor (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
+                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_recibidos_equipo">🥅 Goles recibidos (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="text-center fw-bold">⚙️ Acciones</th>
                   </tr>
                 </thead>
@@ -1870,6 +1870,7 @@
                         <tr>
                           <th scope="col">⚽ Goleador</th>
                           <th scope="col">🎯 Asistencia</th>
+                          <th scope="col">💥 Cagada</th>
                           <th scope="col">👕 Equipo</th>
                           <th scope="col">🔄 Tipo</th>
                           <th scope="col">⏱️ Tiempo</th>
@@ -1891,6 +1892,12 @@
                       <label class="form-label text-light">🎯 Asistencia</label>
                       <select id="asistencia" class="form-select searchable-select">
                         <option value="">Sin asistencia</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label text-light">💥 Cagada</label>
+                      <select id="cagada-gol" class="form-select searchable-select">
+                        <option value="">Sin cagada</option>
                       </select>
                     </div>
                     <div class="col-md-1">
@@ -2686,6 +2693,16 @@
           </button>
         </li>
         <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-asistencias" data-bs-toggle="tab" data-bs-target="#perfil-asistencias" type="button" role="tab">
+            <i class="bi bi-bullseye me-1"></i>Mis Asistencias
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-cagadas" data-bs-toggle="tab" data-bs-target="#perfil-cagadas" type="button" role="tab">
+            <i class="bi bi-exclamation-triangle me-1"></i>Mis cagadas
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-perfil-estadisticas" data-bs-toggle="tab" data-bs-target="#perfil-estadisticas" type="button" role="tab">
             <i class="bi bi-bar-chart me-1"></i>Estadísticas
           </button>
@@ -2709,6 +2726,26 @@
             <div class="col-12 text-center py-5">
               <i class="bi bi-camera-video display-4 text-muted"></i>
               <p class="text-muted mt-3">Selecciona un jugador para ver sus goles</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Asistencias -->
+        <div class="tab-pane fade" id="perfil-asistencias" role="tabpanel">
+          <div class="row g-3" id="perfil-asistencias-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-bullseye display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus asistencias</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Cagadas -->
+        <div class="tab-pane fade" id="perfil-cagadas" role="tabpanel">
+          <div class="row g-3" id="perfil-cagadas-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-exclamation-triangle display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus cagadas en goles</p>
             </div>
           </div>
         </div>
