@@ -33,6 +33,8 @@ let vistaActual = 'dashboard'; // 'dashboard' o 'perfil'
 let jugadorPerfilActual = null;
 let datosPerfilJugador = null;
 let temporadaPerfilSeleccionada = null;
+let versionCargaPerfilActual = 0;
+let partidoHistorialPendiente = null;
 
 // Variables globales para datos compartidos
 let todosLosJugadoresGlobal = [];
@@ -305,6 +307,121 @@ function esErrorColumnaCagadaFaltante(error) {
     (textoError.includes('does not exist') || textoError.includes('schema cache') || textoError.includes('column'));
 }
 
+function obtenerRutaCompartiblePerfil() {
+  const url = new URL(window.location.href);
+  return {
+    vista: url.searchParams.get('view') || 'dashboard',
+    jugadorId: url.searchParams.get('jugador'),
+    temporadaId: url.searchParams.get('temporada')
+  };
+}
+
+function normalizarTextoRutaJugador(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function obtenerNombreJugadorParaRuta(jugadorId) {
+  if (!jugadorId) return '';
+
+  if (datosPerfilJugador?.jugador?.id === jugadorId && datosPerfilJugador.jugador?.nombre) {
+    return datosPerfilJugador.jugador.nombre;
+  }
+
+  const jugador = todosLosJugadoresGlobal.find(j => j.id === jugadorId);
+  if (jugador?.nombre) {
+    return jugador.nombre;
+  }
+
+  const selectorHeader = document.getElementById('selector-jugador-perfil');
+  const option = selectorHeader ? Array.from(selectorHeader.options).find(opt => opt.value === jugadorId) : null;
+  return option?.textContent?.trim() || '';
+}
+
+function resolverJugadorIdDesdeRuta(jugadorRef) {
+  if (!jugadorRef) return null;
+
+  const jugadorPorId = todosLosJugadoresGlobal.find(j => j.id === jugadorRef);
+  if (jugadorPorId) {
+    return jugadorPorId.id;
+  }
+
+  const referenciaNormalizada = normalizarTextoRutaJugador(jugadorRef);
+  const jugadorPorNombre = todosLosJugadoresGlobal.find(j =>
+    normalizarTextoRutaJugador(j.nombre) === referenciaNormalizada
+  );
+
+  return jugadorPorNombre?.id || null;
+}
+
+function obtenerTemporadaActivaDesdeSelectores() {
+  const selectorDesktop = document.getElementById('selector-temporada');
+  const selectorMobile = document.getElementById('selector-temporada-mobile');
+  const esVisible = (elemento) => !!elemento && elemento.getClientRects().length > 0;
+
+  if (selectorDesktop && selectorMobile) {
+    if (selectorDesktop.value === selectorMobile.value) {
+      return selectorDesktop.value;
+    }
+    if (esVisible(selectorDesktop)) {
+      return selectorDesktop.value;
+    }
+    if (esVisible(selectorMobile)) {
+      return selectorMobile.value;
+    }
+    return selectorDesktop.value;
+  }
+
+  if (selectorDesktop) return selectorDesktop.value;
+  if (selectorMobile) return selectorMobile.value;
+  return '';
+}
+
+function aplicarTemporadaDesdeRuta(temporadaId) {
+  const selectores = [
+    document.getElementById('selector-temporada'),
+    document.getElementById('selector-temporada-mobile')
+  ].filter(Boolean);
+
+  if (temporadaId === null || temporadaId === undefined) {
+    return obtenerTemporadaActivaDesdeSelectores();
+  }
+
+  selectores.forEach(selector => {
+    const existeOpcion = Array.from(selector.options).some(option => option.value === String(temporadaId));
+    selector.value = existeOpcion ? String(temporadaId) : '';
+  });
+
+  return obtenerTemporadaActivaDesdeSelectores();
+}
+
+function sincronizarRutaPerfilCompartible({ vista = vistaActual, jugadorId = jugadorPerfilActual, temporadaId } = {}) {
+  const url = new URL(window.location.href);
+
+  if (vista === 'perfil' && jugadorId) {
+    url.searchParams.set('view', 'perfil');
+    const nombreJugador = obtenerNombreJugadorParaRuta(jugadorId);
+    url.searchParams.set('jugador', nombreJugador || jugadorId);
+
+    const temporadaActiva = temporadaId !== undefined ? temporadaId : obtenerTemporadaActivaDesdeSelectores();
+    if (temporadaActiva) {
+      url.searchParams.set('temporada', temporadaActiva);
+    } else {
+      url.searchParams.delete('temporada');
+    }
+  } else {
+    url.searchParams.delete('view');
+    url.searchParams.delete('jugador');
+    url.searchParams.delete('temporada');
+  }
+
+  const nuevaRuta = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, '', nuevaRuta);
+}
+
 // ==========================================
 // SISTEMA DE PERFIL DE JUGADOR
 // ==========================================
@@ -332,6 +449,7 @@ function cambiarVista(vista, jugadorId = null) {
     if (selectorJugador) selectorJugador.classList.add('d-none');
     if (btnDashboard) btnDashboard.classList.add('active');
     if (btnJugador) btnJugador.classList.remove('active');
+    sincronizarRutaPerfilCompartible({ vista: 'dashboard', jugadorId: null, temporadaId: null });
   } else {
     // Mostrar perfil
     dashboardElements.forEach(el => el.classList.add('d-none'));
@@ -358,6 +476,95 @@ window.volverDashboard = function() {
   if (selector) selector.value = '';
 };
 
+function escaparHtmlPlano(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escaparTextoParaJs(valor) {
+  return String(valor ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"');
+}
+
+function renderizarAccesoPerfilJugador(jugadorId, nombre, clases = '') {
+  const clasesFinales = ['btn btn-link p-0 border-0 text-decoration-none', clases].filter(Boolean).join(' ');
+  return `<button type="button" class="${clasesFinales}" onclick="irAPerfilJugador('${escaparTextoParaJs(jugadorId)}')">${escaparHtmlPlano(nombre || 'Jugador')}</button>`;
+}
+
+function destacarPartidoEnHistorial(partidoId) {
+  const cards = Array.from(document.querySelectorAll('.partido-card'));
+  const target = cards.find(card => card.dataset.partidoId === String(partidoId));
+
+  if (!target) {
+    return false;
+  }
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.classList.add('border-warning', 'shadow-lg');
+  window.setTimeout(() => {
+    target.classList.remove('border-warning', 'shadow-lg');
+  }, 2200);
+
+  return true;
+}
+
+window.irAPerfilJugador = function(jugadorId) {
+  if (!jugadorId) return;
+
+  const selectorHeader = document.getElementById('selector-jugador-perfil');
+  if (selectorHeader) {
+    selectorHeader.value = jugadorId;
+  }
+
+  cambiarVista('perfil', jugadorId);
+};
+
+window.irAHistorialPartido = async function(partidoId) {
+  if (!partidoId) return;
+
+  partidoHistorialPendiente = String(partidoId);
+
+  const selectorCantidad = document.getElementById('cantidad-partidos');
+  if (selectorCantidad && Array.from(selectorCantidad.options).some(option => option.value === 'all')) {
+    selectorCantidad.value = 'all';
+  }
+
+  if (typeof window.limpiarFiltrosHistorial === 'function') {
+    window.limpiarFiltrosHistorial();
+  }
+
+  cambiarVista('dashboard');
+
+  const historialTab = document.getElementById('historial-tab');
+  if (historialTab && window.bootstrap?.Tab) {
+    const tabYaActiva = historialTab.classList.contains('active');
+    window.bootstrap.Tab.getOrCreateInstance(historialTab).show();
+    if (tabYaActiva && typeof window.cargarHistorialPartidos === 'function') {
+      await window.cargarHistorialPartidos();
+    }
+    return;
+  }
+
+  if (historialTab) {
+    if (historialTab.classList.contains('active') && typeof window.cargarHistorialPartidos === 'function') {
+      await window.cargarHistorialPartidos();
+      return;
+    }
+    historialTab.click();
+    return;
+  }
+
+  if (typeof window.cargarHistorialPartidos === 'function') {
+    await window.cargarHistorialPartidos();
+  }
+};
+
 /**
  * Extrae el ID del video de YouTube de una URL
  */
@@ -373,10 +580,1146 @@ function extraerVideoId(youtubeLink) {
   return videoId;
 }
 
+const PREMIOS_PERFIL_CONFIG = {
+  bota: {
+    iconHtml: '<i class="bi bi-trophy-fill"></i>',
+    nombre: 'Bota de oro',
+    prioridad: 1
+  },
+  guante: {
+    iconHtml: '<i class="bi bi-shield-fill"></i>',
+    nombre: 'Guante de oro',
+    prioridad: 2
+  },
+  asist: {
+    iconHtml: '<i class="bi bi-bezier2"></i>',
+    nombre: 'Asist de oro',
+    prioridad: 3
+  },
+  puntos: {
+    iconHtml: '<i class="bi bi-award-fill"></i>',
+    nombre: 'Ganador puntos',
+    prioridad: 4
+  },
+  mundial: {
+    iconHtml: '<i class="bi bi-globe-americas"></i>',
+    nombre: 'Ganador mundial',
+    prioridad: 5
+  }
+};
+
+function inyectarEstilosPerfilFut() {
+  if (document.getElementById('fut-profile-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'fut-profile-styles';
+  style.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600&display=swap');
+
+    :root {
+      --fut-gold: #d4a843;
+      --fut-gold-light: #f0d060;
+      --fut-gold-dark: #9a7a2e;
+      --fut-card-bg: linear-gradient(165deg, #1a1f2e 0%, #0d1117 50%, #151b28 100%);
+      --fut-card-border: rgba(212,168,67,0.3);
+      --fut-card-shine: linear-gradient(135deg, rgba(212,168,67,0.08) 0%, transparent 50%, rgba(212,168,67,0.04) 100%);
+      --fut-green: #2ecc71;
+      --fut-red: #e74c3c;
+      --fut-blue: #3498db;
+      --fut-cyan: #00d4ff;
+      --fut-orange: #f39c12;
+      --fut-surface: rgba(15,20,30,0.85);
+      --fut-surface-2: rgba(25,32,48,0.9);
+      --fut-text: #e8e6e3;
+      --fut-text-dim: rgba(232,230,227,0.6);
+      --fut-glow: 0 0 20px rgba(212,168,67,0.15);
+    }
+
+    .fut-hero-card {
+      position: relative;
+      background: var(--fut-card-bg);
+      border: 1px solid var(--fut-card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--fut-glow), 0 8px 32px rgba(0,0,0,0.4);
+      margin-bottom: 1.25rem;
+    }
+    .fut-hero-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--fut-card-shine);
+      pointer-events: none;
+    }
+    .fut-hero-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: stretch;
+      min-height: 220px;
+    }
+    .fut-hero-left {
+      flex: 0 0 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 24px 16px;
+      border-right: 1px solid rgba(212,168,67,0.15);
+      background: linear-gradient(180deg, rgba(212,168,67,0.08) 0%, transparent 100%);
+    }
+    .fut-rating {
+      font-family: 'Oswald', sans-serif;
+      font-size: 56px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--fut-gold-light);
+      text-shadow: 0 2px 12px rgba(212,168,67,0.4);
+      letter-spacing: -2px;
+    }
+    .fut-position-badge {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--fut-gold);
+    }
+    .fut-avatar-ring {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 2px solid var(--fut-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      background: rgba(212,168,67,0.08);
+      box-shadow: 0 0 16px rgba(212,168,67,0.2);
+    }
+    .fut-hero-right {
+      flex: 1;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .fut-player-name {
+      font-family: 'Oswald', sans-serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      line-height: 1.05;
+      margin-bottom: 8px;
+    }
+    .fut-player-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .fut-meta-tag {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--fut-gold);
+      background: rgba(212,168,67,0.1);
+      border: 1px solid rgba(212,168,67,0.25);
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .fut-form-row {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .fut-form-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--fut-text-dim);
+      text-transform: uppercase;
+      margin-right: 6px;
+    }
+    .fut-form-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .fut-form-W { background: var(--fut-green); color: #fff; }
+    .fut-form-D { background: var(--fut-orange); color: #fff; }
+    .fut-form-L { background: var(--fut-red); color: #fff; }
+    .fut-hero-logros {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .fut-hero-logro {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      letter-spacing: 0.8px;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .fut-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .fut-stat-card {
+      background: var(--fut-surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .fut-stat-card:hover {
+      border-color: rgba(212,168,67,0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    .fut-stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--fut-gold);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .fut-stat-card:hover::after { opacity: 1; }
+    .fut-stat-value {
+      font-family: 'Oswald', sans-serif;
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .fut-stat-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--fut-text-dim);
+    }
+    .fut-wr-bar-bg {
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .fut-wr-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+    .fut-radar-container {
+      background: var(--fut-surface);
+      border: 1px solid rgba(212,168,67,0.15);
+      border-radius: 14px;
+      padding: 18px;
+      height: 100%;
+    }
+    .fut-radar-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--fut-gold);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .fut-section-header {
+      font-family: 'Oswald', sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--fut-gold);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(212,168,67,0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fut-badges-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .fut-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--fut-surface-2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-family: 'Barlow', sans-serif;
+      font-size: 13px;
+      color: var(--fut-text);
+      transition: all 0.2s ease;
+      min-width: 220px;
+    }
+    .fut-badge.fut-badge-unlocked {
+      border-color: var(--fut-card-border);
+      box-shadow: 0 0 10px rgba(212,168,67,0.1);
+    }
+    .fut-badge.fut-badge-locked {
+      opacity: 0.35;
+      filter: grayscale(0.8);
+    }
+    .fut-badge-icon {
+      font-size: 20px;
+      line-height: 1;
+      min-width: 24px;
+      text-align: center;
+    }
+    .fut-badge-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .fut-badge-name {
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+    }
+    .fut-badge-desc {
+      font-size: 10px;
+      color: var(--fut-text-dim);
+    }
+    .fut-detail-table {
+      width: 100%;
+      font-family: 'Barlow', sans-serif;
+    }
+    .fut-detail-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 14px;
+    }
+    .fut-detail-table td:first-child {
+      color: var(--fut-text-dim);
+      font-size: 13px;
+    }
+    .fut-detail-table td:last-child {
+      text-align: right;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 500;
+      font-size: 16px;
+      color: #fff;
+    }
+    .fut-list-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fut-list-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--fut-surface-2);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .fut-list-row-meta {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px;
+      color: var(--fut-text-dim);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .fut-search-input {
+      background: var(--fut-surface) !important;
+      border: 1px solid rgba(212,168,67,0.2) !important;
+      color: var(--fut-text) !important;
+      font-family: 'Barlow', sans-serif !important;
+      border-radius: 8px 0 0 8px !important;
+      padding: 8px 14px !important;
+    }
+    .fut-search-input:focus {
+      border-color: var(--fut-gold) !important;
+      box-shadow: 0 0 0 2px rgba(212,168,67,0.15) !important;
+    }
+    .fut-search-input::placeholder {
+      color: var(--fut-text-dim) !important;
+    }
+    .fut-search-btn {
+      background: linear-gradient(135deg, var(--fut-gold-dark), var(--fut-gold)) !important;
+      border: none !important;
+      color: #000 !important;
+      font-family: 'Barlow Condensed', sans-serif !important;
+      font-weight: 600 !important;
+      letter-spacing: 1px !important;
+      text-transform: uppercase !important;
+      font-size: 13px !important;
+      border-radius: 0 8px 8px 0 !important;
+      padding: 8px 16px !important;
+    }
+    .fut-search-btn.fut-search-btn-warning {
+      background: linear-gradient(135deg, #9a7a2e, #f0d060) !important;
+    }
+    .fut-stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+    .fut-empty {
+      text-align: center;
+      padding: 32px 20px;
+      color: var(--fut-text-dim);
+      font-family: 'Barlow', sans-serif;
+    }
+    .fut-empty-icon {
+      font-size: 42px;
+      opacity: 0.45;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 991px) {
+      .fut-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 767px) {
+      .fut-hero-inner { flex-direction: column; }
+      .fut-hero-left {
+        flex: none;
+        flex-direction: row;
+        border-right: none;
+        border-bottom: 1px solid rgba(212,168,67,0.15);
+        padding: 16px;
+      }
+      .fut-rating { font-size: 42px; }
+      .fut-player-name { font-size: 24px; }
+      .fut-avatar-ring { width: 56px; height: 56px; font-size: 28px; }
+      .fut-badge { min-width: 100%; }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function obtenerIconoPosicionPerfil(nombrePosicion) {
+  const iconos = {
+    Arquero: '🥅',
+    Defensor: '🛡️',
+    Mediocampista: '⚙️',
+    Delantero: '⚽',
+    Volante: '🎯'
+  };
+  return iconos[nombrePosicion] || '🏃';
+}
+
+function obtenerAbrevPosicionPerfil(nombrePosicion) {
+  const abrev = {
+    Arquero: 'GK',
+    Defensor: 'DEF',
+    Mediocampista: 'MID',
+    Delantero: 'FW',
+    Volante: 'CM'
+  };
+  return abrev[nombrePosicion] || 'POS';
+}
+
+function obtenerResumenPerfilJugador(datos = datosPerfilJugador) {
+  const participaciones = datos?.participaciones || [];
+  const goles = datos?.goles || [];
+  const jugadorId = datos?.jugador?.id;
+  const pj = participaciones.length;
+  const pg = participaciones.filter(p => p.partidos?.equipo_ganador === p.equipo).length;
+  const pe = participaciones.filter(p => p.partidos?.equipo_ganador === null || p.partidos?.equipo_ganador === 0).length;
+  const pp = Math.max(pj - pg - pe, 0);
+  const golesCount = goles.filter(g => g.goleador_id === jugadorId && !g.es_gol_en_contra).length;
+  const asistenciasCount = goles.filter(g => g.asistidor_id === jugadorId && !g.es_gol_en_contra).length;
+  const cagadasEnGolCount = goles.filter(g => g.cagada_jugador_id === jugadorId).length;
+  const atajadas = participaciones.reduce((sum, p) => sum + (Number(p.atajadas) || 0), 0);
+  const cagadas = participaciones.reduce((sum, p) => sum + (Number(p.cagadas) || 0), 0);
+  const mvp = participaciones.filter(p => p.mvp).length;
+  const ace = participaciones.filter(p => p.ace).length;
+  const puntos = (pg * 3) + pe;
+  const winrate = pj > 0 ? (pg / pj) * 100 : 0;
+  const eventosPorPartido = new Map();
+
+  participaciones.forEach(participacion => {
+    eventosPorPartido.set(participacion.partido_id, {
+      goles: 0,
+      asistencias: 0,
+      cagadasEnGol: 0
+    });
+  });
+
+  goles.forEach(gol => {
+    const evento = eventosPorPartido.get(gol.partido_id) || {
+      goles: 0,
+      asistencias: 0,
+      cagadasEnGol: 0
+    };
+
+    if (gol.goleador_id === jugadorId && !gol.es_gol_en_contra) {
+      evento.goles += 1;
+    }
+    if (gol.asistidor_id === jugadorId && !gol.es_gol_en_contra) {
+      evento.asistencias += 1;
+    }
+    if (gol.cagada_jugador_id === jugadorId) {
+      evento.cagadasEnGol += 1;
+    }
+
+    eventosPorPartido.set(gol.partido_id, evento);
+  });
+
+  const ultimosPartidos = participaciones
+    .filter(p => p.partidos)
+    .sort((a, b) => new Date(b.partidos.fecha) - new Date(a.partidos.fecha))
+    .slice(0, 5)
+    .map(participacion => ({
+      ...participacion,
+      ...eventosPorPartido.get(participacion.partido_id)
+    }));
+
+  return {
+    pj,
+    pg,
+    pe,
+    pp,
+    puntos,
+    goles: golesCount,
+    asistencias: asistenciasCount,
+    cagadasEnGol: cagadasEnGolCount,
+    atajadas,
+    cagadas,
+    mvp,
+    ace,
+    winrate,
+    golesPP: pj > 0 ? golesCount / pj : 0,
+    asistenciasPP: pj > 0 ? asistenciasCount / pj : 0,
+    atajadasPP: pj > 0 ? atajadas / pj : 0,
+    puntosPP: pj > 0 ? puntos / pj : 0,
+    ultimosPartidos
+  };
+}
+
+function calcularRatingPerfilFut(datos = datosPerfilJugador) {
+  const resumen = datos?.resumenPerfil || obtenerResumenPerfilJugador(datos);
+  const pj = resumen.pj;
+  if (pj === 0) return 50;
+
+  let rating = 50;
+  rating += (resumen.winrate / 100) * 20;
+  rating += Math.min(resumen.golesPP * 8, 12);
+  rating += Math.min(resumen.asistenciasPP * 6, 8);
+  rating += Math.min((resumen.mvp / pj) * 15, 8);
+  rating += Math.min((resumen.ace / pj) * 12, 6);
+  rating += Math.min(resumen.atajadasPP, 4);
+  rating -= Math.min((resumen.cagadas / pj) * 3, 6);
+  rating -= Math.min((resumen.cagadasEnGol / pj) * 5, 8);
+
+  if (pj >= 20) rating += 2;
+  else if (pj >= 10) rating += 1;
+
+  return Math.round(Math.max(40, Math.min(99, rating)));
+}
+
+function obtenerFormaRecientePerfil(datos = datosPerfilJugador, cantidad = 6) {
+  const participaciones = datos?.participaciones || [];
+
+  return participaciones
+    .filter(p => p.partidos)
+    .sort((a, b) => new Date(b.partidos.fecha) - new Date(a.partidos.fecha))
+    .slice(0, cantidad)
+    .map(participacion => {
+      const gano = participacion.partidos.equipo_ganador === participacion.equipo;
+      const empato = participacion.partidos.equipo_ganador === null || participacion.partidos.equipo_ganador === 0;
+      return gano ? 'W' : empato ? 'D' : 'L';
+    });
+}
+
+function calcularInsigniasPerfil(datos = datosPerfilJugador) {
+  const resumen = datos?.resumenPerfil || obtenerResumenPerfilJugador(datos);
+  const rating = calcularRatingPerfilFut({ ...datos, resumenPerfil: resumen });
+
+  return [
+    { icon: '⚽', name: 'Goleador', desc: '10+ goles', unlocked: resumen.goles >= 10 },
+    { icon: '🎯', name: 'Asistidor', desc: '10+ asistencias', unlocked: resumen.asistencias >= 10 },
+    { icon: '👑', name: 'Rey del partido', desc: '5+ MVP', unlocked: resumen.mvp >= 5 },
+    { icon: '🔥', name: 'Imparable', desc: '3+ ACE', unlocked: resumen.ace >= 3 },
+    { icon: '🧤', name: 'Muralla', desc: '15+ atajadas', unlocked: resumen.atajadas >= 15 },
+    { icon: '🏆', name: 'Veterano', desc: '20+ partidos', unlocked: resumen.pj >= 20 },
+    { icon: '📈', name: 'Winrate elite', desc: '60%+ winrate con 10+ PJ', unlocked: resumen.pj >= 10 && resumen.winrate >= 60 },
+    { icon: '💎', name: 'Clutch', desc: '3+ goles y 3+ asistencias', unlocked: resumen.goles >= 3 && resumen.asistencias >= 3 },
+    { icon: '🛡️', name: 'Disciplinado', desc: '0 cagadas con 5+ PJ', unlocked: resumen.pj >= 5 && resumen.cagadas === 0 },
+    { icon: '⭐', name: 'Crack', desc: 'Rating 80+', unlocked: rating >= 80 }
+  ];
+}
+
+async function obtenerTemporadasPerfilLogros() {
+  if (Array.isArray(todasLasTemporadasGlobal) && todasLasTemporadasGlobal.length > 0) {
+    return todasLasTemporadasGlobal;
+  }
+
+  const { data, error } = await supabase
+    .from('temporadas')
+    .select('*')
+    .order('nombre');
+
+  if (error) {
+    console.error('Error cargando temporadas para logros de perfil:', error);
+    return [];
+  }
+
+  todasLasTemporadasGlobal = data || [];
+  return todasLasTemporadasGlobal;
+}
+
+function extraerNumeroTemporadaPerfil(temporada, fallback = 0) {
+  const nombre = temporada?.nombre || '';
+  const match = nombre.match(/(\d+)/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+
+  const numeroFallback = Number(fallback);
+  if (Number.isFinite(numeroFallback) && numeroFallback > 0) {
+    return numeroFallback;
+  }
+
+  const numeroId = Number(temporada?.id);
+  if (Number.isFinite(numeroId) && numeroId > 0) {
+    return numeroId;
+  }
+
+  return 1;
+}
+
+function construirMetadatosTemporadasPerfil(temporadas = []) {
+  const metadatos = new Map();
+
+  [...temporadas]
+    .map((temporada, index) => {
+      const orden = extraerNumeroTemporadaPerfil(temporada, index + 1);
+      return {
+        id: String(temporada.id),
+        nombre: temporada.nombre || `Temporada ${orden}`,
+        orden,
+        etiqueta: `S${orden}`
+      };
+    })
+    .sort((a, b) => {
+      if (a.orden !== b.orden) return a.orden - b.orden;
+      return a.nombre.localeCompare(b.nombre);
+    })
+    .forEach(meta => {
+      metadatos.set(meta.id, meta);
+    });
+
+  return metadatos;
+}
+
+function obtenerLimiteOrdenPremiosPerfil(metadatosTemporadas, temporadaIdActual = null) {
+  const temporadas = Array.from(metadatosTemporadas.values());
+  if (temporadas.length === 0) {
+    return 0;
+  }
+
+  const ultimaOrden = Math.max(...temporadas.map(meta => meta.orden || 0));
+  if (!temporadaIdActual) {
+    return Math.max(ultimaOrden - 1, 0);
+  }
+
+  const temporadaActual = metadatosTemporadas.get(String(temporadaIdActual));
+  if (!temporadaActual) {
+    return Math.max(ultimaOrden - 1, 0);
+  }
+
+  if (temporadaActual.orden >= ultimaOrden) {
+    return Math.max(ultimaOrden - 1, 0);
+  }
+
+  return temporadaActual.orden;
+}
+
+function hashCodePerfil(seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function createSeededRandomPerfil(seed) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % (2 ** 32);
+    return state / (2 ** 32);
+  };
+}
+
+function tirarMonedaDeterministicaPerfil(partidoId, jugadorId, fase) {
+  const exactKey = `${partidoId}-${jugadorId}-${fase}`;
+  if (typeof window.mundialitoMonedaOverridesExact?.[exactKey] === 'boolean') {
+    return window.mundialitoMonedaOverridesExact[exactKey];
+  }
+
+  const jugadorFaseKey = `${jugadorId}-${fase}`;
+  if (typeof window.mundialitoMonedaOverridesJugadorFase?.[jugadorFaseKey] === 'boolean') {
+    return window.mundialitoMonedaOverridesJugadorFase[jugadorFaseKey];
+  }
+
+  const salt = typeof window.mundialitoSalt === 'string' ? window.mundialitoSalt : '';
+  const seededRandom = createSeededRandomPerfil(hashCodePerfil(`${partidoId}-${jugadorId}-${fase}-${salt}`));
+  const umbral = typeof window.mundialitoUmbralMoneda === 'number' ? window.mundialitoUmbralMoneda : 0.5;
+  return seededRandom() < umbral;
+}
+
+function crearJugadorMundialPerfilTemp(jugador) {
+  return {
+    id: jugador.id,
+    nombre: jugador.nombre,
+    fase: 'grupos',
+    victorias: 0,
+    derrotas: 0,
+    empates: 0,
+    partidosGrupos: 0,
+    victoriasGrupos: 0,
+    empatesGrupos: 0,
+    derrotasGrupos: 0,
+    bonusCount: 0,
+    campeon: false,
+    ultimoPartido: null
+  };
+}
+
+function resetearAGruposPerfilTemp(jugador) {
+  jugador.fase = 'grupos';
+  jugador.victorias = 0;
+  jugador.derrotas = 0;
+  jugador.empates = 0;
+  jugador.partidosGrupos = 0;
+  jugador.victoriasGrupos = 0;
+  jugador.empatesGrupos = 0;
+  jugador.derrotasGrupos = 0;
+  jugador.bonusCount = 0;
+}
+
+function determinarResultadoJugadorPerfil(partido, jugadorId) {
+  const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
+  if (!jugadorData) return null;
+
+  if (partido.equipo_ganador === null || partido.equipo_ganador === 0) {
+    return 'empate';
+  }
+
+  return partido.equipo_ganador === jugadorData.equipo ? 'victoria' : 'derrota';
+}
+
+function evaluarPaseGruposPerfil(jugador) {
+  const { victoriasGrupos, empatesGrupos, derrotasGrupos } = jugador;
+
+  if (victoriasGrupos === 3) {
+    jugador.bonusCount = 2;
+    return true;
+  }
+  if (victoriasGrupos === 2 && empatesGrupos === 1) {
+    jugador.bonusCount = 1;
+    return true;
+  }
+  if (victoriasGrupos === 2 && derrotasGrupos === 1) {
+    jugador.bonusCount = 0;
+    return true;
+  }
+  if (victoriasGrupos === 1 && empatesGrupos === 2) {
+    jugador.bonusCount = 0;
+    return true;
+  }
+  if (victoriasGrupos === 1 && empatesGrupos === 1 && derrotasGrupos === 1) {
+    const partidoId = jugador.ultimoPartido?.id || 0;
+    return tirarMonedaDeterministicaPerfil(partidoId, jugador.id, 'grupos');
+  }
+
+  return false;
+}
+
+function evaluarPasePlayoffsPerfil(jugador, resultado) {
+  if (resultado === 'victoria') return true;
+  if (resultado === 'derrota') return false;
+
+  if (resultado === 'empate' && jugador.bonusCount > 0) {
+    jugador.bonusCount -= 1;
+    return true;
+  }
+
+  if (resultado === 'empate') {
+    const partidoId = jugador.ultimoPartido?.id || 0;
+    return tirarMonedaDeterministicaPerfil(partidoId, jugador.id, jugador.fase);
+  }
+
+  return false;
+}
+
+function procesarPartidoMundialPerfilTemp(partido, jugadoresMap) {
+  (partido.jugador_partido || []).forEach(jp => {
+    let jugador = jugadoresMap.get(jp.jugador_id);
+    if (!jugador) {
+      jugador = crearJugadorMundialPerfilTemp({
+        id: jp.jugador_id,
+        nombre: jp.jugadores?.nombre || `Jugador ${jp.jugador_id}`
+      });
+      jugadoresMap.set(jp.jugador_id, jugador);
+    }
+
+    if (jugador.fase === 'campeon') {
+      resetearAGruposPerfilTemp(jugador);
+    }
+
+    const resultado = determinarResultadoJugadorPerfil(partido, jp.jugador_id);
+    if (!resultado) return;
+
+    jugador.ultimoPartido = {
+      id: partido.id,
+      fecha: partido.fecha,
+      resultado
+    };
+
+    if (jugador.fase === 'grupos') {
+      jugador.partidosGrupos += 1;
+      if (resultado === 'victoria') {
+        jugador.victoriasGrupos += 1;
+        jugador.victorias += 1;
+      } else if (resultado === 'empate') {
+        jugador.empatesGrupos += 1;
+        jugador.empates += 1;
+      } else {
+        jugador.derrotasGrupos += 1;
+        jugador.derrotas += 1;
+      }
+
+      if (jugador.derrotasGrupos >= 2) {
+        resetearAGruposPerfilTemp(jugador);
+        return;
+      }
+
+      if (jugador.partidosGrupos >= 3) {
+        if (evaluarPaseGruposPerfil(jugador)) {
+          jugador.fase = '8vos';
+        } else {
+          resetearAGruposPerfilTemp(jugador);
+        }
+      }
+      return;
+    }
+
+    if (resultado === 'victoria') {
+      jugador.victorias += 1;
+    } else if (resultado === 'empate') {
+      jugador.empates += 1;
+    } else {
+      jugador.derrotas += 1;
+    }
+
+    if (!evaluarPasePlayoffsPerfil(jugador, resultado)) {
+      resetearAGruposPerfilTemp(jugador);
+      return;
+    }
+
+    if (jugador.fase === '8vos') {
+      jugador.fase = '4tos';
+    } else if (jugador.fase === '4tos') {
+      jugador.fase = 'semis';
+    } else if (jugador.fase === 'semis') {
+      jugador.fase = 'final';
+    } else if (jugador.fase === 'final') {
+      jugador.fase = 'campeon';
+      jugador.campeon = true;
+    }
+  });
+}
+
+async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual = null) {
+  if (!jugadorId) return [];
+
+  const temporadas = await obtenerTemporadasPerfilLogros();
+  const metadatosTemporadas = construirMetadatosTemporadasPerfil(temporadas);
+  const ordenLimite = obtenerLimiteOrdenPremiosPerfil(metadatosTemporadas, temporadaIdActual);
+
+  if (!ordenLimite) {
+    return [];
+  }
+
+  todasLasSinergias = [];
+  todasLasRivalidades = [];
+
+  const perfilSinergiasContainer = document.getElementById('perfil-sinergias-container');
+  if (perfilSinergiasContainer) {
+    perfilSinergiasContainer.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted mt-2">Actualizando sinergias...</p>
+      </div>
+    `;
+  }
+
+  const perfilRivalidadesContainer = document.getElementById('perfil-rivalidades-container');
+  if (perfilRivalidadesContainer) {
+    perfilRivalidadesContainer.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted mt-2">Actualizando rivalidades...</p>
+      </div>
+    `;
+  }
+
+  try {
+    const { data: partidos, error } = await supabase
+      .from('partidos')
+      .select(`
+        id,
+        fecha,
+        temporada_id,
+        equipo_ganador,
+        jugador_partido (
+          jugador_id,
+          equipo,
+          atajadas,
+          jugadores (
+            id,
+            nombre
+          )
+        ),
+        goles (
+          partido_id,
+          goleador_id,
+          asistidor_id,
+          es_gol_en_contra
+        )
+      `)
+      .not('temporada_id', 'is', null)
+      .order('fecha', { ascending: true })
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    const resumenPorTemporada = new Map();
+    const partidosPorTemporada = new Map();
+
+    (partidos || []).forEach(partido => {
+      const temporadaId = String(partido.temporada_id);
+      const metaTemporada = metadatosTemporadas.get(temporadaId) || {
+        id: temporadaId,
+        nombre: `Temporada ${temporadaId}`,
+        orden: extraerNumeroTemporadaPerfil({ id: temporadaId }, 1),
+        etiqueta: `S${temporadaId}`
+      };
+
+      if ((metaTemporada.orden || 0) > ordenLimite) {
+        return;
+      }
+
+      if (!resumenPorTemporada.has(temporadaId)) {
+        resumenPorTemporada.set(temporadaId, {
+          metaTemporada,
+          goles: new Map(),
+          asistencias: new Map(),
+          atajadas: new Map(),
+          puntos: new Map()
+        });
+      }
+
+      const resumen = resumenPorTemporada.get(temporadaId);
+      (partido.jugador_partido || []).forEach(jp => {
+        const atajadas = Number(jp.atajadas) || 0;
+        if (atajadas > 0) {
+          resumen.atajadas.set(jp.jugador_id, (resumen.atajadas.get(jp.jugador_id) || 0) + atajadas);
+        }
+
+        let puntos = 0;
+        if (partido.equipo_ganador === jp.equipo) {
+          puntos = 3;
+        } else if (partido.equipo_ganador === null || partido.equipo_ganador === 0) {
+          puntos = 1;
+        }
+
+        if (puntos > 0) {
+          resumen.puntos.set(jp.jugador_id, (resumen.puntos.get(jp.jugador_id) || 0) + puntos);
+        }
+      });
+
+      (partido.goles || []).forEach(gol => {
+        if (!gol.es_gol_en_contra && gol.goleador_id) {
+          resumen.goles.set(gol.goleador_id, (resumen.goles.get(gol.goleador_id) || 0) + 1);
+        }
+        if (!gol.es_gol_en_contra && gol.asistidor_id) {
+          resumen.asistencias.set(gol.asistidor_id, (resumen.asistencias.get(gol.asistidor_id) || 0) + 1);
+        }
+      });
+
+      if (!partidosPorTemporada.has(temporadaId)) {
+        partidosPorTemporada.set(temporadaId, {
+          metaTemporada,
+          partidos: []
+        });
+      }
+      partidosPorTemporada.get(temporadaId).partidos.push(partido);
+    });
+
+    const premios = [];
+    const registrarSiCorresponde = (tipo, mapaValores, metaTemporada) => {
+      if (!(mapaValores instanceof Map) || mapaValores.size === 0) {
+        return;
+      }
+
+      const maximo = Math.max(...Array.from(mapaValores.values()));
+      if (!Number.isFinite(maximo) || maximo <= 0) {
+        return;
+      }
+
+      if (mapaValores.get(jugadorId) !== maximo) {
+        return;
+      }
+
+      const config = PREMIOS_PERFIL_CONFIG[tipo];
+      premios.push({
+        tipo,
+        iconHtml: config.iconHtml,
+        name: config.nombre,
+        desc: metaTemporada.nombre,
+        unlocked: true,
+        ordenTemporada: metaTemporada.orden,
+        prioridad: config.prioridad
+      });
+    };
+
+    resumenPorTemporada.forEach(resumen => {
+      registrarSiCorresponde('bota', resumen.goles, resumen.metaTemporada);
+      registrarSiCorresponde('guante', resumen.atajadas, resumen.metaTemporada);
+      registrarSiCorresponde('asist', resumen.asistencias, resumen.metaTemporada);
+      registrarSiCorresponde('puntos', resumen.puntos, resumen.metaTemporada);
+    });
+
+    partidosPorTemporada.forEach(({ metaTemporada, partidos: partidosTemporada }) => {
+      const jugadoresTemp = new Map();
+      partidosTemporada.forEach(partido => {
+        procesarPartidoMundialPerfilTemp(partido, jugadoresTemp);
+      });
+
+      if (jugadoresTemp.get(jugadorId)?.campeon) {
+        const config = PREMIOS_PERFIL_CONFIG.mundial;
+        premios.push({
+          tipo: 'mundial',
+          iconHtml: config.iconHtml,
+          name: config.nombre,
+          desc: metaTemporada.nombre,
+          unlocked: true,
+          ordenTemporada: metaTemporada.orden,
+          prioridad: config.prioridad
+        });
+      }
+    });
+
+    return premios.sort((a, b) => {
+      if (a.ordenTemporada !== b.ordenTemporada) {
+        return b.ordenTemporada - a.ordenTemporada;
+      }
+      return a.prioridad - b.prioridad;
+    });
+  } catch (error) {
+    console.error('Error calculando premios historicos del perfil:', error);
+    return [];
+  }
+}
+
+function renderizarBadgePerfil(logro) {
+  const claseEstado = logro.unlocked ? 'fut-badge-unlocked' : 'fut-badge-locked';
+  const icono = logro.iconHtml || logro.icon || '🏅';
+
+  return `
+    <div class="fut-badge ${claseEstado}">
+      <span class="fut-badge-icon">${icono}</span>
+      <div class="fut-badge-info">
+        <span class="fut-badge-name">${logro.name}</span>
+        <span class="fut-badge-desc">${logro.desc}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderizarListaRankingPerfil({ titulo, subtitulo = '', items = [], emptyText, renderRow }) {
+  return `
+    <div class="fut-radar-container h-100">
+      <div class="fut-radar-title">${titulo}</div>
+      ${subtitulo ? `<div class="fut-list-row-meta text-center mb-3">${subtitulo}</div>` : ''}
+      ${items.length > 0 ? `
+        <div class="fut-list-stack">
+          ${items.map((item, index) => renderRow(item, index)).join('')}
+        </div>
+      ` : `
+        <div class="fut-empty">
+          <div class="fut-empty-icon"><i class="bi bi-dash-circle"></i></div>
+          <div>${emptyText}</div>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderizarFilaRankingPerfil({ indice, nombre, principal, secundario = '', color = 'var(--fut-gold-light)' }) {
+  return `
+    <div class="fut-list-row">
+      <div class="d-flex align-items-center gap-3">
+        <div class="fut-form-dot" style="background:${color};color:#111;">${indice}</div>
+        <div>
+          <div class="text-white fw-semibold">${nombre}</div>
+          ${secundario ? `<div class="fut-list-row-meta">${secundario}</div>` : ''}
+        </div>
+      </div>
+      <div class="text-end">
+        <div class="fw-semibold" style="color:${color};">${principal}</div>
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Carga el perfil completo de un jugador
  */
 async function cargarPerfilJugador(jugadorId) {
+  const versionCarga = ++versionCargaPerfilActual;
   // Los IDs son UUIDs (strings), no convertir a número
   jugadorPerfilActual = jugadorId;
 
@@ -385,8 +1728,14 @@ async function cargarPerfilJugador(jugadorId) {
   if (selectorHeader) selectorHeader.value = jugadorId;
 
   // Obtener temporada seleccionada del dashboard (selector principal)
-  temporadaPerfilSeleccionada = document.getElementById('selector-temporada')?.value ||
-                                document.getElementById('selector-temporada-mobile')?.value || null;
+  const temporadaActiva = obtenerTemporadaActivaDesdeSelectores();
+  temporadaPerfilSeleccionada = temporadaActiva !== '' ? temporadaActiva : null;
+
+  sincronizarRutaPerfilCompartible({
+    vista: 'perfil',
+    jugadorId,
+    temporadaId: temporadaPerfilSeleccionada || ''
+  });
 
   console.log('🔍 Temporada seleccionada para perfil:', temporadaPerfilSeleccionada);
 
@@ -474,14 +1823,28 @@ async function cargarPerfilJugador(jugadorId) {
     const golesCount = golesFiltrados.filter(g => g.goleador_id === jugadorId).length;
     const asistenciasCount = golesFiltrados.filter(g => g.asistidor_id === jugadorId).length;
     const cagadasEnGolCount = golesFiltrados.filter(g => g.cagada_jugador_id === jugadorId).length;
+    const premiosHistoricos = await cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaPerfilSeleccionada);
 
-    datosPerfilJugador = {
+    const datosPerfilBase = {
       jugador,
       participaciones: participacionesFiltradas,
       goles: golesFiltrados,
       golesCount,
       asistenciasCount,
       cagadasEnGolCount
+    };
+
+    const resumenPerfil = obtenerResumenPerfilJugador(datosPerfilBase);
+    const insigniasPerfil = calcularInsigniasPerfil({
+      ...datosPerfilBase,
+      resumenPerfil
+    });
+
+    datosPerfilJugador = {
+      ...datosPerfilBase,
+      resumenPerfil,
+      insigniasPerfil,
+      premiosHistoricos
     };
 
     console.log('📊 Datos perfil cargados:', {
@@ -513,6 +1876,112 @@ async function cargarPerfilJugador(jugadorId) {
  * Renderiza la información básica del jugador (avatar, nombre, posiciones)
  */
 function renderizarPerfilBasico() {
+  inyectarEstilosPerfilFut();
+
+  const jugadorFut = datosPerfilJugador.jugador;
+  const resumenFut = datosPerfilJugador.resumenPerfil || obtenerResumenPerfilJugador(datosPerfilJugador);
+  const insigniasFut = datosPerfilJugador.insigniasPerfil || calcularInsigniasPerfil({
+    ...datosPerfilJugador,
+    resumenPerfil: resumenFut
+  });
+  const premiosFut = datosPerfilJugador.premiosHistoricos || [];
+  const ratingFut = calcularRatingPerfilFut({
+    ...datosPerfilJugador,
+    resumenPerfil: resumenFut
+  });
+  const formaFut = obtenerFormaRecientePerfil(datosPerfilJugador);
+  const posicionesFut = jugadorFut.jugador_posicion || [];
+  const posicionPrimariaFut = posicionesFut.find(p => p.es_primaria);
+  const posicionSecundariaFut = posicionesFut.find(p => !p.es_primaria);
+  const iconoPosicionFut = posicionPrimariaFut?.posicion
+    ? obtenerIconoPosicionPerfil(posicionPrimariaFut.posicion.nombre)
+    : '🏃';
+  const abrevPosicionFut = posicionPrimariaFut?.posicion
+    ? obtenerAbrevPosicionPerfil(posicionPrimariaFut.posicion.nombre)
+    : 'POS';
+
+  const headerFut = document.getElementById('perfil-nombre-jugador');
+  if (headerFut) {
+    headerFut.innerHTML = `<i class="bi bi-person-circle me-2"></i>${jugadorFut.nombre}`;
+  }
+
+  const avatarElFut = document.getElementById('perfil-avatar');
+  if (avatarElFut) avatarElFut.textContent = iconoPosicionFut;
+
+  const nombreElFut = document.getElementById('perfil-nombre');
+  if (nombreElFut) nombreElFut.textContent = jugadorFut.nombre;
+
+  const posicionesElFut = document.getElementById('perfil-posiciones');
+  if (posicionesElFut) {
+    let posicionesHtmlFut = '';
+    if (posicionPrimariaFut?.posicion) {
+      posicionesHtmlFut += `<span class="fut-meta-tag">${obtenerIconoPosicionPerfil(posicionPrimariaFut.posicion.nombre)} ${posicionPrimariaFut.posicion.nombre}</span>`;
+    }
+    if (posicionSecundariaFut?.posicion) {
+      posicionesHtmlFut += `<span class="fut-meta-tag">${obtenerIconoPosicionPerfil(posicionSecundariaFut.posicion.nombre)} ${posicionSecundariaFut.posicion.nombre}</span>`;
+    }
+    posicionesElFut.innerHTML = posicionesHtmlFut || '<span class="fut-meta-tag">Sin posicion</span>';
+  }
+
+  const pulmonElFut = document.getElementById('perfil-pulmon');
+  if (pulmonElFut) {
+    pulmonElFut.innerHTML = `<span class="fut-meta-tag"><i class="bi bi-heart-pulse me-1"></i>Pulmon ${jugadorFut.pulmon || '--'}</span>`;
+  }
+
+  const heroContainerFut = document.getElementById('fut-hero-container');
+  if (!heroContainerFut) return;
+
+  const formaHtmlFut = formaFut.length > 0
+    ? `
+      <div class="fut-form-row">
+        <span class="fut-form-label">Forma</span>
+        ${formaFut.map(resultado => `<div class="fut-form-dot fut-form-${resultado}">${resultado}</div>`).join('')}
+      </div>
+    `
+    : '';
+
+  const logrosDestacadosFut = [
+    ...premiosFut,
+    ...insigniasFut.filter(insignia => insignia.unlocked)
+  ].slice(0, 5);
+
+  const logrosHtmlFut = logrosDestacadosFut.length > 0
+    ? `
+      <div class="fut-hero-logros">
+        ${logrosDestacadosFut.map(logro => `
+          <span class="fut-hero-logro" title="${logro.name}: ${logro.desc}">
+            ${logro.iconHtml || logro.icon || '🏅'}
+            <span>${logro.name}</span>
+          </span>
+        `).join('')}
+      </div>
+    `
+    : '';
+
+  heroContainerFut.innerHTML = `
+    <div class="fut-hero-card">
+      <div class="fut-hero-inner">
+        <div class="fut-hero-left">
+          <div class="fut-rating">${ratingFut}</div>
+          <div class="fut-position-badge">${abrevPosicionFut}</div>
+          <div class="fut-avatar-ring">${iconoPosicionFut}</div>
+        </div>
+        <div class="fut-hero-right">
+          <div class="fut-player-name">${jugadorFut.nombre}</div>
+          <div class="fut-player-meta">
+            ${posicionPrimariaFut?.posicion ? `<span class="fut-meta-tag">${obtenerIconoPosicionPerfil(posicionPrimariaFut.posicion.nombre)} ${posicionPrimariaFut.posicion.nombre}</span>` : ''}
+            ${posicionSecundariaFut?.posicion ? `<span class="fut-meta-tag">${obtenerIconoPosicionPerfil(posicionSecundariaFut.posicion.nombre)} ${posicionSecundariaFut.posicion.nombre}</span>` : ''}
+            <span class="fut-meta-tag"><i class="bi bi-heart-pulse me-1"></i>Pulmon ${jugadorFut.pulmon || '--'}</span>
+            <span class="fut-meta-tag"><i class="bi bi-graph-up-arrow me-1"></i>${resumenFut.puntos} pts</span>
+          </div>
+          ${formaHtmlFut}
+          ${logrosHtmlFut}
+        </div>
+      </div>
+    </div>
+  `;
+  return;
+
   const jugador = datosPerfilJugador.jugador;
 
   // Nombre en header
@@ -565,6 +2034,57 @@ function renderizarPerfilBasico() {
  * Renderiza las estadísticas principales en cards
  */
 function renderizarStatsMainPerfil() {
+  const resumenFut = datosPerfilJugador.resumenPerfil || obtenerResumenPerfilJugador(datosPerfilJugador);
+  const containerFut = document.getElementById('perfil-stats-principales');
+  if (!containerFut) return;
+
+  const colorStatFut = (valor, thresholds) => {
+    if (valor >= thresholds[2]) return 'var(--fut-green)';
+    if (valor >= thresholds[1]) return 'var(--fut-gold-light)';
+    return 'var(--fut-text)';
+  };
+
+  containerFut.innerHTML = `
+    <div class="fut-stats-grid">
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-cyan)">${resumenFut.pj}</div>
+        <div class="fut-stat-label">Partidos</div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:${colorStatFut(resumenFut.winrate, [30, 50, 60])}">${resumenFut.winrate.toFixed(1)}%</div>
+        <div class="fut-stat-label">Winrate</div>
+        <div class="fut-wr-bar-bg">
+          <div class="fut-wr-bar-fill" style="width:${Math.min(resumenFut.winrate, 100)}%;background:${colorStatFut(resumenFut.winrate, [30, 50, 60])}"></div>
+        </div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-gold-light)">${resumenFut.puntos}</div>
+        <div class="fut-stat-label">Puntos</div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-blue)">${resumenFut.goles + resumenFut.asistencias}</div>
+        <div class="fut-stat-label">G+A</div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-gold-light)">⚽ ${resumenFut.goles}</div>
+        <div class="fut-stat-label">Goles</div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-blue)">🎯 ${resumenFut.asistencias}</div>
+        <div class="fut-stat-label">Asistencias</div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-green)">🧤 ${resumenFut.atajadas}</div>
+        <div class="fut-stat-label">Atajadas</div>
+      </div>
+      <div class="fut-stat-card">
+        <div class="fut-stat-value" style="color:var(--fut-gold)">👑 ${resumenFut.mvp} <span style="font-size:14px;color:var(--fut-cyan)">🔥 ${resumenFut.ace}</span></div>
+        <div class="fut-stat-label">MVP / ACE</div>
+      </div>
+    </div>
+  `;
+  return;
+
   const participaciones = datosPerfilJugador.participaciones;
   const container = document.getElementById('perfil-stats-principales');
 
@@ -813,6 +2333,138 @@ function renderizarVideosCagadas() {
  * Renderiza las estadísticas detalladas
  */
 function renderizarEstadisticasDetalladas() {
+  const containerFut = document.getElementById('perfil-estadisticas-container');
+  if (!containerFut) return;
+
+  const resumenFut = datosPerfilJugador.resumenPerfil || obtenerResumenPerfilJugador(datosPerfilJugador);
+  const premiosFut = datosPerfilJugador.premiosHistoricos || [];
+  const insigniasFut = datosPerfilJugador.insigniasPerfil || calcularInsigniasPerfil({
+    ...datosPerfilJugador,
+    resumenPerfil: resumenFut
+  });
+  const ultimosPartidosFut = resumenFut.ultimosPartidos || [];
+
+  const premiosHtmlFut = premiosFut.length > 0
+    ? `<div class="fut-badges-grid">${premiosFut.map(renderizarBadgePerfil).join('')}</div>`
+    : `
+      <div class="fut-empty">
+        <div class="fut-empty-icon"><i class="bi bi-patch-check"></i></div>
+        <div>No hay premios historicos acumulados para esta temporada visible.</div>
+      </div>
+    `;
+
+  const insigniasHtmlFut = insigniasFut.length > 0
+    ? `<div class="fut-badges-grid">${insigniasFut.map(renderizarBadgePerfil).join('')}</div>`
+    : `
+      <div class="fut-empty">
+        <div class="fut-empty-icon"><i class="bi bi-stars"></i></div>
+        <div>Sin insignias disponibles.</div>
+      </div>
+    `;
+
+  const ultimosPartidosHtmlFut = ultimosPartidosFut.length > 0
+    ? `
+      <div class="fut-list-stack">
+        ${ultimosPartidosFut.map(partido => {
+          const gano = partido.partidos?.equipo_ganador === partido.equipo;
+          const empato = partido.partidos?.equipo_ganador === null || partido.partidos?.equipo_ganador === 0;
+          const resultado = gano ? 'W' : empato ? 'D' : 'L';
+          const fecha = partido.partidos?.fecha
+            ? new Date(partido.partidos.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+            : '--/--';
+          const partidoId = escaparTextoParaJs(partido.partido_id);
+          return `
+            <div class="fut-list-row" role="button" tabindex="0" style="cursor:pointer;" onclick="irAHistorialPartido('${partidoId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();irAHistorialPartido('${partidoId}');}">
+              <div class="d-flex align-items-center gap-3">
+                <div class="fut-form-dot fut-form-${resultado}">${resultado}</div>
+                <div>
+                  <div class="text-white fw-semibold">${fecha}</div>
+                  <div class="fut-list-row-meta">${partido.partidos?.temporadas?.nombre || 'Partido'}</div>
+                </div>
+              </div>
+              <div class="text-end small text-light-emphasis">
+                ${partido.goles > 0 ? `⚽ ${partido.goles}` : ''}
+                ${partido.asistencias > 0 ? ` ${partido.asistencias > 0 ? `🎯 ${partido.asistencias}` : ''}` : ''}
+                ${partido.mvp ? ' 👑' : ''}
+                ${partido.ace ? ' 🔥' : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `
+    : `
+      <div class="fut-empty">
+        <div class="fut-empty-icon"><i class="bi bi-clock-history"></i></div>
+        <div>Sin partidos registrados.</div>
+      </div>
+    `;
+
+  containerFut.innerHTML = `
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Resumen general</div>
+          <table class="fut-detail-table">
+            <tr><td>Partidos</td><td>${resumenFut.pj}</td></tr>
+            <tr><td>Victorias / Empates / Derrotas</td><td>${resumenFut.pg} / ${resumenFut.pe} / ${resumenFut.pp}</td></tr>
+            <tr><td>Winrate</td><td>${resumenFut.winrate.toFixed(1)}%</td></tr>
+            <tr><td>Puntos</td><td>${resumenFut.puntos}</td></tr>
+            <tr><td>Puntos por partido</td><td>${resumenFut.puntosPP.toFixed(2)}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Ataque</div>
+          <table class="fut-detail-table">
+            <tr><td>Goles</td><td>${resumenFut.goles}</td></tr>
+            <tr><td>Asistencias</td><td>${resumenFut.asistencias}</td></tr>
+            <tr><td>Goles por partido</td><td>${resumenFut.golesPP.toFixed(2)}</td></tr>
+            <tr><td>Asistencias por partido</td><td>${resumenFut.asistenciasPP.toFixed(2)}</td></tr>
+            <tr><td>MVP</td><td>${resumenFut.mvp}</td></tr>
+            <tr><td>ACE</td><td>${resumenFut.ace}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Defensa</div>
+          <table class="fut-detail-table">
+            <tr><td>Atajadas</td><td>${resumenFut.atajadas}</td></tr>
+            <tr><td>Atajadas por partido</td><td>${resumenFut.atajadasPP.toFixed(2)}</td></tr>
+            <tr><td>Cagadas</td><td>${resumenFut.cagadas}</td></tr>
+            <tr><td>Cagadas en gol</td><td>${resumenFut.cagadasEnGol}</td></tr>
+            <tr><td>G+A</td><td>${resumenFut.goles + resumenFut.asistencias}</td></tr>
+            <tr><td>Rating</td><td>${calcularRatingPerfilFut({ ...datosPerfilJugador, resumenPerfil: resumenFut })}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="fut-section-header"><i class="bi bi-patch-check"></i>Logros</div>
+      </div>
+      <div class="col-lg-6">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Premios historicos</div>
+          ${premiosHtmlFut}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Insignias del perfil</div>
+          ${insigniasHtmlFut}
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="fut-section-header"><i class="bi bi-clock-history"></i>Ultimos 5 partidos</div>
+        ${ultimosPartidosHtmlFut}
+      </div>
+    </div>
+  `;
+  return;
+
   const container = document.getElementById('perfil-estadisticas-container');
   const participaciones = datosPerfilJugador.participaciones;
 
@@ -980,6 +2632,7 @@ async function renderizarSinergias() {
 
     // Agrupar por compañero
     const sinergias = {};
+    const nombreJugadorActual = datosPerfilJugador.jugador?.nombre || 'Jugador actual';
 
     participaciones.forEach(p => {
       const companeros = todosJP.filter(jp =>
@@ -996,7 +2649,9 @@ async function renderizarSinergias() {
             id: c.jugador_id,
             nombre: c.jugadores?.nombre || 'Desconocido',
             partidos: 0,
-            victorias: 0
+            victorias: 0,
+            golesAsistencias: 0,
+            conexiones: []
           };
         }
         sinergias[c.jugador_id].partidos++;
@@ -1004,10 +2659,46 @@ async function renderizarSinergias() {
       });
     });
 
+    (datosPerfilJugador.goles || []).forEach(gol => {
+      if (gol?.es_gol_en_contra || !gol?.asistidor_id || !gol?.goleador_id) {
+        return;
+      }
+
+      let companeroId = null;
+      if (gol.goleador_id === jugadorPerfilActual && sinergias[gol.asistidor_id]) {
+        companeroId = gol.asistidor_id;
+      } else if (gol.asistidor_id === jugadorPerfilActual && sinergias[gol.goleador_id]) {
+        companeroId = gol.goleador_id;
+      }
+
+      if (!companeroId || !sinergias[companeroId]) {
+        return;
+      }
+
+      const sinergia = sinergias[companeroId];
+      sinergia.golesAsistencias++;
+      sinergia.conexiones.push({
+        id: gol.id,
+        partido_id: gol.partido_id,
+        fecha: gol.partidos?.fecha || null,
+        youtube_link: gol.partidos?.youtube_link || null,
+        minuto: gol.minuto ?? null,
+        asistidor_id: gol.asistidor_id,
+        asistidor_nombre: gol.asistidor_id === jugadorPerfilActual ? nombreJugadorActual : sinergia.nombre,
+        goleador_id: gol.goleador_id,
+        goleador_nombre: gol.goleador_id === jugadorPerfilActual ? nombreJugadorActual : sinergia.nombre
+      });
+    });
+
     // Calcular winrate para todos
     todasLasSinergias = Object.values(sinergias)
       .map(s => ({
         ...s,
+        conexiones: [...(s.conexiones || [])].sort((a, b) => {
+          const fechaA = a.fecha ? new Date(a.fecha).getTime() : 0;
+          const fechaB = b.fecha ? new Date(b.fecha).getTime() : 0;
+          return fechaB - fechaA;
+        }),
         winrate: ((s.victorias / s.partidos) * 100).toFixed(1)
       }))
       .sort((a, b) => parseFloat(b.winrate) - parseFloat(a.winrate));
@@ -1030,11 +2721,317 @@ async function renderizarSinergias() {
  */
 function renderizarSinergiasUI(jugadorBuscado = null) {
   const container = document.getElementById('perfil-sinergias-container');
+  const nombreJugadorActualFut = datosPerfilJugador?.jugador?.nombre || 'Jugador actual';
+
+  const formatearFechaConexionFut = (fecha) => {
+    if (!fecha) return 'Fecha sin dato';
+    return new Date(fecha).toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatearMinutoConexionFut = (minuto) => {
+    if (minuto === null || minuto === undefined) return null;
+    const mins = Math.floor(minuto);
+    const secs = Math.round((minuto - mins) * 60);
+    return secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
+  };
+
+  const renderizarDetalleGolAsistenciaFut = (sinergia) => {
+    const conexionesFut = sinergia?.conexiones || [];
+    const pasesDelJugadorActualFut = conexionesFut.filter(c =>
+      c.asistidor_id === jugadorPerfilActual && c.goleador_id === sinergia.id
+    ).length;
+    const pasesDelCompaneroFut = conexionesFut.filter(c =>
+      c.asistidor_id === sinergia.id && c.goleador_id === jugadorPerfilActual
+    ).length;
+
+    return `
+      <div class="fut-radar-container">
+        <div class="fut-radar-title">Dupla con ${sinergia.nombre}</div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <div class="fut-radar-container h-100" style="padding:16px;">
+              <div class="fut-radar-title" style="font-size:13px;">G+A del duo</div>
+              <div class="fut-rating" style="font-size:38px;">${sinergia.golesAsistencias || 0}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="fut-radar-container h-100" style="padding:16px;">
+              <div class="fut-radar-title" style="font-size:13px;">${nombreJugadorActualFut} asistio</div>
+              <div class="text-white fw-semibold fs-4">${pasesDelJugadorActualFut}</div>
+              <div class="fut-list-row-meta">a ${sinergia.nombre}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="fut-radar-container h-100" style="padding:16px;">
+              <div class="fut-radar-title" style="font-size:13px;">${sinergia.nombre} asistio</div>
+              <div class="text-white fw-semibold fs-4">${pasesDelCompaneroFut}</div>
+              <div class="fut-list-row-meta">a ${nombreJugadorActualFut}</div>
+            </div>
+          </div>
+        </div>
+        ${conexionesFut.length > 0 ? `
+          <div class="fut-section-header"><i class="bi bi-link-45deg"></i>Detalle G+A</div>
+          <div class="fut-list-stack">
+            ${conexionesFut.map(conexion => {
+              const minutoFut = formatearMinutoConexionFut(conexion.minuto);
+              const metaFut = [
+                formatearFechaConexionFut(conexion.fecha),
+                minutoFut ? `min ${minutoFut}` : null,
+                conexion.youtube_link && conexion.minuto !== null && conexion.minuto !== undefined
+                  ? `<a href="${generarLinkConTimestamp(conexion.youtube_link, conexion.minuto)}" target="_blank" class="link-info text-decoration-none">ver video</a>`
+                  : null
+              ].filter(Boolean).join(' &middot; ');
+
+              return `
+                <div class="fut-list-row">
+                  <div>
+                    <div class="text-white fw-semibold">${conexion.asistidor_nombre} asistio a ${conexion.goleador_nombre}</div>
+                    <div class="fut-list-row-meta">${metaFut}</div>
+                  </div>
+                  <div class="fut-stat-pill">G+A</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div class="fut-empty">
+            <div class="fut-empty-icon"><i class="bi bi-link-45deg"></i></div>
+            <div>No hay conexiones directas de gol + asistencia registradas para este duo.</div>
+          </div>
+        `}
+      </div>
+    `;
+  };
+
+  const sinergiasFiltradasFut = todasLasSinergias.filter(s => s.partidos >= 3);
+  const mejoresFut = [...sinergiasFiltradasFut]
+    .sort((a, b) => {
+      if (parseFloat(b.winrate) !== parseFloat(a.winrate)) {
+        return parseFloat(b.winrate) - parseFloat(a.winrate);
+      }
+      return (b.partidos || 0) - (a.partidos || 0);
+    })
+    .slice(0, 5);
+  const peoresFut = [...sinergiasFiltradasFut]
+    .sort((a, b) => {
+      if (parseFloat(a.winrate) !== parseFloat(b.winrate)) {
+        return parseFloat(a.winrate) - parseFloat(b.winrate);
+      }
+      return (b.partidos || 0) - (a.partidos || 0);
+    })
+    .slice(0, 5);
+  const mejoresPorGAFut = [...todasLasSinergias]
+    .filter(s => (s.golesAsistencias || 0) > 0)
+    .sort((a, b) => {
+      if ((b.golesAsistencias || 0) !== (a.golesAsistencias || 0)) {
+        return (b.golesAsistencias || 0) - (a.golesAsistencias || 0);
+      }
+      return (b.partidos || 0) - (a.partidos || 0);
+    })
+    .slice(0, 5);
+
+  let jugadorEncontradoFut = null;
+  if (jugadorBuscado && jugadorBuscado.trim()) {
+    const busquedaFut = jugadorBuscado.toLowerCase().trim();
+    jugadorEncontradoFut = todasLasSinergias.find(s =>
+      s.nombre.toLowerCase().includes(busquedaFut)
+    );
+  }
+
+  container.innerHTML = `
+    <div class="row g-4">
+      <div class="col-12">
+        <div class="fut-radar-container">
+          <div class="fut-section-header"><i class="bi bi-search"></i>Buscar compa&ntilde;ero</div>
+          <div class="row g-3 align-items-center">
+            <div class="col-lg-8">
+              <div class="input-group">
+                <input type="text" class="form-control fut-search-input"
+                       id="buscar-sinergia" placeholder="Nombre del compa&ntilde;ero..."
+                       value="${jugadorBuscado || ''}">
+                <button class="btn fut-search-btn" type="button" onclick="buscarSinergia()">Buscar</button>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="fut-list-row-meta text-lg-end">Winrate con 3+ partidos juntos</div>
+            </div>
+          </div>
+          ${jugadorEncontradoFut ? `
+            <div class="mt-4">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                  <div class="text-white fw-semibold fs-4">${jugadorEncontradoFut.nombre}</div>
+                  <div class="fut-list-row-meta">${jugadorEncontradoFut.partidos} PJ juntos</div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <span class="fut-stat-pill">${jugadorEncontradoFut.winrate}% WR</span>
+                  <span class="fut-stat-pill">${jugadorEncontradoFut.golesAsistencias || 0} G+A</span>
+                </div>
+              </div>
+              ${renderizarDetalleGolAsistenciaFut(jugadorEncontradoFut)}
+            </div>
+          ` : jugadorBuscado ? `
+            <div class="fut-empty">
+              <div class="fut-empty-icon"><i class="bi bi-person-x"></i></div>
+              <div>No se encontr&oacute; ning&uacute;n compa&ntilde;ero con ese nombre.</div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <div class="col-lg-4">
+        ${renderizarListaRankingPerfil({
+          titulo: 'Mejores compa&ntilde;eros',
+          subtitulo: 'Mayor winrate compartido',
+          items: mejoresFut,
+          emptyText: 'No hay suficientes datos.',
+          renderRow: (sinergia, index) => renderizarFilaRankingPerfil({
+            indice: index + 1,
+            nombre: sinergia.nombre,
+            principal: `${sinergia.winrate}%`,
+            secundario: `${sinergia.partidos} PJ`,
+            color: 'var(--fut-green)'
+          })
+        })}
+      </div>
+      <div class="col-lg-4">
+        ${renderizarListaRankingPerfil({
+          titulo: 'Peores compa&ntilde;eros',
+          subtitulo: 'Menor winrate compartido',
+          items: peoresFut,
+          emptyText: 'No hay suficientes datos.',
+          renderRow: (sinergia, index) => renderizarFilaRankingPerfil({
+            indice: index + 1,
+            nombre: sinergia.nombre,
+            principal: `${sinergia.winrate}%`,
+            secundario: `${sinergia.partidos} PJ`,
+            color: 'var(--fut-red)'
+          })
+        })}
+      </div>
+      <div class="col-lg-4">
+        ${renderizarListaRankingPerfil({
+          titulo: 'G+A con compa&ntilde;eros',
+          subtitulo: 'Conexiones directas registradas',
+          items: mejoresPorGAFut,
+          emptyText: 'No hay conexiones G+A registradas.',
+          renderRow: (sinergia, index) => renderizarFilaRankingPerfil({
+            indice: index + 1,
+            nombre: sinergia.nombre,
+            principal: `${sinergia.golesAsistencias} G+A`,
+            secundario: `${sinergia.partidos} PJ`,
+            color: 'var(--fut-cyan)'
+          })
+        })}
+      </div>
+      <div class="col-12">
+        <div class="fut-list-row-meta text-center">Winrate con 3+ partidos juntos. G+A muestra conexiones directas registradas.</div>
+      </div>
+    </div>
+  `;
+
+  const inputBuscarFut = document.getElementById('buscar-sinergia');
+  if (inputBuscarFut) {
+    inputBuscarFut.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') buscarSinergia();
+    });
+  }
+  return;
+  const nombreJugadorActual = datosPerfilJugador?.jugador?.nombre || 'Jugador actual';
+
+  const formatearFechaConexion = (fecha) => {
+    if (!fecha) return 'Fecha sin dato';
+    return new Date(fecha).toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatearMinutoConexion = (minuto) => {
+    if (minuto === null || minuto === undefined) return null;
+    const mins = Math.floor(minuto);
+    const secs = Math.round((minuto - mins) * 60);
+    return secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
+  };
+
+  const renderizarDetalleGolAsistencia = (sinergia) => {
+    const conexiones = sinergia?.conexiones || [];
+    const pasesDelJugadorActual = conexiones.filter(c =>
+      c.asistidor_id === jugadorPerfilActual && c.goleador_id === sinergia.id
+    ).length;
+    const pasesDelCompanero = conexiones.filter(c =>
+      c.asistidor_id === sinergia.id && c.goleador_id === jugadorPerfilActual
+    ).length;
+
+    return `
+      <div class="mt-3 pt-3 border-top border-secondary">
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <div class="rounded border border-info p-2 h-100">
+              <div class="small text-info-emphasis">G+A del dúo</div>
+              <div class="fs-5 fw-bold text-info">${sinergia.golesAsistencias || 0}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="rounded border border-secondary p-2 h-100">
+              <div class="small text-light-emphasis">${nombreJugadorActual} asistió a ${sinergia.nombre}</div>
+              <div class="fs-6 fw-bold text-white">${pasesDelJugadorActual}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="rounded border border-secondary p-2 h-100">
+              <div class="small text-light-emphasis">${sinergia.nombre} asistió a ${nombreJugadorActual}</div>
+              <div class="fs-6 fw-bold text-white">${pasesDelCompanero}</div>
+            </div>
+          </div>
+        </div>
+        ${conexiones.length > 0 ? `
+          <div class="small text-info mb-2">Detalle de las conexiones G+A</div>
+          <div class="list-group list-group-flush rounded overflow-hidden">
+            ${conexiones.map(conexion => {
+              const minuto = formatearMinutoConexion(conexion.minuto);
+              const textoMeta = [
+                formatearFechaConexion(conexion.fecha),
+                minuto ? `min ${minuto}` : null,
+                conexion.youtube_link && conexion.minuto !== null && conexion.minuto !== undefined
+                  ? `<a href="${generarLinkConTimestamp(conexion.youtube_link, conexion.minuto)}" target="_blank" class="link-info text-decoration-none">ver video</a>`
+                  : null
+              ].filter(Boolean).join(' · ');
+
+              return `
+                <div class="list-group-item bg-dark border-secondary">
+                  <div class="fw-semibold text-white">${conexion.asistidor_nombre} asistió a ${conexion.goleador_nombre}</div>
+                  <div class="small text-muted">${textoMeta}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div class="small text-muted">
+            No hay conexiones directas de gol + asistencia registradas para este dúo.
+          </div>
+        `}
+      </div>
+    `;
+  };
 
   // Filtrar por mínimo 3 partidos para los rankings
   const sinergiasFiltradas = todasLasSinergias.filter(s => s.partidos >= 3);
   const mejores = sinergiasFiltradas.slice(0, 5);
   const peores = sinergiasFiltradas.slice(-5).reverse();
+  const mejoresPorGA = [...todasLasSinergias]
+    .filter(s => (s.golesAsistencias || 0) > 0)
+    .sort((a, b) => {
+      if ((b.golesAsistencias || 0) !== (a.golesAsistencias || 0)) {
+        return (b.golesAsistencias || 0) - (a.golesAsistencias || 0);
+      }
+      return (b.partidos || 0) - (a.partidos || 0);
+    })
+    .slice(0, 5);
 
   // Si hay un jugador buscado, encontrar sus stats
   let jugadorEncontrado = null;
@@ -1078,6 +3075,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
                     </div>
                   </div>
                 </div>
+                ${renderizarDetalleGolAsistencia(jugadorEncontrado)}
               </div>
             ` : jugadorBuscado ? `
               <div class="mt-3 text-warning">
@@ -1134,9 +3132,32 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           </div>
         </div>
       </div>
+      <div class="col-md-12 col-lg-4">
+        <div class="card bg-dark border-info">
+          <div class="card-header bg-info bg-opacity-25 border-info">
+            <i class="bi bi-lightning-charge me-2"></i>G+A con Compa&ntilde;eros
+            <small class="d-block text-muted">Conexiones directas de gol + asistencia</small>
+          </div>
+          <div class="card-body p-0">
+            ${mejoresPorGA.length > 0 ? `
+              <div class="list-group list-group-flush">
+                ${mejoresPorGA.map((s, i) => `
+                  <div class="list-group-item bg-dark border-secondary d-flex justify-content-between align-items-center">
+                    <span>${i + 1}. ${s.nombre}</span>
+                    <span>
+                      <span class="badge bg-info text-dark">${s.golesAsistencias} G+A</span>
+                      <small class="text-muted ms-1">(${s.partidos} PJ)</small>
+                    </span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-muted text-center py-3 mb-0">No hay conexiones G+A registradas</p>'}
+          </div>
+        </div>
+      </div>
     </div>
     <div class="text-muted small mt-3 text-center">
-      <i class="bi bi-info-circle me-1"></i>Rankings muestran jugadores con 3+ partidos juntos
+      <i class="bi bi-info-circle me-1"></i>Winrate con 3+ partidos juntos. G+A muestra conexiones directas registradas.
     </div>
   `;
 
@@ -1196,12 +3217,35 @@ async function renderizarRivalidades() {
 
     if (error) throw error;
 
+    const { data: golesData, error: golesError } = await supabase
+      .from('goles')
+      .select('partido_id, goleador_id, es_gol_en_contra')
+      .in('partido_id', partidoIds);
+
+    if (golesError) throw golesError;
+
+    const jugadoresPorPartido = {};
+    todosJP.forEach(jp => {
+      if (!jugadoresPorPartido[jp.partido_id]) {
+        jugadoresPorPartido[jp.partido_id] = [];
+      }
+      jugadoresPorPartido[jp.partido_id].push(jp);
+    });
+
+    const golesPorPartido = {};
+    (golesData || []).forEach(gol => {
+      if (!golesPorPartido[gol.partido_id]) {
+        golesPorPartido[gol.partido_id] = [];
+      }
+      golesPorPartido[gol.partido_id].push(gol);
+    });
+
     // Agrupar por rival
     const rivalidades = {};
 
     participaciones.forEach(p => {
       const equipoRival = p.equipo === 1 ? 2 : 1;
-      const rivales = todosJP.filter(jp =>
+      const rivales = (jugadoresPorPartido[p.partido_id] || []).filter(jp =>
         jp.partido_id === p.partido_id &&
         jp.equipo === equipoRival
       );
@@ -1216,12 +3260,37 @@ async function renderizarRivalidades() {
             nombre: r.jugadores?.nombre || 'Desconocido',
             partidos: 0,
             victorias: 0,
-            derrotas: 0
+            derrotas: 0,
+            golesConvertidos: 0
           };
         }
         rivalidades[r.jugador_id].partidos++;
         if (gano) rivalidades[r.jugador_id].victorias++;
         if (perdio) rivalidades[r.jugador_id].derrotas++;
+      });
+
+      (golesPorPartido[p.partido_id] || []).forEach(gol => {
+        if (gol?.es_gol_en_contra || !gol?.goleador_id) {
+          return;
+        }
+
+        const rivalGoleador = rivales.find(r => r.jugador_id === gol.goleador_id);
+        if (!rivalGoleador) {
+          return;
+        }
+
+        if (!rivalidades[rivalGoleador.jugador_id]) {
+          rivalidades[rivalGoleador.jugador_id] = {
+            id: rivalGoleador.jugador_id,
+            nombre: rivalGoleador.jugadores?.nombre || 'Desconocido',
+            partidos: 0,
+            victorias: 0,
+            derrotas: 0,
+            golesConvertidos: 0
+          };
+        }
+
+        rivalidades[rivalGoleador.jugador_id].golesConvertidos++;
       });
     });
 
@@ -1250,6 +3319,152 @@ async function renderizarRivalidades() {
  */
 function renderizarRivalidadesUI(jugadorBuscado = null) {
   const container = document.getElementById('perfil-rivalidades-container');
+  const rivalidadesFiltradasFut = todasLasRivalidades.filter(r => r.partidos >= 3);
+  const bestiasNegrasFut = [...rivalidadesFiltradasFut]
+    .sort((a, b) => parseFloat(a.winrate) - parseFloat(b.winrate))
+    .slice(0, 5);
+  const victimasFut = [...rivalidadesFiltradasFut]
+    .sort((a, b) => parseFloat(b.winrate) - parseFloat(a.winrate))
+    .slice(0, 5);
+  const goleadoresVsMiFut = [...todasLasRivalidades]
+    .filter(r => (r.golesConvertidos || 0) > 0)
+    .sort((a, b) => {
+      if ((b.golesConvertidos || 0) !== (a.golesConvertidos || 0)) {
+        return (b.golesConvertidos || 0) - (a.golesConvertidos || 0);
+      }
+      return (b.partidos || 0) - (a.partidos || 0);
+    })
+    .slice(0, 5);
+
+  let jugadorEncontradoFut = null;
+  if (jugadorBuscado && jugadorBuscado.trim()) {
+    const busquedaFut = jugadorBuscado.toLowerCase().trim();
+    jugadorEncontradoFut = todasLasRivalidades.find(r =>
+      r.nombre.toLowerCase().includes(busquedaFut)
+    );
+  }
+
+  const detalleBuscadoFut = jugadorEncontradoFut ? `
+    <div class="mt-4">
+      <div class="fut-radar-container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+          <div>
+            <div class="text-white fw-semibold fs-4">${jugadorEncontradoFut.nombre}</div>
+            <div class="fut-list-row-meta">${jugadorEncontradoFut.partidos} enfrentamientos</div>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="fut-stat-pill">${jugadorEncontradoFut.winrate}% WR</span>
+            <span class="fut-stat-pill">${jugadorEncontradoFut.golesConvertidos || 0} goles</span>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="fut-radar-container h-100" style="padding:16px;">
+              <div class="fut-radar-title" style="font-size:13px;">Victorias</div>
+              <div class="text-white fw-semibold fs-3">${jugadorEncontradoFut.victorias}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="fut-radar-container h-100" style="padding:16px;">
+              <div class="fut-radar-title" style="font-size:13px;">Derrotas</div>
+              <div class="text-white fw-semibold fs-3">${jugadorEncontradoFut.derrotas}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="fut-radar-container h-100" style="padding:16px;">
+              <div class="fut-radar-title" style="font-size:13px;">Empates</div>
+              <div class="text-white fw-semibold fs-3">${jugadorEncontradoFut.partidos - jugadorEncontradoFut.victorias - jugadorEncontradoFut.derrotas}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  ` : jugadorBuscado ? `
+    <div class="fut-empty">
+      <div class="fut-empty-icon"><i class="bi bi-person-x"></i></div>
+      <div>No se encontr&oacute; ning&uacute;n rival con ese nombre.</div>
+    </div>
+  ` : '';
+
+  container.innerHTML = `
+    <div class="row g-4">
+      <div class="col-12">
+        <div class="fut-radar-container">
+          <div class="fut-section-header"><i class="bi bi-search"></i>Buscar rival</div>
+          <div class="row g-3 align-items-center">
+            <div class="col-lg-8">
+              <div class="input-group">
+                <input type="text" class="form-control fut-search-input"
+                       id="buscar-rivalidad" placeholder="Nombre del rival..."
+                       value="${jugadorBuscado || ''}">
+                <button class="btn fut-search-btn fut-search-btn-warning" type="button" onclick="buscarRivalidad()">Buscar</button>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="fut-list-row-meta text-lg-end">Winrate con 3+ enfrentamientos</div>
+            </div>
+          </div>
+          ${detalleBuscadoFut}
+        </div>
+      </div>
+      <div class="col-lg-4">
+        ${renderizarListaRankingPerfil({
+          titulo: 'Bestias negras',
+          subtitulo: 'Rivales contra los que peor te va',
+          items: bestiasNegrasFut,
+          emptyText: 'No hay suficientes datos.',
+          renderRow: (rival, index) => renderizarFilaRankingPerfil({
+            indice: index + 1,
+            nombre: rival.nombre,
+            principal: `${rival.winrate}%`,
+            secundario: `${rival.victorias}W-${rival.derrotas}L`,
+            color: 'var(--fut-red)'
+          })
+        })}
+      </div>
+      <div class="col-lg-4">
+        ${renderizarListaRankingPerfil({
+          titulo: 'Victimas favoritas',
+          subtitulo: 'Rivales contra los que mejor te va',
+          items: victimasFut,
+          emptyText: 'No hay suficientes datos.',
+          renderRow: (rival, index) => renderizarFilaRankingPerfil({
+            indice: index + 1,
+            nombre: rival.nombre,
+            principal: `${rival.winrate}%`,
+            secundario: `${rival.victorias}W-${rival.derrotas}L`,
+            color: 'var(--fut-green)'
+          })
+        })}
+      </div>
+      <div class="col-lg-4">
+        ${renderizarListaRankingPerfil({
+          titulo: 'Goleadores vs mi',
+          subtitulo: 'Quienes mas goles te hacen',
+          items: goleadoresVsMiFut,
+          emptyText: 'No hay goles en contra registrados.',
+          renderRow: (rival, index) => renderizarFilaRankingPerfil({
+            indice: index + 1,
+            nombre: rival.nombre,
+            principal: `${rival.golesConvertidos} goles`,
+            secundario: `${rival.partidos} PJ`,
+            color: 'var(--fut-orange)'
+          })
+        })}
+      </div>
+      <div class="col-12">
+        <div class="fut-list-row-meta text-center">Goleadores vs mi muestra los goles convertidos registrados por rivales en tus partidos.</div>
+      </div>
+    </div>
+  `;
+
+  const inputBuscarFut = document.getElementById('buscar-rivalidad');
+  if (inputBuscarFut) {
+    inputBuscarFut.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') buscarRivalidad();
+    });
+  }
+  return;
 
   // Filtrar por mínimo 3 partidos para los rankings
   const rivalidadesFiltradas = todasLasRivalidades.filter(r => r.partidos >= 3);
@@ -1257,6 +3472,15 @@ function renderizarRivalidadesUI(jugadorBuscado = null) {
   // Bestias negras (bajo winrate) y víctimas (alto winrate)
   const bestiasNegras = [...rivalidadesFiltradas].sort((a, b) => parseFloat(a.winrate) - parseFloat(b.winrate)).slice(0, 5);
   const victimas = [...rivalidadesFiltradas].sort((a, b) => parseFloat(b.winrate) - parseFloat(a.winrate)).slice(0, 5);
+  const goleadoresVsMi = [...todasLasRivalidades]
+    .filter(r => (r.golesConvertidos || 0) > 0)
+    .sort((a, b) => {
+      if ((b.golesConvertidos || 0) !== (a.golesConvertidos || 0)) {
+        return (b.golesConvertidos || 0) - (a.golesConvertidos || 0);
+      }
+      return (b.partidos || 0) - (a.partidos || 0);
+    })
+    .slice(0, 5);
 
   // Si hay un jugador buscado, encontrar sus stats
   let jugadorEncontrado = null;
@@ -1358,9 +3582,32 @@ function renderizarRivalidadesUI(jugadorBuscado = null) {
           </div>
         </div>
       </div>
+      <div class="col-md-12 col-lg-4">
+        <div class="card bg-dark border-warning">
+          <div class="card-header bg-warning bg-opacity-25 border-warning">
+            <i class="bi bi-bullseye me-2"></i>Goleadores vs M&iacute;
+            <small class="d-block text-muted">Rivales que m&aacute;s goles me convierten</small>
+          </div>
+          <div class="card-body p-0">
+            ${goleadoresVsMi.length > 0 ? `
+              <div class="list-group list-group-flush">
+                ${goleadoresVsMi.map((r, i) => `
+                  <div class="list-group-item bg-dark border-secondary d-flex justify-content-between align-items-center">
+                    <span>${i + 1}. ${r.nombre}</span>
+                    <span>
+                      <span class="badge bg-warning text-dark">⚽ ${r.golesConvertidos}</span>
+                      <small class="text-muted ms-1">(${r.partidos} PJ)</small>
+                    </span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-muted text-center py-3 mb-0">No hay goles en contra registrados</p>'}
+          </div>
+        </div>
+      </div>
     </div>
     <div class="text-muted small mt-3 text-center">
-      <i class="bi bi-info-circle me-1"></i>Rankings muestran rivales con 3+ enfrentamientos
+      <i class="bi bi-info-circle me-1"></i>Winrate con 3+ enfrentamientos. Goleadores vs m&iacute; muestra goles convertidos registrados.
     </div>
   `;
 
@@ -1500,6 +3747,7 @@ const initApp = () => {
   let filtroPartidosMinimos = 0; // filtro de partidos mínimos
   let equipo1 = [];
   let equipo2 = [];
+  const rutaInicialPerfil = obtenerRutaCompartiblePerfil();
 
   // Nota: Las variables del perfil de jugador (vistaActual, jugadorPerfilActual, etc.)
   // están definidas globalmente al inicio del archivo
@@ -1524,15 +3772,242 @@ const initApp = () => {
   let currentSortField = 'total_puntos';
   let currentSortOrder = 'desc'; // 'asc' o 'desc'
   let datosJugadores = []; // Cache de datos para ordenamiento
+  let logrosTemporadaPorJugador = new Map();
+  let metadatosTemporadasLogros = new Map();
 
   // Mapeo de iconos de posiciones (se cargará dinámicamente)
   let iconosPosiciones = {};
   let nombresPosiciones = {};
   let posicionesIds = {}; // Para mapear nombre -> UUID
+  const configuracionLogrosDashboard = {
+    bota: {
+      badgeClass: 'bg-warning text-dark',
+      iconHtml: '<i class="bi bi-bullseye"></i>',
+      tituloBase: 'Bota de oro',
+      prioridad: 1
+    },
+    guante: {
+      badgeClass: 'bg-info text-dark',
+      iconHtml: '<i class="bi bi-shield-fill"></i>',
+      tituloBase: 'Guante de oro',
+      prioridad: 2
+    },
+    asist: {
+      badgeClass: 'bg-primary',
+      iconHtml: '<i class="bi bi-bezier2"></i>',
+      tituloBase: 'Asist de oro',
+      prioridad: 3
+    },
+    puntos: {
+      badgeClass: 'bg-danger',
+      iconHtml: '<i class="bi bi-award-fill"></i>',
+      tituloBase: 'Ganador puntos',
+      prioridad: 4
+    },
+    mundial: {
+      badgeClass: 'bg-success',
+      iconHtml: '<i class="bi bi-globe-americas"></i>',
+      tituloBase: 'Ganador mundial',
+      prioridad: 5
+    }
+  };
 
 
 
   // --- Funciones de ordenamiento ---
+  function calcularPromedioPorPartido(jugador, field) {
+    const pj = Number(jugador?.pj) || 0;
+    const total = Number(jugador?.[field]) || 0;
+    return pj > 0 ? total / pj : 0;
+  }
+
+  const escaparAtributoHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const extraerNumeroTemporada = (temporada, fallback = 0) => {
+    const nombre = temporada?.nombre || '';
+    const match = nombre.match(/(\d+)/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+
+    const fallbackNumero = Number(fallback);
+    if (Number.isFinite(fallbackNumero) && fallbackNumero > 0) {
+      return fallbackNumero;
+    }
+
+    const idNumerico = Number(temporada?.id);
+    if (Number.isFinite(idNumerico) && idNumerico > 0) {
+      return idNumerico;
+    }
+
+    return 1;
+  };
+
+  const construirMetadatosTemporadasLogros = () => {
+    const temporadasBase = Array.isArray(todasLasTemporadas) ? todasLasTemporadas : [];
+
+    const temporadasOrdenadas = temporadasBase
+      .map((temporada, index) => {
+        const numero = extraerNumeroTemporada(temporada, index + 1);
+        return {
+          id: String(temporada.id),
+          nombre: temporada.nombre || `Temporada ${numero}`,
+          orden: numero,
+          etiqueta: `S${numero}`
+        };
+      })
+      .sort((a, b) => {
+        if (a.orden !== b.orden) return a.orden - b.orden;
+        return a.nombre.localeCompare(b.nombre);
+      });
+
+    const metadatos = new Map();
+    temporadasOrdenadas.forEach((temporada, index) => {
+      const orden = Number.isFinite(temporada.orden) ? temporada.orden : index + 1;
+      metadatos.set(String(temporada.id), {
+        ...temporada,
+        orden,
+        etiqueta: temporada.etiqueta || `S${orden}`
+      });
+    });
+
+    return metadatos;
+  };
+
+  const obtenerMetadatoTemporadaLogro = (temporadaId) => {
+    const key = String(temporadaId);
+
+    if (!metadatosTemporadasLogros.has(key)) {
+      const numero = extraerNumeroTemporada(
+        { id: temporadaId, nombre: `Temporada ${temporadaId}` },
+        metadatosTemporadasLogros.size + 1
+      );
+
+      metadatosTemporadasLogros.set(key, {
+        id: key,
+        nombre: `Temporada ${numero}`,
+        orden: numero,
+        etiqueta: `S${numero}`
+      });
+    }
+
+    return metadatosTemporadasLogros.get(key);
+  };
+
+  const obtenerOrdenUltimaTemporadaLogros = () => {
+    if (metadatosTemporadasLogros.size === 0) {
+      return 0;
+    }
+
+    return Math.max(...Array.from(metadatosTemporadasLogros.values()).map(meta => meta.orden || 0));
+  };
+
+  const obtenerLimiteOrdenLogrosVisible = (temporadaIdActual = null) => {
+    const ultimaOrden = obtenerOrdenUltimaTemporadaLogros();
+    if (!ultimaOrden) {
+      return 0;
+    }
+
+    if (!temporadaIdActual) {
+      return Math.max(ultimaOrden - 1, 0);
+    }
+
+    const metaTemporadaActual = metadatosTemporadasLogros.get(String(temporadaIdActual));
+    if (!metaTemporadaActual) {
+      return Math.max(ultimaOrden - 1, 0);
+    }
+
+    if (metaTemporadaActual.orden >= ultimaOrden) {
+      return Math.max(ultimaOrden - 1, 0);
+    }
+
+    return metaTemporadaActual.orden;
+  };
+
+  const registrarLogroTemporadaJugador = (jugadorId, tipo, temporadaId) => {
+    if (!jugadorId || !tipo || temporadaId === null || temporadaId === undefined) {
+      return;
+    }
+
+    const configuracion = configuracionLogrosDashboard[tipo];
+    if (!configuracion) {
+      return;
+    }
+
+    const metaTemporada = obtenerMetadatoTemporadaLogro(temporadaId);
+    const logrosJugador = logrosTemporadaPorJugador.get(jugadorId) || [];
+    const clave = `${tipo}-${String(temporadaId)}`;
+
+    if (logrosJugador.some(logro => logro.clave === clave)) {
+      return;
+    }
+
+    logrosJugador.push({
+      clave,
+      tipo,
+      temporadaId: String(temporadaId),
+      ordenTemporada: metaTemporada.orden,
+      prioridad: configuracion.prioridad,
+      titulo: `${configuracion.tituloBase} - ${metaTemporada.nombre}`,
+      marcaTemporada: metaTemporada.orden
+    });
+
+    logrosJugador.sort((a, b) => {
+      if (a.ordenTemporada !== b.ordenTemporada) {
+        return a.ordenTemporada - b.ordenTemporada;
+      }
+      return a.prioridad - b.prioridad;
+    });
+
+    logrosTemporadaPorJugador.set(jugadorId, logrosJugador);
+  };
+
+  const registrarGanadoresLogro = (valoresPorJugador, tipo, temporadaId) => {
+    if (!(valoresPorJugador instanceof Map) || valoresPorJugador.size === 0) {
+      return;
+    }
+
+    const maximo = Math.max(...Array.from(valoresPorJugador.values()));
+    if (!Number.isFinite(maximo) || maximo <= 0) {
+      return;
+    }
+
+    valoresPorJugador.forEach((valor, jugadorId) => {
+      if (valor === maximo) {
+        registrarLogroTemporadaJugador(jugadorId, tipo, temporadaId);
+      }
+    });
+  };
+
+  const obtenerLogrosVisiblesJugador = (jugadorId, temporadaIdActual = null) => {
+    const logros = logrosTemporadaPorJugador.get(jugadorId) || [];
+    const ordenLimite = obtenerLimiteOrdenLogrosVisible(temporadaIdActual);
+    if (!ordenLimite) {
+      return [];
+    }
+    return logros.filter(logro => (logro.ordenTemporada || 0) <= ordenLimite);
+  };
+
+  const renderizarBadgesLogrosJugador = (jugadorId, temporadaIdActual = null) => {
+    const logrosVisibles = obtenerLogrosVisiblesJugador(jugadorId, temporadaIdActual);
+    if (logrosVisibles.length === 0) {
+      return '';
+    }
+
+    return `
+      <div class="d-flex flex-wrap gap-1 mt-1">
+        ${logrosVisibles.map(logro => {
+          const configuracion = configuracionLogrosDashboard[logro.tipo] || configuracionLogrosDashboard.bota;
+          return `<span class="badge ${configuracion.badgeClass} small d-inline-flex align-items-center" title="${escaparAtributoHtml(logro.titulo)}">${configuracion.iconHtml}<span class="ms-1">${logro.marcaTemporada}</span></span>`;
+        }).join('')}
+      </div>
+    `;
+  };
+
   function sortData(data, field, order) {
     return [...data].sort((a, b) => {
       let aVal, bVal;
@@ -1558,6 +4033,11 @@ const initApp = () => {
         aVal = calcularSkill(a);
         bVal = calcularSkill(b);
         
+        return order === 'asc' ? aVal - bVal : bVal - aVal;
+      } else if (field === 'goles_favor_equipo' || field === 'goles_recibidos_equipo') {
+        aVal = calcularPromedioPorPartido(a, field);
+        bVal = calcularPromedioPorPartido(b, field);
+
         return order === 'asc' ? aVal - bVal : bVal - aVal;
       } else {
         aVal = a[field] || 0;
@@ -6128,6 +8608,8 @@ const initApp = () => {
 
     data.forEach((jugadorData, index) => {
       const tr = document.createElement('tr');
+      const golesFavorEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_favor_equipo');
+      const golesRecibidosEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_recibidos_equipo');
       
       // Crear badge de posición
       const posicion = index + 1;
@@ -6149,11 +8631,10 @@ const initApp = () => {
           </span>
         </td>
         <td class="fw-bold text-white">
-          <div class="d-flex align-items-center justify-content-start">
-            <span class="text-truncate me-1">
-              ${jugadorData.jugadores.nombre}
-              ${window.esCampeonMundial(jugadorData.jugadores.id) ? ' ⭐' : ''}
-            </span>
+          <div class="d-flex align-items-start justify-content-between gap-2">
+            <div class="flex-grow-1" style="min-width: 0;">
+              <div class="text-truncate me-1">${renderizarAccesoPerfilJugador(jugadorData.jugadores.id, jugadorData.jugadores.nombre, 'text-white fw-bold text-start d-inline-block w-100 text-truncate')}</div>
+            </div>
             ${crearIconoRacha(jugadorData.jugadores.id)}
           </div>
         </td>
@@ -6170,8 +8651,8 @@ const initApp = () => {
         <td class="text-center"><span class="badge bg-primary">${jugadorData.mvp_count}</span></td>
         <td class="text-center"><span class="badge bg-secondary">${jugadorData.ace_count}</span></td>
         <td class="text-center fw-semibold text-warning">${jugadorData.atajadas}</td>
-        <td class="text-center fw-semibold text-success">${jugadorData.goles_favor_equipo || 0}</td>
-        <td class="text-center fw-semibold text-danger">${jugadorData.goles_recibidos_equipo || 0}</td>
+        <td class="text-center fw-semibold text-success" title="${jugadorData.goles_favor_equipo || 0} goles del equipo en ${jugadorData.pj || 0} partidos">${golesFavorEquipoPP.toFixed(2)}</td>
+        <td class="text-center fw-semibold text-danger" title="${jugadorData.goles_recibidos_equipo || 0} goles recibidos del equipo en ${jugadorData.pj || 0} partidos">${golesRecibidosEquipoPP.toFixed(2)}</td>
         <td class="text-center">
           <div class="btn-group" role="group">
             <button onclick="abrirModalEditar('${jugadorData.jugadores.id}')" class="btn btn-sm btn-outline-primary" title="Editar jugador">
@@ -6510,6 +8991,14 @@ const initApp = () => {
 
       // Aplicar filtros avanzados
       filtrarPartidosAvanzado();
+
+      if (partidoHistorialPendiente) {
+        const partidoIdPendiente = partidoHistorialPendiente;
+        partidoHistorialPendiente = null;
+        window.requestAnimationFrame(() => {
+          destacarPartidoEnHistorial(partidoIdPendiente);
+        });
+      }
       
     } catch (error) {
       console.warn('Error al cargar historial (esperado en versión simplificada):', error);
@@ -7093,7 +9582,7 @@ const initApp = () => {
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
-                            ${jp.jugadores?.nombre || 'Jugador'}
+                            ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
                             ${skillLabel}
                             <button class="btn btn-sm btn-outline-warning ms-2"
                                     title="Forzar pase en Mundialito"
@@ -7133,7 +9622,7 @@ const initApp = () => {
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
-                            ${jp.jugadores?.nombre || 'Jugador'}
+                            ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
                             ${skillLabel}
                             <button class="btn btn-sm btn-outline-warning ms-2"
                                     title="Forzar pase en Mundialito"
@@ -7425,6 +9914,130 @@ const initApp = () => {
     jugador.empatesGrupos = 0;
     jugador.derrotasGrupos = 0;
     jugador.bonusCount = 0;
+  };
+
+  // Carga los logros acumulativos del dashboard por temporada
+  const cargarLogrosDashboard = async () => {
+    metadatosTemporadasLogros = construirMetadatosTemporadasLogros();
+    logrosTemporadaPorJugador = new Map();
+
+    try {
+      const { data: partidosLogros, error } = await supabase
+        .from('partidos')
+        .select(`
+          id,
+          fecha,
+          temporada_id,
+          equipo_ganador,
+          jugador_partido (
+            jugador_id,
+            equipo,
+            atajadas,
+            jugadores (
+              id,
+              nombre
+            )
+          ),
+          goles (
+            goleador_id,
+            asistidor_id,
+            es_gol_en_contra
+          )
+        `)
+        .not('temporada_id', 'is', null)
+        .order('fecha', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      const resumenPorTemporada = new Map();
+      const partidosPorTemporada = new Map();
+
+      (partidosLogros || []).forEach(partido => {
+        if (partido.temporada_id === null || partido.temporada_id === undefined) {
+          return;
+        }
+
+        const temporadaId = String(partido.temporada_id);
+        obtenerMetadatoTemporadaLogro(temporadaId);
+
+        if (!resumenPorTemporada.has(temporadaId)) {
+          resumenPorTemporada.set(temporadaId, {
+            goles: new Map(),
+            atajadas: new Map(),
+            asistencias: new Map(),
+            puntos: new Map()
+          });
+        }
+
+        const resumen = resumenPorTemporada.get(temporadaId);
+        (partido.jugador_partido || []).forEach(jp => {
+          const atajadas = Number(jp.atajadas) || 0;
+          if (atajadas > 0) {
+            resumen.atajadas.set(jp.jugador_id, (resumen.atajadas.get(jp.jugador_id) || 0) + atajadas);
+          }
+
+          let puntosJugador = 0;
+          if (partido.equipo_ganador === jp.equipo) {
+            puntosJugador = 3;
+          } else if (partido.equipo_ganador === null || partido.equipo_ganador === 0) {
+            puntosJugador = 1;
+          }
+
+          if (puntosJugador > 0) {
+            resumen.puntos.set(jp.jugador_id, (resumen.puntos.get(jp.jugador_id) || 0) + puntosJugador);
+          }
+        });
+
+        (partido.goles || []).forEach(gol => {
+          if (!gol.es_gol_en_contra && gol.goleador_id) {
+            resumen.goles.set(gol.goleador_id, (resumen.goles.get(gol.goleador_id) || 0) + 1);
+          }
+
+          if (!gol.es_gol_en_contra && gol.asistidor_id) {
+            resumen.asistencias.set(gol.asistidor_id, (resumen.asistencias.get(gol.asistidor_id) || 0) + 1);
+          }
+        });
+
+        if (!partidosPorTemporada.has(temporadaId)) {
+          partidosPorTemporada.set(temporadaId, []);
+        }
+        partidosPorTemporada.get(temporadaId).push(partido);
+      });
+
+      resumenPorTemporada.forEach((resumen, temporadaId) => {
+        registrarGanadoresLogro(resumen.goles, 'bota', temporadaId);
+        registrarGanadoresLogro(resumen.atajadas, 'guante', temporadaId);
+        registrarGanadoresLogro(resumen.asistencias, 'asist', temporadaId);
+        registrarGanadoresLogro(resumen.puntos, 'puntos', temporadaId);
+      });
+
+      partidosPorTemporada.forEach((partidosTemporada, temporadaId) => {
+        const jugadoresTemp = new Map();
+
+        partidosTemporada.forEach(partido => {
+          (partido.jugador_partido || []).forEach(jp => {
+            const jugadorPrevio = jugadoresTemp.get(jp.jugador_id);
+            if (jugadorPrevio?.fase === 'campeon') {
+              resetearAGruposTemp(jugadorPrevio);
+            }
+          });
+
+          procesarPartidoMundialTemp(partido, jugadoresTemp);
+        });
+
+        jugadoresTemp.forEach(jugador => {
+          if (jugador.campeon) {
+            registrarLogroTemporadaJugador(jugador.id, 'mundial', temporadaId);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error cargando logros del dashboard:', error);
+      logrosTemporadaPorJugador = new Map();
+    }
   };
 
   // Función para ir a la pestaña de ranking desde el historial
@@ -8872,17 +11485,28 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   actualizarUISegunPermisos();
   
   // Cargar datos iniciales
-  cargarTodosLosJugadores();
+  const cargaInicialJugadores = cargarTodosLosJugadores();
   inicializarPosiciones();
   configurarFiltroPartidos();
 
   // Cargar temporadas primero, luego estadísticas e historial (en secuencia)
-  cargarTemporadas().then(async () => {
+  Promise.all([cargaInicialJugadores, cargarTemporadas()]).then(async () => {
+    if (rutaInicialPerfil.temporadaId !== null) {
+      temporadaSeleccionada = aplicarTemporadaDesdeRuta(rutaInicialPerfil.temporadaId) || null;
+    }
     console.log('📅 Temporada por defecto:', temporadaSeleccionada);
     cargarEstadisticas();
     cargarHistorialPartidos();
     // Poblar selector de jugadores en el header
     poblarSelectorJugadoresPerfil();
+
+    const jugadorRutaId = resolverJugadorIdDesdeRuta(rutaInicialPerfil.jugadorId);
+
+    if (rutaInicialPerfil.vista === 'perfil' && jugadorRutaId) {
+      const selectorHeader = document.getElementById('selector-jugador-perfil');
+      if (selectorHeader) selectorHeader.value = jugadorRutaId;
+      cambiarVista('perfil', jugadorRutaId);
+    }
 
     // Precargar Mundialito T5 con la temporada seleccionada
     await cargarTemporadasMundialito();

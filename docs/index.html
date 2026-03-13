@@ -1478,8 +1478,8 @@
                     <th scope="col" class="text-center fw-bold sortable" data-sort="mvp_count" data-bs-toggle="tooltip" title="Jugador Más Valioso">👑 MVP <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="text-center fw-bold sortable" data-sort="ace_count" data-bs-toggle="tooltip" title="Ace (Jugadas decisivas)">🔥 ACE <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="text-center fw-bold sortable" data-sort="atajadas">🥅 Atajadas <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_favor_equipo">⚽ Goles a favor (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_recibidos_equipo">🥅 Goles recibidos (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
+                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_favor_equipo" data-bs-toggle="tooltip" title="Promedio de goles a favor del equipo por partido">⚽ Goles a favor / partido (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
+                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_recibidos_equipo" data-bs-toggle="tooltip" title="Promedio de goles recibidos del equipo por partido">🥅 Goles recibidos / partido (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
                     <th scope="col" class="text-center fw-bold">⚙️ Acciones</th>
                   </tr>
                 </thead>
@@ -2655,10 +2655,12 @@
         </div>
       </div>
 
+      <div id="fut-hero-container"></div>
+
       <!-- Info principal -->
-      <div class="row mb-4">
+      <div id="perfil-info-principal-legacy" class="row mb-4">
         <!-- Card de avatar y posición -->
-        <div class="col-md-3 mb-3 mb-md-0">
+        <div class="col-md-3 mb-3 mb-md-0 d-none">
           <div class="card bg-dark border-secondary h-100">
             <div class="card-body text-center py-4">
               <div class="display-1 mb-3" id="perfil-avatar">🏃‍♂️</div>
@@ -2672,7 +2674,7 @@
         </div>
 
         <!-- Stats principales -->
-        <div class="col-md-9">
+        <div class="col-12">
           <div class="row g-3" id="perfil-stats-principales">
             <!-- Se llena dinámicamente con cards de stats -->
             <div class="col-12 text-center py-5">
