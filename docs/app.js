@@ -3297,7 +3297,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
                 <input type="text" class="form-control fut-search-input"
                        id="buscar-sinergia" placeholder="Nombre del compa&ntilde;ero..."
                        value="${jugadorBuscado || ''}">
-                <button class="btn fut-search-btn" type="button" onclick="buscarSinergia()">Buscar</button>
+                <button class="btn fut-search-btn" type="button" id="btn-buscar-sinergia">Buscar</button>
               </div>
             </div>
             <div class="col-lg-4">
@@ -3379,9 +3379,16 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
 
   const inputBuscarFut = document.getElementById('buscar-sinergia');
   if (inputBuscarFut) {
-    inputBuscarFut.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') buscarSinergia();
+    inputBuscarFut.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarSinergia();
+      }
     });
+  }
+  const botonBuscarFut = document.getElementById('btn-buscar-sinergia');
+  if (botonBuscarFut) {
+    botonBuscarFut.onclick = buscarSinergia;
   }
   return;
   const nombreJugadorActual = datosPerfilJugador?.jugador?.nombre || 'Jugador actual';
@@ -3499,7 +3506,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
               <input type="text" class="form-control bg-dark text-white border-secondary"
                      id="buscar-sinergia" placeholder="Nombre del jugador..."
                      value="${jugadorBuscado || ''}">
-              <button class="btn btn-info" type="button" onclick="buscarSinergia()">
+              <button class="btn btn-info" type="button" id="btn-buscar-sinergia">
                 <i class="bi bi-search"></i> Buscar
               </button>
             </div>
@@ -3622,6 +3629,8 @@ function buscarSinergia() {
   const valor = input?.value || '';
   renderizarSinergiasUI(valor);
 }
+
+window.buscarSinergia = buscarSinergia;
 
 // Variable para almacenar todas las rivalidades calculadas
 let todasLasRivalidades = [];
@@ -10031,7 +10040,7 @@ const initApp = () => {
                             ${skillLabel}
                             <button class="btn btn-sm btn-outline-warning ms-2"
                                     title="Forzar pase en Mundialito"
-                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
+                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
                               🪙
                             </button>
                           </span>
@@ -10071,7 +10080,7 @@ const initApp = () => {
                             ${skillLabel}
                             <button class="btn btn-sm btn-outline-warning ms-2"
                                     title="Forzar pase en Mundialito"
-                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
+                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
                               🪙
                             </button>
                           </span>
@@ -10242,6 +10251,10 @@ const initApp = () => {
         jugadoresMap.set(jugadorId, jugador);
       }
 
+      if (jugador.fase === 'campeon') {
+        resetearAGruposTemp(jugador);
+      }
+
       const resultado = determinarResultadoJugador(partido, jugadorId);
       if (!resultado) return;
 
@@ -10359,6 +10372,162 @@ const initApp = () => {
     jugador.empatesGrupos = 0;
     jugador.derrotasGrupos = 0;
     jugador.bonusCount = 0;
+  };
+
+  const obtenerPartidosReferenciaMundialito = async (partidoId, temporadaId) => {
+    if (Array.isArray(mundialPartidos) && mundialPartidos.some(partido => String(partido.id) === String(partidoId))) {
+      return mundialPartidos;
+    }
+
+    return cargarPartidosMundialito(temporadaId);
+  };
+
+  const resolverContextoMonedaMundialito = (partidosTemporada, partidoId, jugadorId) => {
+    if (!Array.isArray(partidosTemporada) || partidosTemporada.length === 0) {
+      return null;
+    }
+
+    const jugadoresTemp = new Map();
+
+    for (const partido of partidosTemporada) {
+      const jugadorPartido = (partido.jugador_partido || []).find(
+        jp => String(jp.jugador_id) === String(jugadorId)
+      );
+
+      if (!jugadorPartido) continue;
+
+      const jugadorIdReal = jugadorPartido.jugador_id;
+      let jugador = jugadoresTemp.get(jugadorIdReal);
+
+      if (!jugador) {
+        jugador = crearJugadorMundial({
+          id: jugadorIdReal,
+          nombre: jugadorPartido.jugadores?.nombre || `Jugador ${jugadorIdReal}`
+        });
+        jugadoresTemp.set(jugadorIdReal, jugador);
+      }
+
+      if (jugador.fase === 'campeon') {
+        resetearAGruposTemp(jugador);
+      }
+
+      const resultado = determinarResultadoJugador(partido, jugadorIdReal);
+      if (!resultado) continue;
+
+      if (String(partido.id) === String(partidoId)) {
+        if (jugador.fase === 'grupos') {
+          const victorias = jugador.victoriasGrupos + (resultado === 'victoria' ? 1 : 0);
+          const empates = jugador.empatesGrupos + (resultado === 'empate' ? 1 : 0);
+          const derrotas = jugador.derrotasGrupos + (resultado === 'derrota' ? 1 : 0);
+          const partidosGrupos = jugador.partidosGrupos + 1;
+          const record = `${victorias}V-${empates}E-${derrotas}D`;
+          const clasificaAutomatico = (
+            victorias === 3 ||
+            (victorias === 2 && empates === 1) ||
+            (victorias === 2 && derrotas === 1) ||
+            (victorias === 1 && empates === 2)
+          );
+
+          if (derrotas >= 2) {
+            return {
+              partidoId: partido.id,
+              jugadorId: jugadorIdReal,
+              fase: 'grupos',
+              destino: null,
+              usaMoneda: false,
+              motivo: 'queda eliminado por 2 derrotas antes de llegar a la moneda'
+            };
+          }
+
+          if (partidosGrupos < 3) {
+            return {
+              partidoId: partido.id,
+              jugadorId: jugadorIdReal,
+              fase: 'grupos',
+              destino: null,
+              usaMoneda: false,
+              motivo: `todavia sigue en grupos (${partidosGrupos}/3), ese partido no define pase`
+            };
+          }
+
+          if (victorias === 1 && empates === 1 && derrotas === 1) {
+            return {
+              partidoId: partido.id,
+              jugadorId: jugadorIdReal,
+              fase: 'grupos',
+              destino: '8vos',
+              usaMoneda: true,
+              motivo: 'moneda de desempate en grupos'
+            };
+          }
+
+          return {
+            partidoId: partido.id,
+            jugadorId: jugadorIdReal,
+            fase: 'grupos',
+            destino: clasificaAutomatico ? '8vos' : null,
+            usaMoneda: false,
+            motivo: clasificaAutomatico
+              ? `ya clasifica automaticamente con ${record}`
+              : `queda eliminado automaticamente con ${record}`
+          };
+        }
+
+        const destino = SIGUIENTE_FASE_MUNDIALITO[jugador.fase] || null;
+
+        if (resultado === 'victoria') {
+          return {
+            partidoId: partido.id,
+            jugadorId: jugadorIdReal,
+            fase: jugador.fase,
+            destino,
+            usaMoneda: false,
+            motivo: destino
+              ? `ya avanza automaticamente a ${destino} ganando el partido`
+              : 'ya avanza automaticamente ganando el partido'
+          };
+        }
+
+        if (resultado === 'derrota') {
+          return {
+            partidoId: partido.id,
+            jugadorId: jugadorIdReal,
+            fase: jugador.fase,
+            destino: null,
+            usaMoneda: false,
+            motivo: `queda eliminado automaticamente en ${jugador.fase}`
+          };
+        }
+
+        if (jugador.bonusCount > 0) {
+          const bonusLabel = jugador.bonusCount === 1 ? '1 bonus' : `${jugador.bonusCount} bonus`;
+          return {
+            partidoId: partido.id,
+            jugadorId: jugadorIdReal,
+            fase: jugador.fase,
+            destino,
+            usaMoneda: false,
+            motivo: `empata pero pasa automaticamente con ${bonusLabel}`
+          };
+        }
+
+        return {
+          partidoId: partido.id,
+          jugadorId: jugadorIdReal,
+          fase: jugador.fase,
+          destino,
+          usaMoneda: true,
+          motivo: `moneda de desempate en ${jugador.fase}`
+        };
+      }
+
+      procesarPartidoMundialTemp({
+        ...partido,
+        jugador_partido: [jugadorPartido]
+      }, jugadoresTemp);
+    }
+
+    return null;
   };
 
   // Carga los logros acumulativos del dashboard por temporada
@@ -12149,6 +12318,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   let mundialPartidos = [];
   let jugadoresMundial = new Map(); // Map<jugadorId, data>
   let temporadasMundial = [];
+  const FASES_MUNDIALITO = ['grupos', '8vos', '4tos', 'semis', 'final'];
+  const SIGUIENTE_FASE_MUNDIALITO = {
+    grupos: '8vos',
+    '8vos': '4tos',
+    '4tos': 'semis',
+    semis: 'final',
+    final: 'campeon'
+  };
 
   // Estructura de progreso del jugador
   const crearJugadorMundial = (jugador) => ({
@@ -12646,15 +12823,16 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       if (error) {
         console.error('Error guardando override exacto:', error);
-        return;
+        return false;
       }
 
       // Actualizar cache local
       window.mundialitoMonedaOverridesExact[`${partidoId}-${jugadorId}-${fase}`] = !!pasa;
       console.log(`✅ Override exacto guardado en BD: ${partidoId}-${jugadorId}-${fase} = ${pasa}`);
-      
+      return true;
     } catch (error) {
       console.error('Error en setMonedaOverrideExact:', error);
+      return false;
     }
   };
   
@@ -13077,10 +13255,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   };
 
   // Cargar partidos para mundialito
-  const cargarPartidosMundialito = async () => {
+  const cargarPartidosMundialito = async (temporadaIdOverride = null) => {
     try {
       const temporadaSelect = document.getElementById('mundialito-temporada');
-      const temporadaSeleccionada = temporadaSelect?.value;
+      const temporadaSeleccionada = temporadaIdOverride ?? temporadaSelect?.value;
       
       let query = supabase
         .from('partidos')
@@ -13503,31 +13681,60 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // ===============================
 
   // Función para forzar moneda desde el historial de partidos
-  window.forzarMonedaDesdeHistorial = async (partidoId, jugadorId, nombreJugador) => {
-    const fasesValidas = ['grupos', '8vos', '4tos', 'semis', 'final'];
-    const fase = prompt(
-      `Fase para forzar pase por moneda a favor de ${nombreJugador}:\n(grupos | 8vos | 4tos | semis | final)`,
-      '8vos'
-    );
-    
-    if (!fase || !fasesValidas.includes(fase)) {
-      alert('Fase inválida. Usa: grupos, 8vos, 4tos, semis o final.');
-      return;
+  window.forzarMonedaDesdeHistorial = async (partidoId, jugadorId, nombreJugador, temporadaId = null) => {
+    try {
+      const temporadaObjetivo = temporadaId || null;
+      const partidosReferencia = await obtenerPartidosReferenciaMundialito(partidoId, temporadaObjetivo);
+      const contexto = resolverContextoMonedaMundialito(partidosReferencia, partidoId, jugadorId);
+
+      if (!contexto) {
+        alert(`No pude ubicar el contexto del Mundialito para ${nombreJugador} en el partido #${partidoId}.`);
+        return;
+      }
+
+      if (!FASES_MUNDIALITO.includes(contexto.fase)) {
+        alert(`La fase detectada para ${nombreJugador} no es válida: ${contexto.fase}.`);
+        return;
+      }
+
+      if (!contexto.usaMoneda) {
+        alert(`En este partido no hay moneda para ${nombreJugador}: ${contexto.motivo}.`);
+        return;
+      }
+
+      const guardadoOk = await window.setMonedaOverrideExact(
+        contexto.partidoId,
+        contexto.jugadorId,
+        contexto.fase,
+        true
+      );
+
+      if (!guardadoOk) {
+        alert(`No se pudo guardar el override de moneda para ${nombreJugador}. Revisa la consola.`);
+        return;
+      }
+
+      await cargarTemporadasMundialito();
+      const temporadaSelect = document.getElementById('mundialito-temporada');
+      if (temporadaSelect && temporadaObjetivo) {
+        temporadaSelect.value = String(temporadaObjetivo);
+      }
+
+      if (typeof window.procesarMundialito === 'function') {
+        await window.procesarMundialito();
+      } else {
+        alert('Listo. Ve a la pestaña Mundialito y presiona "Reset Mundial" para reprocesar.');
+        return;
+      }
+
+      const destinoTexto = contexto.destino ? ` a ${contexto.destino}` : '';
+      alert(
+        `Se forzó el pase de ${nombreJugador}${destinoTexto} por moneda en ${contexto.fase} del partido #${contexto.partidoId}.`
+      );
+    } catch (error) {
+      console.error('Error forzando moneda desde historial:', error);
+      alert(`No se pudo forzar la moneda para ${nombreJugador}.`);
     }
-    
-    // Las funciones de override ya están disponibles globalmente
-    
-    // Setear el override
-    await window.setMonedaOverrideExact(partidoId, jugadorId, fase, true);
-    
-    // Reprocesar el mundialito si está disponible
-    if (typeof window.procesarMundialito === 'function') {
-      window.procesarMundialito();
-    } else {
-      alert('Listo. Ve a la pestaña Mundialito y presiona "Reset Mundial" para reprocesar.');
-    }
-    
-    alert(`Se forzó moneda ganadora para ${nombreJugador} en ${fase} del partido #${partidoId}.`);
   };
 
   // Función de test para verificar overrides de moneda

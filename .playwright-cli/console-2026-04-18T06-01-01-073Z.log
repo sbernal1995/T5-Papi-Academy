@@ -1,0 +1,1556 @@
+[    1136ms] [LOG] Configurando Supabase: {SUPABASE_URL: https://jqslerzbzxtycwozvtcy.supabase.co, SUPABASE_ANON_KEY: PRESENTE} @ http://127.0.0.1:4173/app.js:9
+[    1137ms] [LOG] ✅ Supabase asignado a window.supabase @ http://127.0.0.1:4173/app.js:14
+[    1138ms] [LOG] 🔧 Configurando tooltip del radar... @ http://127.0.0.1:4173/index.html:4348
+[    1138ms] [LOG] ✅ Tooltip encontrado: JSHandle@node @ http://127.0.0.1:4173/index.html:4356
+[    1138ms] [LOG] 🔍 Encontrados 2 iconos de radar @ http://127.0.0.1:4173/index.html:4451
+[    1138ms] [LOG] ✅ Tooltip del radar configurado correctamente @ http://127.0.0.1:4173/index.html:4498
+[    1146ms] [LOG] 🧪 Función de test disponible: window.testYouTubeLink() @ http://127.0.0.1:4173/app.js:9729
+[    1146ms] [LOG] 💡 Para probar la funcionalidad ejecuta: testYouTubeLink() @ http://127.0.0.1:4173/app.js:9730
+[    1146ms] [LOG] 🔍 Función de debug disponible: window.debugAdmin() @ http://127.0.0.1:4173/app.js:9747
+[    1147ms] [LOG] 🚀 Inicializando aplicación... @ http://127.0.0.1:4173/app.js:12089
+[    1147ms] [LOG] 🔄 Cargando overrides de moneda desde la base de datos... @ http://127.0.0.1:4173/app.js:12426
+[    1147ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    1147ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    1147ms] [LOG] 🔍 jugadoresMundial size: 0 @ http://127.0.0.1:4173/app.js:12467
+[    1147ms] [LOG] ⚠️ jugadoresMundial no está disponible o está vacío @ http://127.0.0.1:4173/app.js:12488
+[    1147ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    1148ms] [LOG] ✅ Aplicación inicializada correctamente @ http://127.0.0.1:4173/app.js:13767
+[    1187ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:4173/index.html:0
+[    1224ms] [LOG] 🔄 Cambio en autenticación: INITIAL_SESSION null @ http://127.0.0.1:4173/app.js:208
+[    1225ms] [LOG] 👤 Estado de autenticación: {user: null, esAdmin: false} @ http://127.0.0.1:4173/app.js:49
+[    2079ms] [LOG] ✅ Cargados 8 overrides desde la base de datos @ http://127.0.0.1:4173/app.js:12453
+[    2079ms] [LOG] 📋 Overrides exactos: 8 @ http://127.0.0.1:4173/app.js:12454
+[    2079ms] [LOG] 📋 Overrides jugador-fase: 0 @ http://127.0.0.1:4173/app.js:12455
+[    2099ms] [LOG] 📅 Temporada por defecto: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:12107
+[    2099ms] [LOG] 📊 Cargando estadísticas con temporada: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:7797
+[    2099ms] [LOG] 🏆 Aplicando filtro de temporada: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:9371
+[    2360ms] [LOG] 🏆 Aplicando filtro de temporada en estadísticas: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:8071
+[    2582ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    2582ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    2582ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    2582ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    2582ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2582ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    2583ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    2583ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[    2583ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    2583ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    2583ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    2583ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    2583ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    2583ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    2583ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    2583ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[    2583ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[    2598ms] [LOG] 📊 Resultado consulta partidos: {partidos: Array(13), error: null} @ http://127.0.0.1:4173/app.js:9382
+[    2598ms] [LOG] ✅ Consulta exitosa, partidos encontrados: 13 @ http://127.0.0.1:4173/app.js:9390
+[    2633ms] [LOG] 📋 Resultado de consulta partidos con goles: {error: null, data: Array(13), count: null, status: 200, statusText: } @ http://127.0.0.1:4173/app.js:8077
+[    2633ms] [LOG] 🔍 Partidos obtenidos: 13 @ http://127.0.0.1:4173/app.js:8078
+[    2633ms] [LOG] 📈 Estadísticas calculadas: 23 jugadores @ http://127.0.0.1:4173/app.js:8196
+[    2633ms] [LOG] 👥 Datos de jugadores procesados: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] @ http://127.0.0.1:4173/app.js:8257
+[    2633ms] [LOG] 🔍 DEBUG BOSKA (NUEVA LÓGICA): @ http://127.0.0.1:4173/app.js:8333
+[    2633ms] [LOG] 📊 Datos del jugador: {jugador_id: 9a28af4b-c9ad-43ab-b01a-32b71e9d4408, temporada_id: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f, jugadores: Object, pj: 13, pg: 7} @ http://127.0.0.1:4173/app.js:8334
+[    2633ms] [LOG] 📈 Stats procesadas: {total_puntos: 22, pj: 13, pg: 7, pe: 1, pp: 5} @ http://127.0.0.1:4173/app.js:8335
+[    2633ms] [LOG] 🎯 PJ final: 13 @ http://127.0.0.1:4173/app.js:8336
+[    2824ms] [LOG] 🎯 Mostrando partidos en la interfaz... @ http://127.0.0.1:4173/app.js:9434
+[    2827ms] [LOG] 🎨 Mostrando partidos con detalles completos: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] @ http://127.0.0.1:4173/app.js:9750
+[    2855ms] [LOG] 🔥 Nueva mejor racha encontrada: {nombre: Never, racha: 4} @ http://127.0.0.1:4173/app.js:8465
+[    2856ms] [LOG] 🔥 Calculando rachas de jugadores... @ http://127.0.0.1:4173/app.js:8812
+[    3150ms] [LOG] 🔄 Cargando campeones automáticamente... @ http://127.0.0.1:4173/app.js:12720
+[    3150ms] [LOG] ✅ Mundialito ya procesado, cargando campeones... @ http://127.0.0.1:4173/app.js:12724
+[    3150ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    3150ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    3150ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    3150ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    3151ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    3151ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    3151ms] [LOG] 🔄 Renderizando último campeón... @ http://127.0.0.1:4173/app.js:12512
+[    3151ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    3151ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    3151ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    3151ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    3151ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3151ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    3151ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    3151ms] [LOG] ⚠️ No hay campeones, ocultando sección último campeón @ http://127.0.0.1:4173/app.js:12518
+[    3152ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[    3152ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    3152ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    3152ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    3152ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    3152ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3152ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    3152ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    3152ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[    3152ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[    3302ms] [LOG] 📅 Partidos para calcular rachas: 13 @ http://127.0.0.1:4173/app.js:8874
+[    3303ms] [LOG] 🔥❄️ Rachas calculadas: {c4292975-73a2-4563-bdee-7c292e201cc3: Object, 9a28af4b-c9ad-43ab-b01a-32b71e9d4408: Object, 41af77a9-67f9-4a71-ab8c-1d6e8c796585: Object, 02db9b4b-5249-47d4-bfa0-157cf4a7fa6f: Object, 553cebd0-8f65-42d7-9206-a4d632e4f409: Object} @ http://127.0.0.1:4173/app.js:8945
+[    3806ms] [LOG] 🔄 Actualizando campeones en pestaña estadísticas... @ http://127.0.0.1:4173/app.js:12911
+[    3806ms] [LOG] 🔄 Cargando campeones automáticamente... @ http://127.0.0.1:4173/app.js:12720
+[    3806ms] [LOG] ✅ Mundialito ya procesado, cargando campeones... @ http://127.0.0.1:4173/app.js:12724
+[    3806ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    3806ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    3806ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    3806ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    3806ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    3806ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3806ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3806ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3806ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3806ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    3806ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    3807ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    3807ms] [LOG] 🔄 Renderizando último campeón... @ http://127.0.0.1:4173/app.js:12512
+[    3807ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    3807ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    3807ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    3807ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    3807ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    3807ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    3807ms] [LOG] ⚠️ No hay campeones, ocultando sección último campeón @ http://127.0.0.1:4173/app.js:12518
+[    3807ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[    3807ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    3807ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    3807ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    3807ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    3807ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    3807ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    3807ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    3808ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[    3808ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[    4151ms] [LOG] 🔄 Cargando mundialito invisiblemente... @ http://127.0.0.1:4173/app.js:12776
+[    4352ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    4352ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    4352ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    4353ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    4353ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    4353ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    4353ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[    4353ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    4353ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    4353ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    4353ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    4353ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    4353ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    4353ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    4353ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[    4353ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[    4356ms] [LOG] ✅ Mundialito procesado invisiblemente @ http://127.0.0.1:4173/app.js:12781
+[    5358ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    5358ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    5358ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    5358ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    5358ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    5358ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5358ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    5359ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    5359ms] [LOG] 🔄 Renderizando último campeón... @ http://127.0.0.1:4173/app.js:12512
+[    5359ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    5359ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    5359ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    5359ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    5359ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    5359ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    5359ms] [LOG] ⚠️ No hay campeones, ocultando sección último campeón @ http://127.0.0.1:4173/app.js:12518
+[    5359ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[    5359ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[    5359ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[    5359ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[    5359ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[    5359ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[    5359ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[    5360ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[    5360ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[    5360ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[    5360ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[    5360ms] [LOG] ✅ Campeones cargados después de procesamiento invisible @ http://127.0.0.1:4173/app.js:12790
+[   17811ms] [LOG] 🔍 Temporada seleccionada para perfil: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:2183
+[   17811ms] [LOG] 🔄 Vista cambiada a: perfil @ http://127.0.0.1:4173/app.js:465
+[   18979ms] [LOG] 📊 Datos perfil cargados: {jugador: Never, temporada: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f, participaciones: 13, goles: 20, asistencias: 5} @ http://127.0.0.1:4173/app.js:2293
+[   19881ms] [INFO] Loading the script 'https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.R2ytP_yNH6w.2021.O/am=AAAABA/d=1/br=1/rs=AGKMywGFvb6r9u4z1Gb2OkQ9Awp70PTwAg/m=root,base' violates the following Content Security Policy directive: "script-src 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.youtube.com/embed/58WlyC-VMU8?start=2640:0
+[   21332ms] [INFO] Loading the script 'https://www.youtube.com/s/player/4b0d80ee/player_embed_es6.vflset/en_US/base.js' violates the following Content Security Policy directive: "script-src 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.youtube.com/embed/58WlyC-VMU8?start=2640:0
+[   21786ms] [INFO] Loading the script 'https://static.doubleclick.net/instream/ad_status.js' violates the following Content Security Policy directive: "script-src 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.R2ytP_yNH6w.2021.O/am=AAAABA/d=1/br=1/rs=AGKMywGFvb6r9u4z1Gb2OkQ9Awp70PTwAg/m=root,base:1310
+[   21790ms] [INFO] Loading the script 'https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.R2ytP_yNH6w.2021.O/am=AAAABA/d=1/exm=base,root/ed=1/br=1/rs=AGKMywGFvb6r9u4z1Gb2OkQ9Awp70PTwAg/m=r78Drb' violates the following Content Security Policy directive: "script-src 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.R2ytP_yNH6w.2021.O/am=AAAABA/d=1/br=1/rs=AGKMywGFvb6r9u4z1Gb2OkQ9Awp70PTwAg/m=root,base:157
+[   23104ms] [INFO] Loading the script 'https://www.google.com/js/th/dTFo-KUuYlGOusziVr8u65jmcwADr_G5apr-mnW3AGs.js' violates the following Content Security Policy directive: "script-src 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.R2ytP_yNH6w.2021.O/am=AAAABA/d=1/br=1/rs=AGKMywGFvb6r9u4z1Gb2OkQ9Awp70PTwAg/m=root,base:1345
+[   24403ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.google.com/js/th/dTFo-KUuYlGOusziVr8u65jmcwADr_G5apr-mnW3AGs.js:1
+[   24403ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ https://www.google.com/js/th/dTFo-KUuYlGOusziVr8u65jmcwADr_G5apr-mnW3AGs.js:1
+[   24408ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24413ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24415ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24417ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24583ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24583ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24583ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24583ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24583ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24584ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24584ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24584ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24584ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24584ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24585ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24585ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24585ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24585ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24585ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24585ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24586ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24590ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24591ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24591ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24591ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24592ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24592ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24592ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24592ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24592ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24592ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24593ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24665ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24665ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24665ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24665ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24666ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :3578
+[   24667ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24668ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24668ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24668ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24669ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24669ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24669ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24669ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24669ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24987ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24987ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24987ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24987ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24988ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24989ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24990ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24991ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24992ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24992ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24992ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24992ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   24992ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25119ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25119ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25120ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25120ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25121ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25122ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25123ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25123ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25123ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25123ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25408ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25417ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25429ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25430ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25431ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25432ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25439ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25451ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25475ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25516ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25585ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25608ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25625ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25647ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25647ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25647ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25647ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25647ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25647ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25648ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25649ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25650ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25651ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25651ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25651ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25651ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25655ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[   25658ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25658ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25658ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25658ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25773ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25773ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25773ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25774ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25775ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25808ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25808ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25808ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25808ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25808ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25808ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25809ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25809ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25809ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25810ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25810ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25810ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25811ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25811ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25811ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25812ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25812ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25876ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[   25946ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149697ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149697ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149697ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149697ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149697ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149697ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149698ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149698ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149698ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149699ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149700ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149700ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149700ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149700ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149700ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149702ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149702ms] [INFO] Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: "script-src 'unsafe-inline'".
+ The policy is report-only, so the violation has been logged but no further action has been taken. @ :0
+[  149772ms] [LOG] Configurando Supabase: {SUPABASE_URL: https://jqslerzbzxtycwozvtcy.supabase.co, SUPABASE_ANON_KEY: PRESENTE} @ http://127.0.0.1:4173/app.js:9
+[  149773ms] [LOG] ✅ Supabase asignado a window.supabase @ http://127.0.0.1:4173/app.js:14
+[  149773ms] [LOG] 🔧 Configurando tooltip del radar... @ http://127.0.0.1:4173/index.html?view=perfil&jugador=Never&temporada=c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f:4348
+[  149773ms] [LOG] ✅ Tooltip encontrado: JSHandle@node @ http://127.0.0.1:4173/index.html?view=perfil&jugador=Never&temporada=c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f:4356
+[  149773ms] [LOG] 🔍 Encontrados 2 iconos de radar @ http://127.0.0.1:4173/index.html?view=perfil&jugador=Never&temporada=c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f:4451
+[  149774ms] [LOG] ✅ Tooltip del radar configurado correctamente @ http://127.0.0.1:4173/index.html?view=perfil&jugador=Never&temporada=c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f:4498
+[  149782ms] [LOG] 🧪 Función de test disponible: window.testYouTubeLink() @ http://127.0.0.1:4173/app.js:9729
+[  149782ms] [LOG] 💡 Para probar la funcionalidad ejecuta: testYouTubeLink() @ http://127.0.0.1:4173/app.js:9730
+[  149782ms] [LOG] 🔍 Función de debug disponible: window.debugAdmin() @ http://127.0.0.1:4173/app.js:9747
+[  149782ms] [LOG] 🚀 Inicializando aplicación... @ http://127.0.0.1:4173/app.js:12089
+[  149783ms] [LOG] 🔄 Cargando overrides de moneda desde la base de datos... @ http://127.0.0.1:4173/app.js:12426
+[  149783ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  149783ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  149783ms] [LOG] 🔍 jugadoresMundial size: 0 @ http://127.0.0.1:4173/app.js:12467
+[  149783ms] [LOG] ⚠️ jugadoresMundial no está disponible o está vacío @ http://127.0.0.1:4173/app.js:12488
+[  149783ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  149783ms] [LOG] ✅ Aplicación inicializada correctamente @ http://127.0.0.1:4173/app.js:13767
+[  149796ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:4173/index.html?view=perfil&jugador=Never&temporada=c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f:0
+[  149842ms] [LOG] 🔄 Cambio en autenticación: INITIAL_SESSION null @ http://127.0.0.1:4173/app.js:208
+[  149887ms] [LOG] 👤 Estado de autenticación: {user: null, esAdmin: false} @ http://127.0.0.1:4173/app.js:49
+[  150646ms] [LOG] ✅ Cargados 8 overrides desde la base de datos @ http://127.0.0.1:4173/app.js:12453
+[  150646ms] [LOG] 📋 Overrides exactos: 8 @ http://127.0.0.1:4173/app.js:12454
+[  150646ms] [LOG] 📋 Overrides jugador-fase: 0 @ http://127.0.0.1:4173/app.js:12455
+[  150650ms] [LOG] 📅 Temporada por defecto: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:12107
+[  150650ms] [LOG] 📊 Cargando estadísticas con temporada: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:7797
+[  150650ms] [LOG] 🏆 Aplicando filtro de temporada: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:9371
+[  150654ms] [LOG] 🔍 Temporada seleccionada para perfil: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:2183
+[  150654ms] [LOG] 🔄 Vista cambiada a: perfil @ http://127.0.0.1:4173/app.js:465
+[  150855ms] [LOG] 🏆 Aplicando filtro de temporada en estadísticas: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f @ http://127.0.0.1:4173/app.js:8071
+[  151036ms] [LOG] 📊 Resultado consulta partidos: {partidos: Array(13), error: null} @ http://127.0.0.1:4173/app.js:9382
+[  151037ms] [LOG] ✅ Consulta exitosa, partidos encontrados: 13 @ http://127.0.0.1:4173/app.js:9390
+[  151075ms] [LOG] 📋 Resultado de consulta partidos con goles: {error: null, data: Array(13), count: null, status: 200, statusText: } @ http://127.0.0.1:4173/app.js:8077
+[  151076ms] [LOG] 🔍 Partidos obtenidos: 13 @ http://127.0.0.1:4173/app.js:8078
+[  151076ms] [LOG] 📈 Estadísticas calculadas: 23 jugadores @ http://127.0.0.1:4173/app.js:8196
+[  151076ms] [LOG] 👥 Datos de jugadores procesados: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] @ http://127.0.0.1:4173/app.js:8257
+[  151076ms] [LOG] 🔍 DEBUG BOSKA (NUEVA LÓGICA): @ http://127.0.0.1:4173/app.js:8333
+[  151076ms] [LOG] 📊 Datos del jugador: {jugador_id: 9a28af4b-c9ad-43ab-b01a-32b71e9d4408, temporada_id: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f, jugadores: Object, pj: 13, pg: 7} @ http://127.0.0.1:4173/app.js:8334
+[  151076ms] [LOG] 📈 Stats procesadas: {total_puntos: 22, pj: 13, pg: 7, pe: 1, pp: 5} @ http://127.0.0.1:4173/app.js:8335
+[  151076ms] [LOG] 🎯 PJ final: 13 @ http://127.0.0.1:4173/app.js:8336
+[  151089ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  151089ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  151089ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  151089ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  151089ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  151089ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  151090ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  151090ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[  151090ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  151090ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  151090ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  151090ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  151090ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151090ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151091ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151091ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151091ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151091ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151091ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  151091ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  151091ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[  151091ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[  151227ms] [LOG] 🎯 Mostrando partidos en la interfaz... @ http://127.0.0.1:4173/app.js:9434
+[  151231ms] [LOG] 🎨 Mostrando partidos con detalles completos: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] @ http://127.0.0.1:4173/app.js:9750
+[  151275ms] [LOG] 🔥 Nueva mejor racha encontrada: {nombre: Never, racha: 4} @ http://127.0.0.1:4173/app.js:8465
+[  151275ms] [LOG] 🔥 Calculando rachas de jugadores... @ http://127.0.0.1:4173/app.js:8812
+[  151584ms] [LOG] 📊 Datos perfil cargados: {jugador: Never, temporada: c5a31e9a-02fc-47f2-bc04-c4d2f3357a8f, participaciones: 13, goles: 20, asistencias: 5} @ http://127.0.0.1:4173/app.js:2293
+[  151691ms] [LOG] 📅 Partidos para calcular rachas: 13 @ http://127.0.0.1:4173/app.js:8874
+[  151692ms] [LOG] 🔥❄️ Rachas calculadas: {c4292975-73a2-4563-bdee-7c292e201cc3: Object, 9a28af4b-c9ad-43ab-b01a-32b71e9d4408: Object, 41af77a9-67f9-4a71-ab8c-1d6e8c796585: Object, 02db9b4b-5249-47d4-bfa0-157cf4a7fa6f: Object, 553cebd0-8f65-42d7-9206-a4d632e4f409: Object} @ http://127.0.0.1:4173/app.js:8945
+[  151788ms] [LOG] 🔄 Cargando campeones automáticamente... @ http://127.0.0.1:4173/app.js:12720
+[  151789ms] [LOG] ✅ Mundialito ya procesado, cargando campeones... @ http://127.0.0.1:4173/app.js:12724
+[  151789ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  151789ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  151789ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  151789ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  151789ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  151789ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  151789ms] [LOG] 🔄 Renderizando último campeón... @ http://127.0.0.1:4173/app.js:12512
+[  151789ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  151789ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  151789ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  151789ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  151789ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151789ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  151790ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  151790ms] [LOG] ⚠️ No hay campeones, ocultando sección último campeón @ http://127.0.0.1:4173/app.js:12518
+[  151790ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[  151790ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  151790ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  151790ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  151790ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  151790ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151790ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  151791ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  151791ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  151791ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[  151791ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[  152200ms] [LOG] 🔄 Actualizando campeones en pestaña estadísticas... @ http://127.0.0.1:4173/app.js:12911
+[  152200ms] [LOG] 🔄 Cargando campeones automáticamente... @ http://127.0.0.1:4173/app.js:12720
+[  152200ms] [LOG] ✅ Mundialito ya procesado, cargando campeones... @ http://127.0.0.1:4173/app.js:12724
+[  152200ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  152200ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  152200ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  152200ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  152200ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  152200ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  152200ms] [LOG] 🔄 Renderizando último campeón... @ http://127.0.0.1:4173/app.js:12512
+[  152200ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  152200ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  152200ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  152200ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  152200ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  152200ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  152201ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  152201ms] [LOG] ⚠️ No hay campeones, ocultando sección último campeón @ http://127.0.0.1:4173/app.js:12518
+[  152201ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[  152201ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  152201ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  152201ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  152201ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  152201ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152201ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  152201ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  152201ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[  152202ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[  152784ms] [LOG] 🔄 Cargando mundialito invisiblemente... @ http://127.0.0.1:4173/app.js:12776
+[  152981ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  152981ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  152981ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  152981ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  152981ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152981ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  152981ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  152982ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[  152982ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  152982ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  152982ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  152982ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  152982ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  152982ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  152982ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  152982ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[  152982ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[  152985ms] [LOG] ✅ Mundialito procesado invisiblemente @ http://127.0.0.1:4173/app.js:12781
+[  153118ms] [ERROR] Permissions policy violation: compute-pressure is not allowed in this document. @ https://www.youtube.com/s/player/4b0d80ee/player_embed_es6.vflset/en_US/base.js:5339
+[  153504ms] [ERROR] Permissions policy violation: compute-pressure is not allowed in this document. @ https://www.youtube.com/s/player/4b0d80ee/player_embed_es6.vflset/en_US/base.js:5339
+[  153558ms] [ERROR] Permissions policy violation: compute-pressure is not allowed in this document. @ https://www.youtube.com/s/player/4b0d80ee/player_embed_es6.vflset/en_US/base.js:5339
+[  153989ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  153990ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  153990ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  153990ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  153990ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  153990ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  153990ms] [LOG] 🔄 Renderizando último campeón... @ http://127.0.0.1:4173/app.js:12512
+[  153990ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  153990ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  153990ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  153990ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  153990ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153990ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  153990ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  153990ms] [LOG] ⚠️ No hay campeones, ocultando sección último campeón @ http://127.0.0.1:4173/app.js:12518
+[  153990ms] [LOG] 🔄 Renderizando campeones mundiales... @ http://127.0.0.1:4173/app.js:12616
+[  153990ms] [LOG] 🔄 Cargando campeones mundiales... @ http://127.0.0.1:4173/app.js:12465
+[  153991ms] [LOG] 🔍 jugadoresMundial existe: true @ http://127.0.0.1:4173/app.js:12466
+[  153991ms] [LOG] 🔍 jugadoresMundial size: 23 @ http://127.0.0.1:4173/app.js:12467
+[  153991ms] [LOG] 🔍 Revisando jugadores del mundialito... @ http://127.0.0.1:4173/app.js:12474
+[  153991ms] [LOG] 🔍 Jugador: Never, campeon: false, fase: 4tos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Fachita, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Darmian, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Mexa, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Colidio, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Cogorno, campeon: false, fase: semis @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Boska, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Kite, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Ggasti, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Berni, campeon: false, fase: 8vos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Gaspar, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Tomas_Diaz, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Facu, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Lucas, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Eugin, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Alegol, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Bou, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Reset, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Gramparo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Renzo, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Metox, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Villarino, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Jugador: Feli, campeon: false, fase: grupos @ http://127.0.0.1:4173/app.js:12478
+[  153991ms] [LOG] 🔍 Total campeones encontrados: 0 @ http://127.0.0.1:4173/app.js:12486
+[  153991ms] [LOG] ✅ Cargados 0 campeones mundiales @ http://127.0.0.1:4173/app.js:12491
+[  153991ms] [LOG] 🔍 Campeones en cache: 0 @ http://127.0.0.1:4173/app.js:12621
+[  153991ms] [LOG] ⚠️ No hay campeones en cache, ocultando sección @ http://127.0.0.1:4173/app.js:12624
+[  153991ms] [LOG] ✅ Campeones cargados después de procesamiento invisible @ http://127.0.0.1:4173/app.js:12790
+[  154362ms] [ERROR] Permissions policy violation: compute-pressure is not allowed in this document. @ https://www.youtube.com/s/player/4b0d80ee/player_embed_es6.vflset/en_US/base.js:5339
+[  154442ms] [ERROR] Permissions policy violation: compute-pressure is not allowed in this document. @ https://www.youtube.com/s/player/4b0d80ee/player_embed_es6.vflset/en_US/base.js:5339
+[  156779ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  156790ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  156835ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  156910ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  156933ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  156956ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  157015ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  157036ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  157087ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0
+[  157115ms] [WARNING] WARNING: Too many active WebGL contexts. Oldest context will be lost. @ :0

@@ -16,6 +16,13 @@ class GeneticTeamOptimizer {
     this.crossoverRate = 0.6;
     this.mutationRate = 0.15;
     this.tournamentSize = 3;
+    this.fitnessWeights = {
+      rendimientoTotal: 3.0,
+      rendimientoAtaque: 2.0,
+      rendimientoArquero: 1.5,
+      golesFavorEquipo: 1.25,
+      golesRecibidosEquipo: 1.25
+    };
   }
 
   /**
@@ -28,6 +35,8 @@ class GeneticTeamOptimizer {
       rendimientoTotal: this.calcularRendimientoTotal(jugador),
       rendimientoAtaque: this.calcularRendimientoAtaque(jugador),
       rendimientoArquero: this.calcularRendimientoArquero(jugador),
+      golesFavorEquipo: Number(jugador.goles_favor_equipo) || 0,
+      golesRecibidosEquipo: Number(jugador.goles_recibidos_equipo) || 0,
       winrate: jugador.winrate || 0,
       pulmon: jugador.pulmon || jugador.jugadores?.pulmon || 0,
       pj: jugador.pj || 0
@@ -244,8 +253,20 @@ class GeneticTeamOptimizer {
   evaluarIndividuo(individuo) {
     const equipo1 = [];
     const equipo2 = [];
-    const stats1 = { rendimientoTotal: 0, rendimientoAtaque: 0, rendimientoArquero: 0 };
-    const stats2 = { rendimientoTotal: 0, rendimientoAtaque: 0, rendimientoArquero: 0 };
+    const stats1 = {
+      rendimientoTotal: 0,
+      rendimientoAtaque: 0,
+      rendimientoArquero: 0,
+      golesFavorEquipo: 0,
+      golesRecibidosEquipo: 0
+    };
+    const stats2 = {
+      rendimientoTotal: 0,
+      rendimientoAtaque: 0,
+      rendimientoArquero: 0,
+      golesFavorEquipo: 0,
+      golesRecibidosEquipo: 0
+    };
 
     for (let i = 0; i < individuo.length; i++) {
       const jugador = this.jugadores[i];
@@ -254,11 +275,15 @@ class GeneticTeamOptimizer {
         stats1.rendimientoTotal += jugador.rendimientoTotal;
         stats1.rendimientoAtaque += jugador.rendimientoAtaque;
         stats1.rendimientoArquero += jugador.rendimientoArquero;
+        stats1.golesFavorEquipo += jugador.golesFavorEquipo;
+        stats1.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
       } else {
         equipo2.push(jugador.nombre);
         stats2.rendimientoTotal += jugador.rendimientoTotal;
         stats2.rendimientoAtaque += jugador.rendimientoAtaque;
         stats2.rendimientoArquero += jugador.rendimientoArquero;
+        stats2.golesFavorEquipo += jugador.golesFavorEquipo;
+        stats2.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
       }
     }
 
@@ -270,14 +295,20 @@ class GeneticTeamOptimizer {
     const avg1 = {
       rendimientoTotal: stats1.rendimientoTotal / size1,
       rendimientoAtaque: stats1.rendimientoAtaque / size1,
-      rendimientoArquero: stats1.rendimientoArquero / size1
+      rendimientoArquero: stats1.rendimientoArquero / size1,
+      golesFavorEquipo: stats1.golesFavorEquipo / size1,
+      golesRecibidosEquipo: stats1.golesRecibidosEquipo / size1
     };
 
     const avg2 = {
       rendimientoTotal: stats2.rendimientoTotal / size2,
       rendimientoAtaque: stats2.rendimientoAtaque / size2,
-      rendimientoArquero: stats2.rendimientoArquero / size2
+      rendimientoArquero: stats2.rendimientoArquero / size2,
+      golesFavorEquipo: stats2.golesFavorEquipo / size2,
+      golesRecibidosEquipo: stats2.golesRecibidosEquipo / size2
     };
+
+    return this.calcularFitnessBalanceado(avg1, avg2);
 
     // Calcular fitness como diferencias ponderadas por importancia
     let fitness = 0;
@@ -285,6 +316,16 @@ class GeneticTeamOptimizer {
     fitness += Math.abs(avg1.rendimientoAtaque - avg2.rendimientoAtaque) * 2.0;  // Peso medio para ataque
     fitness += Math.abs(avg1.rendimientoArquero - avg2.rendimientoArquero) * 1.5; // Peso menor para arquero
 
+    return fitness;
+  }
+
+  calcularFitnessBalanceado(avg1, avg2) {
+    let fitness = 0;
+    fitness += Math.abs(avg1.rendimientoTotal - avg2.rendimientoTotal) * this.fitnessWeights.rendimientoTotal;
+    fitness += Math.abs(avg1.rendimientoAtaque - avg2.rendimientoAtaque) * this.fitnessWeights.rendimientoAtaque;
+    fitness += Math.abs(avg1.rendimientoArquero - avg2.rendimientoArquero) * this.fitnessWeights.rendimientoArquero;
+    fitness += Math.abs(avg1.golesFavorEquipo - avg2.golesFavorEquipo) * this.fitnessWeights.golesFavorEquipo;
+    fitness += Math.abs(avg1.golesRecibidosEquipo - avg2.golesRecibidosEquipo) * this.fitnessWeights.golesRecibidosEquipo;
     return fitness;
   }
 
@@ -359,6 +400,8 @@ class GeneticTeamOptimizer {
       rendimientoTotal: 0,
       rendimientoAtaque: 0,
       rendimientoArquero: 0,
+      golesFavorEquipo: 0,
+      golesRecibidosEquipo: 0,
       winrate: 0,
       pulmon: 0
     };
@@ -367,6 +410,8 @@ class GeneticTeamOptimizer {
       stats.rendimientoTotal += jugador.rendimientoTotal;
       stats.rendimientoAtaque += jugador.rendimientoAtaque;
       stats.rendimientoArquero += jugador.rendimientoArquero;
+      stats.golesFavorEquipo += jugador.golesFavorEquipo;
+      stats.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
       stats.winrate += jugador.winrate;
       stats.pulmon += jugador.pulmon;
     }
@@ -376,8 +421,10 @@ class GeneticTeamOptimizer {
       rendimientoTotal: stats.rendimientoTotal,
       rendimientoAtaque: stats.rendimientoAtaque,
       rendimientoArquero: stats.rendimientoArquero,
-      winratePromedio: stats.winrate / size,
-      pulmonPromedio: stats.pulmon / size,
+      golesFavorPromedio: size > 0 ? stats.golesFavorEquipo / size : 0,
+      golesRecibidosPromedio: size > 0 ? stats.golesRecibidosEquipo / size : 0,
+      winratePromedio: size > 0 ? stats.winrate / size : 0,
+      pulmonPromedio: size > 0 ? stats.pulmon / size : 0,
       jugadores: size
     };
   }
@@ -873,6 +920,14 @@ function mostrarResultados(resultado) {
             <span>Pulmón Promedio:</span>
             <span class="fw-bold">${resultado.equipo1.estadisticas.pulmonPromedio.toFixed(1)}</span>
           </div>
+          <div class="stat-row">
+            <span>Goles a Favor / Partido:</span>
+            <span class="fw-bold">${resultado.equipo1.estadisticas.golesFavorPromedio.toFixed(2)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Goles Recibidos / Partido:</span>
+            <span class="fw-bold">${resultado.equipo1.estadisticas.golesRecibidosPromedio.toFixed(2)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -908,6 +963,14 @@ function mostrarResultados(resultado) {
             <span>Pulmón Promedio:</span>
             <span class="fw-bold">${resultado.equipo2.estadisticas.pulmonPromedio.toFixed(1)}</span>
           </div>
+          <div class="stat-row">
+            <span>Goles a Favor / Partido:</span>
+            <span class="fw-bold">${resultado.equipo2.estadisticas.golesFavorPromedio.toFixed(2)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Goles Recibidos / Partido:</span>
+            <span class="fw-bold">${resultado.equipo2.estadisticas.golesRecibidosPromedio.toFixed(2)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -918,22 +981,30 @@ function mostrarResultados(resultado) {
           Equilibrio Encontrado
         </h6>
         <div class="row g-2 text-center mb-3">
-          <div class="col-3">
+          <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Fitness Score</div>
             <div class="text-white fw-bold">${resultado.fitness.toFixed(2)}</div>
             <div class="small text-success">Menor es mejor</div>
           </div>
-          <div class="col-3">
+          <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Rendimiento Total</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoTotal - resultado.equipo2.estadisticas.rendimientoTotal).toFixed(1)}</div>
           </div>
-          <div class="col-3">
+          <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Rend. Ataque</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoAtaque - resultado.equipo2.estadisticas.rendimientoAtaque).toFixed(1)}</div>
           </div>
-          <div class="col-3">
+          <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Rend. Arquero</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoArquero - resultado.equipo2.estadisticas.rendimientoArquero).toFixed(1)}</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="small text-light-emphasis">Dif. Goles a Favor</div>
+            <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.golesFavorPromedio - resultado.equipo2.estadisticas.golesFavorPromedio).toFixed(2)}</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="small text-light-emphasis">Dif. Goles Recibidos</div>
+            <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.golesRecibidosPromedio - resultado.equipo2.estadisticas.golesRecibidosPromedio).toFixed(2)}</div>
           </div>
         </div>
         ${mostrarRestriccionesAplicadas()}

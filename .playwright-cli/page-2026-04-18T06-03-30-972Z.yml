@@ -1,0 +1,184 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - heading "⚽ T5 Papi Academy" [level=1] [ref=e5]:
+        - text: ⚽
+        - generic [ref=e6]: T5 Papi Academy
+      - paragraph
+      - group [ref=e9]:
+        - button " Dashboard" [ref=e10] [cursor=pointer]:
+          - generic [ref=e11]: 
+          - text: Dashboard
+        - button " Jugador" [ref=e12] [cursor=pointer]:
+          - generic [ref=e13]: 
+          - text: Jugador
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: 
+        - generic [ref=e17]: Solo lectura
+      - button " Admin" [ref=e18] [cursor=pointer]:
+        - generic [ref=e19]: 
+        - generic [ref=e20]: Admin
+      - button " Salir" [disabled]:
+        - generic: 
+        - generic: Salir
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: 🏆
+        - combobox "🏆" [ref=e24]:
+          - option "Todas las temporadas" [selected]
+      - button " Agregar Jugador" [disabled]:
+        - generic: 
+        - generic: Agregar Jugador
+    - text:    
+  - tablist [ref=e26]:
+    - tab " Estadísticas y Equipos" [selected] [ref=e27] [cursor=pointer]:
+      - generic [ref=e28]: 
+      - text: Estadísticas y Equipos
+    - tab " Historial de Partidos" [ref=e29] [cursor=pointer]:
+      - generic [ref=e30]: 
+      - text: Historial de Partidos
+    - tab " Ranking de Skill Individual" [ref=e31] [cursor=pointer]:
+      - generic [ref=e32]: 
+      - text: Ranking de Skill Individual
+    - tab " Paternidades" [ref=e33] [cursor=pointer]:
+      - generic [ref=e34]: 
+      - text: Paternidades
+    - tab " Mundialito T5" [ref=e35] [cursor=pointer]:
+      - generic [ref=e36]: 
+      - text: Mundialito T5
+  - generic [ref=e37]:
+    - tabpanel " Estadísticas y Equipos" [ref=e38]:
+      - main [ref=e39]:
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - heading "Último Campeón Mundial" [level=2] [ref=e43]: Último Campeón Mundial
+            - paragraph [ref=e44]: El rey actual del Mundialito T5
+          - generic [ref=e46]:
+            - status [ref=e47]:
+              - generic [ref=e48]: Cargando...
+            - paragraph [ref=e49]: Cargando último campeón...
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - heading " Campeones Mundiales" [level=2] [ref=e53]:
+              - generic [ref=e54]: 
+              - text: Campeones Mundiales
+            - paragraph [ref=e55]: Los reyes del Mundialito T5
+          - generic [ref=e57]:
+            - status [ref=e58]:
+              - generic [ref=e59]: Cargando...
+            - paragraph [ref=e60]: Cargando campeones mundiales...
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - heading "🏆 Jugadores Destacados" [level=2] [ref=e64]
+            - paragraph [ref=e65]: Los mejores en cada categoría
+          - generic [ref=e67]:
+            - status [ref=e68]:
+              - generic [ref=e69]: Cargando...
+            - paragraph [ref=e70]: Cargando estadísticas destacadas...
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - heading "🏅 Mejores por Puesto" [level=2] [ref=e74]
+            - paragraph [ref=e75]: Los jugadores destacados en cada posición
+          - generic [ref=e77]:
+            - status [ref=e78]:
+              - generic [ref=e79]: Cargando...
+            - paragraph [ref=e80]: Analizando jugadores por posición...
+        - generic [ref=e82]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: "🎮 Min. partidos:"
+            - spinbutton "🎮 Min. partidos:" [ref=e86]: "0"
+          - table [ref=e88]:
+            - rowgroup [ref=e89]:
+              - row "# ⚡ Skill  👤 Nombre  🎯 Posiciones 🏆 Total Puntos  📈 Winrate  🎮 PJ  ✅ PG  🤝 PE  ❌ PP  ⚽ Goles  🎯 Asistencias  💥 Cagadas  👑 MVP  🔥 ACE  🥅 Atajadas  ⚽ Goles a favor / partido (equipo)  🥅 Goles recibidos / partido (equipo)  ⚙️ Acciones" [ref=e90]:
+                - columnheader "#" [ref=e91]
+                - columnheader "⚡ Skill " [ref=e92] [cursor=pointer]:
+                  - text: ⚡ Skill
+                  - generic [ref=e93]: 
+                - columnheader "👤 Nombre " [ref=e94] [cursor=pointer]:
+                  - text: 👤 Nombre
+                  - generic [ref=e95]: 
+                - columnheader "🎯 Posiciones" [ref=e96]
+                - columnheader "🏆 Total Puntos " [ref=e97] [cursor=pointer]:
+                  - text: 🏆 Total Puntos
+                  - generic [ref=e98]: 
+                - columnheader "📈 Winrate " [ref=e99] [cursor=pointer]:
+                  - text: 📈 Winrate
+                  - generic [ref=e100]: 
+                - columnheader "🎮 PJ " [ref=e101] [cursor=pointer]:
+                  - text: 🎮 PJ
+                  - generic [ref=e102]: 
+                - columnheader "✅ PG " [ref=e103] [cursor=pointer]:
+                  - text: ✅ PG
+                  - generic [ref=e104]: 
+                - columnheader "🤝 PE " [ref=e105] [cursor=pointer]:
+                  - text: 🤝 PE
+                  - generic [ref=e106]: 
+                - columnheader "❌ PP " [ref=e107] [cursor=pointer]:
+                  - text: ❌ PP
+                  - generic [ref=e108]: 
+                - columnheader "⚽ Goles " [ref=e109] [cursor=pointer]:
+                  - text: ⚽ Goles
+                  - generic [ref=e110]: 
+                - columnheader "🎯 Asistencias " [ref=e111] [cursor=pointer]:
+                  - text: 🎯 Asistencias
+                  - generic [ref=e112]: 
+                - columnheader "💥 Cagadas " [ref=e113] [cursor=pointer]:
+                  - text: 💥 Cagadas
+                  - generic [ref=e114]: 
+                - columnheader "👑 MVP " [ref=e115] [cursor=pointer]:
+                  - text: 👑 MVP
+                  - generic [ref=e116]: 
+                - columnheader "🔥 ACE " [ref=e117] [cursor=pointer]:
+                  - text: 🔥 ACE
+                  - generic [ref=e118]: 
+                - columnheader "🥅 Atajadas " [ref=e119] [cursor=pointer]:
+                  - text: 🥅 Atajadas
+                  - generic [ref=e120]: 
+                - columnheader "⚽ Goles a favor / partido (equipo) " [ref=e121] [cursor=pointer]:
+                  - text: ⚽ Goles a favor / partido (equipo)
+                  - generic [ref=e122]: 
+                - columnheader "🥅 Goles recibidos / partido (equipo) " [ref=e123] [cursor=pointer]:
+                  - text: 🥅 Goles recibidos / partido (equipo)
+                  - generic [ref=e124]: 
+                - columnheader "⚙️ Acciones" [ref=e125]
+            - rowgroup
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - heading "⚔️ Armado de Equipos" [level=2] [ref=e130]
+              - paragraph [ref=e131]: Agrega jugadores escribiendo sus nombres en cada equipo
+              - button " Auto-Armar Equipos con IA" [ref=e133] [cursor=pointer]:
+                - generic [ref=e134]: 
+                - text: Auto-Armar Equipos con IA
+            - generic [ref=e135]:
+              - generic [ref=e137]:
+                - heading "⚽ Equipo 1" [level=3] [ref=e138]
+                - generic [ref=e139]:
+                  - textbox "Nombre del jugador..." [ref=e140]
+                  - button "" [ref=e141] [cursor=pointer]:
+                    - generic [ref=e142]: 
+                - text: 
+              - generic [ref=e144]:
+                - generic [ref=e146]: VS
+                - text:  
+              - generic [ref=e148]:
+                - heading "⚽ Equipo 2" [level=3] [ref=e149]
+                - generic [ref=e150]:
+                  - textbox "Nombre del jugador..." [ref=e151]
+                  - button "" [ref=e152] [cursor=pointer]:
+                    - generic [ref=e153]: 
+                - text: 
+          - separator [ref=e155]
+          - text:         
+    - text:                   
+  - text:               
+  - contentinfo [ref=e156]:
+    - generic [ref=e157]:
+      - paragraph [ref=e158]: Hecho con ❤️ por
+      - paragraph [ref=e159]: Leopoldo
+  - text:                      
+  - button " Armar Equipos" [ref=e161] [cursor=pointer]:
+    - generic [ref=e162]: 
+    - generic [ref=e163]: Armar Equipos
+  - text:   

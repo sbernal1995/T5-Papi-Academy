@@ -1,0 +1,362 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - heading "⚽ T5 Papi Academy" [level=1] [ref=e5]:
+        - text: ⚽
+        - generic [ref=e6]: T5 Papi Academy
+      - paragraph
+      - generic [ref=e8]:
+        - group [ref=e9]:
+          - button " Dashboard" [ref=e10] [cursor=pointer]:
+            - generic [ref=e11]: 
+            - text: Dashboard
+          - button " Jugador" [ref=e12] [cursor=pointer]:
+            - generic [ref=e13]: 
+            - text: Jugador
+        - combobox [ref=e165]:
+          - option "Buscar jugador..."
+          - option "Alegol"
+          - option "Alvaro"
+          - option "Berni"
+          - option "Boska"
+          - option "Bou"
+          - option "Byron"
+          - option "Cano"
+          - option "Cogorno"
+          - option "Colidio"
+          - option "Dante"
+          - option "Darmian"
+          - option "Devgree"
+          - option "Emi"
+          - option "Eugin"
+          - option "Fachita"
+          - option "Facu"
+          - option "Feli"
+          - option "Fran"
+          - option "Frankito"
+          - option "Gaspar"
+          - option "Ggasti"
+          - option "Goretzka"
+          - option "Gramparo"
+          - option "Jack"
+          - option "Juanma"
+          - option "Juli"
+          - option "Juli_Bar"
+          - option "Katroll"
+          - option "Kite"
+          - option "Lea"
+          - option "Lucas"
+          - option "Mauro"
+          - option "Metox"
+          - option "Mexa"
+          - option "Never" [selected]
+          - option "Pardo"
+          - option "Pato"
+          - option "Peralta"
+          - option "Renzo"
+          - option "Reset"
+          - option "Santi_Balinia"
+          - option "Sparrow"
+          - option "Tito"
+          - option "Tomas_Diaz"
+          - option "Touni"
+          - option "Villarino"
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e166]: 
+        - generic [ref=e167]: Solo lectura
+      - button " Admin" [ref=e18] [cursor=pointer]:
+        - generic [ref=e19]: 
+        - generic [ref=e20]: Admin
+      - button " Salir" [disabled]:
+        - generic: 
+        - generic: Salir
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: 🏆
+        - combobox "🏆" [ref=e24]:
+          - option "Todas las temporadas"
+          - option "Temporada 1"
+          - option "Temporada 2"
+          - option "Temporada 3" [selected]
+      - button " Agregar Jugador" [disabled]:
+        - generic: 
+        - generic: Agregar Jugador
+    - text:    
+  - text:                                                                                                                                                                      
+  - generic [ref=e168]:
+    - generic [ref=e171]:
+      - button " Volver" [ref=e172] [cursor=pointer]:
+        - generic [ref=e173]: 
+        - text: Volver
+      - heading " Never" [level=4] [ref=e174]:
+        - generic [ref=e175]: 
+        - text: Never
+    - generic [ref=e178]:
+      - generic [ref=e179]:
+        - generic [ref=e180]: "87"
+        - generic [ref=e181]: POS
+        - generic [ref=e182]: 🏃
+      - generic [ref=e183]:
+        - generic [ref=e184]: Never
+        - generic [ref=e185]:
+          - generic [ref=e186]: 🏃 Atacante
+          - generic [ref=e187]: 🥅 Arquero
+          - generic [ref=e188]:
+            - generic [ref=e189]: 
+            - text: Pulmon 4
+          - generic [ref=e190]:
+            - generic [ref=e191]: 
+            - text: 28 pts
+        - generic [ref=e192]:
+          - generic [ref=e193]: Forma
+          - generic [ref=e194]: W
+          - generic [ref=e195]: W
+          - generic [ref=e196]: W
+          - generic [ref=e197]: W
+          - generic [ref=e198]: L
+          - generic [ref=e199]: D
+        - generic [ref=e200]:
+          - 'generic "Goleador: 10+ goles" [ref=e201]':
+            - text: ⚽
+            - generic [ref=e202]: Goleador
+          - 'generic "Muralla: 15+ atajadas" [ref=e203]':
+            - text: 🧤
+            - generic [ref=e204]: Muralla
+          - 'generic "Winrate elite: 60%+ winrate con 10+ PJ" [ref=e205]':
+            - text: 📈
+            - generic [ref=e206]: Winrate elite
+          - 'generic "Clutch: 3+ goles y 3+ asistencias" [ref=e207]':
+            - text: 💎
+            - generic [ref=e208]: Clutch
+          - 'generic "Crack: Rating 80+" [ref=e209]':
+            - text: ⭐
+            - generic [ref=e210]: Crack
+    - generic [ref=e211]:
+      - text: 
+      - generic [ref=e214]:
+        - generic [ref=e215]:
+          - generic [ref=e216]: "13"
+          - generic [ref=e217]: Partidos
+        - generic [ref=e218]:
+          - generic [ref=e219]: 69.2%
+          - generic [ref=e220]: Winrate
+        - generic [ref=e223]:
+          - generic [ref=e224]: "28"
+          - generic [ref=e225]: Puntos
+        - generic [ref=e226]:
+          - generic [ref=e227]: "25"
+          - generic [ref=e228]: G+A
+        - generic [ref=e229]:
+          - generic [ref=e230]: ⚽ 20
+          - generic [ref=e231]: Goles
+        - generic [ref=e232]:
+          - generic [ref=e233]: 🎯 5
+          - generic [ref=e234]: Asistencias
+        - generic [ref=e235]:
+          - generic [ref=e236]: 🧤 143
+          - generic [ref=e237]: Atajadas
+        - generic [ref=e238]:
+          - generic [ref=e239]: 👑 3 🔥 1
+          - generic [ref=e240]: MVP / ACE
+    - tablist [ref=e241]:
+      - tab " Mis Goles" [ref=e242] [cursor=pointer]:
+        - generic [ref=e243]: 
+        - text: Mis Goles
+      - tab " Mis Asistencias" [ref=e244] [cursor=pointer]:
+        - generic [ref=e245]: 
+        - text: Mis Asistencias
+      - tab " Mis cagadas" [ref=e246] [cursor=pointer]:
+        - generic [ref=e247]: 
+        - text: Mis cagadas
+      - tab " Estadísticas" [ref=e248] [cursor=pointer]:
+        - generic [ref=e249]: 
+        - text: Estadísticas
+      - tab " Sinergias" [selected] [ref=e250] [cursor=pointer]:
+        - generic [ref=e251]: 
+        - text: Sinergias
+      - tab " Rivalidades" [ref=e252] [cursor=pointer]:
+        - generic [ref=e253]: 
+        - text: Rivalidades
+    - generic [ref=e254]:
+      - text:   
+      - tabpanel " Sinergias" [ref=e397]:
+        - generic [ref=e548]:
+          - generic [ref=e550]:
+            - generic [ref=e551]:
+              - generic [ref=e552]: 
+              - text: Buscar compañero
+            - generic [ref=e553]:
+              - generic [ref=e555]:
+                - textbox "Nombre del compañero..." [ref=e556]: Facu
+                - button "Buscar" [ref=e557] [cursor=pointer]
+              - generic [ref=e559]: Winrate con 3+ partidos juntos
+            - generic [ref=e560]:
+              - generic [ref=e561]:
+                - generic [ref=e562]:
+                  - generic [ref=e563]: Facu
+                  - generic [ref=e564]: 2 PJ juntos
+                - generic [ref=e565]:
+                  - generic [ref=e566]: 100.0% WR
+                  - generic [ref=e567]: 2 G+A
+              - generic [ref=e568]:
+                - generic [ref=e569]: Dupla con Facu
+                - generic [ref=e570]:
+                  - generic [ref=e572]:
+                    - generic [ref=e573]: G+A del duo
+                    - generic [ref=e574]: "2"
+                  - generic [ref=e576]:
+                    - generic [ref=e577]: Never asistio
+                    - generic [ref=e578]: "0"
+                    - generic [ref=e579]: a Facu
+                  - generic [ref=e581]:
+                    - generic [ref=e582]: Facu asistio
+                    - generic [ref=e583]: "2"
+                    - generic [ref=e584]: a Never
+                - generic [ref=e585]:
+                  - generic [ref=e586]: 
+                  - text: Detalle G+A
+                - generic [ref=e587]:
+                  - generic [ref=e588]:
+                    - generic [ref=e589]:
+                      - generic [ref=e590]: Facu asistio a Never
+                      - generic [ref=e591]:
+                        - text: 14/02/2026 · min 20:41 ·
+                        - link "ver video" [ref=e592] [cursor=pointer]:
+                          - /url: https://youtu.be/CjSJ6G10O6w?t=1241
+                    - generic [ref=e593]: G+A
+                  - generic [ref=e594]:
+                    - generic [ref=e595]:
+                      - generic [ref=e596]: Facu asistio a Never
+                      - generic [ref=e597]:
+                        - text: 24/01/2026 · min 63' ·
+                        - link "ver video" [ref=e598] [cursor=pointer]:
+                          - /url: https://youtu.be/TAm0y9nkDoE?t=3780
+                    - generic [ref=e599]: G+A
+          - generic [ref=e601]:
+            - generic [ref=e602]: Mejores compañeros
+            - generic [ref=e603]: Mayor winrate compartido
+            - generic [ref=e604]:
+              - generic [ref=e605]:
+                - generic [ref=e606]:
+                  - generic [ref=e607]: "1"
+                  - generic [ref=e608]:
+                    - generic [ref=e609]: Boska
+                    - generic [ref=e610]: 6 PJ
+                - generic [ref=e612]: 83.3%
+              - generic [ref=e613]:
+                - generic [ref=e614]:
+                  - generic [ref=e615]: "2"
+                  - generic [ref=e616]:
+                    - generic [ref=e617]: Ggasti
+                    - generic [ref=e618]: 5 PJ
+                - generic [ref=e620]: 80.0%
+              - generic [ref=e621]:
+                - generic [ref=e622]:
+                  - generic [ref=e623]: "3"
+                  - generic [ref=e624]:
+                    - generic [ref=e625]: Cogorno
+                    - generic [ref=e626]: 4 PJ
+                - generic [ref=e628]: 75.0%
+              - generic [ref=e629]:
+                - generic [ref=e630]:
+                  - generic [ref=e631]: "4"
+                  - generic [ref=e632]:
+                    - generic [ref=e633]: Berni
+                    - generic [ref=e634]: 7 PJ
+                - generic [ref=e636]: 71.4%
+              - generic [ref=e637]:
+                - generic [ref=e638]:
+                  - generic [ref=e639]: "5"
+                  - generic [ref=e640]:
+                    - generic [ref=e641]: Colidio
+                    - generic [ref=e642]: 3 PJ
+                - generic [ref=e644]: 66.7%
+          - generic [ref=e646]:
+            - generic [ref=e647]: Peores compañeros
+            - generic [ref=e648]: Menor winrate compartido
+            - generic [ref=e649]:
+              - generic [ref=e650]:
+                - generic [ref=e651]:
+                  - generic [ref=e652]: "1"
+                  - generic [ref=e653]:
+                    - generic [ref=e654]: Tomas_Diaz
+                    - generic [ref=e655]: 3 PJ
+                - generic [ref=e657]: 33.3%
+              - generic [ref=e658]:
+                - generic [ref=e659]:
+                  - generic [ref=e660]: "2"
+                  - generic [ref=e661]:
+                    - generic [ref=e662]: Mexa
+                    - generic [ref=e663]: 4 PJ
+                - generic [ref=e665]: 50.0%
+              - generic [ref=e666]:
+                - generic [ref=e667]:
+                  - generic [ref=e668]: "3"
+                  - generic [ref=e669]:
+                    - generic [ref=e670]: Kite
+                    - generic [ref=e671]: 5 PJ
+                - generic [ref=e673]: 60.0%
+              - generic [ref=e674]:
+                - generic [ref=e675]:
+                  - generic [ref=e676]: "4"
+                  - generic [ref=e677]:
+                    - generic [ref=e678]: Fachita
+                    - generic [ref=e679]: 5 PJ
+                - generic [ref=e681]: 60.0%
+              - generic [ref=e682]:
+                - generic [ref=e683]:
+                  - generic [ref=e684]: "5"
+                  - generic [ref=e685]:
+                    - generic [ref=e686]: Colidio
+                    - generic [ref=e687]: 3 PJ
+                - generic [ref=e689]: 66.7%
+          - generic [ref=e691]:
+            - generic [ref=e692]: G+A con compañeros
+            - generic [ref=e693]: Conexiones directas registradas
+            - generic [ref=e694]:
+              - generic [ref=e695]:
+                - generic [ref=e696]:
+                  - generic [ref=e697]: "1"
+                  - generic [ref=e698]:
+                    - generic [ref=e699]: Boska
+                    - generic [ref=e700]: 6 PJ
+                - generic [ref=e702]: 4 G+A
+              - generic [ref=e703]:
+                - generic [ref=e704]:
+                  - generic [ref=e705]: "2"
+                  - generic [ref=e706]:
+                    - generic [ref=e707]: Fachita
+                    - generic [ref=e708]: 5 PJ
+                - generic [ref=e710]: 3 G+A
+              - generic [ref=e711]:
+                - generic [ref=e712]:
+                  - generic [ref=e713]: "3"
+                  - generic [ref=e714]:
+                    - generic [ref=e715]: Colidio
+                    - generic [ref=e716]: 3 PJ
+                - generic [ref=e718]: 2 G+A
+              - generic [ref=e719]:
+                - generic [ref=e720]:
+                  - generic [ref=e721]: "4"
+                  - generic [ref=e722]:
+                    - generic [ref=e723]: Facu
+                    - generic [ref=e724]: 2 PJ
+                - generic [ref=e726]: 2 G+A
+              - generic [ref=e727]:
+                - generic [ref=e728]:
+                  - generic [ref=e729]: "5"
+                  - generic [ref=e730]:
+                    - generic [ref=e731]: Tomas_Diaz
+                    - generic [ref=e732]: 3 PJ
+                - generic [ref=e734]: 1 G+A
+          - generic [ref=e736]: Winrate con 3+ partidos juntos. G+A muestra conexiones directas registradas.
+  - contentinfo [ref=e156]:
+    - generic [ref=e157]:
+      - paragraph [ref=e158]: Hecho con ❤️ por
+      - paragraph [ref=e159]: Leopoldo
+  - text:                      
+  - button " Armar Equipos" [ref=e161] [cursor=pointer]:
+    - generic [ref=e162]: 
+    - generic [ref=e163]: Armar Equipos
+  - text:   
