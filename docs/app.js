@@ -8987,44 +8987,58 @@ const initApp = () => {
       return '';
     };
     
-    // Función para crear badges de colores según el valor
-    const createBadge = (value, type = 'default') => {
-      const val = value ?? 0;
-      let colorClass = 'bg-secondary';
-      if (type === 'winrate') {
-        if (val >= 70) colorClass = 'bg-success';
-        else if (val >= 50) colorClass = 'bg-warning';
-        else colorClass = 'bg-danger';
-      } else if (type === 'points') {
-        if (val >= 100) colorClass = 'bg-success';
-        else if (val >= 50) colorClass = 'bg-warning';
-        else colorClass = 'bg-secondary';
-      }
-      return `<span class="badge ${colorClass}">${val}</span>`;
+    const obtenerNumeroEstadistica = (value) => {
+      const numero = Number(value);
+      return Number.isFinite(numero) ? numero : 0;
     };
 
-    // Función para mostrar posiciones con iconos
-    const mostrarPosiciones = (jugadorPosiciones) => {
-      if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
-        return '<span class="text-muted small">Sin posición</span>';
-      }
-      
-      const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
-      const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
-      
-      let html = '';
-      if (primaria) {
-        const icono = iconosPosiciones[primaria.posicion_id] || '❓';
-        const nombre = nombresPosiciones[primaria.posicion_id] || 'N/A';
-        html += `<span class="badge bg-primary me-1" title="Posición Principal">${icono} ${nombre}</span>`;
-      }
-      if (secundaria) {
-        const icono = iconosPosiciones[secundaria.posicion_id] || '❓';
-        const nombre = nombresPosiciones[secundaria.posicion_id] || 'N/A';
-        html += `<span class="badge bg-outline-secondary" title="Posición Secundaria">${icono} ${nombre}</span>`;
-      }
-      
-      return html || '<span class="text-muted small">Sin posición</span>';
+    const obtenerTonoWinrate = (value) => {
+      const val = obtenerNumeroEstadistica(value);
+      if (val >= 60) return 'high';
+      if (val >= 40) return 'mid';
+      return 'low';
+    };
+
+    const renderizarPuntosTabla = (value) => {
+      const val = obtenerNumeroEstadistica(value);
+      return `
+        <span class="stats-score" title="${val} puntos">
+          <span class="stats-score-value">${val}</span>
+          <span class="stats-score-label">PTS</span>
+        </span>
+      `;
+    };
+
+    const renderizarWinrateTabla = (value) => {
+      const val = obtenerNumeroEstadistica(value);
+      const ancho = Math.max(0, Math.min(100, val));
+      return `
+        <span class="stats-winrate-chip stats-tone-${obtenerTonoWinrate(val)}" title="${val}% winrate">
+          <span class="stats-winrate-top">
+            <span class="stats-winrate-value">${val}</span>
+            <span class="stats-winrate-label">%</span>
+          </span>
+          <span class="stats-winrate-bar"><span style="width: ${ancho}%;"></span></span>
+        </span>
+      `;
+    };
+
+    const renderizarMetricaTabla = (value, label, tone = 'neutral') => {
+      const val = obtenerNumeroEstadistica(value);
+      return `
+        <span class="stats-metric stats-metric-${tone}" title="${label}: ${val}">
+          <span class="stats-metric-value">${val}</span>
+          <span class="stats-metric-label">${label}</span>
+        </span>
+      `;
+    };
+
+    const renderizarNumeroTabla = (value, tone, decimals = 0, title = '') => {
+      const val = obtenerNumeroEstadistica(value);
+      const texto = decimals > 0 ? val.toFixed(decimals) : String(val);
+      const zeroClass = val === 0 ? ' stats-zero' : '';
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<span class="stats-number stats-number-${tone}${zeroClass}"${titleAttr}>${texto}</span>`;
     };
 
     // Calcular skill individual para todos los jugadores
@@ -9065,7 +9079,6 @@ const initApp = () => {
       const golesFavorEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_favor_equipo');
       const golesRecibidosEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_recibidos_equipo');
       
-      // Crear badge de posición
       const posicion = index + 1;
       let positionClass = 'position-other';
       if (posicion === 1) positionClass = 'position-1';
@@ -9075,16 +9088,17 @@ const initApp = () => {
       const skillIndividual = calcularSkillIndividual(jugadorData);
       const colorSkill = obtenerColorSkill(skillIndividual);
 
+      tr.classList.add('stats-row');
       tr.innerHTML = `
-        <td class="text-center">
+        <td class="text-center stats-col-rank stats-sticky stats-sticky-rank">
           <div class="position-badge ${positionClass}">${posicion}</div>
         </td>
-        <td class="text-center">
-          <span class="badge ${colorSkill} fw-bold" title="Skill Individual">
+        <td class="text-center stats-col-skill stats-sticky stats-sticky-skill">
+          <span class="stats-skill-badge ${colorSkill}" title="Skill individual">
             ${skillIndividual.toFixed(1)}
           </span>
         </td>
-        <td class="fw-bold text-white">
+        <td class="fw-bold stats-player-cell stats-col-player stats-sticky stats-sticky-player">
           <div class="d-flex align-items-start justify-content-between gap-2">
             <div class="flex-grow-1" style="min-width: 0;">
               <div class="text-truncate me-1">${renderizarAccesoPerfilJugador(jugadorData.jugadores.id, jugadorData.jugadores.nombre, 'text-white fw-bold text-start d-inline-block w-100 text-truncate')}</div>
@@ -9092,22 +9106,21 @@ const initApp = () => {
             ${crearIconoRacha(jugadorData.jugadores.id)}
           </div>
         </td>
-        <td>${mostrarPosiciones(jugadorData.jugadores.jugador_posicion)}</td>
-        <td class="text-center">${createBadge(jugadorData.total_puntos, 'points')}</td>
-        <td class="text-center">${createBadge(jugadorData.winrate, 'winrate')}%</td>
-        <td class="text-center"><span class="badge bg-outline-light">${jugadorData.pj}</span></td>
-        <td class="text-center"><span class="badge bg-success">${jugadorData.pg}</span></td>
-        <td class="text-center"><span class="badge bg-warning">${jugadorData.pe}</span></td>
-        <td class="text-center"><span class="badge bg-danger">${jugadorData.pp}</span></td>
-        <td class="text-center fw-semibold text-success">${jugadorData.goles}</td>
-        <td class="text-center fw-semibold text-info">${jugadorData.asistencias}</td>
-        <td class="text-center fw-semibold text-danger">${jugadorData.cagadas_en_gol}</td>
-        <td class="text-center"><span class="badge bg-primary">${jugadorData.mvp_count}</span></td>
-        <td class="text-center"><span class="badge bg-secondary">${jugadorData.ace_count}</span></td>
-        <td class="text-center fw-semibold text-warning">${jugadorData.atajadas}</td>
-        <td class="text-center fw-semibold text-success" title="${jugadorData.goles_favor_equipo || 0} goles del equipo en ${jugadorData.pj || 0} partidos">${golesFavorEquipoPP.toFixed(2)}</td>
-        <td class="text-center fw-semibold text-danger" title="${jugadorData.goles_recibidos_equipo || 0} goles recibidos del equipo en ${jugadorData.pj || 0} partidos">${golesRecibidosEquipoPP.toFixed(2)}</td>
-        <td class="text-center">
+        <td class="text-center stats-col-points">${renderizarPuntosTabla(jugadorData.total_puntos)}</td>
+        <td class="text-center stats-col-winrate">${renderizarWinrateTabla(jugadorData.winrate)}</td>
+        <td class="text-center stats-col-pj">${renderizarMetricaTabla(jugadorData.pj, 'PJ', 'neutral')}</td>
+        <td class="text-center stats-col-record">${renderizarMetricaTabla(jugadorData.pg, 'PG', 'win')}</td>
+        <td class="text-center stats-col-record">${renderizarMetricaTabla(jugadorData.pe, 'E', 'draw')}</td>
+        <td class="text-center stats-col-record">${renderizarMetricaTabla(jugadorData.pp, 'PP', 'loss')}</td>
+        <td class="text-center stats-col-goals">${renderizarNumeroTabla(jugadorData.goles, 'goals')}</td>
+        <td class="text-center stats-col-assists">${renderizarNumeroTabla(jugadorData.asistencias, 'assists')}</td>
+        <td class="text-center stats-col-mistakes">${renderizarNumeroTabla(jugadorData.cagadas_en_gol, 'mistakes')}</td>
+        <td class="text-center stats-col-badge">${renderizarNumeroTabla(jugadorData.mvp_count, 'assists')}</td>
+        <td class="text-center stats-col-badge">${renderizarNumeroTabla(jugadorData.ace_count, 'saves')}</td>
+        <td class="text-center stats-col-saves">${renderizarNumeroTabla(jugadorData.atajadas, 'saves')}</td>
+        <td class="text-center stats-col-team">${renderizarNumeroTabla(golesFavorEquipoPP, 'team-for', 2, `${jugadorData.goles_favor_equipo || 0} goles del equipo en ${jugadorData.pj || 0} partidos`)}</td>
+        <td class="text-center stats-col-team">${renderizarNumeroTabla(golesRecibidosEquipoPP, 'team-against', 2, `${jugadorData.goles_recibidos_equipo || 0} goles recibidos del equipo en ${jugadorData.pj || 0} partidos`)}</td>
+        <td class="text-center stats-col-actions">
           <div class="btn-group" role="group">
             <button onclick="abrirModalEditar('${jugadorData.jugadores.id}')" class="btn btn-sm btn-outline-primary" title="Editar jugador">
               <i class="bi bi-pencil"></i>
@@ -12317,7 +12330,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Variables globales del mundialito
   let mundialPartidos = [];
   let jugadoresMundial = new Map(); // Map<jugadorId, data>
+  let parejasMundial = new Map(); // Map<jugadorAId-jugadorBId, data>
+  let partidosJugadorParejas = new Map(); // Map<jugadorId, partidos jugados para congelar parejas>
   let temporadasMundial = [];
+  const PARTIDOS_SIN_PAREJA_PARA_CONGELAR = 5;
   const FASES_MUNDIALITO = ['grupos', '8vos', '4tos', 'semis', 'final'];
   const SIGUIENTE_FASE_MUNDIALITO = {
     grupos: '8vos',
@@ -12393,6 +12409,81 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     } else {
       return 'derrota';
     }
+  };
+
+  const crearParejaMundial = (jugadorA, jugadorB) => ({
+    id: `${jugadorA.id}-${jugadorB.id}`,
+    jugador1Id: jugadorA.id,
+    jugador2Id: jugadorB.id,
+    jugador1Nombre: jugadorA.nombre,
+    jugador2Nombre: jugadorB.nombre,
+    nombre: `${jugadorA.nombre} + ${jugadorB.nombre}`,
+    fase: 'grupos',
+    victorias: 0,
+    derrotas: 0,
+    empates: 0,
+    victoriasRun: 0,
+    derrotasRun: 0,
+    empatesRun: 0,
+    victoriasFase: 0,
+    derrotasFase: 0,
+    empatesFase: 0,
+    partidosFase: 0,
+    campeon: false,
+    ultimoPartido: null,
+    ultimoConteoJugador1: 0,
+    ultimoConteoJugador2: 0,
+    congelada: false,
+    motivoCongelada: null,
+    historialFases: []
+  });
+
+  const normalizarJugadoresPareja = (jugadorA, jugadorB) => {
+    const jugadores = [jugadorA, jugadorB].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    return jugadores;
+  };
+
+  const obtenerClavePareja = (jugadorA, jugadorB) => {
+    const [primero, segundo] = normalizarJugadoresPareja(jugadorA, jugadorB);
+    return `${primero.id}-${segundo.id}`;
+  };
+
+  const obtenerParejasPorEquipo = (partido) => {
+    const equipos = new Map();
+    (partido.jugador_partido || []).forEach(jp => {
+      if (!jp.jugador_id || !jp.equipo) return;
+      if (!equipos.has(jp.equipo)) equipos.set(jp.equipo, new Map());
+      equipos.get(jp.equipo).set(jp.jugador_id, {
+        id: jp.jugador_id,
+        nombre: jp.jugadores?.nombre || `Jugador ${jp.jugador_id}`,
+        equipo: jp.equipo
+      });
+    });
+
+    const parejas = [];
+    equipos.forEach((jugadoresMap, equipo) => {
+      const jugadores = Array.from(jugadoresMap.values());
+      for (let i = 0; i < jugadores.length; i += 1) {
+        for (let j = i + 1; j < jugadores.length; j += 1) {
+          const [jugadorA, jugadorB] = normalizarJugadoresPareja(jugadores[i], jugadores[j]);
+          parejas.push({ jugadorA, jugadorB, equipo });
+        }
+      }
+    });
+    return parejas;
+  };
+
+  const determinarResultadoEquipo = (partido, equipo) => {
+    const equipoGanador = partido.equipo_ganador;
+    if (equipoGanador === null || equipoGanador === 0) return 'empate';
+    return equipoGanador === equipo ? 'victoria' : 'derrota';
+  };
+
+  const registrarPartidosJugadoresParejas = (partido) => {
+    const jugadoresPartido = new Set((partido.jugador_partido || []).map(jp => jp.jugador_id).filter(Boolean));
+    jugadoresPartido.forEach(jugadorId => {
+      partidosJugadorParejas.set(jugadorId, (partidosJugadorParejas.get(jugadorId) || 0) + 1);
+    });
   };
 
   // Función de hash simple para generar seed determinística
@@ -12952,6 +13043,195 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     return seededRandom() < umbral;
   };
 
+  const tirarMonedaParejaDeterministica = (partidoId, parejaId, fase) => {
+    const seedString = `${partidoId}-${parejaId}-${fase}-parejas-${(window.mundialitoSalt||'')}`;
+    const seed = hashCode(seedString);
+    const seededRandom = createSeededRandom(seed);
+    const umbral = (typeof window.mundialitoUmbralMoneda === 'number') ? window.mundialitoUmbralMoneda : 0.5;
+    return seededRandom() < umbral;
+  };
+
+  const resetearParejaAGrupos = (pareja) => {
+    pareja.fase = 'grupos';
+    pareja.victoriasRun = 0;
+    pareja.derrotasRun = 0;
+    pareja.empatesRun = 0;
+    pareja.victoriasFase = 0;
+    pareja.derrotasFase = 0;
+    pareja.empatesFase = 0;
+    pareja.partidosFase = 0;
+  };
+
+  const reiniciarContadoresFasePareja = (pareja) => {
+    pareja.victoriasFase = 0;
+    pareja.derrotasFase = 0;
+    pareja.empatesFase = 0;
+    pareja.partidosFase = 0;
+  };
+
+  const avanzarParejaMundial = (pareja) => {
+    const faseAnterior = pareja.fase;
+    pareja.fase = SIGUIENTE_FASE_MUNDIALITO[pareja.fase] || 'campeon';
+    reiniciarContadoresFasePareja(pareja);
+    if (pareja.fase === 'campeon') {
+      pareja.campeon = true;
+    }
+    return faseAnterior;
+  };
+
+  const obtenerBadgeFasePareja = (pareja) => {
+    if (pareja.fase === 'campeon') {
+      return { badge: 'bg-success', text: 'Campeones', descripcion: 'Ganaron el mundial de parejas' };
+    }
+
+    const record = `${pareja.victoriasFase}V-${pareja.empatesFase}E-${pareja.derrotasFase}D`;
+    switch (pareja.fase) {
+      case 'grupos': return { badge: 'bg-secondary', text: 'Grupos', descripcion: `${record} (${pareja.partidosFase}/3)` };
+      case '8vos': return { badge: 'bg-primary', text: '8vos', descripcion: `${record} (${pareja.partidosFase}/3)` };
+      case '4tos': return { badge: 'bg-info', text: '4tos', descripcion: `${record} (${pareja.partidosFase}/3)` };
+      case 'semis': return { badge: 'bg-warning text-dark', text: 'Semis', descripcion: `${record} (${pareja.partidosFase}/3)` };
+      case 'final': return { badge: 'bg-danger', text: 'Final', descripcion: `${record} (${pareja.partidosFase}/3)` };
+      default: return { badge: 'bg-dark', text: 'Indefinido', descripcion: 'Error' };
+    }
+  };
+
+  const procesarPartidoParejasMundial = (partido) => {
+    if (!partido.jugador_partido) return [];
+
+    const cambiosFase = [];
+    const parejasPartido = obtenerParejasPorEquipo(partido);
+
+    parejasPartido.forEach(({ jugadorA, jugadorB, equipo }) => {
+      const clave = obtenerClavePareja(jugadorA, jugadorB);
+      let pareja = parejasMundial.get(clave);
+
+      if (!pareja) {
+        pareja = crearParejaMundial(jugadorA, jugadorB);
+        parejasMundial.set(clave, pareja);
+      }
+
+      if (pareja.fase === 'campeon') {
+        resetearParejaAGrupos(pareja);
+      }
+
+      const resultado = determinarResultadoEquipo(partido, equipo);
+      pareja.ultimoPartido = {
+        id: partido.id,
+        fecha: partido.fecha,
+        resultado
+      };
+      pareja.ultimoConteoJugador1 = partidosJugadorParejas.get(pareja.jugador1Id) || 0;
+      pareja.ultimoConteoJugador2 = partidosJugadorParejas.get(pareja.jugador2Id) || 0;
+      pareja.congelada = false;
+      pareja.motivoCongelada = null;
+
+      pareja.partidosFase += 1;
+      if (resultado === 'victoria') {
+        pareja.victorias += 1;
+        pareja.victoriasRun += 1;
+        pareja.victoriasFase += 1;
+      } else if (resultado === 'derrota') {
+        pareja.derrotas += 1;
+        pareja.derrotasRun += 1;
+        pareja.derrotasFase += 1;
+      } else {
+        pareja.empates += 1;
+        pareja.empatesRun += 1;
+        pareja.empatesFase += 1;
+      }
+
+      let resolucion = null;
+      if (pareja.victoriasFase >= 2) {
+        resolucion = { pasa: true, metodo: 'automatico', razon: '2 victorias' };
+      } else if (pareja.derrotasFase >= 2) {
+        resolucion = { pasa: false, metodo: 'automatico', razon: '2 derrotas' };
+      } else if (pareja.partidosFase >= 3) {
+        const pasaMoneda = tirarMonedaParejaDeterministica(partido.id, pareja.id, pareja.fase);
+        resolucion = { pasa: pasaMoneda, metodo: 'moneda', razon: '3 partidos sin definicion' };
+      }
+
+      if (!resolucion) return;
+
+      const faseAnterior = pareja.fase;
+      const record = `${pareja.victoriasFase}V-${pareja.empatesFase}E-${pareja.derrotasFase}D`;
+      const recordRun = `${pareja.victoriasRun}V-${pareja.empatesRun}E-${pareja.derrotasRun}D`;
+
+      if (resolucion.pasa) {
+        const faseCompletada = avanzarParejaMundial(pareja);
+        pareja.historialFases.push({
+          fase: faseCompletada,
+          completada: true,
+          fecha: partido.fecha,
+          record,
+          recordRun,
+          metodo: resolucion.metodo,
+          razon: resolucion.razon,
+          partidoId: partido.id
+        });
+
+        if (pareja.fase === 'campeon') {
+          pareja.historialFases.push({
+            fase: 'campeon',
+            completada: true,
+            fecha: partido.fecha,
+            record,
+            recordRun,
+            metodo: resolucion.metodo,
+            partidoId: partido.id
+          });
+        }
+
+        cambiosFase.push({
+          pareja: pareja.nombre,
+          tipo: 'clasificada',
+          fase: pareja.fase,
+          razon: resolucion.razon
+        });
+      } else {
+        resetearParejaAGrupos(pareja);
+        pareja.historialFases.push({
+          fase: `eliminado_${faseAnterior}`,
+          completada: false,
+          fecha: partido.fecha,
+          record,
+          recordRun,
+          metodo: resolucion.metodo,
+          razon: resolucion.razon,
+          partidoId: partido.id
+        });
+        pareja.victoriasRun = 0;
+        pareja.derrotasRun = 0;
+        pareja.empatesRun = 0;
+
+        cambiosFase.push({
+          pareja: pareja.nombre,
+          tipo: 'eliminada',
+          fase: faseAnterior,
+          razon: resolucion.razon
+        });
+      }
+    });
+
+    partido.cambiosMundialitoParejas = cambiosFase;
+    return cambiosFase;
+  };
+
+  const actualizarParejasCongeladasMundial = () => {
+    parejasMundial.forEach(pareja => {
+      const partidosSinJugador1 = (partidosJugadorParejas.get(pareja.jugador1Id) || 0) - (pareja.ultimoConteoJugador1 || 0);
+      const partidosSinJugador2 = (partidosJugadorParejas.get(pareja.jugador2Id) || 0) - (pareja.ultimoConteoJugador2 || 0);
+      const jugador1ActivoSinJugador2 = partidosSinJugador1 >= PARTIDOS_SIN_PAREJA_PARA_CONGELAR && partidosSinJugador2 === 0;
+      const jugador2ActivoSinJugador1 = partidosSinJugador2 >= PARTIDOS_SIN_PAREJA_PARA_CONGELAR && partidosSinJugador1 === 0;
+
+      if (jugador1ActivoSinJugador2 || jugador2ActivoSinJugador1) {
+        const jugadorCongelante = jugador1ActivoSinJugador2 ? pareja.jugador1Nombre : pareja.jugador2Nombre;
+        const jugadorInactivo = jugador1ActivoSinJugador2 ? pareja.jugador2Nombre : pareja.jugador1Nombre;
+        pareja.congelada = true;
+        pareja.motivoCongelada = `${jugadorCongelante} jugo ${PARTIDOS_SIN_PAREJA_PARA_CONGELAR} partidos y ${jugadorInactivo} no jugo ninguno`;
+      }
+    });
+  };
+
   // Función para evaluar si pasa de fase de grupos
   const evaluarPaseGrupos = (jugador) => {
     const { victoriasGrupos, empatesGrupos, derrotasGrupos } = jugador;
@@ -13288,6 +13568,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       }
       
       jugadoresMundial.clear();
+      parejasMundial.clear();
+      partidosJugadorParejas.clear();
       mundialPartidos = await cargarPartidosMundialito();
       
       if (mundialPartidos.length === 0) {
@@ -13297,10 +13579,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         return;
       }
 
-      mundialPartidos.forEach(partido => procesarPartidoMundial(partido));
+      mundialPartidos.forEach(partido => {
+        registrarPartidosJugadoresParejas(partido);
+        procesarPartidoMundial(partido);
+        procesarPartidoParejasMundial(partido);
+      });
+      actualizarParejasCongeladasMundial();
       
       mostrarFixtureMundialito();
+      mostrarFixtureParejasMundialito();
       actualizarEstadisticasMundialito();
+      actualizarEstadisticasParejasMundialito();
       
       // Actualizar campeones mundiales después de procesar
       await loadCampeonesMundiales();
@@ -13501,6 +13790,233 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     }, 100);
   };
 
+  const obtenerRankingPareja = (pareja) => {
+    const faseRank = { grupos: 0, '8vos': 1, '4tos': 2, semis: 3, final: 4, campeon: 5 };
+    return {
+      fase: faseRank[pareja.fase] ?? 0,
+      victoriasFase: pareja.victoriasFase,
+      empatesFase: pareja.empatesFase,
+      victorias: pareja.victorias,
+      partidosFase: pareja.partidosFase,
+      derrotasFase: pareja.derrotasFase,
+      derrotas: pareja.derrotas
+    };
+  };
+
+  const compararParejasMundial = (a, b) => {
+    const rankA = obtenerRankingPareja(a);
+    const rankB = obtenerRankingPareja(b);
+
+    if (rankB.fase !== rankA.fase) return rankB.fase - rankA.fase;
+    if (rankB.victoriasFase !== rankA.victoriasFase) return rankB.victoriasFase - rankA.victoriasFase;
+    if (rankB.empatesFase !== rankA.empatesFase) return rankB.empatesFase - rankA.empatesFase;
+    if (rankB.victorias !== rankA.victorias) return rankB.victorias - rankA.victorias;
+    if (rankA.derrotasFase !== rankB.derrotasFase) return rankA.derrotasFase - rankB.derrotasFase;
+    if (rankA.derrotas !== rankB.derrotas) return rankA.derrotas - rankB.derrotas;
+    if (rankB.partidosFase !== rankA.partidosFase) return rankB.partidosFase - rankA.partidosFase;
+    return a.nombre.localeCompare(b.nombre);
+  };
+
+  const obtenerParejasActivasMundial = () => {
+    const parejasActivas = new Map();
+    const parejaPorJugador = new Map();
+
+    const liberarPareja = (pareja) => {
+      parejasActivas.delete(pareja.id);
+      if (parejaPorJugador.get(pareja.jugador1Id)?.id === pareja.id) {
+        parejaPorJugador.delete(pareja.jugador1Id);
+      }
+      if (parejaPorJugador.get(pareja.jugador2Id)?.id === pareja.id) {
+        parejaPorJugador.delete(pareja.jugador2Id);
+      }
+    };
+
+    const activarPareja = (pareja) => {
+      parejasActivas.set(pareja.id, pareja);
+      parejaPorJugador.set(pareja.jugador1Id, pareja);
+      parejaPorJugador.set(pareja.jugador2Id, pareja);
+    };
+
+    Array.from(parejasMundial.values()).filter(pareja => !pareja.congelada).sort(compararParejasMundial).forEach(pareja => {
+      const parejaJugador1 = parejaPorJugador.get(pareja.jugador1Id);
+      const parejaJugador2 = parejaPorJugador.get(pareja.jugador2Id);
+
+      if (!parejaJugador1 && !parejaJugador2) {
+        activarPareja(pareja);
+        return;
+      }
+
+      // Una pareja nueva solo puede mejorar una pareja existente si el otro jugador esta libre.
+      if (parejaJugador1 && parejaJugador2) return;
+
+      const parejaActual = parejaJugador1 || parejaJugador2;
+      const jugadorLibreId = parejaJugador1 ? pareja.jugador2Id : pareja.jugador1Id;
+      if (parejaPorJugador.has(jugadorLibreId)) return;
+
+      if (pareja.victorias > parejaActual.victorias) {
+        liberarPareja(parejaActual);
+        activarPareja(pareja);
+      }
+    });
+
+    return Array.from(parejasActivas.values()).sort(compararParejasMundial);
+  };
+
+  const mostrarFixtureParejasMundialito = () => {
+    const container = document.getElementById('mundialito-parejas-fixture');
+    if (!container) return;
+
+    const parejasActivas = obtenerParejasActivasMundial();
+    const parejasCongeladas = Array.from(parejasMundial.values()).filter(pareja => pareja.congelada).sort(compararParejasMundial);
+
+    if (parejasActivas.length === 0 && parejasCongeladas.length === 0) {
+      container.innerHTML = '<div class="col-12"><div class="text-center py-4"><p class="text-light-emphasis">No hay parejas para mostrar</p></div></div>';
+      return;
+    }
+
+    const parejasPorFase = {
+      campeon: [],
+      final: [],
+      semis: [],
+      '4tos': [],
+      '8vos': [],
+      grupos: []
+    };
+
+    parejasActivas.forEach(pareja => {
+      parejasPorFase[pareja.fase]?.push(pareja);
+    });
+
+    Object.keys(parejasPorFase).forEach(fase => {
+      parejasPorFase[fase].sort(compararParejasMundial);
+    });
+
+    const generarTooltipPareja = (pareja) => {
+      const badge = obtenerBadgeFasePareja(pareja);
+      let tooltip = `<div class="fw-bold mb-2">Historial Pareja - ${pareja.nombre}</div>`;
+      tooltip += `<div class="mb-2">`;
+      tooltip += `<strong>Estado actual:</strong><br>`;
+      tooltip += `Fase: ${badge.text}<br>`;
+      tooltip += `Estado: ${pareja.congelada ? 'congelada' : 'activa, sin jugadores repetidos'}<br>`;
+      if (pareja.motivoCongelada) tooltip += `Motivo: ${pareja.motivoCongelada}<br>`;
+      tooltip += `Record total: ${pareja.victorias}V-${pareja.empates}E-${pareja.derrotas}D<br>`;
+      tooltip += `Run actual: ${pareja.victoriasRun}V-${pareja.empatesRun}E-${pareja.derrotasRun}D<br>`;
+      tooltip += `Instancia actual: ${pareja.victoriasFase}V-${pareja.empatesFase}E-${pareja.derrotasFase}D (${pareja.partidosFase}/3)`;
+      tooltip += `</div>`;
+
+      if (pareja.historialFases.length > 0) {
+        tooltip += `<div class="mb-2"><strong>Historial de fases:</strong><br>`;
+        pareja.historialFases.forEach((fase, index) => {
+          const fecha = fase.fecha ? new Date(fase.fecha + 'T12:00:00').toLocaleDateString('es-ES') : 'Sin fecha';
+          if (fase.completada) {
+            tooltip += `${index + 1}. Paso de ${fase.fase} (${fecha})`;
+          } else {
+            tooltip += `${index + 1}. Eliminada en ${fase.fase.replace('eliminado_', '')} (${fecha})`;
+          }
+          if (fase.record) tooltip += `<br>   Record: ${fase.record}`;
+          if (fase.recordRun) tooltip += `<br>   Run: ${fase.recordRun}`;
+          if (fase.metodo === 'moneda') tooltip += `<br>   Por moneda`;
+          tooltip += `<br>`;
+        });
+        tooltip += `</div>`;
+      }
+
+      if (pareja.ultimoPartido) {
+        const fechaUltimo = new Date(pareja.ultimoPartido.fecha + 'T12:00:00').toLocaleDateString('es-ES');
+        tooltip += `<div class="small text-light-emphasis"><strong>Ultimo partido:</strong> ${pareja.ultimoPartido.resultado} (${fechaUltimo})</div>`;
+      }
+
+      return tooltip;
+    };
+
+    const fases = [
+      { key: 'campeon', title: 'Campeonas', color: 'success' },
+      { key: 'final', title: 'Finalistas', color: 'danger' },
+      { key: 'semis', title: 'Semifinalistas', color: 'warning' },
+      { key: '4tos', title: 'Cuartos de Final', color: 'info' },
+      { key: '8vos', title: 'Octavos de Final', color: 'primary' },
+      { key: 'grupos', title: 'Fase de Grupos', color: 'secondary' }
+    ];
+
+    let html = '';
+    fases.forEach(fase => {
+      const parejas = parejasPorFase[fase.key];
+      if (!parejas || parejas.length === 0) return;
+
+      html += `
+        <div class="col-12 mb-4">
+          <h6 class="text-${fase.color} mb-3">${fase.title} (${parejas.length})</h6>
+          <div class="row g-2">
+            ${parejas.map(pareja => {
+              const badge = obtenerBadgeFasePareja(pareja);
+              const tooltipContent = generarTooltipPareja(pareja);
+              return `
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                  <div class="card bg-${fase.color} bg-opacity-10 border-${fase.color} border-opacity-25 mundialito-card"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
+                       data-bs-html="true"
+                       data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
+                    <div class="card-body p-3">
+                      <div class="fw-bold text-white mb-2">${pareja.nombre}</div>
+                      <span class="badge ${badge.badge} mb-1">${badge.text}</span>
+                      <div class="small text-light-emphasis">${badge.descripcion}</div>
+                      <div class="small text-light-emphasis mt-1">Run: ${pareja.victoriasRun}V - ${pareja.empatesRun}E - ${pareja.derrotasRun}D</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    if (parejasCongeladas.length > 0) {
+      html += `
+        <div class="col-12 mb-4">
+          <h6 class="text-muted mb-3">Parejas congeladas (${parejasCongeladas.length})</h6>
+          <div class="row g-2">
+            ${parejasCongeladas.map(pareja => {
+              const badge = obtenerBadgeFasePareja(pareja);
+              const tooltipContent = generarTooltipPareja(pareja);
+              return `
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                  <div class="card bg-secondary bg-opacity-10 border-secondary border-opacity-25 mundialito-card"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
+                       data-bs-html="true"
+                       data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
+                    <div class="card-body p-3">
+                      <div class="fw-bold text-white mb-2">${pareja.nombre}</div>
+                      <span class="badge bg-secondary mb-1">Congelada en ${badge.text}</span>
+                      <div class="small text-light-emphasis">${pareja.motivoCongelada || 'No ocupa jugadores activos'}</div>
+                      <div class="small text-light-emphasis mt-1">Run: ${pareja.victoriasRun}V - ${pareja.empatesRun}E - ${pareja.derrotasRun}D</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html || '<div class="col-12"><div class="text-center py-4"><p class="text-light-emphasis">No hay parejas para mostrar</p></div></div>';
+
+    setTimeout(() => {
+      const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+      tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+          html: true,
+          trigger: 'hover focus',
+          customClass: 'mundialito-tooltip',
+          template: '<div class="tooltip mundialito-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start" style="white-space: pre-line; max-width: 400px;"></div></div>'
+        });
+      });
+    }, 100);
+  };
+
   // Renderizar estadísticas: Histograma de llegada por fase máxima alcanzada
   const renderizarEstadisticasMundialito = () => {
     const canvas = document.getElementById('mundialito-histograma');
@@ -13593,6 +14109,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (champions) champions.textContent = Array.from(jugadoresMundial.values()).filter(j => j.campeon).length;
   };
 
+  const actualizarEstadisticasParejasMundialito = () => {
+    const totalParejas = document.getElementById('total-parejas');
+    const parejasGroups = document.getElementById('parejas-groups');
+    const parejasChampions = document.getElementById('parejas-champions');
+    const parejasActivas = obtenerParejasActivasMundial();
+
+    if (totalParejas) totalParejas.textContent = parejasActivas.length;
+    if (parejasGroups) parejasGroups.textContent = parejasActivas.filter(p => p.fase === 'grupos').length;
+    if (parejasChampions) parejasChampions.textContent = parejasActivas.filter(p => p.campeon).length;
+  };
+
   // Cargar temporadas
   const cargarTemporadasMundialito = async () => {
     try {
@@ -13617,6 +14144,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Reset mundialito
   const resetMundialito = () => {
     jugadoresMundial.clear();
+    parejasMundial.clear();
+    partidosJugadorParejas.clear();
     mundialPartidos = [];
     
     const container = document.getElementById('mundialito-fixture');
@@ -13624,7 +14153,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       container.innerHTML = `<div class="text-center py-4"><p class="text-light-emphasis">Presiona "Procesar Mundial" para generar el fixture</p></div>`;
     }
 
-    ['total-players', 'players-groups', 'champions'].forEach(id => {
+    const parejasContainer = document.getElementById('mundialito-parejas-fixture');
+    if (parejasContainer) {
+      parejasContainer.innerHTML = `<div class="text-center py-4"><p class="text-light-emphasis">Presiona "Procesar Mundial" para generar las parejas</p></div>`;
+    }
+
+    ['total-players', 'players-groups', 'champions', 'total-parejas', 'parejas-groups', 'parejas-champions'].forEach(id => {
       const element = document.getElementById(id);
       if (element) element.textContent = '-';
     });
@@ -13653,27 +14187,34 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     });
   }
 
-  // Subtabs: Fixture / Estadísticas
+  // Subtabs: Fixture / Parejas / Estadísticas
   const subFixtureBtn = document.getElementById('mundialito-sub-tab-fixture');
+  const subParejasBtn = document.getElementById('mundialito-sub-tab-parejas');
   const subStatsBtn = document.getElementById('mundialito-sub-tab-estadisticas');
   const subFixture = document.getElementById('mundialito-sub-fixture');
+  const subParejas = document.getElementById('mundialito-sub-parejas');
   const subStats = document.getElementById('mundialito-sub-estadisticas');
   const activarSubtab = (tab) => {
     if (!subFixtureBtn || !subStatsBtn || !subFixture || !subStats) return;
+    [subFixtureBtn, subParejasBtn, subStatsBtn].filter(Boolean).forEach(btn => btn.classList.remove('active'));
+    [subFixture, subParejas, subStats].filter(Boolean).forEach(panel => panel.classList.add('d-none'));
+
     if (tab === 'estadisticas') {
       subStatsBtn.classList.add('active');
-      subFixtureBtn.classList.remove('active');
       subStats.classList.remove('d-none');
-      subFixture.classList.add('d-none');
       renderizarEstadisticasMundialito();
+    } else if (tab === 'parejas' && subParejasBtn && subParejas) {
+      subParejasBtn.classList.add('active');
+      subParejas.classList.remove('d-none');
+      mostrarFixtureParejasMundialito();
+      actualizarEstadisticasParejasMundialito();
     } else {
       subFixtureBtn.classList.add('active');
-      subStatsBtn.classList.remove('active');
       subFixture.classList.remove('d-none');
-      subStats.classList.add('d-none');
     }
   };
   if (subFixtureBtn) subFixtureBtn.addEventListener('click', () => activarSubtab('fixture'));
+  if (subParejasBtn) subParejasBtn.addEventListener('click', () => activarSubtab('parejas'));
   if (subStatsBtn) subStatsBtn.addEventListener('click', () => activarSubtab('estadisticas'));
 
   // ===============================

@@ -288,6 +288,345 @@
       .position-2 { background: linear-gradient(135deg, #c0c0c0, #e5e5e5); color: #1a1a1a; }
       .position-3 { background: linear-gradient(135deg, #cd7f32, #deb887); color: #1a1a1a; }
       .position-other { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+
+      /* Tabla de estadisticas */
+      .stats-table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .stats-table-title {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: #f8fafc;
+        font-size: 1.15rem;
+        font-weight: 800;
+        margin: 0;
+      }
+
+      .stats-table-title i {
+        color: #38bdf8;
+      }
+
+      .stats-table-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.45rem 0.65rem;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 8px;
+      }
+
+      .stats-table-filter label {
+        color: #cbd5e1;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      .stats-table-filter .form-control {
+        width: 76px !important;
+        min-height: 34px;
+      }
+
+      .stats-table-wrap {
+        overflow: auto;
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 8px;
+        background: rgba(11, 18, 32, 0.72);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .table.stats-table {
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        font-size: 0.9rem !important;
+        line-height: 1.28 !important;
+        min-width: 1562px;
+        table-layout: fixed;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+      }
+
+      .table.stats-table th,
+      .table.stats-table td {
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        border-color: rgba(148, 163, 184, 0.08) !important;
+        letter-spacing: 0 !important;
+      }
+
+      .table.stats-table thead th {
+        font-size: 0.86rem !important;
+        text-transform: none !important;
+        height: 58px;
+        padding: 9px 12px !important;
+        background: linear-gradient(180deg, #334155 0%, #1f2937 100%) !important;
+        color: #dbeafe !important;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.24) !important;
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+
+      .table.stats-table tbody td {
+        height: 56px;
+        padding: 10px 12px !important;
+        background: rgba(20, 30, 44, 0.78) !important;
+        vertical-align: middle !important;
+      }
+
+      .table.stats-table tbody tr:nth-child(even) td {
+        background: rgba(17, 27, 40, 0.78) !important;
+      }
+
+      .table.stats-table tbody tr:hover td {
+        background: rgba(30, 41, 59, 0.96) !important;
+      }
+
+      .table.stats-table .column-highlight {
+        background: rgba(56, 189, 248, 0.12) !important;
+        box-shadow: inset 2px 0 0 rgba(56, 189, 248, 0.5), inset -2px 0 0 rgba(56, 189, 248, 0.18);
+      }
+
+      .table.stats-table .stats-sticky {
+        position: sticky;
+        z-index: 5;
+        background: #172033 !important;
+      }
+
+      .table.stats-table thead .stats-sticky {
+        z-index: 9;
+        background: linear-gradient(180deg, #3b4658 0%, #263244 100%) !important;
+      }
+
+      .stats-sticky-rank { left: 0; }
+      .stats-sticky-skill { left: 58px; }
+      .stats-sticky-player {
+        left: 140px;
+        box-shadow: 12px 0 18px -18px rgba(0, 0, 0, 0.9);
+      }
+
+      .stats-col-rank { width: 58px; min-width: 58px; }
+      .stats-col-skill { width: 82px; min-width: 82px; }
+      .stats-col-player { width: 188px; min-width: 188px; }
+      .stats-col-points { width: 96px; min-width: 96px; }
+      .stats-col-winrate { width: 112px; min-width: 112px; }
+      .stats-col-pj { width: 82px; min-width: 82px; }
+      .stats-col-record { width: 72px; min-width: 72px; }
+      .stats-col-goals { width: 84px; min-width: 84px; }
+      .stats-col-assists { width: 96px; min-width: 96px; }
+      .stats-col-mistakes { width: 94px; min-width: 94px; }
+      .stats-col-badge { width: 82px; min-width: 82px; }
+      .stats-col-saves { width: 96px; min-width: 96px; }
+      .stats-col-team { width: 126px; min-width: 126px; }
+      .stats-col-actions { width: 92px; min-width: 92px; }
+
+      .stats-th {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 2px;
+        line-height: 1.05;
+      }
+
+      .stats-th-kicker {
+        color: rgba(203, 213, 225, 0.68);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0 !important;
+        text-transform: uppercase;
+      }
+
+      .stats-th-main {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #f8fafc;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .stats-th-main i {
+        color: #38bdf8;
+        font-size: 0.82rem;
+      }
+
+      .stats-th-result .stats-th-main i { color: #facc15; }
+      .stats-th-record .stats-th-main i { color: #34d399; }
+      .stats-th-production .stats-th-main i { color: #22d3ee; }
+      .stats-th-negative .stats-th-main i { color: #fb7185; }
+
+      .stats-player-cell {
+        color: #ffffff !important;
+      }
+
+      .stats-player-cell .btn-link {
+        font-size: 0.86rem !important;
+        line-height: 1.15 !important;
+      }
+
+      .table.stats-table .position-badge {
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      .stats-skill-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        height: 30px;
+        border-radius: 8px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      .stats-score,
+      .stats-metric,
+      .stats-winrate-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(15, 23, 42, 0.62);
+      }
+
+      .stats-score {
+        flex-direction: column;
+        min-width: 64px;
+        height: 40px;
+        border-color: rgba(250, 204, 21, 0.32);
+        background: linear-gradient(180deg, rgba(120, 83, 18, 0.46), rgba(15, 23, 42, 0.72));
+      }
+
+      .stats-score-value {
+        color: #fde68a;
+        font-size: 1.05rem;
+        font-weight: 900;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      .stats-score-label,
+      .stats-metric-label,
+      .stats-winrate-label {
+        color: rgba(226, 232, 240, 0.72);
+        font-size: 0.58rem;
+        font-weight: 800;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .stats-winrate-chip {
+        flex-direction: column;
+        gap: 5px;
+        min-width: 82px;
+        height: 42px;
+        padding: 6px 8px;
+      }
+
+      .stats-winrate-top {
+        display: flex;
+        align-items: baseline;
+        gap: 3px;
+      }
+
+      .stats-winrate-value {
+        color: #f8fafc;
+        font-size: 0.98rem;
+        font-weight: 900;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      .stats-winrate-bar {
+        width: 100%;
+        height: 4px;
+        border-radius: 4px;
+        background: rgba(148, 163, 184, 0.18);
+        overflow: hidden;
+      }
+
+      .stats-winrate-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+      }
+
+      .stats-tone-high .stats-winrate-bar span { background: #22c55e; }
+      .stats-tone-mid .stats-winrate-bar span { background: #f59e0b; }
+      .stats-tone-low .stats-winrate-bar span { background: #ef4444; }
+
+      .stats-metric {
+        flex-direction: column;
+        min-width: 48px;
+        height: 38px;
+      }
+
+      .stats-metric-value {
+        font-size: 1rem;
+        font-weight: 900;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      .stats-metric-neutral { border-color: rgba(148, 163, 184, 0.26); }
+      .stats-metric-neutral .stats-metric-value { color: #e2e8f0; }
+      .stats-metric-win { border-color: rgba(34, 197, 94, 0.3); background: rgba(22, 101, 52, 0.24); }
+      .stats-metric-win .stats-metric-value { color: #4ade80; }
+      .stats-metric-draw { border-color: rgba(245, 158, 11, 0.34); background: rgba(120, 53, 15, 0.24); }
+      .stats-metric-draw .stats-metric-value { color: #fbbf24; }
+      .stats-metric-loss { border-color: rgba(239, 68, 68, 0.34); background: rgba(127, 29, 29, 0.25); }
+      .stats-metric-loss .stats-metric-value { color: #f87171; }
+
+      .stats-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 42px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 0.98rem;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+
+      .stats-number-goals { color: #34d399; border-color: rgba(52, 211, 153, 0.22); }
+      .stats-number-assists { color: #22d3ee; border-color: rgba(34, 211, 238, 0.22); }
+      .stats-number-mistakes { color: #fb7185; border-color: rgba(251, 113, 133, 0.24); }
+      .stats-number-saves { color: #fbbf24; border-color: rgba(251, 191, 36, 0.22); }
+      .stats-number-team-for { color: #86efac; border-color: rgba(134, 239, 172, 0.2); }
+      .stats-number-team-against { color: #fca5a5; border-color: rgba(252, 165, 165, 0.2); }
+      .stats-zero { opacity: 0.5; }
+
+      @media (max-width: 768px) {
+        .stats-table-toolbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .table.stats-table {
+          min-width: 1296px;
+        }
+
+        .stats-col-rank { width: 48px; min-width: 48px; }
+        .stats-col-skill { width: 66px; min-width: 66px; }
+        .stats-col-player { width: 150px; min-width: 150px; }
+        .stats-sticky-skill { left: 48px; }
+        .stats-sticky-player { left: 114px; }
+      }
       
       /* Botón flotante mejorado */
       .floating-btn {
@@ -1443,14 +1782,19 @@
       <!-- Stats Table Section -->
       <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.1s">
         <div class="enhanced-card rounded-3 p-4">
-          <div class="d-flex justify-content-center mb-4">
-            <div class="d-flex align-items-center gap-2">
-              <label for="filtro-partidos" class="text-light small mb-0">🎮 Min. partidos:</label>
+          <div class="stats-table-toolbar">
+            <h3 class="stats-table-title">
+              <i class="bi bi-table"></i>
+              Ranking de estadísticas
+            </h3>
+            <div class="stats-table-filter">
+              <label for="filtro-partidos">
+                <i class="bi bi-controller me-1"></i>Min. partidos
+              </label>
               <input 
                 type="number" 
                 id="filtro-partidos" 
                 class="form-control form-control-sm" 
-                style="width: 80px;" 
                 placeholder="0"
                 min="0"
                 value="0"
@@ -1458,31 +1802,80 @@
             </div>
           </div>
 
-          <div class="table-responsive rounded-3">
-            <table class="table table-dark table-hover mb-0">
-                              <thead>
-                  <tr>
-                    <th scope="col" class="fw-bold text-center" style="width: 60px;">#</th>
-                    <th scope="col" class="fw-bold text-center sortable" data-sort="skill" style="width: 80px;">⚡ Skill <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="fw-bold sortable" data-sort="nombre">👤 Nombre <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="fw-bold">🎯 Posiciones</th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="total_puntos">🏆 Total Puntos <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="winrate">📈 Winrate <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="pj" data-bs-toggle="tooltip" title="Partidos Jugados">🎮 PJ <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="pg" data-bs-toggle="tooltip" title="Partidos Ganados">✅ PG <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="pe" data-bs-toggle="tooltip" title="Partidos Empatados">🤝 PE <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="pp" data-bs-toggle="tooltip" title="Partidos Perdidos">❌ PP <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles">⚽ Goles <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="asistencias">🎯 Asistencias <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="cagadas_en_gol">💥 Cagadas <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="mvp_count" data-bs-toggle="tooltip" title="Jugador Más Valioso">👑 MVP <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="ace_count" data-bs-toggle="tooltip" title="Ace (Jugadas decisivas)">🔥 ACE <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="atajadas">🥅 Atajadas <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_favor_equipo" data-bs-toggle="tooltip" title="Promedio de goles a favor del equipo por partido">⚽ Goles a favor / partido (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold sortable" data-sort="goles_recibidos_equipo" data-bs-toggle="tooltip" title="Promedio de goles recibidos del equipo por partido">🥅 Goles recibidos / partido (equipo) <i class="bi bi-arrow-down-up ms-1"></i></th>
-                    <th scope="col" class="text-center fw-bold">⚙️ Acciones</th>
-                  </tr>
-                </thead>
+          <div class="stats-table-wrap">
+            <table class="table table-dark table-hover mb-0 stats-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="fw-bold text-center stats-col-rank stats-sticky stats-sticky-rank">#</th>
+                  <th scope="col" class="fw-bold text-center sortable stats-col-skill stats-sticky stats-sticky-skill" data-sort="skill">
+                    <span class="stats-th"><span class="stats-th-kicker">Nivel</span><span class="stats-th-main"><i class="bi bi-lightning-charge-fill"></i>Skill</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="fw-bold sortable stats-col-player stats-sticky stats-sticky-player" data-sort="nombre">
+                    <span class="stats-th"><span class="stats-th-kicker">Jugador</span><span class="stats-th-main"><i class="bi bi-person-fill"></i>Nombre</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-points" data-sort="total_puntos">
+                    <span class="stats-th stats-th-result"><span class="stats-th-kicker">Resultado</span><span class="stats-th-main"><i class="bi bi-trophy-fill"></i>PTS</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-winrate" data-sort="winrate">
+                    <span class="stats-th stats-th-result"><span class="stats-th-kicker">Resultado</span><span class="stats-th-main"><i class="bi bi-graph-up-arrow"></i>WR</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-pj" data-sort="pj" data-bs-toggle="tooltip" title="Partidos jugados">
+                    <span class="stats-th stats-th-record"><span class="stats-th-kicker">Partidos</span><span class="stats-th-main"><i class="bi bi-controller"></i>PJ</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-record" data-sort="pg" data-bs-toggle="tooltip" title="Partidos ganados">
+                    <span class="stats-th stats-th-record"><span class="stats-th-kicker">Record</span><span class="stats-th-main"><i class="bi bi-check2-circle"></i>PG</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-record" data-sort="pe" data-bs-toggle="tooltip" title="Partidos empatados">
+                    <span class="stats-th stats-th-record"><span class="stats-th-kicker">Record</span><span class="stats-th-main"><i class="bi bi-dash-circle"></i>E</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-record" data-sort="pp" data-bs-toggle="tooltip" title="Partidos perdidos">
+                    <span class="stats-th stats-th-record"><span class="stats-th-kicker">Record</span><span class="stats-th-main"><i class="bi bi-x-circle"></i>PP</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-goals" data-sort="goles">
+                    <span class="stats-th stats-th-production"><span class="stats-th-kicker">Ataque</span><span class="stats-th-main"><i class="bi bi-bullseye"></i>G</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-assists" data-sort="asistencias">
+                    <span class="stats-th stats-th-production"><span class="stats-th-kicker">Ataque</span><span class="stats-th-main"><i class="bi bi-bezier2"></i>A</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-mistakes" data-sort="cagadas_en_gol">
+                    <span class="stats-th stats-th-negative"><span class="stats-th-kicker">Errores</span><span class="stats-th-main"><i class="bi bi-exclamation-triangle-fill"></i>Cag</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-badge" data-sort="mvp_count" data-bs-toggle="tooltip" title="Jugador más valioso">
+                    <span class="stats-th"><span class="stats-th-kicker">Premios</span><span class="stats-th-main"><i class="bi bi-star-fill"></i>MVP</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-badge" data-sort="ace_count" data-bs-toggle="tooltip" title="Jugadas decisivas">
+                    <span class="stats-th"><span class="stats-th-kicker">Premios</span><span class="stats-th-main"><i class="bi bi-fire"></i>ACE</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-saves" data-sort="atajadas">
+                    <span class="stats-th"><span class="stats-th-kicker">Arco</span><span class="stats-th-main"><i class="bi bi-shield-fill"></i>Ataj</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-team" data-sort="goles_favor_equipo" data-bs-toggle="tooltip" title="Promedio de goles a favor del equipo por partido">
+                    <span class="stats-th stats-th-production"><span class="stats-th-kicker">Equipo</span><span class="stats-th-main"><i class="bi bi-plus-circle"></i>GF/P</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold sortable stats-col-team" data-sort="goles_recibidos_equipo" data-bs-toggle="tooltip" title="Promedio de goles recibidos del equipo por partido">
+                    <span class="stats-th stats-th-negative"><span class="stats-th-kicker">Equipo</span><span class="stats-th-main"><i class="bi bi-dash-circle"></i>GC/P</span></span>
+                    <i class="bi bi-arrow-down-up ms-1"></i>
+                  </th>
+                  <th scope="col" class="text-center fw-bold stats-col-actions">
+                    <span class="stats-th"><span class="stats-th-kicker">Admin</span><span class="stats-th-main"><i class="bi bi-gear-fill"></i>Acciones</span></span>
+                  </th>
+                </tr>
+              </thead>
               <tbody id="stats-table-body">
                 <!-- Filas de jugadores -->
               </tbody>
@@ -2475,6 +2868,9 @@
                 <button class="nav-link active" id="mundialito-sub-tab-fixture" type="button">Fixture</button>
               </li>
               <li class="nav-item">
+                <button class="nav-link" id="mundialito-sub-tab-parejas" type="button">Parejas</button>
+              </li>
+              <li class="nav-item">
                 <button class="nav-link" id="mundialito-sub-tab-estadisticas" type="button">Estadísticas</button>
               </li>
             </ul>
@@ -2494,6 +2890,34 @@
                         <span class="visually-hidden">Cargando fixture...</span>
                       </div>
                       <p class="text-light-emphasis mt-2">Presiona "Procesar Mundial" para generar el fixture</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtab: Parejas -->
+          <div id="mundialito-sub-parejas" class="d-none">
+            <div class="row">
+              <div class="col-12">
+                <div class="enhanced-card rounded-3 p-4">
+                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <h5 class="text-success mb-0">
+                      <i class="bi bi-people me-2"></i>Mundial de Parejas
+                    </h5>
+                    <div id="mundialito-parejas-stats" class="d-flex flex-wrap gap-2 small">
+                      <span class="badge bg-secondary">Parejas activas: <span id="total-parejas">-</span></span>
+                      <span class="badge bg-warning text-dark">En grupos: <span id="parejas-groups">-</span></span>
+                      <span class="badge bg-success">Campeonas: <span id="parejas-champions">-</span></span>
+                    </div>
+                  </div>
+                  <p class="small text-light-emphasis mb-3">
+                    Cada dupla se forma automaticamente con jugadores que comparten equipo. Si un jugador aparece en varias duplas, solo queda activa la pareja que esta mas lejos. Para mejorar pareja, tiene que haber ganado mas veces con alguien que no este ocupado en otra dupla activa. Si un jugador juega 5 partidos y su pareja no juega ninguno, esa dupla queda congelada y deja libre al jugador activo. Una pareja necesita 2 victorias para avanzar, 2 derrotas para caer, y si despues de 3 partidos no se define usa moneda.
+                  </p>
+                  <div id="mundialito-parejas-fixture" class="row">
+                    <div class="text-center py-4">
+                      <p class="text-light-emphasis mt-2">Presiona "Procesar Mundial" para generar las parejas</p>
                     </div>
                   </div>
                 </div>
