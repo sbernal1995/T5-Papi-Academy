@@ -605,6 +605,31 @@ const PREMIOS_PERFIL_CONFIG = {
     iconHtml: '<i class="bi bi-globe-americas"></i>',
     nombre: 'Ganador mundial',
     prioridad: 5
+  },
+  max_goles_partido: {
+    iconHtml: '<i class="bi bi-bullseye"></i>',
+    nombre: 'Max. goles en 1 partido',
+    prioridad: 6
+  },
+  max_asistencias_partido: {
+    iconHtml: '<i class="bi bi-bezier2"></i>',
+    nombre: 'Max. asistidor en 1 partido',
+    prioridad: 7
+  },
+  cagador_anio: {
+    iconHtml: '<i class="bi bi-exclamation-triangle-fill"></i>',
+    nombre: 'Cagador del año',
+    prioridad: 8
+  },
+  perdedor_anio: {
+    iconHtml: '<i class="bi bi-arrow-down-circle-fill"></i>',
+    nombre: 'Perdedor del año',
+    prioridad: 9
+  },
+  talisman: {
+    iconHtml: '<i class="bi bi-gem"></i>',
+    nombre: 'Talismán',
+    prioridad: 10
   }
 };
 
@@ -1915,6 +1940,114 @@ function procesarPartidoMundialPerfilTemp(partido, jugadoresMap) {
   });
 }
 
+function incrementarMapaPerfil(mapa, clave, incremento = 1) {
+  if (!clave) return;
+  mapa.set(clave, (mapa.get(clave) || 0) + incremento);
+}
+
+function actualizarMaximoPerfil(mapa, clave, valor) {
+  if (!clave) return;
+  const numero = Number(valor) || 0;
+  if (numero <= 0) return;
+  mapa.set(clave, Math.max(mapa.get(clave) || 0, numero));
+}
+
+function pluralizarPerfil(cantidad, singular, plural = `${singular}s`) {
+  return cantidad === 1 ? singular : plural;
+}
+
+function crearRachaPerfil() {
+  return {
+    victoriasActuales: 0,
+    derrotasActuales: 0,
+    maxVictorias: 0,
+    maxDerrotas: 0
+  };
+}
+
+function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
+  const maxGolesPartido = new Map();
+  const maxAsistenciasPartido = new Map();
+  const maxCagadasPartido = new Map();
+  const maxVictoriasHilo = new Map();
+  const maxDerrotasHilo = new Map();
+  const rachasPorJugador = new Map();
+
+  const partidosOrdenados = [...partidosTemporada].sort((a, b) => {
+    const fechaA = Date.parse(a.fecha || '') || 0;
+    const fechaB = Date.parse(b.fecha || '') || 0;
+    if (fechaA !== fechaB) return fechaA - fechaB;
+    return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+  });
+
+  partidosOrdenados.forEach(partido => {
+    const golesPorJugadorPartido = new Map();
+    const asistenciasPorJugadorPartido = new Map();
+
+    (partido.goles || []).forEach(gol => {
+      if (!gol.es_gol_en_contra && gol.goleador_id) {
+        incrementarMapaPerfil(golesPorJugadorPartido, gol.goleador_id);
+      }
+
+      if (!gol.es_gol_en_contra && gol.asistidor_id) {
+        incrementarMapaPerfil(asistenciasPorJugadorPartido, gol.asistidor_id);
+      }
+    });
+
+    golesPorJugadorPartido.forEach((valor, jugadorId) => {
+      actualizarMaximoPerfil(maxGolesPartido, jugadorId, valor);
+    });
+
+    asistenciasPorJugadorPartido.forEach((valor, jugadorId) => {
+      actualizarMaximoPerfil(maxAsistenciasPartido, jugadorId, valor);
+    });
+
+    (partido.jugador_partido || []).forEach(jp => {
+      actualizarMaximoPerfil(maxCagadasPartido, jp.jugador_id, Number(jp.cagadas) || 0);
+
+      if (!rachasPorJugador.has(jp.jugador_id)) {
+        rachasPorJugador.set(jp.jugador_id, crearRachaPerfil());
+      }
+
+      const equipoGanador = partido.equipo_ganador === null || partido.equipo_ganador === undefined
+        ? null
+        : Number(partido.equipo_ganador);
+      const equipoJugador = Number(jp.equipo);
+      const racha = rachasPorJugador.get(jp.jugador_id);
+      if (equipoGanador === equipoJugador) {
+        racha.victoriasActuales += 1;
+        racha.derrotasActuales = 0;
+      } else if (equipoGanador === 1 || equipoGanador === 2) {
+        racha.derrotasActuales += 1;
+        racha.victoriasActuales = 0;
+      } else {
+        racha.victoriasActuales = 0;
+        racha.derrotasActuales = 0;
+      }
+
+      racha.maxVictorias = Math.max(racha.maxVictorias, racha.victoriasActuales);
+      racha.maxDerrotas = Math.max(racha.maxDerrotas, racha.derrotasActuales);
+    });
+  });
+
+  rachasPorJugador.forEach((racha, jugadorId) => {
+    if (racha.maxVictorias >= 2) {
+      maxVictoriasHilo.set(jugadorId, racha.maxVictorias);
+    }
+    if (racha.maxDerrotas >= 2) {
+      maxDerrotasHilo.set(jugadorId, racha.maxDerrotas);
+    }
+  });
+
+  return {
+    maxGolesPartido,
+    maxAsistenciasPartido,
+    maxCagadasPartido,
+    maxVictoriasHilo,
+    maxDerrotasHilo
+  };
+}
+
 async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual = null) {
   if (!jugadorId) return [];
 
@@ -1961,6 +2094,7 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
           jugador_id,
           equipo,
           atajadas,
+          cagadas,
           jugadores (
             id,
             nombre
@@ -2069,6 +2203,32 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
       });
     };
 
+    const registrarRecordSiCorresponde = (tipo, mapaValores, metaTemporada, detalleFn) => {
+      if (!(mapaValores instanceof Map) || mapaValores.size === 0) {
+        return;
+      }
+
+      const maximo = Math.max(...Array.from(mapaValores.values()));
+      if (!Number.isFinite(maximo) || maximo <= 0) {
+        return;
+      }
+
+      if (mapaValores.get(jugadorId) !== maximo) {
+        return;
+      }
+
+      const config = PREMIOS_PERFIL_CONFIG[tipo];
+      premios.push({
+        tipo,
+        iconHtml: config.iconHtml,
+        name: config.nombre,
+        desc: `${metaTemporada.nombre} · ${detalleFn(maximo)}`,
+        unlocked: true,
+        ordenTemporada: metaTemporada.orden,
+        prioridad: config.prioridad
+      });
+    };
+
     resumenPorTemporada.forEach(resumen => {
       registrarSiCorresponde('bota', resumen.goles, resumen.metaTemporada);
       registrarSiCorresponde('guante', resumen.atajadas, resumen.metaTemporada);
@@ -2094,6 +2254,38 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
           prioridad: config.prioridad
         });
       }
+
+      const records = calcularRecordsTemporadaPerfil(partidosTemporada);
+      registrarRecordSiCorresponde(
+        'max_goles_partido',
+        records.maxGolesPartido,
+        metaTemporada,
+        valor => `${valor} ${pluralizarPerfil(valor, 'gol', 'goles')} en un partido`
+      );
+      registrarRecordSiCorresponde(
+        'max_asistencias_partido',
+        records.maxAsistenciasPartido,
+        metaTemporada,
+        valor => `${valor} ${pluralizarPerfil(valor, 'asistencia')} en un partido`
+      );
+      registrarRecordSiCorresponde(
+        'cagador_anio',
+        records.maxCagadasPartido,
+        metaTemporada,
+        valor => `${valor} ${pluralizarPerfil(valor, 'cagada')} en un partido`
+      );
+      registrarRecordSiCorresponde(
+        'perdedor_anio',
+        records.maxDerrotasHilo,
+        metaTemporada,
+        valor => `${valor} derrotas al hilo`
+      );
+      registrarRecordSiCorresponde(
+        'talisman',
+        records.maxVictoriasHilo,
+        metaTemporada,
+        valor => `${valor} victorias al hilo`
+      );
     });
 
     return premios.sort((a, b) => {
@@ -4610,12 +4802,13 @@ const initApp = () => {
     const selector = document.getElementById('selector-temporada');
     const selectorMobile = document.getElementById('selector-temporada-mobile');
     const selectorPartido = document.getElementById('temporada-partido');
+    const selectorResumenTemporada = document.getElementById('temporadas-resumen-selector');
     
-    const selectors = [selector, selectorMobile, selectorPartido].filter(s => s);
+    const selectors = [selector, selectorMobile, selectorPartido, selectorResumenTemporada].filter(s => s);
     
     selectors.forEach(sel => {
       // Limpiar opciones existentes
-      if (sel.id === 'temporada-partido') {
+      if (sel.id === 'temporada-partido' || sel.id === 'temporadas-resumen-selector') {
         // Para el selector de partido, usar texto diferente
         sel.innerHTML = '<option value="">Seleccionar temporada</option>';
       } else {
@@ -4635,13 +4828,13 @@ const initApp = () => {
         sel.value = temporada3.id;
 
         // Para los selectores de filtro, también actualizar la variable global
-        if (sel.id !== 'temporada-partido') {
+        if (sel.id !== 'temporada-partido' && sel.id !== 'temporadas-resumen-selector') {
           temporadaSeleccionada = temporada3.id;
         }
       }
 
       // Agregar event listener solo para los selectores de filtro (no para el de partido)
-      if (sel.id !== 'temporada-partido') {
+      if (sel.id !== 'temporada-partido' && sel.id !== 'temporadas-resumen-selector') {
         sel.addEventListener('change', async (e) => {
           temporadaSeleccionada = e.target.value || null;
           
@@ -10668,6 +10861,754 @@ const initApp = () => {
   };
 
   // Función para ir a la pestaña de ranking desde el historial
+  const obtenerTemporadaResumenActiva = () => {
+    const selectorResumen = document.getElementById('temporadas-resumen-selector');
+    if (selectorResumen?.value) {
+      return selectorResumen.value;
+    }
+
+    const temporadaDashboard = temporadaSeleccionada || obtenerTemporadaActivaDesdeSelectores();
+    if (temporadaDashboard) {
+      return temporadaDashboard;
+    }
+
+    const temporada3 = todasLasTemporadas.find(t => t.nombre === 'Temporada 3');
+    return temporada3?.id || todasLasTemporadas[todasLasTemporadas.length - 1]?.id || '';
+  };
+
+  const obtenerNombreTemporadaResumen = (temporadaId) => {
+    const temporada = todasLasTemporadas.find(t => String(t.id) === String(temporadaId));
+    return temporada?.nombre || `Temporada ${temporadaId}`;
+  };
+
+  const asegurarStatsJugadorTemporada = (statsPorJugador, jugadorId, jugador = {}) => {
+    if (jugadorId === null || jugadorId === undefined) return null;
+
+    const key = String(jugadorId);
+    if (!statsPorJugador.has(key)) {
+      statsPorJugador.set(key, {
+        id: jugadorId,
+        nombre: jugador?.nombre || 'Jugador',
+        pj: 0,
+        pg: 0,
+        pe: 0,
+        pp: 0,
+        total_puntos: 0,
+        winrate: 0,
+        goles: 0,
+        asistencias: 0,
+        atajadas: 0,
+        cagadas: 0,
+        cagadas_en_gol: 0,
+        mvp_count: 0,
+        ace_count: 0,
+        victoriasActuales: 0,
+        derrotasActuales: 0,
+        maxVictorias: 0,
+        maxDerrotas: 0
+      });
+    }
+
+    const stats = statsPorJugador.get(key);
+    if (jugador?.nombre && stats.nombre === 'Jugador') {
+      stats.nombre = jugador.nombre;
+    }
+
+    return stats;
+  };
+
+  const obtenerGanadoresResumenTemporada = (jugadores, campo, { minimo = 1, decimales = 0 } = {}) => {
+    const candidatos = jugadores.filter(jugador => (Number(jugador[campo]) || 0) >= minimo);
+    if (candidatos.length === 0) return [];
+
+    const maximo = Math.max(...candidatos.map(jugador => Number(jugador[campo]) || 0));
+    if (!Number.isFinite(maximo) || maximo < minimo) return [];
+
+    return candidatos
+      .filter(jugador => (Number(jugador[campo]) || 0) === maximo)
+      .map(jugador => ({
+        id: jugador.id,
+        nombre: jugador.nombre,
+        valor: decimales > 0 ? Number(maximo).toFixed(decimales) : maximo
+      }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  };
+
+  const obtenerGanadoresMapaResumenTemporada = (mapa, statsPorJugador) => {
+    if (!(mapa instanceof Map) || mapa.size === 0) return [];
+
+    const entradas = Array.from(mapa.entries())
+      .map(([jugadorId, valor]) => [jugadorId, Number(valor) || 0])
+      .filter(([, valor]) => valor > 0);
+
+    if (entradas.length === 0) return [];
+
+    const maximo = Math.max(...entradas.map(([, valor]) => valor));
+    return entradas
+      .filter(([, valor]) => valor === maximo)
+      .map(([jugadorId, valor]) => {
+        const stats = statsPorJugador.get(String(jugadorId));
+        return {
+          id: stats?.id || jugadorId,
+          nombre: stats?.nombre || 'Jugador',
+          valor
+        };
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  };
+
+  const renderizarKpiResumenTemporada = ({ icono, label, valor, color }) => `
+    <div class="season-kpi" style="--season-accent:${color}">
+      <div class="season-kpi-head">
+        <i class="bi ${icono}"></i>
+        <span>${label}</span>
+      </div>
+      <div class="season-kpi-value">${valor}</div>
+    </div>
+  `;
+
+  const renderizarCardResumenTemporada = ({ icono, titulo, ganadores, formatearValor, color }) => {
+    const listaGanadores = ganadores || [];
+    const principal = listaGanadores[0];
+    const extras = listaGanadores.slice(1);
+
+    if (!principal) {
+      return `
+        <article class="season-leader-card" style="--season-accent:${color}">
+          <div class="season-leader-head">
+            <i class="bi ${icono}"></i>
+            <span>${titulo}</span>
+          </div>
+          <div class="season-empty">Sin datos</div>
+        </article>
+      `;
+    }
+
+    return `
+      <article class="season-leader-card" style="--season-accent:${color}">
+        <div class="season-leader-head">
+          <i class="bi ${icono}"></i>
+          <span>${titulo}</span>
+        </div>
+        <div class="season-winner-line">
+          ${renderizarAccesoPerfilJugador(principal.id, principal.nombre, 'season-player-link')}
+          <span class="season-value-pill">${formatearValor(principal.valor)}</span>
+        </div>
+        ${extras.length > 0 ? `
+          <div class="season-extra-winners">
+            También: ${extras.map(ganador => `${escaparHtmlPlano(ganador.nombre)} (${formatearValor(ganador.valor)})`).join(', ')}
+          </div>
+        ` : ''}
+      </article>
+    `;
+  };
+
+  const consultarPartidosResumenTemporada = async (temporadaId) => {
+    const selectConCagada = `
+      id,
+      fecha,
+      equipo_ganador,
+      temporada_id,
+      temporadas (
+        id,
+        nombre
+      ),
+      jugador_partido (
+        jugador_id,
+        equipo,
+        mvp,
+        ace,
+        atajadas,
+        cagadas,
+        jugadores (
+          id,
+          nombre
+        )
+      ),
+      goles (
+        id,
+        goleador_id,
+        asistidor_id,
+        equipo,
+        es_gol_en_contra,
+        cagada_jugador_id
+      )
+    `;
+
+    const selectSinCagada = `
+      id,
+      fecha,
+      equipo_ganador,
+      temporada_id,
+      temporadas (
+        id,
+        nombre
+      ),
+      jugador_partido (
+        jugador_id,
+        equipo,
+        mvp,
+        ace,
+        atajadas,
+        cagadas,
+        jugadores (
+          id,
+          nombre
+        )
+      ),
+      goles (
+        id,
+        goleador_id,
+        asistidor_id,
+        equipo,
+        es_gol_en_contra
+      )
+    `;
+
+    let consulta = await supabase
+      .from('partidos')
+      .select(selectConCagada)
+      .eq('temporada_id', temporadaId)
+      .order('fecha', { ascending: true })
+      .order('id', { ascending: true });
+
+    if (consulta.error && esErrorColumnaCagadaFaltante(consulta.error)) {
+      consulta = await supabase
+        .from('partidos')
+        .select(selectSinCagada)
+        .eq('temporada_id', temporadaId)
+        .order('fecha', { ascending: true })
+        .order('id', { ascending: true });
+    }
+
+    if (consulta.error) {
+      throw consulta.error;
+    }
+
+    return consulta.data || [];
+  };
+
+  const consultarEstadisticasAgregadasResumenTemporada = async (temporadaId) => {
+    const { data: statsData, error: statsError } = await supabase
+      .from('estadisticas_temporada')
+      .select(`
+        temporada_id,
+        jugador_id,
+        total_puntos,
+        pj,
+        pg,
+        pe,
+        pp,
+        goles,
+        asistencias,
+        cagadas_en_gol,
+        mvp_count,
+        ace_count,
+        atajadas,
+        winrate
+      `)
+      .eq('temporada_id', temporadaId);
+
+    if (statsError) {
+      console.warn('No se pudieron cargar estadisticas agregadas para la temporada:', statsError);
+      return [];
+    }
+
+    if (!statsData || statsData.length === 0) {
+      return [];
+    }
+
+    const jugadorIds = [...new Set(statsData.map(stat => stat.jugador_id).filter(Boolean))];
+    if (jugadorIds.length === 0) {
+      return [];
+    }
+
+    const { data: jugadoresData, error: jugadoresError } = await supabase
+      .from('jugadores')
+      .select('id, nombre')
+      .in('id', jugadorIds);
+
+    if (jugadoresError) {
+      console.warn('No se pudieron cargar jugadores para resumen agregado:', jugadoresError);
+      return [];
+    }
+
+    const jugadoresPorId = new Map((jugadoresData || []).map(jugador => [String(jugador.id), jugador]));
+    return statsData
+      .map(stat => ({
+        ...stat,
+        jugadores: jugadoresPorId.get(String(stat.jugador_id))
+      }))
+      .filter(stat => stat.jugadores);
+  };
+
+  const construirResumenTemporadaDesdeAgregados = (statsData) => {
+    const statsPorJugador = new Map();
+    const jugadores = (statsData || []).map(stat => {
+      const pj = Number(stat.pj) || 0;
+      const pg = Number(stat.pg) || 0;
+      const pe = Number(stat.pe) || 0;
+      const pp = Number(stat.pp) || 0;
+      const totalPuntos = Number(stat.total_puntos) || ((pg * 3) + pe);
+      const winrateCalculado = pj > 0 ? (totalPuntos / (pj * 3)) * 100 : 0;
+      const jugador = {
+        id: stat.jugador_id,
+        nombre: stat.jugadores?.nombre || 'Jugador',
+        pj,
+        pg,
+        pe,
+        pp,
+        total_puntos: totalPuntos,
+        winrate: Number(stat.winrate) || winrateCalculado,
+        goles: Number(stat.goles) || 0,
+        asistencias: Number(stat.asistencias) || 0,
+        atajadas: Number(stat.atajadas) || 0,
+        cagadas: Number(stat.cagadas_en_gol) || 0,
+        cagadas_en_gol: Number(stat.cagadas_en_gol) || 0,
+        mvp_count: Number(stat.mvp_count) || 0,
+        ace_count: Number(stat.ace_count) || 0,
+        puntosPP: pj > 0 ? totalPuntos / pj : 0
+      };
+
+      statsPorJugador.set(String(jugador.id), jugador);
+      return jugador;
+    });
+
+    jugadores.sort((a, b) => {
+      if (b.total_puntos !== a.total_puntos) return b.total_puntos - a.total_puntos;
+      if (b.winrate !== a.winrate) return b.winrate - a.winrate;
+      if (b.goles !== a.goles) return b.goles - a.goles;
+      return a.nombre.localeCompare(b.nombre);
+    });
+
+    const totales = jugadores.reduce((acc, jugador) => {
+      acc.jugadores += jugador.pj > 0 ? 1 : 0;
+      acc.partidos = Math.max(acc.partidos, jugador.pj);
+      acc.goles += jugador.goles;
+      acc.asistencias += jugador.asistencias;
+      acc.atajadas += jugador.atajadas;
+      acc.cagadas += jugador.cagadas;
+      acc.cagadasEnGol += jugador.cagadas_en_gol;
+      acc.mvp += jugador.mvp_count;
+      acc.ace += jugador.ace_count;
+      return acc;
+    }, {
+      partidos: 0,
+      jugadores: 0,
+      goles: 0,
+      asistencias: 0,
+      atajadas: 0,
+      cagadas: 0,
+      cagadasEnGol: 0,
+      mvp: 0,
+      ace: 0
+    });
+
+    return {
+      jugadores,
+      statsPorJugador,
+      totales,
+      origen: 'agregado',
+      records: {
+        maxGolesPartido: new Map(),
+        maxAsistenciasPartido: new Map(),
+        maxCagadasPartido: new Map(),
+        maxVictoriasHilo: new Map(),
+        maxDerrotasHilo: new Map()
+      }
+    };
+  };
+
+  const construirResumenTemporada = (partidos) => {
+    const statsPorJugador = new Map();
+    const totales = {
+      partidos: partidos.length,
+      jugadores: 0,
+      goles: 0,
+      asistencias: 0,
+      atajadas: 0,
+      cagadas: 0,
+      cagadasEnGol: 0,
+      mvp: 0,
+      ace: 0
+    };
+
+    partidos.forEach(partido => {
+      (partido.jugador_partido || []).forEach(jp => {
+        const stats = asegurarStatsJugadorTemporada(statsPorJugador, jp.jugador_id, jp.jugadores);
+        if (!stats) return;
+
+        const equipoGanador = partido.equipo_ganador === null || partido.equipo_ganador === undefined
+          ? null
+          : Number(partido.equipo_ganador);
+        const equipoJugador = Number(jp.equipo);
+
+        stats.pj += 1;
+        if (equipoGanador === equipoJugador) {
+          stats.pg += 1;
+          stats.total_puntos += 3;
+          stats.victoriasActuales += 1;
+          stats.derrotasActuales = 0;
+        } else if (equipoGanador === 1 || equipoGanador === 2) {
+          stats.pp += 1;
+          stats.derrotasActuales += 1;
+          stats.victoriasActuales = 0;
+        } else {
+          stats.pe += 1;
+          stats.total_puntos += 1;
+          stats.victoriasActuales = 0;
+          stats.derrotasActuales = 0;
+        }
+
+        stats.maxVictorias = Math.max(stats.maxVictorias, stats.victoriasActuales);
+        stats.maxDerrotas = Math.max(stats.maxDerrotas, stats.derrotasActuales);
+
+        const atajadas = Number(jp.atajadas) || 0;
+        const cagadas = Number(jp.cagadas) || 0;
+        stats.atajadas += atajadas;
+        stats.cagadas += cagadas;
+        totales.atajadas += atajadas;
+        totales.cagadas += cagadas;
+
+        if (jp.mvp) {
+          stats.mvp_count += 1;
+          totales.mvp += 1;
+        }
+        if (jp.ace) {
+          stats.ace_count += 1;
+          totales.ace += 1;
+        }
+      });
+
+      (partido.goles || []).forEach(gol => {
+        if (!gol.es_gol_en_contra) {
+          totales.goles += 1;
+          if (gol.goleador_id) {
+            const statsGoleador = asegurarStatsJugadorTemporada(statsPorJugador, gol.goleador_id);
+            if (statsGoleador) statsGoleador.goles += 1;
+          }
+          if (gol.asistidor_id) {
+            const statsAsistidor = asegurarStatsJugadorTemporada(statsPorJugador, gol.asistidor_id);
+            if (statsAsistidor) {
+              statsAsistidor.asistencias += 1;
+              totales.asistencias += 1;
+            }
+          }
+        }
+
+        if (gol.cagada_jugador_id) {
+          const statsCagada = asegurarStatsJugadorTemporada(statsPorJugador, gol.cagada_jugador_id);
+          if (statsCagada) statsCagada.cagadas_en_gol += 1;
+          totales.cagadasEnGol += 1;
+        }
+      });
+    });
+
+    const jugadores = Array.from(statsPorJugador.values()).map(jugador => ({
+      ...jugador,
+      winrate: jugador.pj > 0 ? (jugador.total_puntos / (jugador.pj * 3)) * 100 : 0,
+      puntosPP: jugador.pj > 0 ? jugador.total_puntos / jugador.pj : 0
+    }));
+
+    totales.jugadores = jugadores.filter(jugador => jugador.pj > 0).length;
+
+    jugadores.sort((a, b) => {
+      if (b.total_puntos !== a.total_puntos) return b.total_puntos - a.total_puntos;
+      if (b.winrate !== a.winrate) return b.winrate - a.winrate;
+      if (b.goles !== a.goles) return b.goles - a.goles;
+      return a.nombre.localeCompare(b.nombre);
+    });
+
+    return {
+      jugadores,
+      statsPorJugador,
+      totales,
+      records: calcularRecordsTemporadaPerfil(partidos)
+    };
+  };
+
+  const renderizarResumenTemporada = (temporadaNombre, resumen) => {
+    const { jugadores, statsPorJugador, totales, records } = resumen;
+    const promedioGoles = totales.partidos > 0 ? (totales.goles / totales.partidos).toFixed(1) : '0.0';
+    const candidatosWinrate = jugadores.filter(jugador => jugador.pj >= 3);
+    const baseWinrate = candidatosWinrate.length > 0 ? candidatosWinrate : jugadores;
+    const topRanking = jugadores.slice(0, 8);
+    const resumenDesdeAgregados = resumen.origen === 'agregado';
+    const descripcionResumen = resumenDesdeAgregados
+      ? 'Resumen desde estadísticas agregadas. Los récords de partido requieren partidos cargados.'
+      : 'Resumen calculado sobre partidos cargados en esta temporada.';
+    const etiquetaPartidos = resumenDesdeAgregados
+      ? `${totales.partidos} PJ max.`
+      : `${totales.partidos} partidos`;
+
+    const kpisTemporada = [
+      { icono: 'bi-people-fill', label: 'Jugadores', valor: totales.jugadores, color: '#e2e8f0' },
+      { icono: 'bi-bullseye', label: 'Goles', valor: totales.goles, color: '#22c55e' },
+      { icono: 'bi-speedometer2', label: 'Goles/PJ', valor: promedioGoles, color: '#22d3ee' },
+      { icono: 'bi-bezier2', label: 'Asist.', valor: totales.asistencias, color: '#38bdf8' },
+      { icono: 'bi-exclamation-octagon-fill', label: 'Cagadas', valor: totales.cagadas, color: '#fb7185' },
+      { icono: 'bi-shield-fill', label: 'Atajadas', valor: totales.atajadas, color: '#facc15' }
+    ].map(renderizarKpiResumenTemporada).join('');
+
+    const positivos = [
+      {
+        icono: 'bi-award-fill',
+        titulo: 'Puntos',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'total_puntos'),
+        formatearValor: valor => `${valor} pts`,
+        color: '#facc15'
+      },
+      {
+        icono: 'bi-graph-up-arrow',
+        titulo: candidatosWinrate.length > 0 ? 'Mejor WR (3+ PJ)' : 'Mejor WR',
+        ganadores: obtenerGanadoresResumenTemporada(baseWinrate, 'winrate', { decimales: 1 }),
+        formatearValor: valor => `${valor}%`,
+        color: '#34d399'
+      },
+      {
+        icono: 'bi-bullseye',
+        titulo: 'Goles',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'goles'),
+        formatearValor: valor => `${valor} G`,
+        color: '#22c55e'
+      },
+      {
+        icono: 'bi-bezier2',
+        titulo: 'Asistencias',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'asistencias'),
+        formatearValor: valor => `${valor} A`,
+        color: '#38bdf8'
+      },
+      {
+        icono: 'bi-shield-fill',
+        titulo: 'Atajadas',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'atajadas'),
+        formatearValor: valor => `${valor}`,
+        color: '#facc15'
+      },
+      {
+        icono: 'bi-star-fill',
+        titulo: 'MVP',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'mvp_count'),
+        formatearValor: valor => `${valor}`,
+        color: '#f59e0b'
+      },
+      {
+        icono: 'bi-fire',
+        titulo: 'ACE',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'ace_count'),
+        formatearValor: valor => `${valor}`,
+        color: '#22d3ee'
+      },
+      {
+        icono: 'bi-bullseye',
+        titulo: 'Max. goles en 1 partido',
+        ganadores: obtenerGanadoresMapaResumenTemporada(records.maxGolesPartido, statsPorJugador),
+        formatearValor: valor => `${valor}`,
+        color: '#22c55e'
+      },
+      {
+        icono: 'bi-bezier2',
+        titulo: 'Max. asistencias en 1 partido',
+        ganadores: obtenerGanadoresMapaResumenTemporada(records.maxAsistenciasPartido, statsPorJugador),
+        formatearValor: valor => `${valor}`,
+        color: '#38bdf8'
+      }
+    ].map(renderizarCardResumenTemporada).join('');
+
+    const negativos = [
+      {
+        icono: 'bi-x-octagon-fill',
+        titulo: 'Cagadas totales',
+        ganadores: obtenerGanadoresResumenTemporada(jugadores, 'cagadas'),
+        formatearValor: valor => `${valor}`,
+        color: '#fb7185'
+      },
+      {
+        icono: 'bi-exclamation-diamond-fill',
+        titulo: 'Cagador del año',
+        ganadores: obtenerGanadoresMapaResumenTemporada(records.maxCagadasPartido, statsPorJugador),
+        formatearValor: valor => `${valor}`,
+        color: '#fb7185'
+      },
+      {
+        icono: 'bi-cloud-lightning-rain-fill',
+        titulo: 'Perdedor del año',
+        ganadores: obtenerGanadoresMapaResumenTemporada(records.maxDerrotasHilo, statsPorJugador),
+        formatearValor: valor => `${valor} PP`,
+        color: '#f97316'
+      }
+    ].map(renderizarCardResumenTemporada).join('');
+
+    const rachas = [
+      {
+        icono: 'bi-gem',
+        titulo: 'Talismán',
+        ganadores: obtenerGanadoresMapaResumenTemporada(records.maxVictoriasHilo, statsPorJugador),
+        formatearValor: valor => `${valor} PG`,
+        color: '#a78bfa'
+      }
+    ].map(renderizarCardResumenTemporada).join('');
+
+    const filasRanking = topRanking.map((jugador, index) => {
+      const claseWinrate = jugador.winrate >= 60 ? 'text-success' : jugador.winrate >= 45 ? 'text-warning' : 'text-danger';
+      return `
+        <tr>
+          <td class="text-center"><span class="season-rank-badge ${index < 3 ? 'top' : ''}">${index + 1}</span></td>
+          <td>${renderizarAccesoPerfilJugador(jugador.id, jugador.nombre, 'text-white fw-semibold season-player-link')}</td>
+          <td class="text-center fw-bold text-warning">${jugador.total_puntos}</td>
+          <td class="text-center">${jugador.pj}</td>
+          <td class="text-center"><span class="text-success">${jugador.pg}</span>/<span class="text-warning">${jugador.pe}</span>/<span class="text-danger">${jugador.pp}</span></td>
+          <td class="text-center fw-bold ${claseWinrate}">${jugador.winrate.toFixed(0)}%</td>
+          <td class="text-center text-success">${jugador.goles}</td>
+          <td class="text-center text-info">${jugador.asistencias}</td>
+          <td class="text-center text-danger">${jugador.cagadas}</td>
+          <td class="text-center">${jugador.atajadas}</td>
+          <td class="text-center"><span class="text-warning">${jugador.mvp_count}</span>/<span class="text-info">${jugador.ace_count}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <div class="season-summary">
+        <section class="season-hero">
+          <div>
+            <span class="season-eyebrow">Resumen de temporada</span>
+            <h3 class="season-title">${escaparHtmlPlano(temporadaNombre)}</h3>
+            <p class="season-summary-copy">${descripcionResumen}</p>
+          </div>
+          <div class="season-hero-meter">
+            <i class="bi ${resumenDesdeAgregados ? 'bi-bar-chart-fill' : 'bi-calendar-check-fill'}"></i>
+            <div>
+              <span>${resumenDesdeAgregados ? 'Base' : 'Partidos'}</span>
+              <strong>${etiquetaPartidos}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="season-kpi-grid">
+          ${kpisTemporada}
+        </section>
+
+        <section class="season-group-grid">
+          <div class="season-group-panel positive">
+            <h4 class="season-section-title"><i class="bi bi-trophy-fill"></i>Positivas</h4>
+            <div class="season-group-list positive">
+              ${positivos}
+            </div>
+          </div>
+          <div class="season-group-panel negative">
+            <h4 class="season-section-title"><i class="bi bi-exclamation-triangle-fill"></i>Negativas</h4>
+            <div class="season-group-list">
+              ${negativos}
+            </div>
+          </div>
+          <div class="season-group-panel streaks">
+            <h4 class="season-section-title"><i class="bi bi-activity"></i>Rachas</h4>
+            <div class="season-group-list">
+              ${rachas}
+            </div>
+          </div>
+        </section>
+
+        <section class="season-ranking-panel">
+          <div class="season-ranking-head">
+            <h4 class="season-section-title"><i class="bi bi-table"></i>Ranking de temporada</h4>
+            <span class="season-ranking-subtitle">Top ${topRanking.length}</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle season-ranking-table">
+          <thead>
+            <tr>
+              <th class="text-center">#</th>
+              <th>Jugador</th>
+              <th class="text-center">PTS</th>
+              <th class="text-center">PJ</th>
+              <th class="text-center">PG/E/PP</th>
+              <th class="text-center">WR</th>
+              <th class="text-center">G</th>
+              <th class="text-center">A</th>
+              <th class="text-center">Cag.</th>
+              <th class="text-center">Ataj.</th>
+              <th class="text-center">MVP/ACE</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasRanking || '<tr><td colspan="11" class="text-center text-light-emphasis py-4">Sin jugadores para mostrar</td></tr>'}
+          </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    `;
+  };
+
+  window.cargarResumenTemporadas = async function() {
+    const container = document.getElementById('temporadas-resumen-container');
+    if (!container) return;
+
+    const temporadaId = obtenerTemporadaResumenActiva();
+    const selectorResumen = document.getElementById('temporadas-resumen-selector');
+    if (selectorResumen && temporadaId) {
+      selectorResumen.value = String(temporadaId);
+    }
+
+    if (!temporadaId) {
+      container.innerHTML = `
+        <div class="text-center py-4">
+          <i class="bi bi-calendar-x fs-1 text-warning mb-3"></i>
+          <h5 class="text-white">Selecciona una temporada</h5>
+          <p class="text-light-emphasis mb-0">No hay una temporada activa para resumir.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-info" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="text-light-emphasis mt-2 mb-0">Calculando resumen de temporada...</p>
+      </div>
+    `;
+
+    try {
+      const partidos = await consultarPartidosResumenTemporada(temporadaId);
+      const temporadaNombre = partidos[0]?.temporadas?.nombre || obtenerNombreTemporadaResumen(temporadaId);
+
+      if (partidos.length === 0) {
+        const estadisticasAgregadas = await consultarEstadisticasAgregadasResumenTemporada(temporadaId);
+        if (estadisticasAgregadas.length > 0) {
+          const resumenAgregado = construirResumenTemporadaDesdeAgregados(estadisticasAgregadas);
+          container.innerHTML = renderizarResumenTemporada(temporadaNombre, resumenAgregado);
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="text-center py-4">
+            <i class="bi bi-inbox fs-1 text-info mb-3"></i>
+            <h5 class="text-white">${escaparHtmlPlano(temporadaNombre)}</h5>
+            <p class="text-light-emphasis mb-0">No hay partidos cargados para esta temporada.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const resumen = construirResumenTemporada(partidos);
+      container.innerHTML = renderizarResumenTemporada(temporadaNombre, resumen);
+    } catch (error) {
+      console.error('Error al cargar resumen de temporada:', error);
+      container.innerHTML = `
+        <div class="text-center py-4">
+          <i class="bi bi-exclamation-triangle fs-1 text-danger mb-3"></i>
+          <h5 class="text-white">No se pudo cargar el resumen</h5>
+          <p class="text-light-emphasis mb-0">${escaparHtmlPlano(error.message || 'Error desconocido')}</p>
+        </div>
+      `;
+    }
+  };
+
   window.irARankingSkill = function() {
     // Cambiar a la pestaña de ranking
     const rankingTab = document.getElementById('ranking-skill-tab');
@@ -12122,8 +13063,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       temporadaSeleccionada = aplicarTemporadaDesdeRuta(rutaInicialPerfil.temporadaId) || null;
     }
     console.log('📅 Temporada por defecto:', temporadaSeleccionada);
+    const selectorResumenTemporada = document.getElementById('temporadas-resumen-selector');
+    if (selectorResumenTemporada && temporadaSeleccionada) {
+      selectorResumenTemporada.value = temporadaSeleccionada;
+    }
     cargarEstadisticas();
     cargarHistorialPartidos();
+    cargarResumenTemporadas();
     // Poblar selector de jugadores en el header
     poblarSelectorJugadoresPerfil();
 
@@ -12311,6 +13257,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     rankingTab.addEventListener('shown.bs.tab', function (e) {
       // Cargar ranking cuando se muestra la pestaña
       cargarRankingSkill();
+    });
+  }
+
+  const temporadasTab = document.getElementById('temporadas-tab');
+  if (temporadasTab) {
+    temporadasTab.addEventListener('shown.bs.tab', function (e) {
+      cargarResumenTemporadas();
     });
   }
 

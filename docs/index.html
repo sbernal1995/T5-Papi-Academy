@@ -664,6 +664,474 @@
       .floating-btn i {
         font-size: 1.2rem;
       }
+
+      body:has(#mainTabContent > .tab-pane.active:not(#estadisticas-content)) .floating-btn,
+      body:has(#mainTabContent.d-none) .floating-btn {
+        display: none !important;
+      }
+
+      .season-summary-shell {
+        background: rgba(15, 23, 42, 0.68);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+        overflow: hidden;
+      }
+
+      .season-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .season-hero {
+        align-items: stretch;
+        background:
+          linear-gradient(135deg, rgba(8, 145, 178, 0.22), rgba(124, 58, 237, 0.12)),
+          rgba(15, 23, 42, 0.84);
+        border: 1px solid rgba(34, 211, 238, 0.16);
+        border-radius: 10px;
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 1.25rem;
+      }
+
+      .season-eyebrow {
+        color: #67e8f9;
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.3rem;
+        text-transform: uppercase;
+      }
+
+      .season-title {
+        color: #f8fafc;
+        font-size: 1.55rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 1.1;
+        margin: 0;
+      }
+
+      .season-summary-copy {
+        color: #aab6c7;
+        font-size: 0.92rem;
+        margin: 0.55rem 0 0;
+        max-width: 720px;
+      }
+
+      .season-hero-meter {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.38);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 10px;
+        display: flex;
+        gap: 0.85rem;
+        justify-content: center;
+        min-width: 170px;
+        padding: 0.9rem 1rem;
+      }
+
+      .season-hero-meter i {
+        color: #22d3ee;
+        font-size: 1.35rem;
+      }
+
+      .season-hero-meter span {
+        color: #94a3b8;
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .season-hero-meter strong {
+        color: #f8fafc;
+        display: block;
+        font-size: 1.45rem;
+        line-height: 1.1;
+      }
+
+      .season-kpi-grid {
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .season-kpi {
+        background: rgba(2, 6, 23, 0.34);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.55rem;
+        min-height: 96px;
+        padding: 0.95rem;
+      }
+
+      .season-kpi-head {
+        align-items: center;
+        color: #94a3b8;
+        display: flex;
+        font-size: 0.76rem;
+        font-weight: 700;
+        gap: 0.45rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .season-kpi-value {
+        color: var(--season-accent, #f8fafc);
+        font-size: 1.7rem;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .season-section-title {
+        align-items: center;
+        color: #f8fafc;
+        display: flex;
+        font-size: 0.86rem;
+        font-weight: 800;
+        gap: 0.5rem;
+        letter-spacing: 0.08em;
+        margin: 0 0 0.75rem;
+        text-transform: uppercase;
+      }
+
+      .season-section-title i {
+        color: #22d3ee;
+      }
+
+      .season-leader-grid,
+      .season-record-grid {
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .season-leader-card,
+      .season-record-card {
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-left: 4px solid var(--season-accent, #22d3ee);
+        border-radius: 8px;
+        min-height: 128px;
+        padding: 0.95rem;
+      }
+
+      .season-leader-head,
+      .season-record-head {
+        align-items: center;
+        color: #94a3b8;
+        display: flex;
+        font-size: 0.76rem;
+        font-weight: 800;
+        gap: 0.45rem;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+      }
+
+      .season-leader-head i,
+      .season-record-head i {
+        color: var(--season-accent, #22d3ee);
+      }
+
+      .season-winner-line {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      .season-player-link {
+        color: #f8fafc !important;
+        font-size: 1.05rem;
+        font-weight: 800 !important;
+        line-height: 1.1;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        text-align: left;
+      }
+
+      .season-value-pill {
+        background: color-mix(in srgb, var(--season-accent, #22d3ee) 18%, transparent);
+        border: 1px solid color-mix(in srgb, var(--season-accent, #22d3ee) 48%, transparent);
+        border-radius: 999px;
+        color: var(--season-accent, #22d3ee);
+        display: inline-flex;
+        font-size: 0.75rem;
+        font-weight: 900;
+        line-height: 1;
+        padding: 0.34rem 0.5rem;
+        white-space: nowrap;
+      }
+
+      .season-extra-winners {
+        color: #94a3b8;
+        font-size: 0.78rem;
+        margin-top: 0.55rem;
+      }
+
+      .season-empty {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .season-ranking-panel {
+        background: rgba(2, 6, 23, 0.28);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .season-ranking-head {
+        align-items: center;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.9rem 1rem;
+      }
+
+      .season-ranking-head h4 {
+        margin: 0;
+      }
+
+      .season-ranking-head .season-section-title {
+        margin-bottom: 0;
+      }
+
+      .season-ranking-subtitle {
+        color: #94a3b8;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .season-ranking-table {
+        margin: 0;
+        min-width: 860px;
+      }
+
+      .season-ranking-table thead th {
+        background: rgba(15, 23, 42, 0.88);
+        border-color: rgba(148, 163, 184, 0.12);
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .season-ranking-table tbody td {
+        border-color: rgba(148, 163, 184, 0.08);
+        font-size: 0.88rem;
+      }
+
+      .season-rank-badge {
+        align-items: center;
+        background: rgba(148, 163, 184, 0.12);
+        border-radius: 8px;
+        color: #cbd5e1;
+        display: inline-flex;
+        font-weight: 900;
+        height: 28px;
+        justify-content: center;
+        width: 32px;
+      }
+
+      .season-rank-badge.top {
+        background: rgba(250, 204, 21, 0.18);
+        color: #facc15;
+      }
+
+      .season-summary {
+        gap: 0.85rem;
+      }
+
+      .season-hero {
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+      }
+
+      .season-title {
+        font-size: 1.28rem;
+      }
+
+      .season-summary-copy {
+        font-size: 0.84rem;
+        margin-top: 0.3rem;
+      }
+
+      .season-hero-meter {
+        border-radius: 8px;
+        gap: 0.6rem;
+        min-width: 142px;
+        padding: 0.6rem 0.75rem;
+      }
+
+      .season-hero-meter i {
+        font-size: 1.1rem;
+      }
+
+      .season-hero-meter span {
+        font-size: 0.64rem;
+      }
+
+      .season-hero-meter strong {
+        font-size: 1.08rem;
+      }
+
+      .season-kpi-grid {
+        gap: 0.5rem;
+      }
+
+      .season-kpi {
+        gap: 0.3rem;
+        min-height: 66px;
+        padding: 0.6rem 0.7rem;
+      }
+
+      .season-kpi-head {
+        font-size: 0.66rem;
+      }
+
+      .season-kpi-value {
+        font-size: 1.32rem;
+      }
+
+      .season-group-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: minmax(0, 2fr) minmax(220px, 0.9fr) minmax(220px, 0.9fr);
+        align-items: start;
+      }
+
+      .season-group-panel {
+        background: rgba(2, 6, 23, 0.24);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 10px;
+        padding: 0.75rem;
+      }
+
+      .season-group-panel.positive {
+        border-color: rgba(34, 197, 94, 0.2);
+      }
+
+      .season-group-panel.negative {
+        border-color: rgba(251, 113, 133, 0.22);
+      }
+
+      .season-group-panel.streaks {
+        border-color: rgba(167, 139, 250, 0.22);
+      }
+
+      .season-group-list {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .season-group-list.positive {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .season-leader-card,
+      .season-record-card {
+        border-left-width: 3px;
+        min-height: 0;
+        padding: 0.55rem 0.62rem;
+      }
+
+      .season-leader-head,
+      .season-record-head {
+        font-size: 0.64rem;
+        gap: 0.35rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .season-player-link {
+        font-size: 0.92rem;
+      }
+
+      .season-value-pill {
+        font-size: 0.66rem;
+        padding: 0.25rem 0.4rem;
+      }
+
+      .season-extra-winners {
+        font-size: 0.68rem;
+        margin-top: 0.3rem;
+      }
+
+      .season-empty {
+        font-size: 0.78rem;
+      }
+
+      .season-section-title {
+        font-size: 0.74rem;
+        margin-bottom: 0.55rem;
+      }
+
+      .season-ranking-head {
+        padding: 0.65rem 0.8rem;
+      }
+
+      .season-ranking-table thead th {
+        font-size: 0.66rem;
+        padding-bottom: 0.45rem;
+        padding-top: 0.45rem;
+      }
+
+      .season-ranking-table tbody td {
+        font-size: 0.8rem;
+        padding-bottom: 0.45rem;
+        padding-top: 0.45rem;
+      }
+
+      @media (max-width: 1200px) {
+        .season-kpi-grid,
+        .season-leader-grid,
+        .season-record-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .season-group-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .season-hero {
+          grid-template-columns: 1fr;
+        }
+
+        .season-hero-meter {
+          justify-content: flex-start;
+        }
+
+        .season-kpi-grid,
+        .season-leader-grid,
+        .season-record-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .season-group-list.positive {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .season-kpi-grid,
+        .season-leader-grid,
+        .season-record-grid {
+          grid-template-columns: 1fr;
+        }
+      }
       
       /* Cards de destacados */
       .destacado-card {
@@ -1659,6 +2127,16 @@
           </button>
         </li>
         <li class="nav-item" role="presentation">
+          <button class="nav-link" id="temporadas-tab" data-bs-toggle="tab" data-bs-target="#temporadas-content" type="button" role="tab" aria-controls="temporadas-content" aria-selected="false">
+            <i class="bi bi-calendar3-week me-2"></i>Temporadas
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="mundialito-tab" data-bs-toggle="tab" data-bs-target="#mundialito-content" type="button" role="tab" aria-controls="mundialito-content" aria-selected="false">
+            <i class="bi bi-trophy me-2"></i>Mundialito T5
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
           <button class="nav-link" id="ranking-skill-tab" data-bs-toggle="tab" data-bs-target="#ranking-skill-content" type="button" role="tab" aria-controls="ranking-skill-content" aria-selected="false" onclick="cargarRankingSkill()">
             <i class="bi bi-lightning-charge me-2"></i>Ranking de Skill Individual
           </button>
@@ -1666,13 +2144,6 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="paternidades-tab" data-bs-toggle="tab" data-bs-target="#paternidades-content" type="button" role="tab" aria-controls="paternidades-content" aria-selected="false">
             <i class="bi bi-people me-2"></i>Paternidades
-          </button>
-        </li>
-        
-        <!-- Mundialito T5 Tab -->
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="mundialito-tab" data-bs-toggle="tab" data-bs-target="#mundialito-content" type="button" role="tab" aria-controls="mundialito-content" aria-selected="false">
-            <i class="bi bi-trophy me-2"></i>Mundialito T5
           </button>
         </li>
       </ul>
@@ -2553,6 +3024,36 @@
         </div>
       </div>
       <!-- End Ranking de Skill Individual Tab -->
+
+      <!-- Temporadas Tab -->
+      <div class="tab-pane fade" id="temporadas-content" role="tabpanel" aria-labelledby="temporadas-tab">
+        <div class="container-fluid py-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <div>
+              <h2 class="h3 text-info fw-bold mb-1">
+                <i class="bi bi-calendar3-week me-2"></i>Temporadas
+              </h2>
+              <div class="text-light-emphasis">Resumen de rendimiento, líderes y récords por temporada</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <label for="temporadas-resumen-selector" class="text-light small mb-0">Temporada</label>
+              <select id="temporadas-resumen-selector" class="form-select form-select-sm" style="min-width: 180px;" onchange="cargarResumenTemporadas()">
+                <option value="">Seleccionar temporada</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="temporadas-resumen-container" class="season-summary-shell rounded-3 p-4">
+            <div class="text-center py-4">
+              <div class="spinner-border text-info" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="text-light-emphasis mt-2 mb-0">Cargando resumen de temporada...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End Temporadas Tab -->
 
       <!-- Paternidades Tab -->
       <div class="tab-pane fade" id="paternidades-content" role="tabpanel" aria-labelledby="paternidades-tab">
