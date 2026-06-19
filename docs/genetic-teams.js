@@ -45,7 +45,7 @@ class GeneticTeamOptimizer {
    * @param {Array} jugadores - Array de objetos jugador con estadísticas
    */
   setJugadores(jugadores) {
-    this.jugadores = jugadores.map(jugador => {
+    const jugadoresProcesados = jugadores.map(jugador => {
       const rolPartido = normalizarRolPartido(jugador.rolPartido || jugador.rol_matchmaking);
       const rendimientoJugador = this.calcularRendimientoJugador(jugador);
       const rendimientoArqueroDisponible = this.calcularRendimientoArquero(jugador);
@@ -70,6 +70,19 @@ class GeneticTeamOptimizer {
         pj: jugador.pj || 0
       };
     });
+
+    const sumaImpacto = jugadoresProcesados.reduce((total, jugador) => (
+      total + Math.abs(Number(jugador.rendimientoTotal) || 0)
+    ), 0);
+    const impactoFallback = jugadoresProcesados.length > 0 ? 100 / jugadoresProcesados.length : 0;
+
+    this.jugadores = jugadoresProcesados.map(jugador => ({
+      ...jugador,
+      skillMatchmaking: jugador.rendimientoTotal,
+      impactoMatchmaking: sumaImpacto > 0
+        ? (Math.abs(Number(jugador.rendimientoTotal) || 0) / sumaImpacto) * 100
+        : impactoFallback
+    }));
   }
 
   /**
@@ -447,7 +460,8 @@ class GeneticTeamOptimizer {
       golesRecibidosEquipo: 0,
       winrate: 0,
       pulmon: 0,
-      cantidadArqueros: 0
+      cantidadArqueros: 0,
+      impactoMatchmaking: 0
     };
 
     for (const jugador of equipo) {
@@ -459,6 +473,7 @@ class GeneticTeamOptimizer {
       stats.winrate += jugador.winrate;
       stats.pulmon += jugador.pulmon;
       stats.cantidadArqueros += jugador.cantidadArqueros;
+      stats.impactoMatchmaking += jugador.impactoMatchmaking || 0;
     }
 
     const size = equipo.length;
@@ -471,6 +486,7 @@ class GeneticTeamOptimizer {
       winratePromedio: size > 0 ? stats.winrate / size : 0,
       pulmonPromedio: size > 0 ? stats.pulmon / size : 0,
       cantidadArqueros: stats.cantidadArqueros,
+      impactoMatchmaking: stats.impactoMatchmaking,
       jugadores: size
     };
   }
@@ -1263,6 +1279,63 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+function renderizarJugadorResultadoMatchmaking(jugador) {
+  const skill = Number(jugador.skillMatchmaking ?? jugador.rendimientoTotal) || 0;
+  const impacto = Number(jugador.impactoMatchmaking) || 0;
+  const rolArquero = jugador.rolPartido === ROL_PARTIDO_ARQUERO;
+  const partidosRecientes = jugador.origenRendimiento === MODO_RENDIMIENTO_RECIENTE
+    ? `<small class="text-light-emphasis">${jugador.partidosRecientesUsados}/${jugador.partidosRecientesSolicitados} PJ</small>`
+    : '';
+
+  return `
+    <span class="player-card matchmaking-impact-card">
+      <span class="matchmaking-player-main">
+        <span class="matchmaking-player-name">${jugador.nombre}</span>
+        <span class="badge ${rolArquero ? 'bg-warning text-dark' : 'bg-primary'}">${etiquetaRolPartido(jugador.rolPartido)}</span>
+      </span>
+      <span class="matchmaking-player-metrics">
+        <small class="matchmaking-skill-pill">Skill ${skill.toFixed(1)}</small>
+        <small class="matchmaking-impact-pill">${impacto.toFixed(1)}% impacto</small>
+        ${partidosRecientes}
+      </span>
+    </span>
+  `;
+}
+
+function obtenerJugadorClaveMatchmaking(resultado) {
+  const jugadores = [
+    ...(resultado?.equipo1?.jugadores || []),
+    ...(resultado?.equipo2?.jugadores || [])
+  ];
+
+  if (jugadores.length === 0) return null;
+
+  return jugadores.reduce((clave, jugador) => {
+    const impactoJugador = Number(jugador.impactoMatchmaking) || 0;
+    const impactoClave = Number(clave?.impactoMatchmaking) || 0;
+    return impactoJugador > impactoClave ? jugador : clave;
+  }, jugadores[0]);
+}
+
+function renderizarNotaJugadorClaveMatchmaking(resultado) {
+  const jugadorClave = obtenerJugadorClaveMatchmaking(resultado);
+  if (!jugadorClave) return '';
+
+  const impacto = Number(jugadorClave.impactoMatchmaking) || 0;
+  const skill = Number(jugadorClave.skillMatchmaking ?? jugadorClave.rendimientoTotal) || 0;
+  const contexto = jugadorClave.origenRendimiento === MODO_RENDIMIENTO_RECIENTE
+    ? 'según sus últimos partidos'
+    : 'según su rendimiento histórico';
+
+  return `
+    <div class="matchmaking-key-note mt-3">
+      <i class="bi bi-exclamation-diamond me-2"></i>
+      Este balance depende especialmente de que <strong>${jugadorClave.nombre}</strong> juegue como viene jugando:
+      aporta <strong>${impacto.toFixed(1)}%</strong> del impacto del armado con skill <strong>${skill.toFixed(1)}</strong> ${contexto}.
+    </div>
+  `;
+}
+
 // Función para mostrar los resultados
 function mostrarResultados(resultado) {
   document.getElementById('progress-section').style.display = 'none';
@@ -1277,8 +1350,11 @@ function mostrarResultados(resultado) {
   const html = `
     <div class="col-12">
       <div class="matchmaking-result-mode rounded px-3 py-2">
-        <i class="bi bi-sliders me-2"></i>
-        Base de balance: <strong>${etiquetaBaseRendimiento}</strong>
+        <div>
+          <i class="bi bi-sliders me-2"></i>
+          Base de balance: <strong>${etiquetaBaseRendimiento}</strong>
+        </div>
+        ${renderizarNotaJugadorClaveMatchmaking(resultado)}
       </div>
     </div>
     <div class="col-md-6">
@@ -1288,18 +1364,16 @@ function mostrarResultados(resultado) {
           Equipo 1
         </h6>
         <div class="player-list">
-          ${resultado.equipo1.jugadores.map(j => `
-            <span class="player-card">
-              ${j.nombre}
-              <small class="badge ${j.rolPartido === ROL_PARTIDO_ARQUERO ? 'bg-warning text-dark' : 'bg-primary'} ms-1">${etiquetaRolPartido(j.rolPartido)}</small>
-              ${j.origenRendimiento === MODO_RENDIMIENTO_RECIENTE ? `<small class="text-light-emphasis ms-1">${j.partidosRecientesUsados}/${j.partidosRecientesSolicitados} PJ</small>` : ''}
-            </span>
-          `).join('')}
+          ${resultado.equipo1.jugadores.map(renderizarJugadorResultadoMatchmaking).join('')}
         </div>
         <div class="stats-summary">
           <div class="stat-row">
             <span>Rendimiento Matchmaking:</span>
             <span class="fw-bold">${resultado.equipo1.estadisticas.rendimientoTotal.toFixed(1)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Impacto del Equipo:</span>
+            <span class="fw-bold">${resultado.equipo1.estadisticas.impactoMatchmaking.toFixed(1)}%</span>
           </div>
           <div class="stat-row">
             <span>Rendimiento Jugadores:</span>
@@ -1339,18 +1413,16 @@ function mostrarResultados(resultado) {
           Equipo 2
         </h6>
         <div class="player-list">
-          ${resultado.equipo2.jugadores.map(j => `
-            <span class="player-card">
-              ${j.nombre}
-              <small class="badge ${j.rolPartido === ROL_PARTIDO_ARQUERO ? 'bg-warning text-dark' : 'bg-primary'} ms-1">${etiquetaRolPartido(j.rolPartido)}</small>
-              ${j.origenRendimiento === MODO_RENDIMIENTO_RECIENTE ? `<small class="text-light-emphasis ms-1">${j.partidosRecientesUsados}/${j.partidosRecientesSolicitados} PJ</small>` : ''}
-            </span>
-          `).join('')}
+          ${resultado.equipo2.jugadores.map(renderizarJugadorResultadoMatchmaking).join('')}
         </div>
         <div class="stats-summary">
           <div class="stat-row">
             <span>Rendimiento Matchmaking:</span>
             <span class="fw-bold">${resultado.equipo2.estadisticas.rendimientoTotal.toFixed(1)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Impacto del Equipo:</span>
+            <span class="fw-bold">${resultado.equipo2.estadisticas.impactoMatchmaking.toFixed(1)}%</span>
           </div>
           <div class="stat-row">
             <span>Rendimiento Jugadores:</span>
@@ -1398,6 +1470,10 @@ function mostrarResultados(resultado) {
           <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Matchmaking</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoTotal - resultado.equipo2.estadisticas.rendimientoTotal).toFixed(1)}</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="small text-light-emphasis">Dif. Impacto</div>
+            <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.impactoMatchmaking - resultado.equipo2.estadisticas.impactoMatchmaking).toFixed(1)}%</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Jugadores</div>
