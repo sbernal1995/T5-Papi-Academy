@@ -8,6 +8,8 @@ const ROL_PARTIDO_ARQUERO = 'arquero';
 const MODO_RENDIMIENTO_HISTORICO = 'historico';
 const MODO_RENDIMIENTO_RECIENTE = 'reciente';
 const PARTIDOS_RECIENTES_DEFAULT = 5;
+const SOBRE_RENDIMIENTO_RECIENTE_MIN_ABSOLUTO = 3;
+const SOBRE_RENDIMIENTO_RECIENTE_MIN_RELATIVO = 0.25;
 
 function normalizarRolPartido(rol) {
   return rol === ROL_PARTIDO_ARQUERO ? ROL_PARTIDO_ARQUERO : ROL_PARTIDO_JUGADOR;
@@ -50,6 +52,18 @@ class GeneticTeamOptimizer {
       const rendimientoJugador = this.calcularRendimientoJugador(jugador);
       const rendimientoArqueroDisponible = this.calcularRendimientoArquero(jugador);
       const esArquero = rolPartido === ROL_PARTIDO_ARQUERO;
+      const historicoMatchmaking = jugador.historicoMatchmaking
+        ? {
+            ...jugador.historicoMatchmaking,
+            rolPartido,
+            rol_matchmaking: rolPartido
+          }
+        : null;
+      const rendimientoHistoricoMatchmaking = historicoMatchmaking
+        ? (esArquero
+            ? this.calcularRendimientoArquero(historicoMatchmaking)
+            : this.calcularRendimientoJugador(historicoMatchmaking))
+        : null;
 
       return {
         nombre: jugador.nombre || jugador.jugadores?.nombre,
@@ -58,6 +72,7 @@ class GeneticTeamOptimizer {
         partidosRecientesSolicitados: jugador.partidosRecientesSolicitados || 0,
         partidosRecientesUsados: jugador.partidosRecientesUsados || 0,
         rendimientoTotal: esArquero ? rendimientoArqueroDisponible : rendimientoJugador,
+        rendimientoHistoricoMatchmaking: Number.isFinite(rendimientoHistoricoMatchmaking) ? rendimientoHistoricoMatchmaking : null,
         rendimientoAtaque: esArquero ? 0 : rendimientoJugador,
         rendimientoArquero: esArquero ? rendimientoArqueroDisponible : 0,
         rendimientoJugador,
@@ -612,6 +627,11 @@ function crearStatsRecientesBase(jugadorSeleccionado, cantidadPartidos) {
       nombre: jugadorSeleccionado.nombre
     },
     rolPartido: jugadorSeleccionado.rolPartido,
+    historicoMatchmaking: {
+      ...jugadorSeleccionado.data,
+      rolPartido: jugadorSeleccionado.rolPartido,
+      rol_matchmaking: jugadorSeleccionado.rolPartido
+    },
     pj: 0,
     pg: 0,
     pe: 0,
@@ -1336,6 +1356,66 @@ function renderizarNotaJugadorClaveMatchmaking(resultado) {
   `;
 }
 
+function obtenerJugadorSobreRendimientoReciente(resultado) {
+  const jugadores = [
+    ...(resultado?.equipo1?.jugadores || []),
+    ...(resultado?.equipo2?.jugadores || [])
+  ];
+
+  const candidatos = jugadores
+    .map(jugador => {
+      if (jugador.origenRendimiento !== MODO_RENDIMIENTO_RECIENTE) return null;
+
+      const historicoRaw = jugador.rendimientoHistoricoMatchmaking;
+      if (historicoRaw === null || historicoRaw === undefined) return null;
+
+      const reciente = Number(jugador.skillMatchmaking ?? jugador.rendimientoTotal);
+      const historico = Number(historicoRaw);
+      if (!Number.isFinite(reciente) || !Number.isFinite(historico)) return null;
+
+      const diferencia = reciente - historico;
+      const variacionRelativa = historico > 0 ? diferencia / historico : Number.POSITIVE_INFINITY;
+
+      if (diferencia < SOBRE_RENDIMIENTO_RECIENTE_MIN_ABSOLUTO) return null;
+      if (historico > 0 && variacionRelativa < SOBRE_RENDIMIENTO_RECIENTE_MIN_RELATIVO) return null;
+
+      return {
+        jugador,
+        reciente,
+        historico,
+        diferencia,
+        variacionRelativa
+      };
+    })
+    .filter(Boolean);
+
+  if (candidatos.length === 0) return null;
+
+  return candidatos.sort((a, b) => {
+    if (b.diferencia !== a.diferencia) return b.diferencia - a.diferencia;
+    return b.variacionRelativa - a.variacionRelativa;
+  })[0];
+}
+
+function renderizarNotaSobreRendimientoReciente(resultado) {
+  const sobreRendimiento = obtenerJugadorSobreRendimientoReciente(resultado);
+  if (!sobreRendimiento) return '';
+
+  const { jugador, reciente, historico, diferencia, variacionRelativa } = sobreRendimiento;
+  const variacionTexto = Number.isFinite(variacionRelativa)
+    ? `, +${Math.round(variacionRelativa * 100)}%`
+    : '';
+
+  return `
+    <div class="matchmaking-key-note matchmaking-trend-note mt-2">
+      <i class="bi bi-graph-up-arrow me-2"></i>
+      Ojo con <strong>${jugador.nombre}</strong>: viene jugando bastante por encima de su histórico
+      (skill reciente <strong>${reciente.toFixed(1)}</strong> vs histórico <strong>${historico.toFixed(1)}</strong>,
+      +<strong>${diferencia.toFixed(1)}</strong>${variacionTexto}). El balance depende de que siga jugando así.
+    </div>
+  `;
+}
+
 // Función para mostrar los resultados
 function mostrarResultados(resultado) {
   document.getElementById('progress-section').style.display = 'none';
@@ -1355,6 +1435,7 @@ function mostrarResultados(resultado) {
           Base de balance: <strong>${etiquetaBaseRendimiento}</strong>
         </div>
         ${renderizarNotaJugadorClaveMatchmaking(resultado)}
+        ${renderizarNotaSobreRendimientoReciente(resultado)}
       </div>
     </div>
     <div class="col-md-6">
