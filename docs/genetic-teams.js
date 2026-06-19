@@ -3,6 +3,20 @@
  * Versión JavaScript adaptada del código Python original
  */
 
+const ROL_PARTIDO_JUGADOR = 'jugador';
+const ROL_PARTIDO_ARQUERO = 'arquero';
+const MODO_RENDIMIENTO_HISTORICO = 'historico';
+const MODO_RENDIMIENTO_RECIENTE = 'reciente';
+const PARTIDOS_RECIENTES_DEFAULT = 5;
+
+function normalizarRolPartido(rol) {
+  return rol === ROL_PARTIDO_ARQUERO ? ROL_PARTIDO_ARQUERO : ROL_PARTIDO_JUGADOR;
+}
+
+function etiquetaRolPartido(rol) {
+  return normalizarRolPartido(rol) === ROL_PARTIDO_ARQUERO ? 'Arquero' : 'Jugador';
+}
+
 class GeneticTeamOptimizer {
   constructor() {
     this.sinergias = new Map();
@@ -21,7 +35,8 @@ class GeneticTeamOptimizer {
       rendimientoAtaque: 2.0,
       rendimientoArquero: 1.5,
       golesFavorEquipo: 1.25,
-      golesRecibidosEquipo: 1.25
+      golesRecibidosEquipo: 1.25,
+      cantidadArqueros: 25
     };
   }
 
@@ -30,30 +45,47 @@ class GeneticTeamOptimizer {
    * @param {Array} jugadores - Array de objetos jugador con estadísticas
    */
   setJugadores(jugadores) {
-    this.jugadores = jugadores.map(jugador => ({
-      nombre: jugador.nombre || jugador.jugadores?.nombre,
-      rendimientoTotal: this.calcularRendimientoTotal(jugador),
-      rendimientoAtaque: this.calcularRendimientoAtaque(jugador),
-      rendimientoArquero: this.calcularRendimientoArquero(jugador),
-      golesFavorEquipo: Number(jugador.goles_favor_equipo) || 0,
-      golesRecibidosEquipo: Number(jugador.goles_recibidos_equipo) || 0,
-      winrate: jugador.winrate || 0,
-      pulmon: jugador.pulmon || jugador.jugadores?.pulmon || 0,
-      pj: jugador.pj || 0
-    }));
+    this.jugadores = jugadores.map(jugador => {
+      const rolPartido = normalizarRolPartido(jugador.rolPartido || jugador.rol_matchmaking);
+      const rendimientoJugador = this.calcularRendimientoJugador(jugador);
+      const rendimientoArqueroDisponible = this.calcularRendimientoArquero(jugador);
+      const esArquero = rolPartido === ROL_PARTIDO_ARQUERO;
+
+      return {
+        nombre: jugador.nombre || jugador.jugadores?.nombre,
+        rolPartido,
+        origenRendimiento: jugador.origenRendimiento || MODO_RENDIMIENTO_HISTORICO,
+        partidosRecientesSolicitados: jugador.partidosRecientesSolicitados || 0,
+        partidosRecientesUsados: jugador.partidosRecientesUsados || 0,
+        rendimientoTotal: esArquero ? rendimientoArqueroDisponible : rendimientoJugador,
+        rendimientoAtaque: esArquero ? 0 : rendimientoJugador,
+        rendimientoArquero: esArquero ? rendimientoArqueroDisponible : 0,
+        rendimientoJugador,
+        rendimientoArqueroDisponible,
+        golesFavorEquipo: esArquero ? 0 : Number(jugador.goles_favor_equipo) || 0,
+        golesRecibidosEquipo: esArquero ? Number(jugador.goles_recibidos_equipo) || 0 : 0,
+        cantidadArqueros: esArquero ? 1 : 0,
+        winrate: jugador.winrate || 0,
+        pulmon: jugador.pulmon || jugador.jugadores?.pulmon || 0,
+        pj: jugador.pj || 0
+      };
+    });
   }
 
   /**
    * Calcula el rendimiento total de un jugador
    */
   calcularRendimientoTotal(jugador) {
-    return this.calcularRendimientoAtaque(jugador) + this.calcularRendimientoArquero(jugador);
+    const rolPartido = normalizarRolPartido(jugador.rolPartido || jugador.rol_matchmaking);
+    return rolPartido === ROL_PARTIDO_ARQUERO
+      ? this.calcularRendimientoArquero(jugador)
+      : this.calcularRendimientoJugador(jugador);
   }
 
   /**
-   * Calcula el rendimiento de ataque de un jugador
+   * Calcula el rendimiento de un jugador de campo
    */
-  calcularRendimientoAtaque(jugador) {
+  calcularRendimientoJugador(jugador) {
     const pj = jugador.pj || 1;
     const golesPP = (jugador.goles || 0) / pj;
     const mvpPP = (jugador.mvp_count || 0) / pj;
@@ -63,6 +95,10 @@ class GeneticTeamOptimizer {
     const puntosPP = (jugador.total_puntos || 0) / pj;
     
     return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
+  }
+
+  calcularRendimientoAtaque(jugador) {
+    return this.calcularRendimientoJugador(jugador);
   }
 
   /**
@@ -258,14 +294,16 @@ class GeneticTeamOptimizer {
       rendimientoAtaque: 0,
       rendimientoArquero: 0,
       golesFavorEquipo: 0,
-      golesRecibidosEquipo: 0
+      golesRecibidosEquipo: 0,
+      cantidadArqueros: 0
     };
     const stats2 = {
       rendimientoTotal: 0,
       rendimientoAtaque: 0,
       rendimientoArquero: 0,
       golesFavorEquipo: 0,
-      golesRecibidosEquipo: 0
+      golesRecibidosEquipo: 0,
+      cantidadArqueros: 0
     };
 
     for (let i = 0; i < individuo.length; i++) {
@@ -277,6 +315,7 @@ class GeneticTeamOptimizer {
         stats1.rendimientoArquero += jugador.rendimientoArquero;
         stats1.golesFavorEquipo += jugador.golesFavorEquipo;
         stats1.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
+        stats1.cantidadArqueros += jugador.cantidadArqueros;
       } else {
         equipo2.push(jugador.nombre);
         stats2.rendimientoTotal += jugador.rendimientoTotal;
@@ -284,6 +323,7 @@ class GeneticTeamOptimizer {
         stats2.rendimientoArquero += jugador.rendimientoArquero;
         stats2.golesFavorEquipo += jugador.golesFavorEquipo;
         stats2.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
+        stats2.cantidadArqueros += jugador.cantidadArqueros;
       }
     }
 
@@ -297,7 +337,8 @@ class GeneticTeamOptimizer {
       rendimientoAtaque: stats1.rendimientoAtaque / size1,
       rendimientoArquero: stats1.rendimientoArquero / size1,
       golesFavorEquipo: stats1.golesFavorEquipo / size1,
-      golesRecibidosEquipo: stats1.golesRecibidosEquipo / size1
+      golesRecibidosEquipo: stats1.golesRecibidosEquipo / size1,
+      cantidadArqueros: stats1.cantidadArqueros
     };
 
     const avg2 = {
@@ -305,7 +346,8 @@ class GeneticTeamOptimizer {
       rendimientoAtaque: stats2.rendimientoAtaque / size2,
       rendimientoArquero: stats2.rendimientoArquero / size2,
       golesFavorEquipo: stats2.golesFavorEquipo / size2,
-      golesRecibidosEquipo: stats2.golesRecibidosEquipo / size2
+      golesRecibidosEquipo: stats2.golesRecibidosEquipo / size2,
+      cantidadArqueros: stats2.cantidadArqueros
     };
 
     return this.calcularFitnessBalanceado(avg1, avg2);
@@ -326,6 +368,7 @@ class GeneticTeamOptimizer {
     fitness += Math.abs(avg1.rendimientoArquero - avg2.rendimientoArquero) * this.fitnessWeights.rendimientoArquero;
     fitness += Math.abs(avg1.golesFavorEquipo - avg2.golesFavorEquipo) * this.fitnessWeights.golesFavorEquipo;
     fitness += Math.abs(avg1.golesRecibidosEquipo - avg2.golesRecibidosEquipo) * this.fitnessWeights.golesRecibidosEquipo;
+    fitness += Math.abs((avg1.cantidadArqueros || 0) - (avg2.cantidadArqueros || 0)) * this.fitnessWeights.cantidadArqueros;
     return fitness;
   }
 
@@ -403,7 +446,8 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: 0,
       golesRecibidosEquipo: 0,
       winrate: 0,
-      pulmon: 0
+      pulmon: 0,
+      cantidadArqueros: 0
     };
 
     for (const jugador of equipo) {
@@ -414,6 +458,7 @@ class GeneticTeamOptimizer {
       stats.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
       stats.winrate += jugador.winrate;
       stats.pulmon += jugador.pulmon;
+      stats.cantidadArqueros += jugador.cantidadArqueros;
     }
 
     const size = equipo.length;
@@ -425,6 +470,7 @@ class GeneticTeamOptimizer {
       golesRecibidosPromedio: size > 0 ? stats.golesRecibidosEquipo / size : 0,
       winratePromedio: size > 0 ? stats.winrate / size : 0,
       pulmonPromedio: size > 0 ? stats.pulmon / size : 0,
+      cantidadArqueros: stats.cantidadArqueros,
       jugadores: size
     };
   }
@@ -444,6 +490,282 @@ let parejasEnfrentadas = [];
 let parejasJuntas = [];
 let contadorParejas = { enfrentadas: 1, juntas: 1 };
 let ultimosJugadoresUsados = ''; // Para recordar la última configuración
+let modoRendimientoMatchmaking = MODO_RENDIMIENTO_HISTORICO;
+let partidosRecientesMatchmaking = PARTIDOS_RECIENTES_DEFAULT;
+
+function obtenerPosicionesJugador(jugador) {
+  return jugador?.jugadores?.jugador_posicion || jugador?.jugador_posicion || [];
+}
+
+function esPosicionArquero(posicionJugador) {
+  const nombre = posicionJugador?.posicion?.nombre
+    || posicionJugador?.posiciones?.nombre
+    || posicionJugador?.nombre
+    || posicionJugador?.posicion_nombre
+    || '';
+
+  return String(nombre).toLowerCase().includes('arquero');
+}
+
+function obtenerRolInicialPartido(jugador) {
+  const posicionPrimaria = obtenerPosicionesJugador(jugador).find(posicion => posicion?.es_primaria);
+
+  return esPosicionArquero(posicionPrimaria)
+    ? ROL_PARTIDO_ARQUERO
+    : ROL_PARTIDO_JUGADOR;
+}
+
+function escaparTextoParaJs(valor) {
+  return String(valor || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function obtenerTemporadaActivaMatchmaking() {
+  return document.getElementById('selector-temporada')?.value
+    || document.getElementById('selector-temporada-mobile')?.value
+    || '';
+}
+
+function obtenerCantidadPartidosRecientesMatchmaking() {
+  const input = document.getElementById('input-partidos-recientes-matchmaking');
+  const valor = Number.parseInt(input?.value, 10);
+  if (!Number.isFinite(valor)) return PARTIDOS_RECIENTES_DEFAULT;
+  return Math.min(Math.max(valor, 1), 30);
+}
+
+function obtenerConfiguracionRendimientoMatchmaking() {
+  const modoSeleccionado = document.querySelector('input[name="matchmaking-performance-mode"]:checked')?.value
+    || MODO_RENDIMIENTO_HISTORICO;
+  const modo = modoSeleccionado === MODO_RENDIMIENTO_RECIENTE
+    ? MODO_RENDIMIENTO_RECIENTE
+    : MODO_RENDIMIENTO_HISTORICO;
+
+  return {
+    modo,
+    partidos: obtenerCantidadPartidosRecientesMatchmaking(),
+    temporadaId: obtenerTemporadaActivaMatchmaking()
+  };
+}
+
+window.actualizarModoRendimientoMatchmaking = function() {
+  const configuracion = obtenerConfiguracionRendimientoMatchmaking();
+  modoRendimientoMatchmaking = configuracion.modo;
+  partidosRecientesMatchmaking = configuracion.partidos;
+
+  const inputPartidos = document.getElementById('input-partidos-recientes-matchmaking');
+  if (inputPartidos && String(inputPartidos.value) !== String(configuracion.partidos)) {
+    inputPartidos.value = configuracion.partidos;
+  }
+
+  const recientesConfig = document.getElementById('recent-performance-settings');
+  if (recientesConfig) {
+    recientesConfig.classList.toggle('d-none', configuracion.modo !== MODO_RENDIMIENTO_RECIENTE);
+  }
+
+  const ayuda = document.getElementById('performance-mode-help');
+  if (ayuda) {
+    ayuda.textContent = configuracion.modo === MODO_RENDIMIENTO_RECIENTE
+      ? `El balance usa las últimas ${configuracion.partidos} apariciones de cada jugador${configuracion.temporadaId ? ' en la temporada activa' : ''}.`
+      : 'El balance usa las estadísticas históricas/temporada que ya ves en la tabla.';
+  }
+};
+
+function obtenerEquipoGolEnPartidoMatchmaking(gol, jugadoresPartido = []) {
+  if (gol?.equipo === 1 || gol?.equipo === 2) {
+    return gol.equipo;
+  }
+
+  const goleadorEnPartido = jugadoresPartido.find(jp => jp.jugador_id === gol?.goleador_id);
+  if (!goleadorEnPartido || (goleadorEnPartido.equipo !== 1 && goleadorEnPartido.equipo !== 2)) {
+    return null;
+  }
+
+  if (gol?.es_gol_en_contra) {
+    return goleadorEnPartido.equipo === 1 ? 2 : 1;
+  }
+
+  return goleadorEnPartido.equipo;
+}
+
+function crearStatsRecientesBase(jugadorSeleccionado, cantidadPartidos) {
+  return {
+    ...jugadorSeleccionado.data,
+    jugador_id: jugadorSeleccionado.id,
+    nombre: jugadorSeleccionado.nombre,
+    jugadores: jugadorSeleccionado.data.jugadores || {
+      id: jugadorSeleccionado.id,
+      nombre: jugadorSeleccionado.nombre
+    },
+    rolPartido: jugadorSeleccionado.rolPartido,
+    pj: 0,
+    pg: 0,
+    pe: 0,
+    pp: 0,
+    total_puntos: 0,
+    goles: 0,
+    goles_en_contra: 0,
+    asistencias: 0,
+    cagadas_en_gol: 0,
+    mvp_count: 0,
+    ace_count: 0,
+    atajadas: 0,
+    goles_favor_equipo: 0,
+    goles_recibidos_equipo: 0,
+    winrate: 0,
+    origenRendimiento: MODO_RENDIMIENTO_RECIENTE,
+    partidosRecientesSolicitados: cantidadPartidos,
+    partidosRecientesUsados: 0
+  };
+}
+
+async function cargarEstadisticasRecientesJugadores(jugadores, cantidadPartidos, temporadaId = '') {
+  if (!window.supabase) {
+    throw new Error('No se pudo conectar a Supabase para calcular el rendimiento reciente');
+  }
+
+  const cantidad = Math.min(Math.max(Number.parseInt(cantidadPartidos, 10) || PARTIDOS_RECIENTES_DEFAULT, 1), 30);
+  const jugadoresPorId = new Map(jugadores.map(jugador => [String(jugador.id), jugador]));
+  const idsSeleccionados = new Set(jugadores.map(jugador => String(jugador.id)));
+  const statsPorJugador = new Map();
+
+  jugadores.forEach(jugador => {
+    statsPorJugador.set(String(jugador.id), crearStatsRecientesBase(jugador, cantidad));
+  });
+
+  let query = window.supabase
+    .from('partidos')
+    .select(`
+      id,
+      fecha,
+      temporada_id,
+      equipo_ganador,
+      jugador_partido (
+        jugador_id,
+        equipo,
+        cagadas,
+        mvp,
+        ace,
+        atajadas,
+        jugadores (
+          id,
+          nombre,
+          pulmon,
+          jugador_posicion (
+            posicion_id,
+            es_primaria,
+            posicion (
+              id,
+              nombre
+            )
+          )
+        )
+      ),
+      goles (
+        id,
+        goleador_id,
+        asistidor_id,
+        equipo,
+        es_gol_en_contra
+      )
+    `)
+    .order('fecha', { ascending: false });
+
+  if (temporadaId) {
+    query = query.eq('temporada_id', temporadaId);
+  }
+
+  const { data: partidos, error } = await query;
+  if (error) {
+    throw error;
+  }
+
+  (partidos || []).forEach(partido => {
+    const jugadoresPartido = partido.jugador_partido || [];
+    const jugadoresContadosEnPartido = new Set();
+    let golesEquipo1 = 0;
+    let golesEquipo2 = 0;
+
+    (partido.goles || []).forEach(gol => {
+      const equipoGol = obtenerEquipoGolEnPartidoMatchmaking(gol, jugadoresPartido);
+      if (equipoGol === 1) golesEquipo1 += 1;
+      if (equipoGol === 2) golesEquipo2 += 1;
+    });
+
+    jugadoresPartido.forEach(jp => {
+      const jugadorId = String(jp.jugador_id);
+      if (!idsSeleccionados.has(jugadorId)) return;
+
+      const stats = statsPorJugador.get(jugadorId);
+      if (!stats || stats.pj >= cantidad) return;
+
+      const jugadorSeleccionado = jugadoresPorId.get(jugadorId);
+      stats.jugadores = jp.jugadores || stats.jugadores;
+      stats.nombre = jp.jugadores?.nombre || jugadorSeleccionado?.nombre || stats.nombre;
+      stats.pj += 1;
+      stats.partidosRecientesUsados = stats.pj;
+      jugadoresContadosEnPartido.add(jugadorId);
+
+      if (partido.equipo_ganador === jp.equipo) {
+        stats.pg += 1;
+        stats.total_puntos += 3;
+      } else if (partido.equipo_ganador === null || partido.equipo_ganador === 0) {
+        stats.pe += 1;
+        stats.total_puntos += 1;
+      } else {
+        stats.pp += 1;
+      }
+
+      if (jp.equipo === 1) {
+        stats.goles_favor_equipo += golesEquipo1;
+        stats.goles_recibidos_equipo += golesEquipo2;
+      } else if (jp.equipo === 2) {
+        stats.goles_favor_equipo += golesEquipo2;
+        stats.goles_recibidos_equipo += golesEquipo1;
+      }
+
+      stats.cagadas_en_gol += Number(jp.cagadas) || 0;
+      stats.atajadas += Number(jp.atajadas) || 0;
+      stats.mvp_count += jp.mvp ? 1 : 0;
+      stats.ace_count += jp.ace ? 1 : 0;
+    });
+
+    (partido.goles || []).forEach(gol => {
+      const goleadorId = String(gol.goleador_id || '');
+      const asistidorId = String(gol.asistidor_id || '');
+
+      if (gol.es_gol_en_contra) {
+        if (jugadoresContadosEnPartido.has(goleadorId)) {
+          statsPorJugador.get(goleadorId).goles_en_contra += 1;
+        }
+        return;
+      }
+
+      if (jugadoresContadosEnPartido.has(goleadorId)) {
+        statsPorJugador.get(goleadorId).goles += 1;
+      }
+
+      if (jugadoresContadosEnPartido.has(asistidorId)) {
+        statsPorJugador.get(asistidorId).asistencias += 1;
+      }
+    });
+  });
+
+  return jugadores.map(jugador => {
+    const stats = statsPorJugador.get(String(jugador.id));
+    if (!stats || stats.pj === 0) {
+      return {
+        ...jugador.data,
+        rolPartido: jugador.rolPartido,
+        origenRendimiento: 'historico-fallback',
+        partidosRecientesSolicitados: cantidad,
+        partidosRecientesUsados: 0
+      };
+    }
+
+    const puntosDisputados = stats.pj * 3;
+    stats.winrate = puntosDisputados > 0 ? Math.round((stats.total_puntos / puntosDisputados) * 100) : 0;
+    return stats;
+  });
+}
 
 // Función para abrir el modal
 window.abrirModalAutoEquipos = function() {
@@ -471,6 +793,10 @@ window.abrirModalAutoEquipos = function() {
     inputJugadores.value = '';
     actualizarJugadoresSeleccionados();
   }
+
+  if (typeof window.actualizarModoRendimientoMatchmaking === 'function') {
+    window.actualizarModoRendimientoMatchmaking();
+  }
   
   modal.show();
 };
@@ -486,16 +812,19 @@ window.buscarJugadoresDisponibles = function() {
   }
   
   // Buscar coincidencias
+  const rolesPrevios = new Map(jugadoresSeleccionados.map(jugador => [String(jugador.id), jugador.rolPartido]));
   jugadoresSeleccionados = [];
   nombres.forEach(nombre => {
     const jugador = window.datosJugadores.find(j => 
       (j.jugadores?.nombre || j.nombre).toLowerCase().includes(nombre.toLowerCase())
     );
     if (jugador && !jugadoresSeleccionados.find(js => js.id === jugador.jugadores?.id || jugador.id)) {
+      const jugadorId = jugador.jugadores?.id || jugador.id;
       jugadoresSeleccionados.push({
-        id: jugador.jugadores?.id || jugador.id,
+        id: jugadorId,
         nombre: jugador.jugadores?.nombre || jugador.nombre,
-        data: jugador
+        data: jugador,
+        rolPartido: normalizarRolPartido(rolesPrevios.get(String(jugadorId)) || obtenerRolInicialPartido(jugador))
       });
     }
   });
@@ -506,6 +835,15 @@ window.buscarJugadoresDisponibles = function() {
 };
 
 // Función para actualizar la vista de jugadores seleccionados
+window.cambiarRolJugadorSeleccionado = function(jugadorId, rolPartido) {
+  const jugador = jugadoresSeleccionados.find(j => String(j.id) === String(jugadorId));
+  if (!jugador) return;
+
+  jugador.rolPartido = normalizarRolPartido(rolPartido);
+  actualizarJugadoresSeleccionados();
+  validarEjecucion();
+};
+
 function actualizarJugadoresSeleccionados() {
   const container = document.getElementById('jugadores-seleccionados');
   
@@ -530,12 +868,39 @@ function actualizarJugadoresSeleccionados() {
       </span>
     </div>
     <div class="player-cards-container">
-      ${jugadoresSeleccionados.map(j => `
-        <span class="player-card">
-          ${j.nombre}
-          <small class="text-light-emphasis">(${j.data.pj}PJ, ${j.data.winrate}%)</small>
-        </span>
-      `).join('')}
+      ${jugadoresSeleccionados.map(j => {
+        const rol = normalizarRolPartido(j.rolPartido);
+        const jugadorActivo = rol === ROL_PARTIDO_JUGADOR;
+        const arqueroActivo = rol === ROL_PARTIDO_ARQUERO;
+        const jugadorId = escaparTextoParaJs(j.id);
+
+        return `
+          <span class="player-card player-role-card">
+            <span class="player-role-info">
+              <span class="player-role-name">${j.nombre}</span>
+              <small class="text-light-emphasis">(${j.data.pj || 0}PJ, ${j.data.winrate || 0}%)</small>
+            </span>
+            <span class="btn-group btn-group-sm role-toggle" role="group" aria-label="Rol de ${j.nombre}">
+              <button
+                type="button"
+                class="btn ${jugadorActivo ? 'btn-primary' : 'btn-outline-primary'}"
+                title="Usar estadisticas de jugador"
+                onclick="cambiarRolJugadorSeleccionado('${jugadorId}', '${ROL_PARTIDO_JUGADOR}')"
+              >
+                <i class="bi bi-person me-1"></i>Jugador
+              </button>
+              <button
+                type="button"
+                class="btn ${arqueroActivo ? 'btn-warning' : 'btn-outline-warning'}"
+                title="Usar estadisticas de arquero"
+                onclick="cambiarRolJugadorSeleccionado('${jugadorId}', '${ROL_PARTIDO_ARQUERO}')"
+              >
+                <i class="bi bi-shield-fill me-1"></i>Arquero
+              </button>
+            </span>
+          </span>
+        `;
+      }).join('')}
     </div>
   `;
   
@@ -649,6 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Obtener restricciones
       const restricciones = obtenerRestricciones();
+      const configuracionRendimiento = obtenerConfiguracionRendimientoMatchmaking();
       
       // Cambiar a la sección de progreso
       document.getElementById('config-section').style.display = 'none';
@@ -663,14 +1029,16 @@ document.addEventListener('DOMContentLoaded', function() {
       geneticOptimizer.setRestricciones(restricciones.enfrentadas, restricciones.juntas);
       
       // Usar los jugadores seleccionados
-      const datosJugadoresSeleccionados = jugadoresSeleccionados.map(js => js.data);
-      geneticOptimizer.setJugadores(datosJugadoresSeleccionados);
+      let datosJugadoresSeleccionados = jugadoresSeleccionados.map(js => ({
+        ...js.data,
+        rolPartido: js.rolPartido
+      }));
       
       // Resetear la interfaz de progreso
       document.getElementById('progress-bar').style.width = '0%';
       document.getElementById('progress-percent').textContent = '0%';
       document.getElementById('current-generation').textContent = '0';
-      document.getElementById('best-fitness').textContent = '--';
+      document.getElementById('best-fitness').textContent = configuracionRendimiento.modo === MODO_RENDIMIENTO_RECIENTE ? 'Stats...' : '--';
       document.getElementById('elapsed-time').textContent = '0s';
       
       startTime = Date.now();
@@ -682,6 +1050,17 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 1000);
       
       try {
+        if (configuracionRendimiento.modo === MODO_RENDIMIENTO_RECIENTE) {
+          datosJugadoresSeleccionados = await cargarEstadisticasRecientesJugadores(
+            jugadoresSeleccionados,
+            configuracionRendimiento.partidos,
+            configuracionRendimiento.temporadaId
+          );
+          document.getElementById('best-fitness').textContent = '--';
+        }
+
+        geneticOptimizer.setJugadores(datosJugadoresSeleccionados);
+
         // Ejecutar el algoritmo
         const resultado = await geneticOptimizer.ejecutar((progress) => {
           document.getElementById('progress-bar').style.width = `${progress.progresoPercent}%`;
@@ -689,6 +1068,8 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('current-generation').textContent = progress.generacion;
           document.getElementById('best-fitness').textContent = progress.mejorFitness.toFixed(2);
         });
+
+        resultado.configuracionRendimiento = configuracionRendimiento;
         
         clearInterval(timer);
         
@@ -735,6 +1116,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const jugadorParaEquipo = {
             id: jugadorCompleto.id,
             nombre: jugadorCompleto.nombre,
+            rolPartido: jugador.rolPartido || jugadorCompleto.rolPartido,
             jugadores: {
               id: jugadorCompleto.id,
               nombre: jugadorCompleto.nombre,
@@ -757,6 +1139,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const jugadorParaEquipo = {
             id: jugadorCompleto.id,
             nombre: jugadorCompleto.nombre,
+            rolPartido: jugador.rolPartido || jugadorCompleto.rolPartido,
             jugadores: {
               id: jugadorCompleto.id,
               nombre: jugadorCompleto.nombre,
@@ -886,8 +1269,18 @@ function mostrarResultados(resultado) {
   document.getElementById('results-section').style.display = 'block';
   
   const container = document.getElementById('equipos-resultado');
+  const configuracion = resultado.configuracionRendimiento || { modo: MODO_RENDIMIENTO_HISTORICO };
+  const etiquetaBaseRendimiento = configuracion.modo === MODO_RENDIMIENTO_RECIENTE
+    ? `Últimos ${configuracion.partidos || PARTIDOS_RECIENTES_DEFAULT} partidos por jugador${configuracion.temporadaId ? ' en temporada activa' : ''}`
+    : 'Histórico / temporada activa';
   
   const html = `
+    <div class="col-12">
+      <div class="matchmaking-result-mode rounded px-3 py-2">
+        <i class="bi bi-sliders me-2"></i>
+        Base de balance: <strong>${etiquetaBaseRendimiento}</strong>
+      </div>
+    </div>
     <div class="col-md-6">
       <div class="team-result-card team-1">
         <h6 class="text-primary">
@@ -896,21 +1289,29 @@ function mostrarResultados(resultado) {
         </h6>
         <div class="player-list">
           ${resultado.equipo1.jugadores.map(j => `
-            <span class="player-card">${j.nombre}</span>
+            <span class="player-card">
+              ${j.nombre}
+              <small class="badge ${j.rolPartido === ROL_PARTIDO_ARQUERO ? 'bg-warning text-dark' : 'bg-primary'} ms-1">${etiquetaRolPartido(j.rolPartido)}</small>
+              ${j.origenRendimiento === MODO_RENDIMIENTO_RECIENTE ? `<small class="text-light-emphasis ms-1">${j.partidosRecientesUsados}/${j.partidosRecientesSolicitados} PJ</small>` : ''}
+            </span>
           `).join('')}
         </div>
         <div class="stats-summary">
           <div class="stat-row">
-            <span>Rendimiento Total:</span>
+            <span>Rendimiento Matchmaking:</span>
             <span class="fw-bold">${resultado.equipo1.estadisticas.rendimientoTotal.toFixed(1)}</span>
           </div>
           <div class="stat-row">
-            <span>Rendimiento Ataque:</span>
+            <span>Rendimiento Jugadores:</span>
             <span class="fw-bold">${resultado.equipo1.estadisticas.rendimientoAtaque.toFixed(1)}</span>
           </div>
           <div class="stat-row">
-            <span>Rendimiento Arquero:</span>
+            <span>Rendimiento Arqueros:</span>
             <span class="fw-bold">${resultado.equipo1.estadisticas.rendimientoArquero.toFixed(1)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Arqueros:</span>
+            <span class="fw-bold">${resultado.equipo1.estadisticas.cantidadArqueros}</span>
           </div>
           <div class="stat-row">
             <span>Winrate Promedio:</span>
@@ -939,21 +1340,29 @@ function mostrarResultados(resultado) {
         </h6>
         <div class="player-list">
           ${resultado.equipo2.jugadores.map(j => `
-            <span class="player-card">${j.nombre}</span>
+            <span class="player-card">
+              ${j.nombre}
+              <small class="badge ${j.rolPartido === ROL_PARTIDO_ARQUERO ? 'bg-warning text-dark' : 'bg-primary'} ms-1">${etiquetaRolPartido(j.rolPartido)}</small>
+              ${j.origenRendimiento === MODO_RENDIMIENTO_RECIENTE ? `<small class="text-light-emphasis ms-1">${j.partidosRecientesUsados}/${j.partidosRecientesSolicitados} PJ</small>` : ''}
+            </span>
           `).join('')}
         </div>
         <div class="stats-summary">
           <div class="stat-row">
-            <span>Rendimiento Total:</span>
+            <span>Rendimiento Matchmaking:</span>
             <span class="fw-bold">${resultado.equipo2.estadisticas.rendimientoTotal.toFixed(1)}</span>
           </div>
           <div class="stat-row">
-            <span>Rendimiento Ataque:</span>
+            <span>Rendimiento Jugadores:</span>
             <span class="fw-bold">${resultado.equipo2.estadisticas.rendimientoAtaque.toFixed(1)}</span>
           </div>
           <div class="stat-row">
-            <span>Rendimiento Arquero:</span>
+            <span>Rendimiento Arqueros:</span>
             <span class="fw-bold">${resultado.equipo2.estadisticas.rendimientoArquero.toFixed(1)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Arqueros:</span>
+            <span class="fw-bold">${resultado.equipo2.estadisticas.cantidadArqueros}</span>
           </div>
           <div class="stat-row">
             <span>Winrate Promedio:</span>
@@ -987,15 +1396,15 @@ function mostrarResultados(resultado) {
             <div class="small text-success">Menor es mejor</div>
           </div>
           <div class="col-6 col-md-2">
-            <div class="small text-light-emphasis">Dif. Rendimiento Total</div>
+            <div class="small text-light-emphasis">Dif. Matchmaking</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoTotal - resultado.equipo2.estadisticas.rendimientoTotal).toFixed(1)}</div>
           </div>
           <div class="col-6 col-md-2">
-            <div class="small text-light-emphasis">Dif. Rend. Ataque</div>
+            <div class="small text-light-emphasis">Dif. Jugadores</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoAtaque - resultado.equipo2.estadisticas.rendimientoAtaque).toFixed(1)}</div>
           </div>
           <div class="col-6 col-md-2">
-            <div class="small text-light-emphasis">Dif. Rend. Arquero</div>
+            <div class="small text-light-emphasis">Dif. Arqueros</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.rendimientoArquero - resultado.equipo2.estadisticas.rendimientoArquero).toFixed(1)}</div>
           </div>
           <div class="col-6 col-md-2">
@@ -1003,8 +1412,8 @@ function mostrarResultados(resultado) {
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.golesFavorPromedio - resultado.equipo2.estadisticas.golesFavorPromedio).toFixed(2)}</div>
           </div>
           <div class="col-6 col-md-2">
-            <div class="small text-light-emphasis">Dif. Goles Recibidos</div>
-            <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.golesRecibidosPromedio - resultado.equipo2.estadisticas.golesRecibidosPromedio).toFixed(2)}</div>
+            <div class="small text-light-emphasis">Dif. Cant. Arqueros</div>
+            <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.cantidadArqueros - resultado.equipo2.estadisticas.cantidadArqueros)}</div>
           </div>
         </div>
         ${mostrarRestriccionesAplicadas()}

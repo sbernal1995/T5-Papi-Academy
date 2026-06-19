@@ -1589,6 +1589,61 @@
         border-color: rgba(255, 255, 255, 0.2);
       }
 
+      .matchmaking-mode-panel {
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .performance-toggle .btn {
+        min-width: 96px;
+        font-weight: 700;
+      }
+
+      .recent-performance-settings {
+        max-width: 280px;
+      }
+
+      .recent-performance-settings input {
+        width: 76px;
+        text-align: center;
+      }
+
+      .matchmaking-result-mode {
+        background: rgba(14, 165, 233, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        color: #dff6ff;
+        font-size: 0.88rem;
+      }
+
+      .player-role-card {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        vertical-align: top;
+      }
+
+      .player-role-info {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 96px;
+      }
+
+      .player-role-name {
+        color: #f8fafc;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+
+      .role-toggle .btn {
+        font-size: 0.72rem;
+        line-height: 1;
+        padding: 0.28rem 0.45rem;
+        white-space: nowrap;
+      }
+
       .team-result-card {
         background: rgba(255, 255, 255, 0.03);
         border: 2px solid;
@@ -3823,6 +3878,36 @@
                 </div>
               </div>
 
+              <div class="matchmaking-mode-panel mb-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                  <div>
+                    <h6 class="text-white mb-1">
+                      <i class="bi bi-activity me-2"></i>
+                      Base de rendimiento
+                    </h6>
+                    <div id="performance-mode-help" class="small text-light-emphasis">El balance usa las estadísticas históricas/temporada que ya ves en la tabla.</div>
+                  </div>
+                  <div class="btn-group btn-group-sm performance-toggle" role="group" aria-label="Base de rendimiento">
+                    <input type="radio" class="btn-check" name="matchmaking-performance-mode" id="performance-mode-historical" value="historico" autocomplete="off" checked onchange="actualizarModoRendimientoMatchmaking()">
+                    <label class="btn btn-outline-primary" for="performance-mode-historical">
+                      <i class="bi bi-clock-history me-1"></i>Histórico
+                    </label>
+                    <input type="radio" class="btn-check" name="matchmaking-performance-mode" id="performance-mode-recent" value="reciente" autocomplete="off" onchange="actualizarModoRendimientoMatchmaking()">
+                    <label class="btn btn-outline-info" for="performance-mode-recent">
+                      <i class="bi bi-lightning-charge me-1"></i>Últimos X
+                    </label>
+                  </div>
+                </div>
+                <div id="recent-performance-settings" class="recent-performance-settings d-none mt-3">
+                  <label for="input-partidos-recientes-matchmaking" class="form-label text-light small mb-1">Partidos recientes por jugador</label>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="small text-light-emphasis">Últimos</span>
+                    <input type="number" id="input-partidos-recientes-matchmaking" class="form-control form-control-sm" value="5" min="1" max="30" step="1" onchange="actualizarModoRendimientoMatchmaking()" oninput="actualizarModoRendimientoMatchmaking()">
+                    <span class="small text-light-emphasis">partidos</span>
+                  </div>
+                </div>
+              </div>
+
               <!-- Selección de jugadores -->
               <div class="mb-4">
                 <h6 class="text-white mb-3">
@@ -3838,7 +3923,7 @@
                     placeholder="Ej: Metox, Bou, Cogorno, Kite, Boska, Berni, Never, Darmian, Facu, Fachita"
                     onkeyup="buscarJugadoresDisponibles()"
                   >
-                  <div class="form-text">Separar nombres con comas. Mínimo 10 jugadores para armar equipos de 5 vs 5.</div>
+                  <div class="form-text">Separar nombres con comas. Mínimo 10 jugadores para armar equipos de 5 vs 5. Después elegí si cada uno juega como jugador o arquero para el balance.</div>
                 </div>
 
                 <!-- Lista de jugadores seleccionados -->
