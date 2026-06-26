@@ -2996,6 +2996,11 @@
                   <i class="bi bi-x-circle me-1"></i>Limpiar
                 </button>
               </div>
+              <div class="col-auto">
+                <button class="btn btn-outline-info btn-sm" id="btn-export-historico" onclick="descargarExportHistorico()" title="Descargar todos los datos historicos en JSON">
+                  <i class="bi bi-download me-1"></i>Exportar JSON
+                </button>
+              </div>
             </div>
             <div class="text-center mb-3">
               <small class="text-light-emphasis d-none" id="filtro-resultado-count"></small>
@@ -4355,6 +4360,7 @@
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
     <script type="module" src="./app.js"></script>
+    <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <!-- Funcionalidad de Paternidades -->
     <script>
     // ===============================
