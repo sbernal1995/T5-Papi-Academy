@@ -610,6 +610,18 @@
       .stats-number-team-for { color: #86efac; border-color: rgba(134, 239, 172, 0.2); }
       .stats-number-team-against { color: #fca5a5; border-color: rgba(252, 165, 165, 0.2); }
       .stats-zero { opacity: 0.5; }
+      .stats-drill-button {
+        appearance: none;
+        cursor: pointer;
+        font-family: inherit;
+        padding: 0;
+        transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      }
+      .stats-drill-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(56, 189, 248, 0.5);
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
+      }
 
       @media (max-width: 768px) {
         .stats-table-toolbar {
@@ -2277,7 +2289,7 @@
         <!-- Main Content -->
         <main class="container-fluid py-5">
       <!-- Último Campeón Section -->
-      <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.02s">
+      <section class="mb-5 animate-fade-in-up d-none" id="ultimo-campeon-section" style="animation-delay: 0.02s">
         <div class="enhanced-card rounded-3 p-4">
           <div class="text-center mb-4">
             <h2 class="text-warning fw-bold mb-2">
@@ -2300,7 +2312,7 @@
       </section>
 
       <!-- Campeones Mundiales Section -->
-      <section class="mb-5 animate-fade-in-up" style="animation-delay: 0.05s">
+      <section class="mb-5 animate-fade-in-up d-none" id="campeones-section" style="animation-delay: 0.05s">
         <div class="enhanced-card rounded-3 p-4">
           <div class="text-center mb-4">
             <h2 class="text-warning fw-bold mb-2">

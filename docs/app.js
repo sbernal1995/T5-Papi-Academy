@@ -525,6 +525,84 @@ window.irAPerfilJugador = function(jugadorId) {
   cambiarVista('perfil', jugadorId);
 };
 
+window.irAPerfilJugadorTab = function(jugadorId, tabId) {
+  if (!jugadorId) return;
+
+  window.irAPerfilJugador(jugadorId);
+
+  window.setTimeout(() => {
+    const tab = document.getElementById(tabId);
+    if (!tab) return;
+
+    if (window.bootstrap?.Tab) {
+      window.bootstrap.Tab.getOrCreateInstance(tab).show();
+    } else {
+      tab.click();
+    }
+  }, 180);
+};
+
+window.irAHistorialJugadorRanking = async function(jugadorId, resultado = '') {
+  if (!jugadorId) return;
+
+  cambiarVista('dashboard');
+
+  const aplicarFiltrosHistorial = async () => {
+    const selectorCantidad = document.getElementById('cantidad-partidos');
+    if (selectorCantidad && Array.from(selectorCantidad.options).some(option => option.value === 'all')) {
+      selectorCantidad.value = 'all';
+    }
+
+    const selectorJugador = document.getElementById('filtro-jugador');
+    if (selectorJugador) selectorJugador.value = jugadorId;
+
+    const selectorResultado = document.getElementById('filtro-resultado');
+    if (selectorResultado) selectorResultado.value = resultado;
+
+    if (typeof window.limpiarTagsHistorial === 'function') {
+      window.limpiarTagsHistorial();
+    }
+
+    if (typeof window.cargarHistorialPartidos === 'function') {
+      await window.cargarHistorialPartidos();
+    } else if (typeof window.filtrarPartidosAvanzado === 'function') {
+      window.filtrarPartidosAvanzado();
+    }
+
+    const selectorJugadorFinal = document.getElementById('filtro-jugador');
+    if (selectorJugadorFinal) selectorJugadorFinal.value = jugadorId;
+
+    const selectorResultadoFinal = document.getElementById('filtro-resultado');
+    if (selectorResultadoFinal) selectorResultadoFinal.value = resultado;
+
+    if (typeof window.filtrarPartidosAvanzado === 'function') {
+      window.filtrarPartidosAvanzado();
+    }
+  };
+
+  const historialTab = document.getElementById('historial-tab');
+  if (historialTab && window.bootstrap?.Tab) {
+    if (historialTab.classList.contains('active')) {
+      await aplicarFiltrosHistorial();
+      return;
+    }
+
+    historialTab.addEventListener('shown.bs.tab', () => {
+      aplicarFiltrosHistorial();
+    }, { once: true });
+    window.bootstrap.Tab.getOrCreateInstance(historialTab).show();
+    return;
+  }
+
+  if (historialTab) {
+    historialTab.click();
+    window.setTimeout(aplicarFiltrosHistorial, 160);
+    return;
+  }
+
+  await aplicarFiltrosHistorial();
+};
+
 window.irAHistorialPartido = async function(partidoId) {
   if (!partidoId) return;
 
@@ -9234,6 +9312,25 @@ const initApp = () => {
       return `<span class="stats-number stats-number-${tone}${zeroClass}"${titleAttr}>${texto}</span>`;
     };
 
+    const renderizarMetricaBotonTabla = (value, label, tone, onClick, title = '') => {
+      const val = obtenerNumeroEstadistica(value);
+      const titleAttr = title ? ` title="${title}"` : ` title="${label}: ${val}"`;
+      return `
+        <button type="button" class="stats-metric stats-metric-${tone} stats-drill-button" onclick="${onClick}"${titleAttr}>
+          <span class="stats-metric-value">${val}</span>
+          <span class="stats-metric-label">${label}</span>
+        </button>
+      `;
+    };
+
+    const renderizarNumeroBotonTabla = (value, tone, onClick, decimals = 0, title = '') => {
+      const val = obtenerNumeroEstadistica(value);
+      const texto = decimals > 0 ? val.toFixed(decimals) : String(val);
+      const zeroClass = val === 0 ? ' stats-zero' : '';
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<button type="button" class="stats-number stats-number-${tone}${zeroClass} stats-drill-button" onclick="${onClick}"${titleAttr}>${texto}</button>`;
+    };
+
     // Calcular skill individual para todos los jugadores
     const calcularSkillIndividual = (jugador) => {
       const pj = jugador.pj || 1;
@@ -9280,6 +9377,9 @@ const initApp = () => {
       
       const skillIndividual = calcularSkillIndividual(jugadorData);
       const colorSkill = obtenerColorSkill(skillIndividual);
+      const jugadorIdArg = escaparTextoParaJs(jugadorData.jugadores.id);
+      const historialClick = (resultado = '') => `event.stopPropagation(); irAHistorialJugadorRanking('${jugadorIdArg}', '${resultado}')`;
+      const perfilClick = (tabId) => `event.stopPropagation(); irAPerfilJugadorTab('${jugadorIdArg}', '${tabId}')`;
 
       tr.classList.add('stats-row');
       tr.innerHTML = `
@@ -9301,13 +9401,13 @@ const initApp = () => {
         </td>
         <td class="text-center stats-col-points">${renderizarPuntosTabla(jugadorData.total_puntos)}</td>
         <td class="text-center stats-col-winrate">${renderizarWinrateTabla(jugadorData.winrate)}</td>
-        <td class="text-center stats-col-pj">${renderizarMetricaTabla(jugadorData.pj, 'PJ', 'neutral')}</td>
-        <td class="text-center stats-col-record">${renderizarMetricaTabla(jugadorData.pg, 'PG', 'win')}</td>
-        <td class="text-center stats-col-record">${renderizarMetricaTabla(jugadorData.pe, 'E', 'draw')}</td>
-        <td class="text-center stats-col-record">${renderizarMetricaTabla(jugadorData.pp, 'PP', 'loss')}</td>
-        <td class="text-center stats-col-goals">${renderizarNumeroTabla(jugadorData.goles, 'goals')}</td>
-        <td class="text-center stats-col-assists">${renderizarNumeroTabla(jugadorData.asistencias, 'assists')}</td>
-        <td class="text-center stats-col-mistakes">${renderizarNumeroTabla(jugadorData.cagadas_en_gol, 'mistakes')}</td>
+        <td class="text-center stats-col-pj">${renderizarMetricaBotonTabla(jugadorData.pj, 'PJ', 'neutral', historialClick(), 'Ver partidos jugados en Historial')}</td>
+        <td class="text-center stats-col-record">${renderizarMetricaBotonTabla(jugadorData.pg, 'PG', 'win', historialClick('ganado'), 'Ver partidos ganados en Historial')}</td>
+        <td class="text-center stats-col-record">${renderizarMetricaBotonTabla(jugadorData.pe, 'E', 'draw', historialClick('empate'), 'Ver partidos empatados en Historial')}</td>
+        <td class="text-center stats-col-record">${renderizarMetricaBotonTabla(jugadorData.pp, 'PP', 'loss', historialClick('perdido'), 'Ver partidos perdidos en Historial')}</td>
+        <td class="text-center stats-col-goals">${renderizarNumeroBotonTabla(jugadorData.goles, 'goals', perfilClick('tab-perfil-videos'), 0, 'Ver goles del jugador')}</td>
+        <td class="text-center stats-col-assists">${renderizarNumeroBotonTabla(jugadorData.asistencias, 'assists', perfilClick('tab-perfil-asistencias'), 0, 'Ver asistencias del jugador')}</td>
+        <td class="text-center stats-col-mistakes">${renderizarNumeroBotonTabla(jugadorData.cagadas_en_gol, 'mistakes', perfilClick('tab-perfil-cagadas'), 0, 'Ver cagadas del jugador')}</td>
         <td class="text-center stats-col-badge">${renderizarNumeroTabla(jugadorData.mvp_count, 'assists')}</td>
         <td class="text-center stats-col-badge">${renderizarNumeroTabla(jugadorData.ace_count, 'saves')}</td>
         <td class="text-center stats-col-saves">${renderizarNumeroTabla(jugadorData.atajadas, 'saves')}</td>
@@ -12030,6 +12130,16 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   }
 
   window.removerTagHistorial = function(key, id) { removerTag(key, id); };
+  window.limpiarTagsHistorial = function() {
+    tagInputState.companero.selected = [];
+    tagInputState.rival.selected = [];
+    renderTags('companero');
+    renderTags('rival');
+    const inputComp = document.getElementById('companero-input');
+    const inputRival = document.getElementById('rival-input');
+    if (inputComp) inputComp.value = '';
+    if (inputRival) inputRival.value = '';
+  };
 
   // Inicializar los tag inputs
   initTagInput('companero');
@@ -12168,14 +12278,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (selJugador) selJugador.value = '';
     const selResultado = document.getElementById('filtro-resultado');
     if (selResultado) selResultado.value = '';
-    tagInputState.companero.selected = [];
-    tagInputState.rival.selected = [];
-    renderTags('companero');
-    renderTags('rival');
-    const inputComp = document.getElementById('companero-input');
-    const inputRival = document.getElementById('rival-input');
-    if (inputComp) inputComp.value = '';
-    if (inputRival) inputRival.value = '';
+    window.limpiarTagsHistorial();
     filtrarPartidosAvanzado();
   };
 
@@ -13548,6 +13651,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     return window.campeonesMundiales.has(jugadorId);
   };
 
+  const toggleSeccionCampeones = (sectionId, visible) => {
+    const section = document.getElementById(sectionId);
+    if (section) section.classList.toggle('d-none', !visible);
+  };
+
   // Función para renderizar el último campeón
   const renderizarUltimoCampeon = async () => {
     const container = document.getElementById('ultimo-campeon-container');
@@ -13565,6 +13673,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (window.campeonesMundiales.size === 0) {
         console.log('⚠️ No hay campeones, ocultando sección último campeón');
         container.innerHTML = '';
+        toggleSeccionCampeones('ultimo-campeon-section', false);
         return;
       }
 
@@ -13602,6 +13711,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (!ultimoCampeon) {
         console.log('⚠️ No se encontró último campeón, ocultando sección');
         container.innerHTML = '';
+        toggleSeccionCampeones('ultimo-campeon-section', false);
         return;
       }
 
@@ -13644,11 +13754,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       `;
 
       container.innerHTML = html;
+      toggleSeccionCampeones('ultimo-campeon-section', true);
       console.log('✅ Último campeón renderizado correctamente');
 
     } catch (error) {
       console.error('Error renderizando último campeón:', error);
       container.innerHTML = '';
+      toggleSeccionCampeones('ultimo-campeon-section', false);
     }
   };
 
@@ -13671,6 +13783,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (window.campeonesMundiales.size === 0) {
         console.log('⚠️ No hay campeones en cache, ocultando sección');
         container.innerHTML = '';
+        toggleSeccionCampeones('campeones-section', false);
         return;
       }
 
@@ -13702,6 +13815,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (campeonesInfo.length === 0) {
         console.log('⚠️ No hay campeones en jugadoresMundial, ocultando sección');
         container.innerHTML = '';
+        toggleSeccionCampeones('campeones-section', false);
         return;
       }
 
@@ -13750,11 +13864,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       console.log('🎨 HTML generado:', html);
       container.innerHTML = html;
+      toggleSeccionCampeones('campeones-section', true);
       console.log('✅ Campeones renderizados correctamente');
 
     } catch (error) {
       console.error('Error renderizando campeones mundiales:', error);
-      container.innerHTML = '<div class="col-12 text-center py-4"><p class="text-light-emphasis">Error cargando campeones</p></div>';
+      container.innerHTML = '';
+      toggleSeccionCampeones('campeones-section', false);
     }
   };
 
@@ -13807,9 +13923,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (container) {
         container.innerHTML = '';
       }
+      toggleSeccionCampeones('ultimo-campeon-section', false);
+      toggleSeccionCampeones('campeones-section', false);
       
     } catch (error) {
       console.error('Error cargando campeones automáticamente:', error);
+      toggleSeccionCampeones('ultimo-campeon-section', false);
+      toggleSeccionCampeones('campeones-section', false);
     }
   };
   
@@ -14548,6 +14668,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       await loadCampeonesMundiales();
       
       // Renderizar campeones en la página principal
+      await renderizarUltimoCampeon();
       await renderizarCampeonesMundiales();
       
       // Renderizar estadísticas (histograma) si la pestaña existe
@@ -15115,6 +15236,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const element = document.getElementById(id);
       if (element) element.textContent = '-';
     });
+    toggleSeccionCampeones('ultimo-campeon-section', false);
+    toggleSeccionCampeones('campeones-section', false);
   };
 
   // Event listeners
