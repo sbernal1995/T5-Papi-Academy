@@ -46,12 +46,12 @@ async function verificarAutenticacion() {
     const { data: { user } } = await supabase.auth.getUser();
     usuarioActual = user;
     esAdmin = !!user; // Si hay usuario, es admin
-    
+
     console.log('👤 Estado de autenticación:', { user: usuarioActual, esAdmin });
-    
+
     // Actualizar UI según estado
     actualizarUISegunPermisos();
-    
+
     return esAdmin;
   } catch (error) {
     console.error('Error al verificar autenticación:', error);
@@ -66,32 +66,32 @@ async function verificarAutenticacion() {
 async function iniciarSesion() {
   const email = document.getElementById('email-login').value;
   const password = document.getElementById('password-login').value;
-  
+
   if (!email || !password) {
     showToast('Por favor ingresa email y contraseña', 'error');
     return;
   }
-  
+
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password
     });
-    
+
     if (error) throw error;
-    
+
     usuarioActual = data.user;
     esAdmin = true;
-    
+
     showToast('✅ Sesión iniciada correctamente', 'success');
-    
+
     // Cerrar modal de login
     const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
     modal.hide();
-    
+
     // Actualizar UI
     actualizarUISegunPermisos();
-    
+
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     showToast(`Error: ${error.message}`, 'error');
@@ -103,13 +103,13 @@ async function cerrarSesion() {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-    
+
     usuarioActual = null;
     esAdmin = false;
-    
+
     showToast('👋 Sesión cerrada', 'info');
     actualizarUISegunPermisos();
-    
+
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
     showToast(`Error: ${error.message}`, 'error');
@@ -119,18 +119,19 @@ async function cerrarSesion() {
 // Función para actualizar UI según permisos
 function actualizarUISegunPermisos() {
   const elementosAdminSolo = document.querySelectorAll('[data-admin-only]');
-  const botonesEdicion = document.querySelectorAll('.btn-editar, .btn-eliminar, .btn-agregar, .btn-outline-warning, .btn-outline-danger');
-  
+  const botonesEdicion = Array.from(document.querySelectorAll('.btn-editar, .btn-eliminar, .btn-agregar, .btn-outline-warning, .btn-outline-danger'))
+    .filter(btn => !(btn.closest('#review-sandbox-content') && !btn.hasAttribute('data-admin-only')));
+
   // Elementos de escritorio
   const botonLogin = document.getElementById('btn-login');
   const botonLogout = document.getElementById('btn-logout');
   const estadoUsuario = document.getElementById('estado-usuario');
-  
+
   // Elementos móviles
   const botonLoginMobile = document.getElementById('btn-login-mobile');
   const botonLogoutMobile = document.getElementById('btn-logout-mobile');
   const estadoUsuarioMobile = document.getElementById('estado-usuario-mobile');
-  
+
   if (esAdmin) {
     // Usuario con permisos - mostrar elementos de edición
     elementosAdminSolo.forEach(el => el.style.display = '');
@@ -139,7 +140,7 @@ function actualizarUISegunPermisos() {
       btn.style.opacity = '1';
       btn.title = '';
     });
-    
+
     // Escritorio
     if (botonLogin) botonLogin.style.display = 'none';
     if (botonLogout) botonLogout.style.display = '';
@@ -149,7 +150,7 @@ function actualizarUISegunPermisos() {
         <span class="text-success small">Admin: ${usuarioActual?.email || 'Usuario'}</span>
       `;
     }
-    
+
     // Móvil
     if (botonLoginMobile) botonLoginMobile.style.display = 'none';
     if (botonLogoutMobile) botonLogoutMobile.style.display = '';
@@ -167,7 +168,7 @@ function actualizarUISegunPermisos() {
       btn.style.opacity = '0.3';
       btn.title = 'Requiere permisos de administrador';
     });
-    
+
     // Escritorio
     if (botonLogin) botonLogin.style.display = '';
     if (botonLogout) botonLogout.style.display = 'none';
@@ -177,7 +178,7 @@ function actualizarUISegunPermisos() {
         <span class="text-warning small">Solo lectura</span>
       `;
     }
-    
+
     // Móvil
     if (botonLoginMobile) botonLoginMobile.style.display = '';
     if (botonLogoutMobile) botonLogoutMobile.style.display = 'none';
@@ -194,11 +195,11 @@ function actualizarUISegunPermisos() {
 function verificarPermisosAdmin(operacion = 'esta operación') {
   if (!esAdmin) {
     showToast(`❌ Se requieren permisos de administrador para ${operacion}`, 'error');
-    
+
     // Mostrar modal de login
     const modal = new bootstrap.Modal(document.getElementById('loginModal'));
     modal.show();
-    
+
     return false;
   }
   return true;
@@ -207,7 +208,7 @@ function verificarPermisosAdmin(operacion = 'esta operación') {
 // Escuchar cambios en el estado de autenticación
 supabase.auth.onAuthStateChange((event, session) => {
   console.log('🔄 Cambio en autenticación:', event, session);
-  
+
   if (event === 'SIGNED_IN') {
     usuarioActual = session.user;
     esAdmin = true;
@@ -234,25 +235,20 @@ window.verificarPermisosAdmin = verificarPermisosAdmin;
  * @param {number} minutosDecimales - Tiempo del gol en minutos decimales (ej: 5.5 = 5:30)
  * @returns {string} Link con timestamp o null si no es posible generar
  */
-function generarLinkConTimestamp(youtubeLink, minutosDecimales) {
-  if (!youtubeLink || minutosDecimales === null || minutosDecimales === undefined) {
+function generarLinkConTimestampSegundos(youtubeLink, segundosTotales) {
+  if (!youtubeLink || segundosTotales === null || segundosTotales === undefined) {
+    return null;
+  }
+
+  const youtubeReviewLink = obtenerLinkYouTubeReview(youtubeLink);
+  if (!youtubeReviewLink) {
     return null;
   }
 
   // Convertir minutos decimales a segundos totales
-  const segundos = Math.round(minutosDecimales * 60);
+  const segundos = Math.max(0, Math.round(Number(segundosTotales) || 0));
 
-  // Detectar formato del link y convertir a formato con timestamp
-  let videoId = null;
-
-  // Formato: https://www.youtube.com/watch?v=VIDEO_ID
-  if (youtubeLink.includes('youtube.com/watch?v=')) {
-    videoId = youtubeLink.split('watch?v=')[1].split('&')[0];
-  }
-  // Formato: https://youtu.be/VIDEO_ID
-  else if (youtubeLink.includes('youtu.be/')) {
-    videoId = youtubeLink.split('youtu.be/')[1].split('?')[0];
-  }
+  const videoId = extraerVideoId(youtubeReviewLink);
 
   // Si se pudo extraer el ID, generar link con timestamp
   if (videoId) {
@@ -260,7 +256,15 @@ function generarLinkConTimestamp(youtubeLink, minutosDecimales) {
   }
 
   // Si no se pudo parsear, devolver el link original con parámetro t
-  return `${youtubeLink}${youtubeLink.includes('?') ? '&' : '?'}t=${segundos}`;
+  return `${youtubeReviewLink}${youtubeReviewLink.includes('?') ? '&' : '?'}t=${segundos}`;
+}
+
+function generarLinkConTimestamp(youtubeLink, minutosDecimales) {
+  if (!youtubeLink || minutosDecimales === null || minutosDecimales === undefined) {
+    return null;
+  }
+
+  return generarLinkConTimestampSegundos(youtubeLink, Math.round(Number(minutosDecimales) * 60));
 }
 
 /**
@@ -282,11 +286,17 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
   const iconos = golesArray.map(item => {
     const minutosDecimales = item.minuto; // Minutos en formato decimal
     const tieneTiempo = minutosDecimales !== null && minutosDecimales !== undefined;
-    const tieneVideo = youtubeLink !== null && youtubeLink !== undefined && youtubeLink !== '';
+    const youtubeReviewLink = obtenerLinkYouTubeReview(youtubeLink);
+    const tieneVideo = youtubeReviewLink !== '';
+    const reviewSegundos = item.review_segundos !== null && item.review_segundos !== undefined
+      ? Number(item.review_segundos)
+      : null;
 
     // Si tiene tiempo Y video, crear link clickeable
     if (tieneTiempo && tieneVideo) {
-      const linkConTimestamp = generarLinkConTimestamp(youtubeLink, minutosDecimales);
+      const linkConTimestamp = Number.isFinite(reviewSegundos)
+        ? generarLinkConTimestampSegundos(youtubeReviewLink, reviewSegundos)
+        : generarLinkConTimestamp(youtubeReviewLink, minutosDecimales);
       const mins = Math.floor(minutosDecimales);
       const secs = Math.round((minutosDecimales - mins) * 60);
       const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
@@ -301,10 +311,22 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
   return `${iconos}(${total})`;
 }
 
-function esErrorColumnaCagadaFaltante(error) {
+function esErrorColumnaFaltante(error, columna) {
   const textoError = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
-  return textoError.includes('cagada_jugador_id') &&
+  const columnaNormalizada = String(columna || '').toLowerCase();
+  return textoError.includes(columnaNormalizada) &&
     (textoError.includes('does not exist') || textoError.includes('schema cache') || textoError.includes('column'));
+}
+
+function esErrorTablaFaltante(error, tabla) {
+  const textoError = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+  const tablaNormalizada = String(tabla || '').toLowerCase();
+  return textoError.includes(tablaNormalizada) &&
+    (textoError.includes('does not exist') || textoError.includes('schema cache') || textoError.includes('relation'));
+}
+
+function esErrorColumnaCagadaFaltante(error) {
+  return esErrorColumnaFaltante(error, 'cagada_jugador_id');
 }
 
 function obtenerRutaCompartiblePerfil() {
@@ -650,12 +672,34 @@ function extraerVideoId(youtubeLink) {
   if (!youtubeLink) return null;
 
   let videoId = null;
-  if (youtubeLink.includes('youtube.com/watch?v=')) {
-    videoId = youtubeLink.split('watch?v=')[1].split('&')[0];
-  } else if (youtubeLink.includes('youtu.be/')) {
-    videoId = youtubeLink.split('youtu.be/')[1].split('?')[0];
+  try {
+    const url = new URL(/^https?:\/\//i.test(youtubeLink) ? youtubeLink : `https://${youtubeLink}`);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (url.pathname === '/watch') videoId = url.searchParams.get('v');
+      else if (url.pathname.startsWith('/embed/')) videoId = url.pathname.split('/embed/')[1]?.split('/')[0];
+      else if (url.pathname.startsWith('/shorts/')) videoId = url.pathname.split('/shorts/')[1]?.split('/')[0];
+    } else if (host === 'youtu.be') {
+      videoId = url.pathname.replace(/^\//, '').split('/')[0];
+    }
+  } catch (error) {
+    if (youtubeLink.includes('youtube.com/watch?v=')) {
+      videoId = youtubeLink.split('watch?v=')[1].split('&')[0];
+    } else if (youtubeLink.includes('youtu.be/')) {
+      videoId = youtubeLink.split('youtu.be/')[1].split('?')[0];
+    }
   }
-  return videoId;
+
+  return videoId || null;
+}
+
+function obtenerLinkYouTubeReview(link) {
+  if (!extraerVideoId(link)) return '';
+  try {
+    return new URL(/^https?:\/\//i.test(link) ? link : `https://${link}`).href;
+  } catch (error) {
+    return link;
+  }
 }
 
 const PREMIOS_PERFIL_CONFIG = {
@@ -3492,11 +3536,12 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           <div class="fut-list-stack">
             ${conexionesFut.map(conexion => {
               const minutoFut = formatearMinutoConexionFut(conexion.minuto);
+              const youtubeConexionLinkFut = obtenerLinkYouTubeReview(conexion.youtube_link);
               const metaFut = [
                 formatearFechaConexionFut(conexion.fecha),
                 minutoFut ? `min ${minutoFut}` : null,
-                conexion.youtube_link && conexion.minuto !== null && conexion.minuto !== undefined
-                  ? `<a href="${generarLinkConTimestamp(conexion.youtube_link, conexion.minuto)}" target="_blank" class="link-info text-decoration-none">ver video</a>`
+                youtubeConexionLinkFut && conexion.minuto !== null && conexion.minuto !== undefined
+                  ? `<a href="${generarLinkConTimestamp(youtubeConexionLinkFut, conexion.minuto)}" target="_blank" class="link-info text-decoration-none">ver video</a>`
                   : null
               ].filter(Boolean).join(' &middot; ');
 
@@ -3715,11 +3760,12 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           <div class="list-group list-group-flush rounded overflow-hidden">
             ${conexiones.map(conexion => {
               const minuto = formatearMinutoConexion(conexion.minuto);
+              const youtubeConexionLink = obtenerLinkYouTubeReview(conexion.youtube_link);
               const textoMeta = [
                 formatearFechaConexion(conexion.fecha),
                 minuto ? `min ${minuto}` : null,
-                conexion.youtube_link && conexion.minuto !== null && conexion.minuto !== undefined
-                  ? `<a href="${generarLinkConTimestamp(conexion.youtube_link, conexion.minuto)}" target="_blank" class="link-info text-decoration-none">ver video</a>`
+                youtubeConexionLink && conexion.minuto !== null && conexion.minuto !== undefined
+                  ? `<a href="${generarLinkConTimestamp(youtubeConexionLink, conexion.minuto)}" target="_blank" class="link-info text-decoration-none">ver video</a>`
                   : null
               ].filter(Boolean).join(' · ');
 
@@ -4405,7 +4451,7 @@ function showToast(message, type = 'success') {
     warning: 'bi-exclamation-triangle-fill',
     info: 'bi-info-circle-fill'
   };
-  
+
   const colorMap = {
     success: 'text-bg-success',
     error: 'text-bg-danger',
@@ -4419,7 +4465,7 @@ function showToast(message, type = 'success') {
   toast.setAttribute('role', 'alert');
   toast.setAttribute('aria-live', 'assertive');
   toast.setAttribute('aria-atomic', 'true');
-  
+
   toast.innerHTML = `
     <div class="d-flex">
       <div class="toast-body d-flex align-items-center">
@@ -4429,16 +4475,16 @@ function showToast(message, type = 'success') {
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
     </div>
   `;
-  
+
   toastContainer.appendChild(toast);
-  
+
   // Inicializar y mostrar el toast de Bootstrap
   const bsToast = new bootstrap.Toast(toast, {
     autohide: true,
     delay: 4000
   });
   bsToast.show();
-  
+
   // Limpiar el DOM después de que se oculte
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
@@ -4475,7 +4521,7 @@ const initApp = () => {
 
   // Nota: Las variables del perfil de jugador (vistaActual, jugadorPerfilActual, etc.)
   // están definidas globalmente al inicio del archivo
-  
+
   // Hacer los equipos disponibles globalmente para el tooltip y algoritmo genético
   window.equipo1 = equipo1;
   window.equipo2 = equipo2;
@@ -4490,8 +4536,12 @@ const initApp = () => {
     });
   });
   let eventos = [];
+  const reviewSandbox = {
+    atajadas: [],
+    cagadas: []
+  };
   let jugadorEditando = null; // Para saber si estamos editando o agregando
-  
+
   // Estado de ordenamiento
   let currentSortField = 'total_puntos';
   let currentSortOrder = 'desc'; // 'asc' o 'desc'
@@ -4735,7 +4785,7 @@ const initApp = () => {
   function sortData(data, field, order) {
     return [...data].sort((a, b) => {
       let aVal, bVal;
-      
+
       if (field === 'nombre') {
         aVal = a.jugadores?.nombre || '';
         bVal = b.jugadores?.nombre || '';
@@ -4753,10 +4803,10 @@ const initApp = () => {
           const atajadasPP = (jugador.atajadas || 0) / pj;
           return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.4);
         };
-        
+
         aVal = calcularSkill(a);
         bVal = calcularSkill(b);
-        
+
         return order === 'asc' ? aVal - bVal : bVal - aVal;
       } else if (field === 'goles_favor_equipo' || field === 'goles_recibidos_equipo') {
         aVal = calcularPromedioPorPartido(a, field);
@@ -4766,11 +4816,11 @@ const initApp = () => {
       } else {
         aVal = a[field] || 0;
         bVal = b[field] || 0;
-        
+
         // Convertir a número si es necesario
         if (typeof aVal === 'string') aVal = parseFloat(aVal) || 0;
         if (typeof bVal === 'string') bVal = parseFloat(bVal) || 0;
-        
+
         return order === 'asc' ? aVal - bVal : bVal - aVal;
       }
     });
@@ -4781,17 +4831,17 @@ const initApp = () => {
     document.querySelectorAll('.sortable').forEach(th => {
       th.classList.remove('active', 'asc', 'desc');
     });
-    
+
     // Remover highlight de todas las columnas
     document.querySelectorAll('.column-highlight').forEach(cell => {
       cell.classList.remove('column-highlight');
     });
-    
+
     // Agregar clase activa al campo actual
     const activeHeader = document.querySelector(`[data-sort="${currentSortField}"]`);
     if (activeHeader) {
       activeHeader.classList.add('active', currentSortOrder);
-      
+
       // Agregar highlight a toda la columna
       const columnIndex = Array.from(activeHeader.parentNode.children).indexOf(activeHeader);
       highlightColumn(columnIndex);
@@ -4801,13 +4851,13 @@ const initApp = () => {
   function highlightColumn(columnIndex) {
     const table = document.querySelector('.table');
     if (!table) return;
-    
+
     // Highlight header
     const headerCell = table.querySelector(`thead tr th:nth-child(${columnIndex + 1})`);
     if (headerCell) {
       headerCell.classList.add('column-highlight');
     }
-    
+
     // Highlight todas las celdas de la columna
     const bodyCells = table.querySelectorAll(`tbody tr td:nth-child(${columnIndex + 1})`);
     bodyCells.forEach(cell => {
@@ -4824,20 +4874,20 @@ const initApp = () => {
       currentSortField = field;
       currentSortOrder = field === 'nombre' ? 'asc' : 'desc';
     }
-    
+
     await renderizarTablaOrdenada();
   }
 
   async function renderizarTablaOrdenada() {
     if (datosJugadores.length === 0) return;
-    
+
     await aplicarFiltros();
   }
 
   // --- Lógica de carga de datos ---
   async function cargarTodosLosJugadores() {
     const { data, error } = await supabase.from('jugadores').select(`
-      id, 
+      id,
       nombre,
       pulmon,
       jugador_posicion (
@@ -4881,9 +4931,9 @@ const initApp = () => {
     const selectorMobile = document.getElementById('selector-temporada-mobile');
     const selectorPartido = document.getElementById('temporada-partido');
     const selectorResumenTemporada = document.getElementById('temporadas-resumen-selector');
-    
+
     const selectors = [selector, selectorMobile, selectorPartido, selectorResumenTemporada].filter(s => s);
-    
+
     selectors.forEach(sel => {
       // Limpiar opciones existentes
       if (sel.id === 'temporada-partido' || sel.id === 'temporadas-resumen-selector') {
@@ -4893,7 +4943,7 @@ const initApp = () => {
         // Para los selectores de filtro, usar "Todas las temporadas"
         sel.innerHTML = '<option value="">Todas las temporadas</option>';
       }
-      
+
       // Agregar opciones dinámicamente
       todasLasTemporadas.forEach(temporada => {
         const option = `<option value="${temporada.id}">${temporada.nombre}</option>`;
@@ -4915,7 +4965,7 @@ const initApp = () => {
       if (sel.id !== 'temporada-partido' && sel.id !== 'temporadas-resumen-selector') {
         sel.addEventListener('change', async (e) => {
           temporadaSeleccionada = e.target.value || null;
-          
+
           // Sincronizar solo los selectores de filtro
           const selectoresFiltro = [selector, selectorMobile].filter(s => s);
           selectoresFiltro.forEach(otherSel => {
@@ -4923,7 +4973,7 @@ const initApp = () => {
               otherSel.value = e.target.value;
             }
           });
-          
+
           // Cargar estadísticas, historial y actualizar gráficos del armador
           await cargarEstadisticas();
           cargarHistorialPartidos();
@@ -4942,13 +4992,13 @@ const initApp = () => {
   function configurarFiltroPartidos() {
     const filtroInput = document.getElementById('filtro-partidos');
     if (!filtroInput) return;
-    
+
     // Event listener para cambio en el filtro
     filtroInput.addEventListener('input', async (e) => {
       filtroPartidosMinimos = parseInt(e.target.value) || 0;
       await aplicarFiltros();
     });
-    
+
     // Event listener para Enter
     filtroInput.addEventListener('keypress', async (e) => {
       if (e.key === 'Enter') {
@@ -4960,12 +5010,12 @@ const initApp = () => {
 
   async function aplicarFiltros() {
     if (datosJugadores.length === 0) return;
-    
+
     // Filtrar por partidos mínimos
-    const datosFiltrados = datosJugadores.filter(jugador => 
+    const datosFiltrados = datosJugadores.filter(jugador =>
       (jugador.pj || 0) >= filtroPartidosMinimos
     );
-    
+
     // Aplicar ordenamiento a los datos filtrados
     const sortedData = sortData(datosFiltrados, currentSortField, currentSortOrder);
     await renderizarTablaConDatos(sortedData);
@@ -4979,32 +5029,32 @@ const initApp = () => {
       return [];
     }
     todasLasPosiciones = data || [];
-    
+
     // Configurar mapeos dinámicos
     iconosPosiciones = {};
     nombresPosiciones = {};
     posicionesIds = {};
-    
+
     data.forEach(pos => {
       const iconos = {
         'Arquero': '🥅',
-        'Defensor': '🛡️', 
+        'Defensor': '🛡️',
         'Mediocampo': '⚡',
         'Atacante': '⚽'
       };
-      
+
       const abrev = {
         'Arquero': 'ARQ',
         'Defensor': 'DEF',
-        'Mediocampo': 'MED', 
+        'Mediocampo': 'MED',
         'Atacante': 'ATA'
       };
-      
+
       iconosPosiciones[pos.id] = iconos[pos.nombre] || '❓';
       nombresPosiciones[pos.id] = abrev[pos.nombre] || pos.nombre.substr(0, 3).toUpperCase();
       posicionesIds[pos.nombre] = pos.id;
     });
-    
+
     return todasLasPosiciones;
   }
 
@@ -5016,19 +5066,19 @@ const initApp = () => {
   function cargarOpcionesPosiciones() {
     const selectPrimaria = document.getElementById('posicion-primaria');
     const selectSecundaria = document.getElementById('posicion-secundaria');
-    
+
     if (!selectPrimaria || !selectSecundaria) return;
-    
+
     // Limpiar opciones existentes (excepto la primera)
     selectPrimaria.innerHTML = '<option value="">Seleccionar posición</option>';
     selectSecundaria.innerHTML = '<option value="">Seleccionar posición (opcional)</option>';
-    
+
     // Agregar opciones dinámicamente
     todasLasPosiciones.forEach(pos => {
       const icono = iconosPosiciones[pos.id] || '❓';
       const nombre = nombresPosiciones[pos.id] || pos.nombre;
       const option = `<option value="${pos.id}">${icono} ${pos.nombre} (${nombre})</option>`;
-      
+
       selectPrimaria.innerHTML += option;
       selectSecundaria.innerHTML += option;
     });
@@ -5037,15 +5087,15 @@ const initApp = () => {
   // Función para abrir modal en modo agregar
   window.abrirModalAgregar = () => {
     jugadorEditando = null;
-    
+
     // Cambiar textos del modal
     document.getElementById('modal-title-text').textContent = 'Agregar Nuevo Jugador';
     document.getElementById('submit-text').textContent = 'Agregar Jugador';
     document.getElementById('submit-icon').className = 'bi bi-plus me-2';
-    
+
     // Limpiar formulario
     document.getElementById('player-form').reset();
-    
+
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
     modal.show();
@@ -5058,28 +5108,28 @@ const initApp = () => {
       showToast('Jugador no encontrado', 'error');
       return;
     }
-    
+
     jugadorEditando = jugador;
-    
+
     // Cambiar textos del modal
     document.getElementById('modal-title-text').textContent = 'Editar Jugador';
     document.getElementById('submit-text').textContent = 'Guardar Cambios';
     document.getElementById('submit-icon').className = 'bi bi-check-lg me-2';
-    
+
     // Pre-llenar formulario
     document.getElementById('nombre').value = jugador.nombre;
-    
+
     // Pre-seleccionar posiciones
     const posiciones = jugador.jugador_posicion || [];
     const primaria = posiciones.find(p => p.es_primaria);
     const secundaria = posiciones.find(p => !p.es_primaria);
-    
+
     document.getElementById('posicion-primaria').value = primaria ? primaria.posicion_id : '';
     document.getElementById('posicion-secundaria').value = secundaria ? secundaria.posicion_id : '';
-    
+
     // Pre-llenar pulmón
     document.getElementById('pulmon').value = jugador.pulmon || '';
-    
+
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
     modal.show();
@@ -5088,7 +5138,7 @@ const initApp = () => {
   // Función para eliminar jugador
   window.eliminarJugador = async (jugadorId, nombreJugador) => {
     const confirmacion = confirm(`¿Estás seguro de que quieres eliminar a "${nombreJugador}"?\n\nEsta acción no se puede deshacer y eliminará todas las estadísticas del jugador.`);
-    
+
     if (!confirmacion) {
       return;
     }
@@ -5107,7 +5157,7 @@ const initApp = () => {
       showToast(`${nombreJugador} ha sido eliminado exitosamente`, 'success');
       cargarEstadisticas();
       cargarTodosLosJugadores();
-      
+
       // Remover del armado de equipos si estaba agregado
       equipo1 = equipo1.filter(j => j.id !== jugadorId);
       equipo2 = equipo2.filter(j => j.id !== jugadorId);
@@ -5132,10 +5182,10 @@ const initApp = () => {
       if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
         return '<span class="small text-muted">Sin pos.</span>';
       }
-      
+
       const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
       const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
-      
+
       let html = '';
       if (primaria) {
         const icono = iconosPosiciones[primaria.posicion_id] || '❓';
@@ -5145,24 +5195,24 @@ const initApp = () => {
         const icono = iconosPosiciones[secundaria.posicion_id] || '❓';
         html += `<span class="badge bg-secondary badge-sm">${icono}</span>`;
       }
-      
+
       return html;
     };
 
     // Función para analizar rachas del equipo
     const analizarRachasEquipo = async (equipo) => {
       if (equipo.length === 0) return { victorias: [], derrotas: [] };
-      
+
       // Obtener estadísticas de todos los jugadores para poder calcular rachas
       const estadisticasActuales = window.datosJugadores || [];
       if (estadisticasActuales.length === 0) return { victorias: [], derrotas: [] };
-      
+
       // Calcular rachas usando la función existente
       const rachas = await calcularRachasJugadores(estadisticasActuales);
-      
+
       const jugadoresEnRachaVictoria = [];
       const jugadoresEnRachaDerrota = [];
-      
+
       equipo.forEach(jugador => {
         const racha = rachas[jugador.id];
         if (racha && racha.cantidad >= 2) {
@@ -5179,7 +5229,7 @@ const initApp = () => {
           }
         }
       });
-      
+
       return {
         victorias: jugadoresEnRachaVictoria,
         derrotas: jugadoresEnRachaDerrota
@@ -5189,7 +5239,7 @@ const initApp = () => {
     // Función para crear warnings de rachas
     const crearWarningsRachas = (rachas) => {
       let html = '';
-      
+
       // Warning para rachas de victoria
       if (rachas.victorias.length > 0) {
         html += '<div class="alert alert-success alert-sm mb-1 py-2 px-3" style="font-size: 0.8rem; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.1);">';
@@ -5204,7 +5254,7 @@ const initApp = () => {
         }
         html += '</div>';
       }
-      
+
       // Warning para rachas de derrota
       if (rachas.derrotas.length > 0) {
         html += '<div class="alert alert-info alert-sm mb-1 py-2 px-3" style="font-size: 0.8rem; border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1);">';
@@ -5219,25 +5269,25 @@ const initApp = () => {
         }
         html += '</div>';
       }
-      
+
       return html;
     };
 
     const contarPosiciones = (equipo) => {
       const conteoPrimarias = {};
       const conteoSecundarias = {};
-      
+
       // Inicializar conteo con todas las posiciones conocidas
       todasLasPosiciones.forEach(pos => {
         conteoPrimarias[pos.id] = 0;
         conteoSecundarias[pos.id] = 0;
       });
-      
+
       equipo.forEach(jugador => {
         if (jugador.jugador_posicion && jugador.jugador_posicion.length > 0) {
           const primaria = jugador.jugador_posicion.find(jp => jp.es_primaria);
           const secundaria = jugador.jugador_posicion.find(jp => !jp.es_primaria);
-          
+
           if (primaria) {
             conteoPrimarias[primaria.posicion_id] = (conteoPrimarias[primaria.posicion_id] || 0) + 1;
           }
@@ -5246,14 +5296,14 @@ const initApp = () => {
           }
         }
       });
-      
+
       return { primarias: conteoPrimarias, secundarias: conteoSecundarias };
     };
 
     const mostrarDistribucion = (conteos) => {
       const { primarias, secundarias } = conteos;
       let html = '<div class="mt-2 pt-2 border-top border-secondary">';
-      
+
       // Verificar posiciones faltantes (solo si no tienen ni primaria ni secundaria)
       const posicionesFaltantes = [];
       todasLasPosiciones.forEach(pos => {
@@ -5261,32 +5311,32 @@ const initApp = () => {
           posicionesFaltantes.push(pos);
         }
       });
-      
+
       // Verificar posiciones con "muchos" jugadores
       const posicionesMuchos = [];
       const limites = {
         // Arquero: máximo 1 (2+ es mucho)
-        // Defensor: máximo 2 (3+ es mucho) 
+        // Defensor: máximo 2 (3+ es mucho)
         // Mediocampo: máximo 2 (3+ es mucho)
         // Atacante: máximo 2 (3+ es mucho)
       };
-      
+
       todasLasPosiciones.forEach(pos => {
         const cantidad = primarias[pos.id];
         let esmucho = false;
-        
+
         // Determinar si es "mucho" según la posición
         if (pos.nombre === 'Arquero' && cantidad >= 2) {
           esmucho = true;
         } else if (['Defensor', 'Mediocampo', 'Atacante'].includes(pos.nombre) && cantidad >= 3) {
           esmucho = true;
         }
-        
+
         if (esmucho) {
           posicionesMuchos.push({ posicion: pos, cantidad });
         }
       });
-      
+
       // Mostrar warning si faltan posiciones
       if (posicionesFaltantes.length > 0) {
         html += '<div class="alert alert-warning alert-sm mb-2 py-1 px-2" style="font-size: 0.75rem;">';
@@ -5299,7 +5349,7 @@ const initApp = () => {
         });
         html += '</div>';
       }
-      
+
       // Mostrar warning si hay "muchos" de alguna posición
       if (posicionesMuchos.length > 0) {
         html += '<div class="alert alert-danger alert-sm mb-2 py-1 px-2" style="font-size: 0.75rem;">';
@@ -5312,18 +5362,18 @@ const initApp = () => {
         });
         html += '</div>';
       }
-      
+
       html += '<small class="text-muted d-block mb-2">Distribución:</small>';
-      
+
       // Ordenar posiciones por nombre lógico: Arquero, Defensor, Mediocampo, Atacante
       const posicionesOrdenadas = [...todasLasPosiciones].sort((a, b) => {
         const orden = ['Arquero', 'Defensor', 'Mediocampo', 'Atacante'];
         return orden.indexOf(a.nombre) - orden.indexOf(b.nombre);
       });
-      
+
       // Crear contenedor de distribución con diseño más ordenado
       html += '<div class="distribucion-container p-2 rounded" style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05);">';
-      
+
       // Mostrar posiciones primarias en orden
       html += '<div class="d-flex flex-wrap align-items-center mb-2">';
       html += '<small class="text-muted me-2" style="min-width: 60px;">Primaria:</small>';
@@ -5340,7 +5390,7 @@ const initApp = () => {
         }
       });
       html += '</div>';
-      
+
       // Mostrar posiciones secundarias si existen
       const haySecundarias = Object.values(secundarias).some(cantidad => cantidad > 0);
       if (haySecundarias) {
@@ -5360,7 +5410,7 @@ const initApp = () => {
         });
         html += '</div>';
       }
-      
+
       html += '</div>';
       return html;
     };
@@ -5368,30 +5418,30 @@ const initApp = () => {
     const renderEquipo = async (equipo, containerId, colorClass) => {
       const container = document.getElementById(containerId);
       const conteos = contarPosiciones(equipo);
-      
+
       container.innerHTML = ''; // Limpiar siempre antes de renderizar
 
       if (equipo.length === 0) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'text-center text-light-emphasis py-4 d-flex flex-column align-items-center justify-content-center h-100';
         emptyDiv.dataset.equipoDestino = containerId.includes('1') ? 'equipo1' : 'equipo2';
-        
+
         // Configurar como zona de drop
         emptyDiv.addEventListener('dragover', handleDragOver);
         emptyDiv.addEventListener('drop', handleDrop);
-        
+
         emptyDiv.innerHTML = `
           <i class="bi bi-people fs-1 text-secondary mb-3"></i>
           <p class="fw-medium mt-2 mb-1">Aún no hay jugadores.</p>
           <p class="small text-muted">Usa el campo de arriba para arrastra jugadores aquí.</p>
         `;
-        
+
         container.appendChild(emptyDiv);
       } else {
         // Lista de jugadores
         const jugadoresDiv = document.createElement('div');
         jugadoresDiv.className = 'mb-3';
-        
+
         equipo.forEach((jugador, index) => {
           const playerEl = document.createElement('div');
           playerEl.className = `player-item d-flex justify-content-between align-items-center p-2 mb-2 rounded`;
@@ -5399,11 +5449,11 @@ const initApp = () => {
           playerEl.dataset.jugadorId = jugador.id;
           playerEl.dataset.equipoOrigen = containerId.includes('1') ? 'equipo1' : 'equipo2';
           playerEl.dataset.index = index;
-          
+
           // Agregar eventos de drag
           playerEl.addEventListener('dragstart', handleDragStart);
           playerEl.addEventListener('dragend', handleDragEnd);
-          
+
           playerEl.innerHTML = `
             <div class="d-flex align-items-center">
               <i class="bi bi-grip-vertical text-muted me-2" style="cursor: grab;"></i>
@@ -5416,14 +5466,14 @@ const initApp = () => {
           `;
           jugadoresDiv.appendChild(playerEl);
         });
-        
+
         // Configurar zona de drop
         jugadoresDiv.addEventListener('dragover', handleDragOver);
         jugadoresDiv.addEventListener('drop', handleDrop);
         jugadoresDiv.dataset.equipoDestino = containerId.includes('1') ? 'equipo1' : 'equipo2';
-        
+
         container.appendChild(jugadoresDiv);
-        
+
         // Analizar y mostrar warnings de rachas (MOVIDO HACIA ARRIBA)
         const rachasEquipo = await analizarRachasEquipo(equipo);
         if (rachasEquipo.victorias.length > 0 || rachasEquipo.derrotas.length > 0) {
@@ -5432,7 +5482,7 @@ const initApp = () => {
           rachasEl.innerHTML = crearWarningsRachas(rachasEquipo);
           container.appendChild(rachasEl);
         }
-        
+
         // Distribución de posiciones
         const distribucionEl = document.createElement('div');
         distribucionEl.innerHTML = mostrarDistribucion(conteos);
@@ -5443,16 +5493,17 @@ const initApp = () => {
     // Renderizar equipos de forma asíncrona para incluir análisis de rachas
     await renderEquipo(equipo1, 'equipo1-jugadores', 'primary');
     await renderEquipo(equipo2, 'equipo2-jugadores', 'danger');
-    
+
     // Renderizar gráficos fuera de las cards
     renderizarGraficos();
-    
+
       // Actualizar todos los selectores de jugadores en "Información del Encuentro"
       poblarSelectoresJugadores();
-      
+
       // Renderizar tabla de goles
       renderizarTablaGoles();
-      
+      renderizarReviewSandbox();
+
       // Restaurar posición del scroll después del renderizado
       setTimeout(() => {
         window.scrollTo(0, scrollTop);
@@ -5464,12 +5515,12 @@ const initApp = () => {
     const analisisContainer = document.getElementById('analisis-equipos');
     const radarEquipo1Container = document.getElementById('radar-equipo1-container');
     const radarEquipo2Container = document.getElementById('radar-equipo2-container');
-    
+
     if (!analisisContainer) return;
-    
+
     // Solo mostrar gráficos si hay jugadores en al menos un equipo
     const hayJugadores = equipo1.length > 0 || equipo2.length > 0;
-    
+
     if (!hayJugadores) {
       // Destruir gráficos existentes antes de ocultar
       ['chart-winrate', 'chart-goles', 'chart-atajadas', 'chart-radar-equipo1', 'chart-radar-equipo2'].forEach(chartId => {
@@ -5478,21 +5529,21 @@ const initApp = () => {
           delete chartInstances[chartId];
         }
       });
-      
+
       analisisContainer.style.display = 'none';
-      
+
       // Ocultar también la sección de análisis comparativo
       const analisisComparativoContainer = document.getElementById('analisis-comparativo');
       if (analisisComparativoContainer) analisisComparativoContainer.style.display = 'none';
-      
+
       if (radarEquipo1Container) radarEquipo1Container.style.display = 'none';
       if (radarEquipo2Container) radarEquipo2Container.style.display = 'none';
       return;
     }
-    
+
     // Mostrar la sección de análisis central
     analisisContainer.style.display = 'block';
-    
+
     // Manejar gráficos de radar individuales
     if (equipo1.length > 0 && radarEquipo1Container) {
       radarEquipo1Container.style.display = 'block';
@@ -5506,7 +5557,7 @@ const initApp = () => {
       const rendimientoEquipo1 = document.getElementById('rendimiento-equipo1');
       if (rendimientoEquipo1) rendimientoEquipo1.style.display = 'none';
     }
-    
+
     if (equipo2.length > 0 && radarEquipo2Container) {
       radarEquipo2Container.style.display = 'block';
     } else if (radarEquipo2Container) {
@@ -5519,15 +5570,15 @@ const initApp = () => {
       const rendimientoEquipo2 = document.getElementById('rendimiento-equipo2');
       if (rendimientoEquipo2) rendimientoEquipo2.style.display = 'none';
     }
-    
+
     // Crear los gráficos después de que el HTML esté visible
     setTimeout(() => {
       // Gráficos separados con escalas independientes
       crearGraficosSeparados();
-      
+
       // Análisis comparativo central
       crearAnalisisComparativo();
-      
+
       // Gráficos de radar individuales
       if (equipo1.length > 0) {
         crearGraficoRadar('chart-radar-equipo1', equipo1);
@@ -5549,11 +5600,11 @@ const initApp = () => {
       equipoOrigen: e.target.dataset.equipoOrigen,
       index: parseInt(e.target.dataset.index)
     };
-    
+
     // Agregar clase visual durante el arrastre
     e.target.style.opacity = '0.5';
     e.target.style.cursor = 'grabbing';
-    
+
     // Agregar efecto visual a las zonas de drop
     const dropZones = document.querySelectorAll('[data-equipo-destino]');
     dropZones.forEach(zone => {
@@ -5568,14 +5619,14 @@ const initApp = () => {
     // Restaurar estilo original
     e.target.style.opacity = '';
     e.target.style.cursor = 'grab';
-    
+
     // Quitar efectos visuales de las zonas de drop
     const dropZones = document.querySelectorAll('[data-equipo-destino]');
     dropZones.forEach(zone => {
       zone.style.border = '';
       zone.style.backgroundColor = '';
     });
-    
+
     jugadorArrastrado = null;
   }
 
@@ -5586,47 +5637,47 @@ const initApp = () => {
 
   function handleDrop(e) {
     e.preventDefault();
-    
+
     if (!jugadorArrastrado) return;
-    
+
     const equipoDestino = e.currentTarget.dataset.equipoDestino;
     const equipoOrigen = jugadorArrastrado.equipoOrigen;
-    
+
     // No hacer nada si se suelta en el mismo equipo
     if (equipoOrigen === equipoDestino) return;
-    
+
     // Encontrar el jugador en el equipo origen
     const equipoOrigenArray = equipoOrigen === 'equipo1' ? equipo1 : equipo2;
     const equipoDestinoArray = equipoDestino === 'equipo1' ? equipo1 : equipo2;
-    
+
     const jugador = equipoOrigenArray.find(j => j.id === jugadorArrastrado.id);
-    
+
     if (!jugador) return;
-    
+
     // Verificar si el jugador ya está en el equipo destino (no debería pasar, pero por seguridad)
     const yaEstaEnDestino = equipoDestinoArray.find(j => j.id === jugador.id);
     if (yaEstaEnDestino) {
       showToast(`${jugador.nombre} ya está en este equipo`, 'warning');
       return;
     }
-    
+
     // Remover del equipo origen
     const indexOrigen = equipoOrigenArray.findIndex(j => j.id === jugador.id);
     if (indexOrigen !== -1) {
       equipoOrigenArray.splice(indexOrigen, 1);
     }
-    
+
     // Agregar al equipo destino
     equipoDestinoArray.push(jugador);
-    
+
     // Actualizar referencias globales
     window.equipo1 = equipo1;
     window.equipo2 = equipo2;
-    
+
     // Mostrar notificación
     const nombreEquipoDestino = equipoDestino === 'equipo1' ? 'Equipo 1' : 'Equipo 2';
     showToast(`${jugador.nombre} movido a ${nombreEquipoDestino}`, 'success');
-    
+
     // Re-renderizar equipos
     renderizarEquipos().catch(error => {
       console.error('Error al renderizar equipos:', error);
@@ -5649,19 +5700,19 @@ const initApp = () => {
     const chartId = 'chart-winrate';
     const ctx = document.getElementById(chartId);
     if (!ctx) return;
-    
+
     // Destruir gráfico existente si existe
     if (chartInstances[chartId]) {
       chartInstances[chartId].destroy();
     }
-    
+
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-    
+
     // Preparar datasets solo para equipos que tienen jugadores
     const datasets = [];
-    
+
     if (equipo1.length > 0) {
       datasets.push({
         label: `🔵 Equipo 1`,
@@ -5672,7 +5723,7 @@ const initApp = () => {
         barThickness: equipo2.length > 0 ? 45 : 55
       });
     }
-    
+
     if (equipo2.length > 0) {
       datasets.push({
         label: `🔴 Equipo 2`,
@@ -5683,7 +5734,7 @@ const initApp = () => {
         barThickness: equipo1.length > 0 ? 45 : 55
       });
     }
-    
+
     chartInstances[chartId] = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -5744,20 +5795,20 @@ const initApp = () => {
     const chartId = 'chart-goles';
     const ctx = document.getElementById(chartId);
     if (!ctx) return;
-    
+
     // Destruir gráfico existente si existe
     if (chartInstances[chartId]) {
       chartInstances[chartId].destroy();
     }
-    
+
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-    
+
     // Preparar datasets solo para equipos que tienen jugadores
     const datasets = [];
     const maxGoles = Math.max(statsEquipo1.golesPorPartido, statsEquipo2.golesPorPartido);
-    
+
     if (equipo1.length > 0) {
       datasets.push({
         label: `🔵 Equipo 1`,
@@ -5768,7 +5819,7 @@ const initApp = () => {
         barThickness: equipo2.length > 0 ? 45 : 55
       });
     }
-    
+
     if (equipo2.length > 0) {
       datasets.push({
         label: `🔴 Equipo 2`,
@@ -5842,15 +5893,15 @@ const initApp = () => {
     if (chartInstances[chartId]) {
       chartInstances[chartId].destroy();
     }
-    
+
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-    
+
     // Preparar datasets solo para equipos que tienen jugadores
     const datasets = [];
     const maxAtajadas = Math.max(statsEquipo1.atajadasPorPartido, statsEquipo2.atajadasPorPartido);
-    
+
     if (equipo1.length > 0) {
       datasets.push({
         label: `🔵 Equipo 1`,
@@ -5861,7 +5912,7 @@ const initApp = () => {
         barThickness: equipo2.length > 0 ? 45 : 55
       });
     }
-    
+
     if (equipo2.length > 0) {
       datasets.push({
         label: `🔴 Equipo 2`,
@@ -5872,7 +5923,7 @@ const initApp = () => {
         barThickness: equipo1.length > 0 ? 45 : 55
       });
     }
-      
+
       chartInstances[chartId] = new Chart(ctx, {
       type: 'bar',
         data: {
@@ -5930,9 +5981,9 @@ const initApp = () => {
     // Solo mostrar análisis si ambos equipos tienen jugadores
     const analisisContainer = document.getElementById('analisis-comparativo');
     const puntosContainer = document.getElementById('puntos-comparativos');
-    
+
     if (!analisisContainer || !puntosContainer) return;
-    
+
     if (equipo1.length === 0 || equipo2.length === 0) {
       analisisContainer.style.display = 'none';
       return;
@@ -5940,20 +5991,20 @@ const initApp = () => {
 
     // Mostrar la sección
     analisisContainer.style.display = 'block';
-    
+
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-    
+
     // Calcular diferencias
     const difWinrate = statsEquipo1.winrate - statsEquipo2.winrate;
     const difGoles = statsEquipo1.golesPorPartido - statsEquipo2.golesPorPartido;
     const difAtajadas = statsEquipo1.atajadasPorPartido - statsEquipo2.atajadasPorPartido;
     const difCagadas = statsEquipo1.cagadasPorPartido - statsEquipo2.cagadasPorPartido;
-    
+
     // Generar puntos de análisis
     const puntos = [];
-    
+
     // Análisis de Winrate
     if (Math.abs(difWinrate) > 5) { // Diferencia significativa
       if (difWinrate > 15) {
@@ -5998,7 +6049,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.winrate.toFixed(1)}% | Equipo 2: ${statsEquipo2.winrate.toFixed(1)}%`
       });
     }
-    
+
     // Análisis de Goles
     if (Math.abs(difGoles) > 0.3) { // Diferencia significativa
       if (difGoles > 0.8) {
@@ -6043,7 +6094,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.golesPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.golesPorPartido.toFixed(2)} goles/partido`
       });
     }
-    
+
     // Análisis de Atajadas
     if (Math.abs(difAtajadas) > 0.5) { // Diferencia significativa
       if (difAtajadas > 1.0) {
@@ -6088,7 +6139,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.atajadasPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.atajadasPorPartido.toFixed(2)} atajadas/partido`
       });
     }
-    
+
     // Análisis de Cagadas (menos es mejor)
     if (Math.abs(difCagadas) > 0.3) { // Diferencia significativa
       if (difCagadas > 0) {
@@ -6135,7 +6186,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.cagadasPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.cagadasPorPartido.toFixed(2)} cagadas/partido`
       });
     }
-    
+
     // Análisis de Rendimiento
     const difRendimiento = statsEquipo1.rendimientoTotal - statsEquipo2.rendimientoTotal;
     if (Math.abs(difRendimiento) > 15) { // Diferencia significativa
@@ -6181,7 +6232,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
       });
     }
-    
+
     // Análisis de Pulmón
     const difPulmon = statsEquipo1.pulmonPromedio - statsEquipo2.pulmonPromedio;
     if (Math.abs(difPulmon) > 0.8) { // Diferencia significativa
@@ -6227,7 +6278,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
       });
     }
-    
+
     // Generar HTML
     puntosContainer.innerHTML = puntos.map(punto => `
       <div class="analysis-point ${punto.tipo}">
@@ -6467,10 +6518,10 @@ const initApp = () => {
     let rendimientoTotal = 0;
     let rendimientoAtaqueTotal = 0;
     let rendimientoArqueroTotal = 0;
-    
+
     equipo.forEach(jugador => {
       const pj = jugador.pj || 1;
-      
+
       // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
       const golesPP = (jugador.goles || 0) / pj;
       const mvpPP = (jugador.mvp_count || 0) / pj;
@@ -6478,21 +6529,21 @@ const initApp = () => {
       const asistPP = (jugador.asistencias || 0) / pj;
       const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
       const puntosPP = (jugador.total_puntos || 0) / pj;
-      
+
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-      
+
       // Rendimiento Arquero: atajadas por partido * 0.66
       const atajadasPP = (jugador.atajadas || 0) / pj;
       const rendArquero = atajadasPP * 0.4;
-      
+
       rendimientoAtaqueTotal += rendAtaque;
       rendimientoArqueroTotal += rendArquero;
     });
-    
+
     rendimientoTotal = rendimientoAtaqueTotal + rendimientoArqueroTotal;
-    
+
     const colorClass = equipoNum === 1 ? 'primary' : 'danger';
-    
+
     container.innerHTML = `
       <div class="fw-bold text-${colorClass} mb-2 small">
         📈 Rendimiento Total Equipo ${equipoNum}
@@ -6523,7 +6574,7 @@ const initApp = () => {
         </div>
       </div>
     `;
-    
+
     container.style.display = 'block';
   }
 
@@ -6541,9 +6592,9 @@ const initApp = () => {
 
     // Función para obtener estadísticas por temporada (igual que en radar)
     const obtenerEstadisticasPorTemporada = (jugador) => {
-      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
+      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
                                    document.getElementById('selector-temporada-mobile')?.value || '';
-      
+
       // Si no hay temporada seleccionada, usar estadísticas globales
       if (!temporadaSeleccionada || temporadaSeleccionada === '') {
         return {
@@ -6558,12 +6609,12 @@ const initApp = () => {
           total_puntos: jugador.total_puntos || 0
         };
       }
-      
+
       // Buscar las estadísticas del jugador para la temporada seleccionada
-      const estadisticasTemporada = window.datosJugadores?.find(dj => 
+      const estadisticasTemporada = window.datosJugadores?.find(dj =>
         dj.jugadores?.id === jugador.id || dj.id === jugador.id
       );
-      
+
       if (estadisticasTemporada) {
         return {
           pj: estadisticasTemporada.pj || 0,
@@ -6598,7 +6649,7 @@ const initApp = () => {
     let totalCagadas = 0;
     let totalPartidos = 0;
     let jugadoresConDatos = 0;
-    
+
     // Nuevas métricas
     let rendimientoTotalEquipo = 0;
     let totalPulmon = 0;
@@ -6607,7 +6658,7 @@ const initApp = () => {
     equipo.forEach(jugador => {
       // Usar estadísticas filtradas por temporada
       const stats = obtenerEstadisticasPorTemporada(jugador);
-      
+
       if (stats.winrate !== null && stats.winrate !== undefined) {
         totalWinrate += stats.winrate;
         jugadoresConDatos++;
@@ -6624,7 +6675,7 @@ const initApp = () => {
       if (stats.pj !== null && stats.pj !== undefined) {
         totalPartidos += stats.pj;
       }
-      
+
       // Calcular rendimiento de cada jugador usando stats de temporada
       const pj = stats.pj || 1;
       const golesPP = stats.goles / pj;
@@ -6634,12 +6685,12 @@ const initApp = () => {
       const cagadasPP = stats.cagadas_en_gol / pj;
       const puntosPP = stats.total_puntos / pj;
       const atajadasPP = stats.atajadas / pj;
-      
+
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       const rendArquero = atajadasPP * 0.66;
-      
+
       rendimientoTotalEquipo += rendAtaque + rendArquero;
-      
+
       // Pulmón - revisar en múltiples ubicaciones posibles (usar datos originales del jugador)
       let pulmonJugador = null;
       if (jugador.pulmon !== null && jugador.pulmon !== undefined) {
@@ -6647,7 +6698,7 @@ const initApp = () => {
       } else if (jugador.jugadores?.pulmon !== null && jugador.jugadores?.pulmon !== undefined) {
         pulmonJugador = jugador.jugadores.pulmon;
       }
-      
+
       if (pulmonJugador !== null) {
         totalPulmon += pulmonJugador;
         jugadoresConPulmon++;
@@ -6672,7 +6723,7 @@ const initApp = () => {
 
   function crearGraficoRadar(chartId, equipo) {
     console.log('🕷️ Creando gráfico radar:', chartId, 'con equipo:', equipo);
-    
+
     const ctx = document.getElementById(chartId);
     if (!ctx) {
       console.error('❌ No se encontró el canvas:', chartId);
@@ -6689,11 +6740,11 @@ const initApp = () => {
 
     // NUEVA FUNCIÓN: Obtener estadísticas filtradas por temporada
     const obtenerEstadisticasPorTemporada = (jugador) => {
-      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
+      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
                                    document.getElementById('selector-temporada-mobile')?.value || '';
-      
+
       console.log('🏆 Obteniendo estadísticas para temporada:', temporadaSeleccionada, 'jugador:', jugador.nombre);
-      
+
       // Si no hay temporada seleccionada, usar estadísticas globales
       if (!temporadaSeleccionada || temporadaSeleccionada === '') {
         console.log('📊 Usando estadísticas globales para', jugador.nombre);
@@ -6709,12 +6760,12 @@ const initApp = () => {
           total_puntos: jugador.total_puntos || 0
         };
       }
-      
+
       // Buscar las estadísticas del jugador para la temporada seleccionada
-      const estadisticasTemporada = window.datosJugadores?.find(dj => 
+      const estadisticasTemporada = window.datosJugadores?.find(dj =>
         dj.jugadores?.id === jugador.id || dj.id === jugador.id
       );
-      
+
       if (estadisticasTemporada) {
         console.log('📈 Estadísticas de temporada encontradas para', jugador.nombre, ':', estadisticasTemporada);
         return {
@@ -6765,23 +6816,23 @@ const initApp = () => {
     });
 
         // NUEVA LÓGICA COMPLEJA: Separar jugadores principales vs contribuyentes
-    
+
     // Arqueros: Solo los que pueden jugar de arquero (por posición)
-    const arqueros = jugadoresConMinPartidos.filter(j => puedeJugarEn(j, 'Arquero')); 
-    
+    const arqueros = jugadoresConMinPartidos.filter(j => puedeJugarEn(j, 'Arquero'));
+
     // DEFENSOR COMPLEJO: Principales (primarios) + Secundarios (65% contribución)
     const defensoresPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Defensor');
-    const defensoresSecundarios = jugadoresConMinPartidos.filter(j => 
+    const defensoresSecundarios = jugadoresConMinPartidos.filter(j =>
       obtenerPosicionPrimaria(j) !== 'Defensor' && puedeJugarEn(j, 'Defensor')
-    ); 
-    
+    );
+
     // MEDIOCAMPO COMPLEJO: Principales (primarios) + Secundarios (65% contribución)
     const mediocampistasPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Mediocampo');
-    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j => 
+    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j =>
       obtenerPosicionPrimaria(j) !== 'Mediocampo' && puedeJugarEn(j, 'Mediocampo')
     );
-    
-    // ATAQUE COMPLEJO: Principales (atacantes main) + Todos los que contribuyen ofensivamente  
+
+    // ATAQUE COMPLEJO: Principales (atacantes main) + Todos los que contribuyen ofensivamente
     const atacantesPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Atacante');
     const contribuyentesOfensivos = jugadoresConMinPartidos.filter(j => {
       const stats = obtenerEstadisticasPorTemporada(j);
@@ -6789,11 +6840,11 @@ const initApp = () => {
       const tieneAsistencias = stats.asistencias > 0;
       return tieneGoles || tieneAsistencias; // Cualquiera que contribuya ofensivamente
     });
-    
+
     // Variables globales para ataque ponderado
     const atacantesPrincipalesCompleto = [
       ...atacantesPrincipales,
-      ...mediocampistasPrincipales, 
+      ...mediocampistasPrincipales,
       ...mediocampistasSecundarios
     ].filter(jugador => {
       const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6801,7 +6852,7 @@ const initApp = () => {
       const tieneAsistencias = stats.asistencias > 0;
       return tieneGoles || tieneAsistencias; // Solo los que contribuyen ofensivamente
     });
-    
+
     const contribuyentesResto = contribuyentesOfensivos.filter(jugador => {
       const posicionPrimaria = obtenerPosicionPrimaria(jugador);
       const puedeJugarMedio = puedeJugarEn(jugador, 'Mediocampo');
@@ -6848,11 +6899,11 @@ const initApp = () => {
     function calcularPuntuacionCompleja() {
       const resultados = {
         arquero: 0,
-        defensor: 0, 
+        defensor: 0,
         mediocampo: 0,
         ataque: 0
       };
-      
+
       // === ARQUERO PONDERADO (80% mejor arquero, 20% resto) ===
       if (arqueros.length > 0) {
         // Calcular puntuación de cada arquero usando estadísticas de temporada
@@ -6866,29 +6917,29 @@ const initApp = () => {
             puntuacion: winrate * 0.4 + atajadasPorPartido * 25
           };
         });
-        
+
         // Ordenar por puntuación descendente
         puntuacionesArqueros.sort((a, b) => b.puntuacion - a.puntuacion);
-        
+
         if (arqueros.length === 1) {
           // Si solo hay un arquero, usar su puntuación completa
           resultados.arquero = puntuacionesArqueros[0].puntuacion;
         } else {
           // El mejor arquero tiene 80% de peso
           const mejorArquero = puntuacionesArqueros[0].puntuacion;
-          
+
           // El resto tiene 20% de peso promediado
           const restoPuntuacion = puntuacionesArqueros.slice(1)
             .reduce((sum, a) => sum + a.puntuacion, 0) / (arqueros.length - 1);
-          
+
           resultados.arquero = mejorArquero * 0.8 + restoPuntuacion * 0.2;
         }
       }
-      
+
       // === DEFENSOR COMPLEJO (con penalización por cagadas) ===
       let puntuacionDefensor = 0;
       let contadorDefensor = 0;
-      
+
       // Principales (100% contribución)
       defensoresPrincipales.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6899,7 +6950,7 @@ const initApp = () => {
         puntuacionDefensor += puntuacion;
         contadorDefensor += 1;
       });
-      
+
       // Secundarios (65% contribución)
       defensoresSecundarios.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6910,15 +6961,15 @@ const initApp = () => {
         puntuacionDefensor += puntuacion * 0.65; // 65% de contribución
         contadorDefensor += 0.65; // También el denominador se ajusta
       });
-      
+
       if (contadorDefensor > 0) {
         resultados.defensor = Math.max(0, puntuacionDefensor / contadorDefensor);
       }
-      
+
       // === MEDIOCAMPO COMPLEJO ===
       let puntuacionMediocampo = 0;
       let contadorMediocampo = 0;
-      
+
       // Principales (100% contribución)
       mediocampistasPrincipales.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6930,7 +6981,7 @@ const initApp = () => {
         puntuacionMediocampo += puntuacion;
         contadorMediocampo += 1;
       });
-      
+
       // Secundarios (65% contribución)
       mediocampistasSecundarios.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6942,13 +6993,13 @@ const initApp = () => {
         puntuacionMediocampo += puntuacion * 0.65; // 65% de contribución
         contadorMediocampo += 0.65; // También el denominador se ajusta
       });
-      
+
       if (contadorMediocampo > 0) {
         resultados.mediocampo = puntuacionMediocampo / contadorMediocampo;
       }
-      
+
       // === ATAQUE PONDERADO (80% principales, 20% resto) ===
-      
+
       // Calcular puntuación promedio de principales
       let puntuacionPrincipales = 0;
       if (atacantesPrincipalesCompleto.length > 0) {
@@ -6962,7 +7013,7 @@ const initApp = () => {
         });
         puntuacionPrincipales = puntuacionPrincipales / atacantesPrincipalesCompleto.length;
       }
-      
+
       // Calcular puntuación promedio de contribuyentes
       let puntuacionContribuyentes = 0;
       if (contribuyentesResto.length > 0) {
@@ -6975,7 +7026,7 @@ const initApp = () => {
         });
         puntuacionContribuyentes = puntuacionContribuyentes / contribuyentesResto.length;
       }
-      
+
       // Aplicar ponderación 80/20
       if (atacantesPrincipalesCompleto.length > 0 && contribuyentesResto.length > 0) {
         resultados.ataque = puntuacionPrincipales * 0.8 + puntuacionContribuyentes * 0.2;
@@ -6986,7 +7037,7 @@ const initApp = () => {
         // Solo contribuyentes (caso raro)
         resultados.ataque = puntuacionContribuyentes;
       }
-      
+
       return resultados;
     }
 
@@ -7033,9 +7084,9 @@ const initApp = () => {
       Math.min((scoreAtacante / maximos.atacante) * 100, 100)
     ];
 
-    console.log('📈 Datos normalizados del gráfico:', { 
-      labels, 
-      data, 
+    console.log('📈 Datos normalizados del gráfico:', {
+      labels,
+      data,
       maximos,
       porcentajes: {
         arquero: `${data[0].toFixed(1)}%`,
@@ -7085,7 +7136,7 @@ const initApp = () => {
                 label: function(context) {
                   const posicion = context.label;
                   let info = '';
-                  
+
                   if (posicion === 'Arquero') {
                     info = `${arqueros.length} jugador(es)`;
                   } else if (posicion === 'Defensor') {
@@ -7095,7 +7146,7 @@ const initApp = () => {
                   } else if (posicion === 'Atacante') {
                     info = `${atacantesPrincipalesCompleto.length} principales 80% + ${contribuyentesResto.length} resto 20%`;
                   }
-                  
+
                   return [`${posicion}: ${context.parsed.r.toFixed(1)}`, info];
                 }
               }
@@ -7125,14 +7176,14 @@ const initApp = () => {
     });
 
       console.log('✅ Gráfico radar creado exitosamente:', chartId);
-      
+
     } catch (error) {
       console.error('❌ Error creando gráfico radar:', error);
     }
   }
 
 
-  
+
   // Función para renderizar la tabla de goles (usando el HTML existente)
   function renderizarTablaGoles() {
     const tablaGoles = document.getElementById('tabla-goles');
@@ -7152,18 +7203,18 @@ const initApp = () => {
 
     tablaGoles.innerHTML = eventos.map((evento, index) => {
       const goleador = todosLosJugadores.find(j => j.id == evento.goleador_id)?.nombre || 'N/A';
-      const asistencia = evento.asistencia_id === 'nadie' || !evento.asistencia_id ? 'Sin asistencia' : 
+      const asistencia = evento.asistencia_id === 'nadie' || !evento.asistencia_id ? 'Sin asistencia' :
                         (todosLosJugadores.find(j => j.id == evento.asistencia_id)?.nombre || 'N/A');
       const cagada = evento.cagada_id === 'nadie' || !evento.cagada_id ? 'Sin cagada' :
                      (todosLosJugadores.find(j => j.id == evento.cagada_id)?.nombre || 'N/A');
-      
+
       // Determinar si es gol en contra (usar la marca explícita si está disponible)
       const jugadoresDelPartido = [...equipo1, ...equipo2];
       const goleadorObj = jugadoresDelPartido.find(j => j.id == evento.goleador_id);
-      const esEnContra = evento.es_en_contra !== undefined ? 
+      const esEnContra = evento.es_en_contra !== undefined ?
         evento.es_en_contra : // Usar la marca explícita si está disponible
         (goleadorObj && evento.equipo !== (equipo1.find(j => j.id == evento.goleador_id) ? 1 : 2)); // Fallback al cálculo anterior
-      
+
       return `
         <tr>
           <td><span class="fw-bold">${goleador}</span></td>
@@ -7195,7 +7246,7 @@ const initApp = () => {
         </tr>
       `;
     }).join('');
-    
+
     // Actualizar marcador visual después de renderizar la tabla
     actualizarMarcadorAutomatico();
   }
@@ -7205,7 +7256,7 @@ const initApp = () => {
   function poblarSelectoresJugadores() {
     // Solo usar jugadores de los equipos armados
     const jugadoresDelPartido = [...equipo1, ...equipo2];
-    
+
     // Lista de todos los selectores de jugadores
     const selectores = [
       { id: 'goleador', placeholder: 'Seleccionar goleador' },
@@ -7217,7 +7268,7 @@ const initApp = () => {
 
     if (jugadoresDelPartido.length === 0) {
       console.log('No hay jugadores en los equipos armados, limpiando selectores');
-      
+
       // Limpiar todos los selectores si no hay jugadores
       selectores.forEach(({ id, placeholder, extraOption }) => {
         const selector = document.getElementById(id);
@@ -7228,18 +7279,18 @@ const initApp = () => {
           }
         }
       });
-      
+
       // Limpiar también selectores dinámicos
       const selectoresAtajadas = document.querySelectorAll('.atajadas-jugador');
       selectoresAtajadas.forEach(selector => {
         selector.innerHTML = '<option value="">Seleccionar jugador</option>';
       });
-      
+
       const selectoresCagadas = document.querySelectorAll('.cagadas-jugador');
       selectoresCagadas.forEach(selector => {
         selector.innerHTML = '<option value="">Seleccionar jugador</option>';
       });
-      
+
       return;
     }
 
@@ -7250,7 +7301,7 @@ const initApp = () => {
         if (extraOption) {
           selector.innerHTML += extraOption;
         }
-        
+
         jugadoresDelPartido.forEach(jugador => {
           const option = `<option value="${jugador.id}">${jugador.nombre}</option>`;
           selector.innerHTML += option;
@@ -7260,10 +7311,10 @@ const initApp = () => {
 
     // Poblar también los selectores dinámicos de atajadas y cagadas
     poblarSelectoresDinamicos();
-    
+
     // Ocultar campo de equipo del gol ya que se detecta automáticamente
     ocultarCampoEquipoGol();
-    
+
     // Inicializar selectores buscables solo la primera vez, luego solo actualizar
     const wrappers = document.querySelectorAll('.searchable-wrapper');
     if (wrappers.length === 0) {
@@ -7276,7 +7327,7 @@ const initApp = () => {
   function poblarSelectoresDinamicos() {
     // Solo usar jugadores de los equipos armados
     const jugadoresDelPartido = [...equipo1, ...equipo2];
-    
+
     if (jugadoresDelPartido.length === 0) return;
 
     // Atajadas
@@ -7284,7 +7335,7 @@ const initApp = () => {
     selectoresAtajadas.forEach(selector => {
       const valorActual = selector.value;
       selector.innerHTML = '<option value="">Seleccionar jugador</option>';
-      
+
       jugadoresDelPartido.forEach(jugador => {
         const option = document.createElement('option');
         option.value = jugador.id;
@@ -7301,7 +7352,7 @@ const initApp = () => {
     selectoresCagadas.forEach(selector => {
       const valorActual = selector.value;
       selector.innerHTML = '<option value="">Seleccionar jugador</option>';
-      
+
       jugadoresDelPartido.forEach(jugador => {
         const option = document.createElement('option');
         option.value = jugador.id;
@@ -7312,9 +7363,3998 @@ const initApp = () => {
         selector.appendChild(option);
       });
     });
-    
+
     // Ocultar campo de equipo del gol ya que se detecta automáticamente
     ocultarCampoEquipoGol();
+    updateSearchableSelects(document);
+  }
+
+  function jugadoresDelPartidoActual() {
+    return [...equipo1, ...equipo2];
+  }
+
+  function obtenerEquipoJugadorActual(jugadorId) {
+    if (!jugadorId) return null;
+    if (equipo1.some(jugador => String(jugador.id) === String(jugadorId))) return 1;
+    if (equipo2.some(jugador => String(jugador.id) === String(jugadorId))) return 2;
+    return null;
+  }
+
+  function obtenerNombreJugadorActual(jugadorId) {
+    const jugador = todosLosJugadores.find(j => String(j.id) === String(jugadorId)) ||
+      jugadoresDelPartidoActual().find(j => String(j.id) === String(jugadorId));
+    return jugador?.nombre || 'Jugador';
+  }
+
+  function construirJugadorConEstadisticas(jugadorExistente) {
+    const estadisticasJugador = datosJugadores.find(j => j.jugadores?.id === jugadorExistente.id);
+    return {
+      ...jugadorExistente,
+      ...(estadisticasJugador || {
+        total_puntos: 0,
+        pj: 0,
+        pg: 0,
+        pe: 0,
+        pp: 0,
+        goles: 0,
+        asistencias: 0,
+        atajadas: 0,
+        winrate: 0
+      }),
+      pulmon: jugadorExistente.pulmon
+    };
+  }
+
+  async function agregarJugadorAEquipoDesdeId(equipo, jugadorId) {
+    const jugadorExistente = todosLosJugadores.find(j => String(j.id) === String(jugadorId));
+    if (!jugadorExistente) {
+      showToast('Selecciona un jugador valido.', 'warning');
+      return false;
+    }
+
+    const equipoActual = equipo === 'equipo1' ? equipo1 : equipo2;
+    const equipoOpuesto = equipo === 'equipo1' ? equipo2 : equipo1;
+
+    if (equipoActual.some(j => String(j.id) === String(jugadorExistente.id))) {
+      showToast(`${jugadorExistente.nombre} ya esta en este equipo`, 'warning');
+      return false;
+    }
+
+    if (equipoOpuesto.some(j => String(j.id) === String(jugadorExistente.id))) {
+      showToast(`${jugadorExistente.nombre} ya esta en el equipo contrario`, 'warning');
+      return false;
+    }
+
+    equipoActual.push(construirJugadorConEstadisticas(jugadorExistente));
+    window.equipo1 = equipo1;
+    window.equipo2 = equipo2;
+
+    showToast(`${jugadorExistente.nombre} agregado al ${equipo === 'equipo1' ? 'Equipo 1' : 'Equipo 2'}`, 'success');
+
+    try {
+      await renderizarEquipos();
+    } catch (error) {
+      console.error('Error al renderizar equipos desde review sandbox:', error);
+    } finally {
+      renderizarReviewSandbox();
+    }
+    return true;
+  }
+
+  function quitarJugadorDesdeReview(equipo, index) {
+    const equipoActual = equipo === 'equipo1' ? equipo1 : equipo2;
+    const jugadorRemovido = equipoActual[index];
+    if (!jugadorRemovido) return;
+
+    equipoActual.splice(index, 1);
+    window.equipo1 = equipo1;
+    window.equipo2 = equipo2;
+
+    eventos = eventos.filter(evento =>
+      String(evento.goleador_id) !== String(jugadorRemovido.id) &&
+      String(evento.asistencia_id || '') !== String(jugadorRemovido.id) &&
+      String(evento.cagada_id || '') !== String(jugadorRemovido.id)
+    );
+    reviewSandbox.atajadas = reviewSandbox.atajadas.filter(item => String(item.jugador_id) !== String(jugadorRemovido.id));
+    reviewSandbox.cagadas = reviewSandbox.cagadas.filter(item => String(item.jugador_id) !== String(jugadorRemovido.id));
+
+    renderizarEquipos().catch(error => console.error('Error al renderizar equipos:', error));
+    renderizarReviewSandbox();
+    showToast(`${jugadorRemovido.nombre} removido`, 'info');
+  }
+
+  function normalizarReviewUrl(valor) {
+    const raw = String(valor || '').trim();
+    if (!raw) return null;
+    const conProtocolo = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+    try {
+      const url = new URL(conProtocolo);
+      if (!['http:', 'https:'].includes(url.protocol)) return null;
+      return url.href;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const REVIEW_POPUP_CHANNEL = 't5-review-player-sync';
+  const REVIEW_POPUP_STORAGE_KEY = 't5-review-player-state';
+  const REVIEW_ANNOTATION_CHANNEL = 't5-review-annotation-sync';
+  const REVIEW_ANNOTATION_STORAGE_KEY = 't5-review-annotation-state';
+  const REVIEW_SCOREBUG_STORAGE_KEY = 't5-review-scorebug-hidden';
+  const HLS_JS_URL = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+  let reviewPopupWindow = null;
+  let reviewPopupChannel = null;
+  let reviewAnnotationWindow = null;
+  let reviewAnnotationChannel = null;
+  let reviewInlineHls = null;
+  let hlsScriptPromise = null;
+  let reviewVideoZoom = 1;
+  let reviewScorebugOculto = false;
+  const reviewAnnotationMensajesProcesados = new Map();
+  const reviewPopupEstado = {
+    conectado: false,
+    url: '',
+    segundos: null,
+    duracion: null,
+    pausado: true,
+    actualizadoEn: 0
+  };
+
+  function cargarScriptExterno(src) {
+    if (hlsScriptPromise) return hlsScriptPromise;
+
+    hlsScriptPromise = new Promise((resolve, reject) => {
+      const existente = document.querySelector(`script[src="${src}"]`);
+      if (existente) {
+        existente.addEventListener('load', resolve, { once: true });
+        existente.addEventListener('error', reject, { once: true });
+        if (window.Hls) resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+      document.head.appendChild(script);
+    });
+
+    return hlsScriptPromise;
+  }
+
+  function buscarEnReproductorReview(video, deltaSegundos) {
+    if (!video || !Number.isFinite(Number(video.currentTime))) return;
+    const duracion = Number.isFinite(Number(video.duration)) ? Number(video.duration) : null;
+    const siguiente = Math.max(0, Number(video.currentTime) + deltaSegundos);
+    video.currentTime = duracion ? Math.min(duracion, siguiente) : siguiente;
+    emitirTiempoReproductorInline();
+  }
+
+  function buscarEnReproductorReviewA(segundosVideo, { mostrarToast = true } = {}) {
+    const destino = Math.max(0, Number(segundosVideo));
+    if (!Number.isFinite(destino)) {
+      if (mostrarToast) showToast('Este evento no tiene minuto de video.', 'warning');
+      return false;
+    }
+
+    const video = document.getElementById('review-player-video');
+    let aplicado = false;
+    if (video && !video.classList.contains('d-none')) {
+      const duracion = Number.isFinite(Number(video.duration)) ? Number(video.duration) : null;
+      video.currentTime = duracion ? Math.min(duracion, destino) : destino;
+      emitirTiempoReproductorInline();
+      try {
+        video.focus({ preventScroll: true });
+      } catch (error) {
+        video.focus();
+      }
+      try {
+        video.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch (error) {
+        video.scrollIntoView();
+      }
+      aplicado = true;
+    }
+
+    if (reviewPopupWindow && !reviewPopupWindow.closed) {
+      const payload = {
+        source: 't5-review-main',
+        type: 'seek',
+        segundos: destino,
+        updatedAt: Date.now()
+      };
+      try {
+        reviewPopupWindow.postMessage(payload, '*');
+        aplicado = true;
+      } catch (error) {}
+      try {
+        reviewPopupChannel?.postMessage(payload);
+      } catch (error) {}
+    }
+
+    if (!aplicado) {
+      if (mostrarToast) showToast('Carga el reproductor o abre el popup de video para ir al minuto.', 'warning');
+      return false;
+    }
+
+    if (mostrarToast) showToast(`Minuto ${formatearSegundosVideo(destino)} en el reproductor.`, 'info');
+    return true;
+  }
+
+  function aplicarZoomReproductorReview(video, siguienteZoom, event = null) {
+    if (!video) return;
+    const zoom = Math.min(3, Math.max(1, Number(siguienteZoom) || 1));
+    reviewVideoZoom = zoom;
+    video.dataset.reviewZoom = String(zoom);
+    video.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
+
+    if (event && zoom > 1) {
+      const rect = video.getBoundingClientRect();
+      const x = rect.width > 0 ? ((event.clientX - rect.left) / rect.width) * 100 : 50;
+      const y = rect.height > 0 ? ((event.clientY - rect.top) / rect.height) * 100 : 50;
+      video.style.transformOrigin = `${Math.min(100, Math.max(0, x))}% ${Math.min(100, Math.max(0, y))}%`;
+    } else {
+      video.style.transformOrigin = '';
+    }
+  }
+
+  function instalarControlesReproductorReview(video) {
+    if (!video || video.dataset.reviewControlsBound === '1') return;
+    video.dataset.reviewControlsBound = '1';
+    video.tabIndex = 0;
+    video.style.transition = 'transform 120ms ease-out';
+    let pointerDentro = false;
+    const esCampoEditable = element => {
+      const tag = element?.tagName?.toLowerCase();
+      return tag === 'input' || tag === 'select' || tag === 'textarea' || element?.isContentEditable;
+    };
+    const manejarFlechas = event => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        buscarEnReproductorReview(video, -5);
+        return true;
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        buscarEnReproductorReview(video, 5);
+        return true;
+      }
+      return false;
+    };
+
+    video.addEventListener('pointerenter', () => {
+      pointerDentro = true;
+    });
+    video.addEventListener('pointerleave', () => {
+      pointerDentro = false;
+    });
+    video.addEventListener('click', () => {
+      try {
+        video.focus({ preventScroll: true });
+      } catch (error) {
+        video.focus();
+      }
+    });
+    video.addEventListener('keydown', event => {
+      manejarFlechas(event);
+    }, { capture: true });
+    document.addEventListener('keydown', event => {
+      if (esCampoEditable(event.target)) return;
+      if (document.activeElement !== video && !pointerDentro) return;
+      manejarFlechas(event);
+    }, { capture: true });
+    video.addEventListener('wheel', event => {
+      event.preventDefault();
+      const delta = event.deltaY < 0 ? 0.12 : -0.12;
+      aplicarZoomReproductorReview(video, (Number(video.dataset.reviewZoom) || 1) + delta, event);
+    }, { passive: false });
+  }
+
+  function actualizarEstadoPopupReview() {
+    const statusEl = document.getElementById('review-popup-status');
+    if (!statusEl) {
+      actualizarScorebugReview();
+      return;
+    }
+
+    const segundosVideo = Number(reviewPopupEstado.segundos);
+    const conectado = reviewPopupEstado.conectado && Number.isFinite(segundosVideo);
+    if (!conectado) {
+      statusEl.className = 'small text-light-emphasis mb-3';
+      statusEl.textContent = 'Reproductor sin sincronizar. Si Min/Seg quedan vacios, se usa el tiempo sincronizado.';
+      actualizarScorebugReview();
+      return;
+    }
+
+    const segundosPartido = Math.max(0, Math.round(segundosVideo - obtenerReviewInicioSegundos()));
+    statusEl.className = reviewPopupEstado.pausado ? 'small text-warning mb-3' : 'small text-success mb-3';
+    statusEl.textContent = `Reproductor sincronizado - Video ${formatearSegundosVideo(segundosVideo)} - Partido ${formatearSegundosVideo(segundosPartido)}${reviewPopupEstado.pausado ? ' - pausado' : ''}`;
+    actualizarScorebugReview();
+  }
+
+  function obtenerSyncAnotacionReview() {
+    const segundosVideo = Number(reviewPopupEstado.segundos);
+    const tiempoPartido = obtenerTiempoPartidoDesdeReproductor();
+    return {
+      conectado: reviewPopupEstado.conectado && Number.isFinite(segundosVideo),
+      video: Number.isFinite(segundosVideo) ? segundosVideo : null,
+      partido: tiempoPartido?.segundos ?? null,
+      pausado: !!reviewPopupEstado.pausado
+    };
+  }
+
+  function enviarSyncAnotacionReview() {
+    if (!reviewAnnotationWindow || reviewAnnotationWindow.closed) return;
+    const payload = { source: 't5-review-main', type: 'sync', sync: obtenerSyncAnotacionReview() };
+    try { reviewAnnotationWindow.postMessage(payload, '*'); } catch (error) {}
+    try { reviewAnnotationChannel?.postMessage(payload); } catch (error) {}
+  }
+
+  function aplicarEstadoPopupReview(payload = {}) {
+    if (payload.url) reviewPopupEstado.url = payload.url;
+    if (payload.type === 'closed') {
+      reviewPopupEstado.conectado = false;
+      actualizarEstadoPopupReview();
+      enviarSyncAnotacionReview();
+      return;
+    }
+
+    reviewPopupEstado.conectado = true;
+    reviewPopupEstado.actualizadoEn = Date.now();
+    if (payload.segundos !== undefined && Number.isFinite(Number(payload.segundos))) {
+      reviewPopupEstado.segundos = Number(payload.segundos);
+    }
+    if (payload.duracion !== undefined && Number.isFinite(Number(payload.duracion))) {
+      reviewPopupEstado.duracion = Number(payload.duracion);
+    }
+    if (payload.pausado !== undefined) {
+      reviewPopupEstado.pausado = !!payload.pausado;
+    }
+    actualizarEstadoPopupReview();
+    enviarSyncAnotacionReview();
+  }
+
+  function emitirTiempoReproductorInline() {
+    const video = document.getElementById('review-player-video');
+    const url = normalizarReviewUrl(document.getElementById('review-link')?.value) || '';
+    if (!video || video.classList.contains('d-none')) return;
+
+    aplicarEstadoPopupReview({
+      source: 't5-review-popup',
+      type: 'time',
+      url,
+      segundos: Number.isFinite(video.currentTime) ? video.currentTime : null,
+      duracion: Number.isFinite(video.duration) ? video.duration : null,
+      pausado: video.paused
+    });
+
+    enviarSyncAnotacionReview();
+  }
+
+  function limpiarReproductorInline() {
+    const video = document.getElementById('review-player-video');
+    if (reviewInlineHls) {
+      reviewInlineHls.destroy();
+      reviewInlineHls = null;
+    }
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      aplicarZoomReproductorReview(video, 1);
+      video.load();
+      video.classList.add('d-none');
+    }
+  }
+
+  async function cargarReproductorInlineBeelup(url) {
+    const iframe = document.getElementById('review-player-frame');
+    const video = document.getElementById('review-player-video');
+    if (!video) return false;
+
+    const playlistUrl = crearUrlPlaylistBeelup(url, 'm3u8');
+    if (!playlistUrl) return false;
+
+    limpiarReproductorInline();
+    if (iframe) {
+      iframe.src = 'about:blank';
+      iframe.classList.add('d-none');
+    }
+
+    video.classList.remove('d-none');
+    instalarControlesReproductorReview(video);
+    ['loadedmetadata', 'timeupdate', 'play', 'pause', 'seeking', 'seeked', 'ratechange'].forEach(eventName => {
+      video.removeEventListener(eventName, emitirTiempoReproductorInline);
+      video.addEventListener(eventName, emitirTiempoReproductorInline);
+    });
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = playlistUrl;
+      video.load();
+      emitirTiempoReproductorInline();
+      return true;
+    }
+
+    await cargarScriptExterno(HLS_JS_URL);
+    if (!window.Hls || !window.Hls.isSupported()) {
+      throw new Error('Este navegador no soporta HLS en el reproductor inline.');
+    }
+
+    reviewInlineHls = new window.Hls({ enableWorker: true });
+    reviewInlineHls.loadSource(playlistUrl);
+    reviewInlineHls.attachMedia(video);
+    reviewInlineHls.on(window.Hls.Events.ERROR, (_event, data) => {
+      if (data?.fatal) {
+        showToast(`No se pudo cargar HLS: ${data.type}`, 'error');
+      }
+    });
+    emitirTiempoReproductorInline();
+    return true;
+  }
+
+  function manejarMensajePopupReview(data) {
+    if (!data || data.source !== 't5-review-popup') return;
+
+    if (data.type === 'error') {
+      showToast(data.message || 'El popup no pudo cargar el reproductor.', 'error');
+      return;
+    }
+
+    aplicarEstadoPopupReview(data);
+  }
+
+  function inicializarCanalesPopupReview() {
+    if (document.body.dataset.reviewPopupBound !== '1') {
+      document.body.dataset.reviewPopupBound = '1';
+
+      window.addEventListener('message', event => {
+        manejarMensajePopupReview(event.data);
+        manejarMensajeAnotacionReview(event.data);
+      });
+      window.addEventListener('storage', event => {
+        if (!event.newValue) return;
+        try {
+          const payload = JSON.parse(event.newValue);
+          if (event.key === REVIEW_POPUP_STORAGE_KEY) manejarMensajePopupReview(payload);
+          if (event.key === REVIEW_ANNOTATION_STORAGE_KEY) manejarMensajeAnotacionReview(payload);
+        } catch (error) {
+          console.warn('No se pudo leer estado de review:', error);
+        }
+      });
+    }
+
+    if ('BroadcastChannel' in window && !reviewPopupChannel) {
+      reviewPopupChannel = new BroadcastChannel(REVIEW_POPUP_CHANNEL);
+      reviewPopupChannel.addEventListener('message', event => manejarMensajePopupReview(event.data));
+    }
+
+    if ('BroadcastChannel' in window && !reviewAnnotationChannel) {
+      reviewAnnotationChannel = new BroadcastChannel(REVIEW_ANNOTATION_CHANNEL);
+      reviewAnnotationChannel.addEventListener('message', event => manejarMensajeAnotacionReview(event.data));
+    }
+  }
+
+  function obtenerTiempoPartidoDesdeReproductor() {
+    const segundosVideo = Number(reviewPopupEstado.segundos);
+    if (!reviewPopupEstado.conectado || !Number.isFinite(segundosVideo)) return null;
+
+    const inicioReview = obtenerReviewInicioSegundos();
+    if (segundosVideo < inicioReview) return null;
+
+    const segundosPartido = Math.max(0, Math.round(segundosVideo - inicioReview));
+    return {
+      minuto: segundosPartido / 60,
+      segundos: segundosPartido,
+      reviewSegundos: Math.max(0, Math.round(segundosVideo))
+    };
+  }
+
+  function obtenerEstadoScorebugReview() {
+    const tiempoPartido = obtenerTiempoPartidoDesdeReproductor();
+    const segundosPartido = Number(tiempoPartido?.segundos);
+    const reviewSegundosActual = Number(tiempoPartido?.reviewSegundos);
+    const marcador = Number.isFinite(reviewSegundosActual)
+      ? calcularMarcadorEventos(reviewSegundosActual)
+      : { equipo1: 0, equipo2: 0 };
+    return {
+      equipo1: marcador.equipo1,
+      equipo2: marcador.equipo2,
+      tiempo: Number.isFinite(segundosPartido) ? formatearSegundosVideo(segundosPartido) : '--:--',
+      conectado: Number.isFinite(segundosPartido)
+    };
+  }
+
+  function enviarScorebugPopupReview() {
+    const payload = {
+      source: 't5-review-main',
+      type: 'scorebug',
+      scorebug: obtenerEstadoScorebugReview(),
+      updatedAt: Date.now()
+    };
+
+    if (reviewPopupWindow && !reviewPopupWindow.closed) {
+      try {
+        reviewPopupWindow.postMessage(payload, '*');
+      } catch (error) {}
+    }
+    try {
+      reviewPopupChannel?.postMessage(payload);
+    } catch (error) {}
+  }
+
+  function aplicarVisibilidadScorebugReview(oculto, { persistir = true, enviar = true } = {}) {
+    reviewScorebugOculto = !!oculto;
+    const scorebug = document.getElementById('review-player-scoreboard');
+    const frame = scorebug?.closest('.review-player-frame');
+    const showButton = document.getElementById('review-player-score-show');
+    const hideButton = document.getElementById('review-player-score-hide');
+
+    if (frame) frame.classList.toggle('scoreboard-hidden', reviewScorebugOculto);
+    if (showButton) showButton.classList.toggle('d-none', !reviewScorebugOculto);
+    if (hideButton) hideButton.setAttribute('aria-pressed', reviewScorebugOculto ? 'true' : 'false');
+
+    if (persistir) {
+      try {
+        localStorage.setItem(REVIEW_SCOREBUG_STORAGE_KEY, reviewScorebugOculto ? '1' : '0');
+      } catch (error) {}
+    }
+    if (enviar) enviarScorebugPopupReview();
+  }
+
+  function actualizarScorebugReview({ enviar = true } = {}) {
+    const estado = obtenerEstadoScorebugReview();
+    const tiempoEl = document.getElementById('review-player-score-time');
+    const equipo1El = document.getElementById('review-player-score-team-one');
+    const equipo2El = document.getElementById('review-player-score-team-two');
+
+    if (tiempoEl) tiempoEl.textContent = estado.tiempo;
+    if (equipo1El) equipo1El.textContent = estado.equipo1;
+    if (equipo2El) equipo2El.textContent = estado.equipo2;
+    if (enviar) enviarScorebugPopupReview();
+  }
+
+  function inicializarScorebugReview() {
+    if (document.body.dataset.reviewScorebugBound === '1') return;
+    document.body.dataset.reviewScorebugBound = '1';
+
+    try {
+      reviewScorebugOculto = localStorage.getItem(REVIEW_SCOREBUG_STORAGE_KEY) === '1';
+    } catch (error) {
+      reviewScorebugOculto = false;
+    }
+
+    document.getElementById('review-player-score-hide')?.addEventListener('click', () => {
+      aplicarVisibilidadScorebugReview(true);
+    });
+    document.getElementById('review-player-score-show')?.addEventListener('click', () => {
+      aplicarVisibilidadScorebugReview(false);
+    });
+
+    aplicarVisibilidadScorebugReview(reviewScorebugOculto, { persistir: false, enviar: false });
+    actualizarScorebugReview({ enviar: false });
+  }
+
+  function crearHtmlPopupReview({ reviewUrl, playlistUrl }) {
+    const titulo = 'T5 Review Player';
+    return `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escaparHtmlPlano(titulo)}</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #020617;
+      color: #e5e7eb;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header, footer {
+      align-items: center;
+      background: #0f172a;
+      border-color: rgba(148, 163, 184, 0.2);
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 10px 14px;
+    }
+    header { border-bottom: 1px solid rgba(148, 163, 184, 0.2); }
+    footer { border-top: 1px solid rgba(148, 163, 184, 0.2); }
+    video {
+      background: #000;
+      display: block;
+      height: 100%;
+      transition: transform 120ms ease-out;
+      width: 100%;
+    }
+    main {
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .status {
+      color: #a7f3d0;
+      font-size: 13px;
+    }
+    a, button {
+      background: #1e293b;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      border-radius: 6px;
+      color: #e5e7eb;
+      cursor: pointer;
+      font: inherit;
+      padding: 6px 10px;
+      text-decoration: none;
+    }
+    button:hover, a:hover { background: #334155; }
+    .popup-scorebug-wrap {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+      left: 14px;
+      pointer-events: none;
+      position: absolute;
+      top: 14px;
+      z-index: 5;
+    }
+    .popup-scorebug {
+      align-items: center;
+      border-radius: 9px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.36);
+      display: flex;
+      font-weight: 900;
+      line-height: 1;
+      overflow: hidden;
+      pointer-events: auto;
+      text-transform: uppercase;
+    }
+    .popup-scorebug-time {
+      background: #f8fafc;
+      color: #020617;
+      min-width: 58px;
+      padding: 8px 9px;
+      text-align: center;
+    }
+    .popup-scorebug-team {
+      align-items: center;
+      background: #020617;
+      color: #f8fafc;
+      display: flex;
+      gap: 5px;
+      font-size: 13px;
+      padding: 8px 9px;
+    }
+    .popup-scorebug-dot {
+      background: #60a5fa;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22);
+      height: 8px;
+      width: 8px;
+    }
+    .popup-scorebug-team-two .popup-scorebug-dot { background: #fb7185; }
+    .popup-scorebug-goals {
+      background: #2dd4bf;
+      color: #022c22;
+      font-size: 18px;
+      min-width: 34px;
+      padding: 7px 8px;
+      text-align: center;
+    }
+    .popup-scorebug-hide,
+    .popup-scorebug-show {
+      background: rgba(2, 6, 23, 0.82);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 9px;
+      pointer-events: auto;
+    }
+    .popup-scorebug-show {
+      display: none;
+      left: 14px;
+      position: absolute;
+      top: 14px;
+      z-index: 5;
+    }
+    main.scorebug-hidden .popup-scorebug-wrap { display: none; }
+    main.scorebug-hidden .popup-scorebug-show { display: inline-flex; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">T5 Review Player</div>
+    <div id="status" class="status">Cargando reproductor...</div>
+    <a href="${escaparAtributoHtml(reviewUrl)}" target="_blank" rel="noopener noreferrer">Beelup original</a>
+  </header>
+  <main>
+    <div id="popup-scorebug-wrap" class="popup-scorebug-wrap">
+      <div class="popup-scorebug">
+        <span id="popup-scorebug-time" class="popup-scorebug-time">--:--</span>
+        <span class="popup-scorebug-team popup-scorebug-team-one"><span class="popup-scorebug-dot"></span>E1</span>
+        <span id="popup-scorebug-team-one" class="popup-scorebug-goals">0</span>
+        <span id="popup-scorebug-team-two" class="popup-scorebug-goals">0</span>
+        <span class="popup-scorebug-team popup-scorebug-team-two">E2<span class="popup-scorebug-dot"></span></span>
+      </div>
+      <button type="button" id="popup-scorebug-hide" class="popup-scorebug-hide">Ocultar</button>
+    </div>
+    <button type="button" id="popup-scorebug-show" class="popup-scorebug-show">Marcador</button>
+    <video id="video" controls autoplay playsinline></video>
+  </main>
+  <footer>
+    <span>El tiempo de este reproductor se sincroniza con el sandbox.</span>
+    <button type="button" id="send-now">Enviar tiempo</button>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script>
+    const REVIEW_POPUP_CHANNEL = ${JSON.stringify(REVIEW_POPUP_CHANNEL)};
+    const REVIEW_POPUP_STORAGE_KEY = ${JSON.stringify(REVIEW_POPUP_STORAGE_KEY)};
+    const REVIEW_URL = ${JSON.stringify(reviewUrl)};
+    const PLAYLIST_URL = ${JSON.stringify(playlistUrl)};
+    const video = document.getElementById('video');
+    const statusEl = document.getElementById('status');
+    const mainEl = document.querySelector('main');
+    const scorebugTimeEl = document.getElementById('popup-scorebug-time');
+    const scorebugTeamOneEl = document.getElementById('popup-scorebug-team-one');
+    const scorebugTeamTwoEl = document.getElementById('popup-scorebug-team-two');
+    const channel = 'BroadcastChannel' in window ? new BroadcastChannel(REVIEW_POPUP_CHANNEL) : null;
+    let zoom = 1;
+    let scorebugHidden = false;
+
+    function formatTime(value) {
+      const total = Math.max(0, Math.round(Number(value) || 0));
+      const minutes = Math.floor(total / 60);
+      const seconds = total % 60;
+      return minutes + ':' + String(seconds).padStart(2, '0');
+    }
+
+    function send(type, extra = {}) {
+      const payload = {
+        source: 't5-review-popup',
+        type,
+        url: REVIEW_URL,
+        segundos: Number.isFinite(video.currentTime) ? video.currentTime : null,
+        duracion: Number.isFinite(video.duration) ? video.duration : null,
+        pausado: video.paused,
+        updatedAt: Date.now(),
+        ...extra
+      };
+      try { window.opener && window.opener.postMessage(payload, '*'); } catch (error) {}
+      try { channel && channel.postMessage(payload); } catch (error) {}
+      try { localStorage.setItem(REVIEW_POPUP_STORAGE_KEY, JSON.stringify(payload)); } catch (error) {}
+      if (Number.isFinite(payload.segundos)) {
+        statusEl.textContent = 'Sincronizado ' + formatTime(payload.segundos) + (payload.pausado ? ' - pausado' : '');
+      }
+    }
+
+    function seek(deltaSeconds) {
+      if (!Number.isFinite(video.currentTime)) return;
+      const duration = Number.isFinite(video.duration) ? video.duration : null;
+      const next = Math.max(0, video.currentTime + deltaSeconds);
+      video.currentTime = duration ? Math.min(duration, next) : next;
+      send('time');
+    }
+
+    function seekTo(seconds) {
+      const target = Math.max(0, Number(seconds));
+      if (!Number.isFinite(target)) return;
+      const duration = Number.isFinite(video.duration) ? video.duration : null;
+      video.currentTime = duration ? Math.min(duration, target) : target;
+      send('time');
+    }
+
+    function setZoom(nextZoom, event) {
+      zoom = Math.min(3, Math.max(1, Number(nextZoom) || 1));
+      video.dataset.reviewZoom = String(zoom);
+      video.style.transform = zoom === 1 ? '' : 'scale(' + zoom + ')';
+      if (event && zoom > 1) {
+        const rect = video.getBoundingClientRect();
+        const x = rect.width > 0 ? ((event.clientX - rect.left) / rect.width) * 100 : 50;
+        const y = rect.height > 0 ? ((event.clientY - rect.top) / rect.height) * 100 : 50;
+        video.style.transformOrigin = Math.min(100, Math.max(0, x)) + '% ' + Math.min(100, Math.max(0, y)) + '%';
+      } else {
+        video.style.transformOrigin = '';
+      }
+    }
+
+    function setScorebugHidden(hidden) {
+      scorebugHidden = !!hidden;
+      mainEl && mainEl.classList.toggle('scorebug-hidden', scorebugHidden);
+    }
+
+    function updateScorebug(scorebug) {
+      if (!scorebug) return;
+      scorebugTimeEl.textContent = scorebug.tiempo || '--:--';
+      scorebugTeamOneEl.textContent = Number.isFinite(Number(scorebug.equipo1)) ? String(scorebug.equipo1) : '0';
+      scorebugTeamTwoEl.textContent = Number.isFinite(Number(scorebug.equipo2)) ? String(scorebug.equipo2) : '0';
+    }
+
+    function bindPlayerControls() {
+      video.tabIndex = 0;
+      let pointerInside = false;
+      const isEditable = element => {
+        const tag = element && element.tagName ? element.tagName.toLowerCase() : '';
+        return tag === 'input' || tag === 'select' || tag === 'textarea' || (element && element.isContentEditable);
+      };
+      const handleArrows = event => {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          seek(-5);
+          return true;
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          seek(5);
+          return true;
+        }
+        return false;
+      };
+      video.addEventListener('pointerenter', () => { pointerInside = true; });
+      video.addEventListener('pointerleave', () => { pointerInside = false; });
+      video.addEventListener('click', () => {
+        try { video.focus({ preventScroll: true }); } catch (error) { video.focus(); }
+      });
+      video.addEventListener('keydown', event => {
+        handleArrows(event);
+      }, { capture: true });
+      document.addEventListener('keydown', event => {
+        if (isEditable(event.target)) return;
+        if (document.activeElement !== video && !pointerInside) return;
+        handleArrows(event);
+      }, { capture: true });
+      video.addEventListener('wheel', event => {
+        event.preventDefault();
+        setZoom(zoom + (event.deltaY < 0 ? 0.12 : -0.12), event);
+      }, { passive: false });
+    }
+
+    function receiveCommand(data) {
+      if (!data || data.source !== 't5-review-main') return;
+      if (data.type === 'seek') seekTo(data.segundos);
+      if (data.type === 'scorebug') updateScorebug(data.scorebug);
+    }
+
+    function fail(message) {
+      statusEl.textContent = message;
+      send('error', { message });
+    }
+
+    function init() {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = PLAYLIST_URL;
+      } else if (window.Hls && window.Hls.isSupported()) {
+        const hls = new window.Hls({ enableWorker: true });
+        hls.loadSource(PLAYLIST_URL);
+        hls.attachMedia(video);
+        hls.on(window.Hls.Events.ERROR, function(_event, data) {
+          if (data && data.fatal) fail('No se pudo cargar HLS: ' + data.type);
+        });
+      } else {
+        fail('Este navegador no soporta HLS para el popup.');
+        return;
+      }
+
+      ['loadedmetadata', 'timeupdate', 'play', 'pause', 'seeking', 'seeked', 'ratechange'].forEach(eventName => {
+        video.addEventListener(eventName, () => send('time'));
+      });
+      document.getElementById('send-now').addEventListener('click', () => send('time'));
+      document.getElementById('popup-scorebug-hide').addEventListener('click', () => setScorebugHidden(true));
+      document.getElementById('popup-scorebug-show').addEventListener('click', () => setScorebugHidden(false));
+      window.addEventListener('message', event => receiveCommand(event.data));
+      channel && channel.addEventListener('message', event => receiveCommand(event.data));
+      window.addEventListener('beforeunload', () => send('closed'));
+      bindPlayerControls();
+      setInterval(() => send('time'), 750);
+      send('ready');
+    }
+
+    init();
+  </script>
+</body>
+</html>`;
+  }
+
+  function abrirPopupReviewSandbox() {
+    inicializarCanalesPopupReview();
+
+    const input = document.getElementById('review-link');
+    const url = normalizarReviewUrl(input?.value);
+    if (!url) {
+      showToast('Ingresa un link valido de review.', 'warning');
+      return;
+    }
+
+    if (input) input.value = url;
+    const linkPartido = document.getElementById('youtube-link-partido');
+    if (linkPartido && obtenerLinkYouTubeReview(url)) linkPartido.value = url;
+
+    const datosBeelup = obtenerDatosBeelupDesdeUrl(url);
+    if (!datosBeelup) {
+      const popupExterno = window.open(url, 't5_review_player_external', 'popup=yes,width=1280,height=760,noopener,noreferrer');
+      if (!popupExterno) showToast('El navegador bloqueo el popup.', 'warning');
+      else showToast('Popup externo abierto. Solo los links Beelup sincronizan tiempo.', 'info');
+      return;
+    }
+
+    const playlistUrl = crearUrlPlaylistBeelup(url, 'm3u8');
+    reviewPopupWindow = window.open('about:blank', 't5_review_player', 'popup=yes,width=1280,height=760');
+    if (!reviewPopupWindow) {
+      showToast('El navegador bloqueo el popup.', 'warning');
+      return;
+    }
+
+    try {
+      reviewPopupWindow.document.open();
+      reviewPopupWindow.document.write(crearHtmlPopupReview({ reviewUrl: url, playlistUrl }));
+      reviewPopupWindow.document.close();
+      reviewPopupWindow.focus();
+      showToast('Popup de review abierto y sincronizando.', 'success');
+      aplicarEstadoPopupReview({ source: 't5-review-popup', type: 'ready', url, pausado: true });
+    } catch (error) {
+      console.error('No se pudo abrir popup de review:', error);
+      showToast('No se pudo preparar el popup de review.', 'error');
+    }
+  }
+
+  function jsonParaScript(data) {
+    return JSON.stringify(data).replace(/<\//g, '<\\/');
+  }
+
+  function obtenerEstadoAnotacionReview() {
+    const jugadores = [...todosLosJugadores]
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map(jugador => ({ id: jugador.id, nombre: jugador.nombre, equipo: obtenerEquipoJugadorActual(jugador.id) }));
+    const jugadoresPartido = jugadoresDelPartidoActual()
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map(jugador => ({ id: jugador.id, nombre: jugador.nombre, equipo: obtenerEquipoJugadorActual(jugador.id) }));
+    const marcador = calcularMarcadorEventos();
+
+    return {
+      jugadores,
+      jugadoresPartido,
+      equipo1: equipo1.map(jugador => ({ id: jugador.id, nombre: jugador.nombre })),
+      equipo2: equipo2.map(jugador => ({ id: jugador.id, nombre: jugador.nombre })),
+      temporadas: todasLasTemporadas.map(temporada => ({ id: temporada.id, nombre: temporada.nombre })),
+      partido: {
+        fecha: document.getElementById('review-fecha')?.value || '',
+        cancha: document.getElementById('review-cancha')?.value || '',
+        temporadaId: document.getElementById('review-temporada')?.value || '',
+        resultado: document.getElementById('review-resultado')?.value || `${marcador.equipo1}-${marcador.equipo2}`,
+        ganador: document.getElementById('review-ganador')?.value || ''
+      },
+      marcador: `${marcador.equipo1} - ${marcador.equipo2}`,
+      eventosCount: eventos.length,
+      atajadasCount: reviewSandbox.atajadas.length,
+      cagadasCount: reviewSandbox.cagadas.length,
+      eventos: eventos.map((evento, index) => ({
+        index,
+        goleadorId: evento.goleador_id,
+        goleadorNombre: obtenerNombreJugadorActual(evento.goleador_id),
+        asistenciaId: evento.asistencia_id || '',
+        asistenciaNombre: evento.asistencia_id ? obtenerNombreJugadorActual(evento.asistencia_id) : 'Sin asistencia',
+        cagadaId: evento.cagada_id || '',
+        cagadaNombre: evento.cagada_id ? obtenerNombreJugadorActual(evento.cagada_id) : 'Sin cagada',
+        equipo: evento.equipo,
+        esEnContra: !!evento.es_en_contra,
+        minuto: evento.minuto,
+        reviewSegundos: obtenerReviewSegundosDesdeEvento(evento, evento.minuto)
+      })),
+      atajadas: reviewSandbox.atajadas.map((item, index) => ({
+        index,
+        jugadorId: item.jugador_id,
+        jugadorNombre: obtenerNombreJugadorActual(item.jugador_id),
+        cantidad: Number(item.cantidad) || 0,
+        minuto: item.minuto,
+        reviewSegundos: obtenerReviewSegundosDesdeEvento(item, item.minuto)
+      })),
+      cagadas: reviewSandbox.cagadas.map((item, index) => ({
+        index,
+        jugadorId: item.jugador_id,
+        jugadorNombre: obtenerNombreJugadorActual(item.jugador_id),
+        cantidad: Number(item.cantidad) || 0,
+        minuto: item.minuto,
+        reviewSegundos: obtenerReviewSegundosDesdeEvento(item, item.minuto)
+      })),
+      mvpId: document.getElementById('review-mvp')?.value || '',
+      aceId: document.getElementById('review-ace')?.value || '',
+      inicio: {
+        minuto: document.getElementById('review-inicio-minuto')?.value || '',
+        segundo: document.getElementById('review-inicio-segundo')?.value || ''
+      },
+      sync: obtenerSyncAnotacionReview()
+    };
+  }
+
+  function enviarEstadoAnotacionReview() {
+    if (!reviewAnnotationWindow || reviewAnnotationWindow.closed) return;
+    const payload = { source: 't5-review-main', type: 'state', state: obtenerEstadoAnotacionReview() };
+    try { reviewAnnotationWindow.postMessage(payload, '*'); } catch (error) {}
+    try { reviewAnnotationChannel?.postMessage(payload); } catch (error) {}
+  }
+
+  function crearHtmlPopupAnotacionReview(initialState) {
+    return `<!doctype html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>T5 Review Datos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bs-dark: #0a0e27;
+      --bs-dark-rgb: 10, 14, 39;
+      --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+      --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.3);
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 50%, #16213e 100%);
+      color: #e5e7eb;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+    .annotation-popup-shell {
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .annotation-modal {
+      margin: 0 auto;
+      max-width: 980px;
+    }
+    .annotation-modal-header {
+      align-items: flex-start;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+      padding: 1rem 1rem 0.75rem;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+    }
+    .annotation-sync {
+      color: #facc15;
+      font-size: 0.82rem;
+      margin-top: 0.25rem;
+    }
+    .enhanced-card {
+      background: rgba(31, 41, 55, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(10px);
+    }
+    .btn-enhanced {
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .btn-enhanced:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    .review-control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .review-section {
+      background: rgba(15, 23, 42, 0.54);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 8px;
+      padding: 0.95rem;
+    }
+    .review-section-title {
+      align-items: center;
+      color: #f8fafc;
+      display: flex;
+      font-size: 0.86rem;
+      font-weight: 800;
+      gap: 0.45rem;
+      letter-spacing: 0;
+      margin: 0 0 0.75rem;
+    }
+    .review-team-grid {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .review-team-box {
+      background: rgba(2, 6, 23, 0.28);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 8px;
+      min-height: 104px;
+      padding: 0.75rem;
+    }
+    .review-team-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-bottom: 0.55rem;
+    }
+    .review-player-row,
+    .review-event-row,
+    .review-stat-row {
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      color: #e2e8f0;
+      display: flex;
+      gap: 0.55rem;
+      justify-content: space-between;
+      padding: 0.48rem 0.6rem;
+    }
+    .review-event-row[data-review-seek-seconds],
+    .review-stat-row[data-review-seek-seconds] {
+      cursor: pointer;
+    }
+    .review-event-row[data-review-seek-seconds]:hover,
+    .review-stat-row[data-review-seek-seconds]:hover {
+      border-color: rgba(250, 204, 21, 0.34);
+      background: rgba(250, 204, 21, 0.08);
+    }
+    .review-player-row + .review-player-row,
+    .review-event-row + .review-event-row,
+    .review-stat-row + .review-stat-row {
+      margin-top: 0.45rem;
+    }
+    .review-event-list {
+      max-height: 260px;
+      overflow: auto;
+    }
+    .review-score {
+      align-items: center;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.34), rgba(239, 68, 68, 0.28));
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      color: #fff;
+      display: inline-flex;
+      font-size: 1.2rem;
+      font-weight: 900;
+      justify-content: center;
+      min-width: 88px;
+      padding: 0.4rem 0.75rem;
+    }
+    .review-empty {
+      color: rgba(226, 232, 240, 0.58);
+      font-size: 0.85rem;
+      padding: 0.35rem 0;
+    }
+    .form-control,
+    .form-select {
+      background-color: rgba(2, 6, 23, 0.72);
+      border-color: rgba(148, 163, 184, 0.22);
+      color: #f8fafc;
+    }
+    .form-control:focus,
+    .form-select:focus {
+      background-color: rgba(2, 6, 23, 0.92);
+      border-color: rgba(102, 126, 234, 0.72);
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.18);
+      color: #f8fafc;
+    }
+    .searchable-wrapper { position: relative; }
+    .input-group > .searchable-wrapper { flex: 1 1 auto; min-width: 0; width: 1%; }
+    .searchable-wrapper .searchable-native { display: none !important; }
+    .searchable-dropdown {
+      background: #020617;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 8px;
+      box-shadow: var(--shadow-soft);
+      display: none;
+      left: 0;
+      max-height: 220px;
+      overflow: auto;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 1080;
+    }
+    .searchable-wrapper.is-open .searchable-dropdown { display: block; }
+    .searchable-option { color: #e2e8f0; cursor: pointer; font-size: 0.88rem; padding: 0.48rem 0.65rem; }
+    .searchable-option:hover,
+    .searchable-option.is-active { background: rgba(102, 126, 234, 0.26); color: #fff; }
+    .searchable-option.is-empty { color: rgba(226, 232, 240, 0.58); cursor: default; }
+    @media (max-width: 768px) {
+      .annotation-popup-shell { padding: 0.5rem; }
+      .review-team-grid { grid-template-columns: 1fr; }
+      .review-section .row > [class*="col-"] { margin-bottom: 0.35rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="annotation-popup-shell">
+    <div class="annotation-modal enhanced-card rounded-3">
+      <div class="annotation-modal-header enhanced-card">
+        <div>
+          <h1 class="h5 text-white fw-bold mb-1"><i class="bi bi-ui-checks-grid me-2 text-warning"></i>Sandbox de Review</h1>
+          <div id="sync" class="annotation-sync">Sin reproductor sincronizado</div>
+          <div id="score" class="small text-light-emphasis mt-1"></div>
+        </div>
+        <button type="button" class="btn btn-outline-light btn-sm" onclick="window.close()" title="Cerrar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="review-control-panel p-3">
+        <div class="review-section">
+          <h3 class="review-section-title"><i class="bi bi-clipboard-data text-info"></i>Datos del partido</h3>
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label text-light small">Fecha</label>
+              <input type="date" id="review-fecha" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Cancha</label>
+              <input type="text" id="review-cancha" class="form-control form-control-sm" placeholder="Cancha">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Temporada</label>
+              <select id="review-temporada" class="form-select form-select-sm">
+                <option value="">Seleccionar temporada</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Resultado</label>
+              <input type="text" id="review-resultado" class="form-control form-control-sm" placeholder="0-0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Ganador</label>
+              <select id="review-ganador" class="form-select form-select-sm">
+                <option value="">Seleccionar</option>
+                <option value="1">Equipo 1</option>
+                <option value="2">Equipo 2</option>
+                <option value="0">Empate</option>
+              </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div id="review-marcador" class="review-score w-100">0 - 0</div>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label text-light small">Inicio partido en video</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-dark border-secondary text-light">Min</span>
+                <input type="number" id="review-inicio-minuto" class="form-control" min="0" max="999" placeholder="0">
+                <span class="input-group-text bg-dark border-secondary text-light">Seg</span>
+                <input type="number" id="review-inicio-segundo" class="form-control" min="0" max="59" placeholder="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-section">
+          <h3 class="review-section-title"><i class="bi bi-people text-success"></i>Equipos</h3>
+          <div class="input-group input-group-sm mb-3">
+            <select id="review-jugador-select" class="form-select searchable-select">
+              <option value="">Seleccionar jugador</option>
+            </select>
+            <button type="button" id="review-add-equipo1" class="btn btn-outline-primary" data-action="add-team" data-team="equipo1">Equipo 1</button>
+            <button type="button" id="review-add-equipo2" class="btn btn-outline-danger" data-action="add-team" data-team="equipo2">Equipo 2</button>
+          </div>
+          <div class="review-team-grid">
+            <div class="review-team-box">
+              <div class="review-team-title text-primary">Equipo 1</div>
+              <div id="review-equipo1-list"></div>
+            </div>
+            <div class="review-team-box">
+              <div class="review-team-title text-danger">Equipo 2</div>
+              <div id="review-equipo2-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-section">
+          <h3 class="review-section-title"><i class="bi bi-star-fill text-warning"></i>Reconocimientos</h3>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label text-light small">MVP</label>
+              <select id="review-mvp" class="form-select form-select-sm searchable-select">
+                <option value="">Sin MVP</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-light small">ACE</label>
+              <select id="review-ace" class="form-select form-select-sm searchable-select">
+                <option value="">Sin ACE</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-section">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="review-section-title mb-0"><i class="bi bi-bullseye text-success"></i>Goles</h3>
+            <span class="badge bg-secondary" id="review-event-count">0</span>
+          </div>
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-4">
+              <label class="form-label text-light small">Goleador</label>
+              <select id="review-goleador" class="form-select form-select-sm searchable-select">
+                <option value="">Goleador</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Asistencia</label>
+              <select id="review-asistencia" class="form-select form-select-sm searchable-select">
+                <option value="">Sin asistencia</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Cagada</label>
+              <select id="review-cagada-gol" class="form-select form-select-sm searchable-select">
+                <option value="">Sin cagada</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-light small">Min</label>
+              <input type="number" id="review-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-light small">Seg</label>
+              <input type="number" id="review-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
+            </div>
+            <div class="col-md-4">
+              <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="review-gol-contra">
+                <label class="form-check-label text-light small" for="review-gol-contra">Gol en contra</label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <button type="button" id="review-add-gol" class="btn btn-success btn-sm w-100" data-action="add-goal">
+                <i class="bi bi-plus me-1"></i>Agregar gol
+              </button>
+            </div>
+          </div>
+          <div id="review-eventos-list" class="review-event-list"></div>
+        </div>
+
+        <div class="review-section">
+          <h3 class="review-section-title"><i class="bi bi-shield-check text-info"></i>Atajadas y cagadas</h3>
+          <div class="small text-light-emphasis mb-2">
+            Cada carga queda como jugada individual; el total por jugador se agrupa al guardar el partido.
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label text-light small">Atajadas</label>
+              <select id="review-atajadas-jugador" class="form-select form-select-sm searchable-select">
+                <option value="">Jugador</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-light small">Cant.</label>
+              <input type="number" id="review-atajadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
+            </div>
+            <div class="col-md-4">
+              <button type="button" id="review-add-atajadas" class="btn btn-outline-info btn-sm w-100" data-action="add-stat" data-stat-type="atajadas">Agregar</button>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-light small">Cagadas</label>
+              <select id="review-cagadas-jugador" class="form-select form-select-sm searchable-select">
+                <option value="">Jugador</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-light small">Cant.</label>
+              <input type="number" id="review-cagadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-light small">Min</label>
+              <input type="number" id="review-cagadas-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-light small">Seg</label>
+              <input type="number" id="review-cagadas-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
+            </div>
+            <div class="col-md-2">
+              <button type="button" id="review-add-cagadas" class="btn btn-outline-danger btn-sm w-100" data-action="add-stat" data-stat-type="cagadas">Agregar</button>
+            </div>
+          </div>
+          <div class="row g-2 mt-2">
+            <div class="col-md-6">
+              <div id="review-atajadas-list"></div>
+            </div>
+            <div class="col-md-6">
+              <div id="review-cagadas-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="review-save-partido" class="btn btn-primary btn-lg btn-enhanced" data-action="save-match">
+          <i class="bi bi-save me-2"></i>Guardar partido revisado
+        </button>
+      </div>
+    </div>
+  </main>
+  <script>
+    const CHANNEL = ${JSON.stringify(REVIEW_ANNOTATION_CHANNEL)};
+    let state = ${jsonParaScript(initialState)};
+    const channel = 'BroadcastChannel' in window ? new BroadcastChannel(CHANNEL) : null;
+    const byId = id => document.getElementById(id);
+    function escapeText(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
+    function options(items, placeholder, selected = '') { return '<option value="">' + escapeText(placeholder) + '</option>' + (items || []).map(item => '<option value="' + escapeText(item.id) + '"' + (String(item.id) === String(selected) ? ' selected' : '') + '>' + escapeText(item.nombre) + '</option>').join(''); }
+    function searchableOptions(select) { return Array.from(select.options).map(option => ({ value: option.value, text: option.textContent.trim(), disabled: option.disabled })); }
+    function syncSearchable(select) {
+      const input = select?.closest('.searchable-wrapper')?.querySelector('.searchable-input');
+      if (!select || !input) return;
+      const text = input.value.trim().toLowerCase();
+      const match = searchableOptions(select).find(option => option.value && option.text.toLowerCase() === text);
+      if (match) select.value = match.value;
+      else if (!text) select.value = '';
+    }
+    function renderSearchable(select) {
+      const wrapper = select.closest('.searchable-wrapper');
+      const input = wrapper?.querySelector('.searchable-input');
+      const dropdown = wrapper?.querySelector('.searchable-dropdown');
+      if (!wrapper || !input || !dropdown) return;
+      const query = input.value.trim().toLowerCase();
+      const filtered = searchableOptions(select).filter(option => option.value && !option.disabled && (!query || option.text.toLowerCase().includes(query))).slice(0, 50);
+      if (!filtered.length) {
+        dropdown.innerHTML = '<div class="searchable-option is-empty">Sin resultados</div>';
+        wrapper.classList.add('is-open');
+        return;
+      }
+      dropdown.innerHTML = filtered.map((option, index) => '<div class="searchable-option' + (index === 0 ? ' is-active' : '') + '" data-value="' + escapeText(option.value) + '">' + escapeText(option.text) + '</div>').join('');
+      wrapper.classList.add('is-open');
+    }
+    function chooseSearchable(select, value) {
+      const wrapper = select.closest('.searchable-wrapper');
+      const input = wrapper?.querySelector('.searchable-input');
+      const option = Array.from(select.options).find(item => item.value === value);
+      if (!wrapper || !input || !option) return;
+      select.value = value;
+      input.value = option.textContent.trim();
+      wrapper.classList.remove('is-open');
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    function updateSearchable(select, force = false) {
+      const input = select.closest('.searchable-wrapper')?.querySelector('.searchable-input');
+      if (!input || (!force && document.activeElement === input)) return;
+      const option = Array.from(select.options).find(item => item.value === select.value);
+      input.value = option && option.value ? option.textContent.trim() : '';
+    }
+    function initSearchableSelects(root = document) {
+      root.querySelectorAll('select.searchable-select').forEach(select => {
+        if (select.dataset.searchableBound !== '1') {
+          select.dataset.searchableBound = '1';
+          const wrapper = document.createElement('div');
+          wrapper.className = 'searchable-wrapper';
+          select.parentNode.insertBefore(wrapper, select);
+          wrapper.appendChild(select);
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.autocomplete = 'off';
+          input.className = 'searchable-input ' + (select.classList.contains('form-select-sm') ? 'form-control form-control-sm' : 'form-control');
+          input.placeholder = select.options[0]?.textContent?.trim() || 'Buscar';
+          const dropdown = document.createElement('div');
+          dropdown.className = 'searchable-dropdown';
+          wrapper.insertBefore(input, select);
+          wrapper.appendChild(dropdown);
+          select.classList.add('searchable-native');
+          input.addEventListener('focus', () => renderSearchable(select));
+          input.addEventListener('input', () => { syncSearchable(select); renderSearchable(select); });
+          input.addEventListener('keydown', event => {
+            const opts = Array.from(dropdown.querySelectorAll('.searchable-option:not(.is-empty)'));
+            const active = dropdown.querySelector('.searchable-option.is-active');
+            const activeIndex = Math.max(0, opts.indexOf(active));
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              if (!wrapper.classList.contains('is-open')) renderSearchable(select);
+              const next = event.key === 'ArrowDown' ? Math.min(opts.length - 1, activeIndex + 1) : Math.max(0, activeIndex - 1);
+              opts.forEach(option => option.classList.remove('is-active'));
+              opts[next]?.classList.add('is-active');
+              opts[next]?.scrollIntoView({ block: 'nearest' });
+            }
+            if (event.key === 'Enter') {
+              const option = dropdown.querySelector('.searchable-option.is-active:not(.is-empty)');
+              if (option) { event.preventDefault(); chooseSearchable(select, option.dataset.value); }
+            }
+            if (event.key === 'Escape') wrapper.classList.remove('is-open');
+          });
+          dropdown.addEventListener('mousedown', event => {
+            const option = event.target.closest('.searchable-option:not(.is-empty)');
+            if (!option) return;
+            event.preventDefault();
+            chooseSearchable(select, option.dataset.value);
+          });
+          select.addEventListener('change', () => updateSearchable(select, true));
+        }
+        updateSearchable(select);
+        if (select.closest('.searchable-wrapper')?.classList.contains('is-open')) renderSearchable(select);
+      });
+    }
+    document.addEventListener('mousedown', event => {
+      document.querySelectorAll('.searchable-wrapper.is-open').forEach(wrapper => {
+        if (!wrapper.contains(event.target)) wrapper.classList.remove('is-open');
+      });
+    });
+    function fmt(seconds) { if (seconds === null || seconds === undefined || !Number.isFinite(Number(seconds))) return '--'; const total = Math.max(0, Math.round(Number(seconds))); return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0'); }
+    function fmtMinuto(minuto) { if (minuto === null || minuto === undefined || minuto === '') return '--'; const value = Number(minuto) || 0; const mins = Math.floor(value); const secs = Math.round((value - mins) * 60); return secs > 0 ? mins + ':' + String(secs).padStart(2, '0') : mins + \"'\"; }
+    let messageSeq = 0;
+    function send(action, payload = {}) { const message = { source: 't5-review-annotation-popup', messageId: 'ann-' + Date.now() + '-' + (++messageSeq) + '-' + Math.random().toString(36).slice(2), action, payload }; try { window.opener && window.opener.postMessage(message, '*'); } catch (error) {} try { channel && channel.postMessage(message); } catch (error) {} try { localStorage.setItem(${JSON.stringify(REVIEW_ANNOTATION_STORAGE_KEY)}, JSON.stringify(message)); } catch (error) {} }
+    function current(id) { const el = byId(id); if (el?.matches?.('select.searchable-select')) syncSearchable(el); return el?.value || ''; }
+    function setValueIfNotFocused(id, value) { const el = byId(id); if (el && document.activeElement !== el) el.value = value || ''; }
+    function renderSync(sync = state.sync || {}) { byId('sync').textContent = sync.conectado ? ('Video ' + fmt(sync.video) + ' | Partido ' + fmt(sync.partido) + (sync.pausado ? ' | pausado' : '')) : 'Sin reproductor sincronizado'; }
+    function collectMatchData() {
+      return {
+        fecha: current('review-fecha'),
+        cancha: current('review-cancha'),
+        temporadaId: current('review-temporada'),
+        resultado: current('review-resultado'),
+        ganador: current('review-ganador'),
+        inicioMinuto: current('review-inicio-minuto'),
+        inicioSegundo: current('review-inicio-segundo'),
+        mvpId: current('review-mvp'),
+        aceId: current('review-ace')
+      };
+    }
+    let syncTimer = null;
+    function queueMatchSync() {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => send('sync-match-data', collectMatchData()), 120);
+    }
+    function renderEquipo(id, team, teamName) {
+      const el = byId(id);
+      if (!el) return;
+      if (!team || !team.length) {
+        el.innerHTML = '<div class="review-empty">Sin jugadores</div>';
+        return;
+      }
+      el.innerHTML = team.map((jugador, index) => '<div class="review-player-row"><span class="text-truncate">' + escapeText(jugador.nombre) + '</span><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-player" data-team="' + teamName + '" data-index="' + index + '" title="Quitar"><i class="bi bi-x"></i></button></div>').join('');
+    }
+    function renderEventos() {
+      const list = byId('review-eventos-list');
+      byId('review-event-count').textContent = String(state.eventosCount || 0);
+      if (!list) return;
+      if (!state.eventos || !state.eventos.length) {
+        list.innerHTML = '<div class="review-empty">Sin goles cargados</div>';
+        return;
+      }
+      list.innerHTML = state.eventos.map((evento, index) => {
+        const seek = Number.isFinite(Number(evento.reviewSegundos)) ? ' data-action="seek-event" data-seek-seconds="' + escapeText(Math.max(0, Math.round(Number(evento.reviewSegundos)))) + '" role="button" tabindex="0" title="Ir al minuto ' + escapeText(fmt(evento.reviewSegundos)) + '"' : '';
+        return '<div class="review-event-row"' + seek + '><div class="min-w-0"><div class="fw-bold text-white">' + (index + 1) + '. ' + escapeText(evento.goleadorNombre) + '</div><div class="small text-light-emphasis">Partido ' + escapeText(fmtMinuto(evento.minuto)) + ' - Minuto ' + escapeText(fmt(evento.reviewSegundos)) + ' - ' + escapeText(evento.asistenciaNombre) + ' - ' + escapeText(evento.cagadaNombre) + '</div></div><div class="d-flex align-items-center gap-2"><span class="badge ' + (Number(evento.equipo) === 1 ? 'bg-primary' : 'bg-danger') + '">E' + escapeText(evento.equipo) + '</span>' + (evento.esEnContra ? '<span class="badge bg-warning text-dark">EC</span>' : '') + '<button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-event" data-index="' + index + '" title="Quitar gol"><i class="bi bi-trash"></i></button></div></div>';
+      }).join('');
+    }
+    function renderStats(tipo) {
+      const list = byId(tipo === 'atajadas' ? 'review-atajadas-list' : 'review-cagadas-list');
+      const items = state[tipo] || [];
+      if (!list) return;
+      if (!items.length) {
+        list.innerHTML = '<div class="review-empty">Sin ' + tipo + '</div>';
+        return;
+      }
+      list.innerHTML = items.map((item, index) => {
+        const seek = tipo === 'atajadas' && Number.isFinite(Number(item.reviewSegundos)) ? ' data-action="seek-stat" data-seek-seconds="' + escapeText(Math.max(0, Math.round(Number(item.reviewSegundos)))) + '" role="button" tabindex="0" title="Ir al minuto ' + escapeText(fmt(item.reviewSegundos)) + '"' : '';
+        return '<div class="review-stat-row"' + seek + '><div class="min-w-0"><div class="text-truncate">' + escapeText(item.jugadorNombre) + '</div><div class="small text-light-emphasis">Partido ' + escapeText(fmtMinuto(item.minuto)) + ' - Minuto ' + escapeText(fmt(item.reviewSegundos)) + '</div></div><span class="d-flex align-items-center gap-2"><strong>' + escapeText(item.cantidad) + '</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-stat" data-stat-type="' + tipo + '" data-index="' + index + '" title="Quitar"><i class="bi bi-x"></i></button></span></div>';
+      }).join('');
+    }
+    function render() {
+      const available = (state.jugadores || []).filter(j => !j.equipo);
+      const partido = state.jugadoresPartido || [];
+      const selected = {
+        player: current('review-jugador-select'),
+        goal: current('review-goleador'),
+        assist: current('review-asistencia'),
+        mistake: current('review-cagada-gol'),
+        save: current('review-atajadas-jugador'),
+        mistakeStat: current('review-cagadas-jugador')
+      };
+      byId('review-jugador-select').innerHTML = options(available, 'Seleccionar jugador', selected.player);
+      byId('review-goleador').innerHTML = options(partido, 'Goleador', selected.goal);
+      byId('review-asistencia').innerHTML = options(partido, 'Sin asistencia', selected.assist);
+      byId('review-cagada-gol').innerHTML = options(partido, 'Sin cagada', selected.mistake);
+      byId('review-atajadas-jugador').innerHTML = options(partido, 'Jugador', selected.save);
+      byId('review-cagadas-jugador').innerHTML = options(partido, 'Jugador', selected.mistakeStat);
+      byId('review-mvp').innerHTML = options(partido, 'Sin MVP', state.mvpId || '');
+      byId('review-ace').innerHTML = options(partido, 'Sin ACE', state.aceId || '');
+      byId('review-temporada').innerHTML = options(state.temporadas || [], 'Seleccionar temporada', state.partido?.temporadaId || '');
+      setValueIfNotFocused('review-fecha', state.partido?.fecha || '');
+      setValueIfNotFocused('review-cancha', state.partido?.cancha || '');
+      setValueIfNotFocused('review-resultado', state.partido?.resultado || '');
+      setValueIfNotFocused('review-ganador', state.partido?.ganador || '');
+      setValueIfNotFocused('review-inicio-minuto', state.inicio?.minuto || '');
+      setValueIfNotFocused('review-inicio-segundo', state.inicio?.segundo || '');
+      byId('review-marcador').textContent = state.marcador || '0 - 0';
+      renderEquipo('review-equipo1-list', state.equipo1 || [], 'equipo1');
+      renderEquipo('review-equipo2-list', state.equipo2 || [], 'equipo2');
+      renderEventos();
+      renderStats('atajadas');
+      renderStats('cagadas');
+      initSearchableSelects(document);
+      byId('score').textContent = 'Marcador ' + (state.marcador || '0 - 0') + ' | Goles ' + (state.eventosCount || 0) + ' | Atajadas ' + (state.atajadasCount || 0) + ' | Cagadas ' + (state.cagadasCount || 0);
+      renderSync();
+    }
+    document.addEventListener('click', event => {
+      const target = event.target.closest('[data-action]');
+      const action = target?.dataset?.action;
+      if (!action) return;
+      if (action === 'seek-event' || action === 'seek-stat') {
+        send('seek', { segundos: Number(target.dataset.seekSeconds) });
+        return;
+      }
+      if (action === 'add-team') send('add-team', { team: target.dataset.team, jugadorId: current('review-jugador-select') });
+      if (action === 'add-goal') send('add-goal', { matchData: collectMatchData(), goleadorId: current('review-goleador'), asistenciaId: current('review-asistencia'), cagadaId: current('review-cagada-gol'), minuto: current('review-minuto'), segundo: current('review-segundo'), golEnContra: byId('review-gol-contra').checked });
+      if (action === 'add-stat') {
+        const tipo = target.dataset.statType === 'cagadas' ? 'cagadas' : 'atajadas';
+        send('add-stat', {
+          matchData: collectMatchData(),
+          tipo,
+          jugadorId: current(tipo === 'atajadas' ? 'review-atajadas-jugador' : 'review-cagadas-jugador'),
+          cantidad: current(tipo === 'atajadas' ? 'review-atajadas-cantidad' : 'review-cagadas-cantidad'),
+          minuto: tipo === 'atajadas' ? '' : current('review-cagadas-minuto'),
+          segundo: tipo === 'atajadas' ? '' : current('review-cagadas-segundo')
+        });
+      }
+      if (action === 'remove-player') send('remove-player', { team: target.dataset.team, index: Number(target.dataset.index) });
+      if (action === 'remove-event') send('remove-event', { index: Number(target.dataset.index) });
+      if (action === 'remove-stat') send('remove-stat', { tipo: target.dataset.statType, index: Number(target.dataset.index) });
+      if (action === 'save-match') send('save-match', { matchData: collectMatchData() });
+    });
+    ['review-fecha', 'review-cancha', 'review-temporada', 'review-resultado', 'review-ganador', 'review-inicio-minuto', 'review-inicio-segundo'].forEach(id => {
+      const el = byId(id);
+      if (!el) return;
+      el.addEventListener('input', queueMatchSync);
+      el.addEventListener('change', queueMatchSync);
+    });
+    byId('review-mvp').addEventListener('change', () => send('set-recognition', { ...collectMatchData(), tipo: 'mvp', jugadorId: current('review-mvp') }));
+    byId('review-ace').addEventListener('change', () => send('set-recognition', { ...collectMatchData(), tipo: 'ace', jugadorId: current('review-ace') }));
+    function receive(data) { if (!data || data.source !== 't5-review-main') return; if (data.type === 'state') { state = data.state || state; render(); } if (data.type === 'sync') { state.sync = data.sync || state.sync; renderSync(state.sync); } }
+    window.addEventListener('message', event => receive(event.data));
+    channel && channel.addEventListener('message', event => receive(event.data));
+    window.addEventListener('load', () => send('request-state'));
+    render();
+  </script>
+</body>
+</html>`;
+  }
+
+  async function manejarMensajeAnotacionReview(data) {
+    if (!data || data.source !== 't5-review-annotation-popup') return;
+    if (debeIgnorarMensajeAnotacionReview(data)) return;
+    const payload = data.payload || {};
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value || '';
+    };
+    const aplicarDatosPartido = (datos = {}) => {
+      setValue('review-fecha', datos.fecha);
+      setValue('review-cancha', datos.cancha);
+      setValue('review-temporada', datos.temporadaId);
+      setValue('review-resultado', datos.resultado);
+      setValue('review-ganador', datos.ganador);
+      setValue('review-inicio-minuto', datos.inicioMinuto);
+      setValue('review-inicio-segundo', datos.inicioSegundo);
+      setValue('review-mvp', datos.mvpId);
+      setValue('review-ace', datos.aceId);
+      actualizarEstadoPopupReview();
+    };
+
+    try {
+      if (data.action === 'request-state') {
+        enviarEstadoAnotacionReview();
+        return;
+      }
+      if (data.action === 'sync-match-data') {
+        aplicarDatosPartido(payload);
+      }
+      if (data.action === 'seek') {
+        buscarEnReproductorReviewA(payload.segundos);
+        return;
+      }
+      if (data.action === 'add-team') {
+        await agregarJugadorAEquipoDesdeId(payload.team, payload.jugadorId);
+      }
+      if (data.action === 'set-start-offset') {
+        setValue('review-inicio-minuto', payload.minuto);
+        setValue('review-inicio-segundo', payload.segundo);
+        actualizarEstadoPopupReview();
+      }
+      if (data.action === 'add-goal') {
+        if (payload.matchData) aplicarDatosPartido(payload.matchData);
+        setValue('review-goleador', payload.goleadorId);
+        setValue('review-asistencia', payload.asistenciaId);
+        setValue('review-cagada-gol', payload.cagadaId);
+        setValue('review-minuto', payload.minuto);
+        setValue('review-segundo', payload.segundo);
+        const golContra = document.getElementById('review-gol-contra');
+        if (golContra) golContra.checked = !!payload.golEnContra;
+        agregarEventoReviewSandbox();
+      }
+      if (data.action === 'add-stat') {
+        if (payload.matchData) aplicarDatosPartido(payload.matchData);
+        const tipo = payload.tipo === 'cagadas' ? 'cagadas' : 'atajadas';
+        setValue(tipo === 'atajadas' ? 'review-atajadas-jugador' : 'review-cagadas-jugador', payload.jugadorId);
+        setValue(tipo === 'atajadas' ? 'review-atajadas-cantidad' : 'review-cagadas-cantidad', payload.cantidad);
+        if (tipo === 'cagadas') {
+          setValue('review-cagadas-minuto', payload.minuto);
+          setValue('review-cagadas-segundo', payload.segundo);
+        }
+        agregarStatReview(tipo);
+      }
+      if (data.action === 'set-recognition') {
+        aplicarDatosPartido(payload);
+        setValue(payload.tipo === 'ace' ? 'review-ace' : 'review-mvp', payload.jugadorId);
+      }
+      if (data.action === 'remove-player') {
+        quitarJugadorDesdeReview(payload.team, Number(payload.index));
+      }
+      if (data.action === 'remove-event') {
+        eventos.splice(Number(payload.index), 1);
+        renderizarTablaGoles();
+        actualizarMarcadorAutomatico();
+      }
+      if (data.action === 'remove-stat') {
+        const tipo = payload.tipo === 'cagadas' ? 'cagadas' : 'atajadas';
+        reviewSandbox[tipo].splice(Number(payload.index), 1);
+      }
+      if (data.action === 'save-match') {
+        if (payload.matchData) aplicarDatosPartido(payload.matchData);
+        await guardarPartidoReviewSandbox();
+      }
+    } finally {
+      renderizarReviewSandbox();
+      enviarEstadoAnotacionReview();
+    }
+  }
+
+  function abrirPopupAnotacionReview() {
+    inicializarCanalesPopupReview();
+    reviewAnnotationWindow = window.open('about:blank', 't5_review_annotation', 'popup=yes,width=520,height=840');
+    if (!reviewAnnotationWindow) {
+      showToast('El navegador bloqueo el popup de datos.', 'warning');
+      return;
+    }
+    try {
+      reviewAnnotationWindow.document.open();
+      reviewAnnotationWindow.document.write(crearHtmlPopupAnotacionReview(obtenerEstadoAnotacionReview()));
+      reviewAnnotationWindow.document.close();
+      reviewAnnotationWindow.focus();
+      setTimeout(enviarEstadoAnotacionReview, 250);
+      showToast('Popup de datos abierto.', 'success');
+    } catch (error) {
+      console.error('No se pudo abrir popup de datos:', error);
+      showToast('No se pudo preparar el popup de datos.', 'error');
+    }
+  }
+
+  function debeIgnorarMensajeAnotacionReview(data) {
+    const now = Date.now();
+    const payload = data?.payload || {};
+    let key = data?.messageId ? `id:${data.messageId}` : '';
+
+    if (!key) {
+      try {
+        key = `legacy:${data?.action || ''}:${JSON.stringify(payload)}`;
+      } catch (error) {
+        key = `legacy:${data?.action || ''}:${now}`;
+      }
+    }
+
+    const procesadoEn = reviewAnnotationMensajesProcesados.get(key);
+    if (procesadoEn && now - procesadoEn < 5000) {
+      return true;
+    }
+
+    reviewAnnotationMensajesProcesados.set(key, now);
+    if (reviewAnnotationMensajesProcesados.size > 300) {
+      const limite = now - 30000;
+      for (const [id, timestamp] of reviewAnnotationMensajesProcesados) {
+        if (timestamp < limite || reviewAnnotationMensajesProcesados.size > 300) {
+          reviewAnnotationMensajesProcesados.delete(id);
+        }
+      }
+    }
+
+    return false;
+  }
+
+  async function cargarLinkReviewSandbox() {
+    const input = document.getElementById('review-link');
+    const iframe = document.getElementById('review-player-frame');
+    const url = normalizarReviewUrl(input?.value);
+
+    if (!url) {
+      showToast('Ingresa un link valido de review.', 'warning');
+      return;
+    }
+
+    if (input) input.value = url;
+    const esBeelup = !!obtenerDatosBeelupDesdeUrl(url);
+    if (esBeelup) {
+      try {
+        await cargarReproductorInlineBeelup(url);
+      } catch (error) {
+        console.error('No se pudo cargar reproductor inline:', error);
+        showToast('No se pudo cargar el reproductor sincronizado. Uso iframe externo.', 'warning');
+        limpiarReproductorInline();
+        if (iframe) {
+          iframe.classList.remove('d-none');
+          iframe.src = url;
+        }
+      }
+    } else {
+      limpiarReproductorInline();
+      if (iframe) {
+        iframe.classList.remove('d-none');
+        iframe.src = url;
+      }
+    }
+
+    const linkPartido = document.getElementById('youtube-link-partido');
+    if (linkPartido && obtenerLinkYouTubeReview(url)) linkPartido.value = url;
+    renderizarCompiladoReviewSandbox();
+    actualizarScorebugReview();
+  }
+
+  function abrirLinkReviewSandbox() {
+    const input = document.getElementById('review-link');
+    const url = normalizarReviewUrl(input?.value);
+    if (!url) {
+      showToast('Ingresa un link valido de review.', 'warning');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  function poblarSelectReview(selectorId, jugadores, placeholder, { includeEmpty = true } = {}) {
+    const selector = document.getElementById(selectorId);
+    if (!selector) return;
+
+    const valorActual = selector.value;
+    const opciones = [];
+    if (includeEmpty) {
+      opciones.push(`<option value="">${escaparHtmlPlano(placeholder)}</option>`);
+    }
+
+    jugadores.forEach(jugador => {
+      const equipo = obtenerEquipoJugadorActual(jugador.id);
+      const prefijo = equipo === 1 ? 'Equipo 1 - ' : equipo === 2 ? 'Equipo 2 - ' : '';
+      opciones.push(`<option value="${escaparAtributoHtml(jugador.id)}">${escaparHtmlPlano(prefijo + jugador.nombre)}</option>`);
+    });
+
+    selector.innerHTML = opciones.join('');
+    if (valorActual && Array.from(selector.options).some(option => option.value === valorActual)) {
+      selector.value = valorActual;
+    }
+  }
+
+  function poblarTemporadasReviewSandbox() {
+    const selector = document.getElementById('review-temporada');
+    if (!selector) return;
+
+    const valorActual = selector.value || document.getElementById('temporada-partido')?.value || '';
+    selector.innerHTML = '<option value="">Seleccionar temporada</option>';
+    todasLasTemporadas.forEach(temporada => {
+      selector.innerHTML += `<option value="${escaparAtributoHtml(temporada.id)}">${escaparHtmlPlano(temporada.nombre)}</option>`;
+    });
+
+    if (valorActual && Array.from(selector.options).some(option => option.value === String(valorActual))) {
+      selector.value = String(valorActual);
+    }
+  }
+
+  function formatearTiempoReview(minuto) {
+    if (minuto === null || minuto === undefined) return '--';
+    const mins = Math.floor(Number(minuto) || 0);
+    const secs = Math.round(((Number(minuto) || 0) - mins) * 60);
+    return secs > 0 ? `${mins}:${String(secs).padStart(2, '0')}` : `${mins}'`;
+  }
+
+  function obtenerEnteroNoNegativoDesdeInput(id, maximo = null) {
+    const input = document.getElementById(id);
+    const valor = Number(input?.value);
+    if (!Number.isFinite(valor) || valor < 0) return 0;
+    const entero = Math.floor(valor);
+    return Number.isFinite(maximo) ? Math.min(entero, maximo) : entero;
+  }
+
+  function obtenerTiempoPartidoDesdeInputs(minutoId, segundoId) {
+    const minutoInput = document.getElementById(minutoId);
+    const segundoInput = document.getElementById(segundoId);
+    const tieneMinuto = minutoInput && String(minutoInput.value).trim() !== '';
+    const tieneSegundo = segundoInput && String(segundoInput.value).trim() !== '';
+
+    if (!tieneMinuto && !tieneSegundo) {
+      const tiempoSincronizado = obtenerTiempoPartidoDesdeReproductor();
+      return tiempoSincronizado || {
+        minuto: null,
+        segundos: null
+      };
+    }
+
+    const minutos = obtenerEnteroNoNegativoDesdeInput(minutoId);
+    const segundos = obtenerEnteroNoNegativoDesdeInput(segundoId, 59);
+    const segundosTotales = (minutos * 60) + segundos;
+
+    return {
+      minuto: segundosTotales / 60,
+      segundos: segundosTotales,
+      reviewSegundos: calcularReviewSegundosDesdeMinuto(segundosTotales / 60)
+    };
+  }
+
+  function obtenerReviewInicioSegundos() {
+    const minutos = obtenerEnteroNoNegativoDesdeInput('review-inicio-minuto');
+    const segundos = obtenerEnteroNoNegativoDesdeInput('review-inicio-segundo', 59);
+    return (minutos * 60) + segundos;
+  }
+
+  function calcularReviewSegundosDesdeMinuto(minutoPartido, inicioReviewSegundos = obtenerReviewInicioSegundos()) {
+    if (minutoPartido === null || minutoPartido === undefined) return null;
+    const minutoNumerico = Number(minutoPartido);
+    if (!Number.isFinite(minutoNumerico)) return null;
+    return Math.max(0, Math.round(inicioReviewSegundos + (minutoNumerico * 60)));
+  }
+
+  function obtenerReviewSegundosDesdeEvento(item, minutoPartido = item?.minuto) {
+    const directo = Number(item?.review_segundos ?? item?.reviewSegundos);
+    if (Number.isFinite(directo)) return Math.max(0, Math.round(directo));
+    return calcularReviewSegundosDesdeMinuto(minutoPartido);
+  }
+
+  function formatearSegundosVideo(segundosTotales) {
+    if (segundosTotales === null || segundosTotales === undefined) return '--';
+    const total = Math.max(0, Math.round(Number(segundosTotales) || 0));
+    const horas = Math.floor(total / 3600);
+    const minutos = Math.floor((total % 3600) / 60);
+    const segundos = total % 60;
+
+    if (horas > 0) {
+      return `${horas}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+    }
+
+    return `${minutos}:${String(segundos).padStart(2, '0')}`;
+  }
+
+  function limpiarInputsTiempoReview(ids) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+
+  function agruparMetricasReview(items) {
+    const acumulado = new Map();
+    items.forEach(item => {
+      if (!item?.jugador_id) return;
+      const key = String(item.jugador_id);
+      const actual = acumulado.get(key) || { jugador_id: item.jugador_id, cantidad: 0 };
+      actual.cantidad += Number(item.cantidad) || 0;
+      acumulado.set(key, actual);
+    });
+    return Array.from(acumulado.values()).filter(item => item.cantidad > 0);
+  }
+
+  function obtenerUmbralAtajadasCompilado(id = 'review-compilado-atajadas-min') {
+    const valor = Number(document.getElementById(id)?.value);
+    return valor === 5 ? 5 : 3;
+  }
+
+  function normalizarOpcionesCompilado(opciones = {}) {
+    const valor = Number(opciones.atajadasMinimas ?? obtenerUmbralAtajadasCompilado());
+    return {
+      atajadasMinimas: valor === 5 ? 5 : 3
+    };
+  }
+
+  function obtenerConfigCompilado(tipo, cantidad = 1, opciones = {}) {
+    const cantidadNumerica = Number(cantidad) || 0;
+    const { atajadasMinimas } = normalizarOpcionesCompilado(opciones);
+    const configs = {
+      gol: {
+        incluir: true,
+        pre: 10,
+        post: 5,
+        etiqueta: 'Gol',
+        badgeClass: 'bg-success'
+      },
+      atajadas: {
+        incluir: cantidadNumerica >= atajadasMinimas,
+        pre: 5,
+        post: 5,
+        etiqueta: atajadasMinimas === 5 ? 'Atajada 5' : 'Atajada 3+',
+        badgeClass: 'bg-info text-dark'
+      },
+      cagada: {
+        incluir: true,
+        pre: 5,
+        post: 5,
+        etiqueta: 'Cagada',
+        badgeClass: 'bg-danger'
+      },
+      cagada_gol: {
+        incluir: true,
+        pre: 5,
+        post: 5,
+        etiqueta: 'Cagada en gol',
+        badgeClass: 'bg-danger'
+      }
+    };
+
+    return configs[tipo] || {
+      incluir: false,
+      pre: 0,
+      post: 0,
+      etiqueta: tipo || 'Evento',
+      badgeClass: 'bg-secondary'
+    };
+  }
+
+  function crearClipCompilado({ tipo, jugadorId, jugadorNombre, cantidad = 1, minutoPartido = null, reviewSegundos = null, metadata = {}, sourceKey = '', opcionesCompilado = {} }) {
+    const config = obtenerConfigCompilado(tipo, cantidad, opcionesCompilado);
+    const reviewExacto = Number(reviewSegundos);
+
+    if (!config.incluir || !Number.isFinite(reviewExacto)) {
+      return null;
+    }
+
+    const exacto = Math.max(0, Math.round(reviewExacto));
+    const inicio = Math.max(0, exacto - config.pre);
+    const fin = exacto + config.post;
+
+    return {
+      tipo,
+      etiqueta: config.etiqueta,
+      badgeClass: config.badgeClass,
+      jugadorId: jugadorId || null,
+      jugadorNombre: jugadorNombre || (jugadorId ? obtenerNombreJugadorActual(jugadorId) : 'Evento'),
+      cantidad: Number(cantidad) || 1,
+      minutoPartido,
+      reviewSegundos: exacto,
+      inicio,
+      fin,
+      duracion: Math.max(0, fin - inicio),
+      pre: config.pre,
+      post: config.post,
+      metadata: metadata || {},
+      sourceKey: sourceKey || `${tipo}-${jugadorId || 'sin-jugador'}-${exacto}`
+    };
+  }
+
+  function ordenarClipsCompilado(clips) {
+    return [...clips].sort((a, b) => {
+      if (a.reviewSegundos !== b.reviewSegundos) return a.reviewSegundos - b.reviewSegundos;
+      return String(a.etiqueta).localeCompare(String(b.etiqueta));
+    });
+  }
+
+  function deduplicarClipsCompilado(clips) {
+    const golesPorSegundo = new Set(
+      clips
+        .filter(clip => clip.tipo === 'gol')
+        .map(clip => `${clip.reviewSegundos}-${clip.metadata?.orden || ''}`)
+    );
+
+    return clips.filter(clip => {
+      if (clip.tipo !== 'cagada_gol') return true;
+      return !golesPorSegundo.has(`${clip.reviewSegundos}-${clip.metadata?.orden || ''}`);
+    });
+  }
+
+  function obtenerReviewSegundosCompilado(item) {
+    const directo = Number(item?.review_segundos ?? item?.reviewSegundos ?? item?.metadata?.review_segundos);
+    if (Number.isFinite(directo)) return Math.max(0, Math.round(directo));
+
+    const minutoPartido = item?.minuto ?? item?.minuto_partido ?? item?.minutoPartido;
+    return calcularReviewSegundosDesdeMinuto(minutoPartido);
+  }
+
+  function obtenerMinutoPartidoCompilado(item) {
+    const minuto = Number(item?.minuto ?? item?.minuto_partido ?? item?.minutoPartido);
+    return Number.isFinite(minuto) ? minuto : null;
+  }
+
+  function construirMarcadorMetadata(equipo1Goles = 0, equipo2Goles = 0) {
+    const local = Math.max(0, Number(equipo1Goles) || 0);
+    const visitante = Math.max(0, Number(equipo2Goles) || 0);
+    return {
+      marcador_equipo1: local,
+      marcador_equipo2: visitante,
+      marcador_texto: `${local} - ${visitante}`
+    };
+  }
+
+  function calcularMarcadorHastaCompilado(reviewSegundos, minutoPartido = null, golesFuente = eventos) {
+    const limiteReview = Number(reviewSegundos);
+    const limiteMinuto = Number(minutoPartido);
+    const marcador = { equipo1: 0, equipo2: 0 };
+
+    (golesFuente || []).forEach(evento => {
+      if (evento?.tipo && evento.tipo !== 'gol') return;
+
+      const equipo = Number(evento?.equipo ?? evento?.metadata?.equipo);
+      if (equipo !== 1 && equipo !== 2) return;
+
+      const eventoReview = obtenerReviewSegundosCompilado(evento);
+      const eventoMinuto = obtenerMinutoPartidoCompilado(evento);
+      let incluir = false;
+
+      if (Number.isFinite(limiteReview) && Number.isFinite(eventoReview)) {
+        incluir = eventoReview <= limiteReview;
+      } else if (Number.isFinite(limiteMinuto) && Number.isFinite(eventoMinuto)) {
+        incluir = eventoMinuto <= limiteMinuto;
+      }
+
+      if (!incluir) return;
+      if (equipo === 1) marcador.equipo1 += 1;
+      if (equipo === 2) marcador.equipo2 += 1;
+    });
+
+    return construirMarcadorMetadata(marcador.equipo1, marcador.equipo2);
+  }
+
+  function completarMetadataNombresCompilado(metadata = {}, jugadorId = null, jugadorNombre = '') {
+    const salida = { ...(metadata || {}) };
+    if (jugadorNombre && !salida.jugador_nombre) salida.jugador_nombre = jugadorNombre;
+    if (jugadorId && !salida.jugador_id) salida.jugador_id = jugadorId;
+
+    const pares = [
+      ['goleador_id', 'goleador_nombre'],
+      ['asistidor_id', 'asistencia_nombre'],
+      ['asistencia_id', 'asistencia_nombre'],
+      ['cagada_jugador_id', 'cagada_jugador_nombre'],
+      ['cagada_id', 'cagada_nombre'],
+      ['atajadas_jugador_id', 'atajadas_jugador_nombre']
+    ];
+
+    pares.forEach(([idKey, nombreKey]) => {
+      if (salida[idKey] && !salida[nombreKey]) {
+        salida[nombreKey] = obtenerNombreJugadorActual(salida[idKey]);
+      }
+    });
+
+    if (salida.cagada_nombre && !salida.cagada_jugador_nombre) salida.cagada_jugador_nombre = salida.cagada_nombre;
+    if (salida.cagada_jugador_nombre && !salida.cagada_nombre) salida.cagada_nombre = salida.cagada_jugador_nombre;
+
+    return salida;
+  }
+
+  function construirClipsCompiladoSandbox(opciones = {}) {
+    const opcionesCompilado = normalizarOpcionesCompilado(opciones);
+    const clips = [];
+
+    eventos.forEach((evento, index) => {
+      const reviewSegundos = obtenerReviewSegundosDesdeEvento(evento, evento.minuto);
+      const goleadorNombre = obtenerNombreJugadorActual(evento.goleador_id);
+      const asistenciaNombre = evento.asistencia_id ? obtenerNombreJugadorActual(evento.asistencia_id) : null;
+      const cagadaNombre = evento.cagada_id ? obtenerNombreJugadorActual(evento.cagada_id) : null;
+      const metadata = {
+        origen: 'review_sandbox',
+        orden: index + 1,
+        equipo: evento.equipo,
+        es_gol_en_contra: !!evento.es_en_contra,
+        goleador_id: evento.goleador_id,
+        goleador_nombre: goleadorNombre,
+        asistidor_id: evento.asistencia_id || null,
+        asistencia_id: evento.asistencia_id || null,
+        asistencia_nombre: asistenciaNombre,
+        cagada_jugador_id: evento.cagada_id || null,
+        cagada_id: evento.cagada_id || null,
+        cagada_jugador_nombre: cagadaNombre,
+        cagada_nombre: cagadaNombre,
+        ...calcularMarcadorHastaCompilado(reviewSegundos, evento.minuto, eventos)
+      };
+
+      clips.push(crearClipCompilado({
+          tipo: 'gol',
+          jugadorId: evento.goleador_id,
+          jugadorNombre: goleadorNombre,
+          cantidad: 1,
+          minutoPartido: evento.minuto,
+          reviewSegundos,
+          metadata,
+          sourceKey: `gol-${index}`,
+          opcionesCompilado
+        }));
+
+      if (evento.cagada_id) {
+        clips.push(crearClipCompilado({
+          tipo: 'cagada_gol',
+          jugadorId: evento.cagada_id,
+          jugadorNombre: cagadaNombre,
+          cantidad: 1,
+          minutoPartido: evento.minuto,
+          reviewSegundos,
+          metadata,
+          sourceKey: `cagada-gol-${index}`,
+          opcionesCompilado
+        }));
+      }
+    });
+
+    reviewSandbox.atajadas.forEach((item, index) => {
+      const reviewSegundos = obtenerReviewSegundosDesdeEvento(item, item.minuto);
+      const jugadorNombre = obtenerNombreJugadorActual(item.jugador_id);
+      clips.push(crearClipCompilado({
+        tipo: 'atajadas',
+        jugadorId: item.jugador_id,
+        jugadorNombre,
+        cantidad: item.cantidad,
+        minutoPartido: item.minuto,
+        reviewSegundos,
+        metadata: {
+          origen: 'review_sandbox',
+          orden: index + 1,
+          atajadas_jugador_id: item.jugador_id,
+          atajadas_jugador_nombre: jugadorNombre,
+          ...calcularMarcadorHastaCompilado(reviewSegundos, item.minuto, eventos)
+        },
+        sourceKey: `atajadas-${index}`,
+        opcionesCompilado
+      }));
+    });
+
+    reviewSandbox.cagadas.forEach((item, index) => {
+      const reviewSegundos = obtenerReviewSegundosDesdeEvento(item, item.minuto);
+      const jugadorNombre = obtenerNombreJugadorActual(item.jugador_id);
+      clips.push(crearClipCompilado({
+        tipo: 'cagada',
+        jugadorId: item.jugador_id,
+        jugadorNombre,
+        cantidad: item.cantidad,
+        minutoPartido: item.minuto,
+        reviewSegundos,
+        metadata: {
+          origen: 'review_sandbox',
+          orden: index + 1,
+          cagada_jugador_id: item.jugador_id,
+          cagada_jugador_nombre: jugadorNombre,
+          cagada_nombre: jugadorNombre,
+          ...calcularMarcadorHastaCompilado(reviewSegundos, item.minuto, eventos)
+        },
+        sourceKey: `cagada-${index}`,
+        opcionesCompilado
+      }));
+    });
+
+    return ordenarClipsCompilado(deduplicarClipsCompilado(clips.filter(Boolean)));
+  }
+
+  function construirClipsCompiladoDesdeEventos(reviewEventos = [], opciones = {}) {
+    const opcionesCompilado = normalizarOpcionesCompilado(opciones);
+    const golesFuente = reviewEventos.filter(evento => evento.tipo === 'gol');
+    const clips = reviewEventos.map(evento => {
+      const jugadorNombre = evento.jugadores?.nombre || evento.jugador_nombre || evento.metadata?.jugador_nombre || obtenerNombreJugadorActual(evento.jugador_id);
+      const marcador = evento.metadata?.marcador_texto
+        ? {}
+        : calcularMarcadorHastaCompilado(evento.review_segundos, evento.minuto_partido, golesFuente);
+
+      return crearClipCompilado({
+        tipo: evento.tipo,
+        jugadorId: evento.jugador_id,
+        jugadorNombre,
+        cantidad: evento.cantidad,
+        minutoPartido: evento.minuto_partido,
+        reviewSegundos: evento.review_segundos,
+        metadata: completarMetadataNombresCompilado({
+          ...(evento.metadata || {}),
+          ...marcador
+        }, evento.jugador_id, jugadorNombre),
+        sourceKey: evento.id,
+        opcionesCompilado
+      });
+    });
+
+    return ordenarClipsCompilado(deduplicarClipsCompilado(clips.filter(Boolean)));
+  }
+
+  function renderizarClipsCompiladoHtml(clips, reviewLink = '', opciones = {}) {
+    const { atajadasMinimas } = normalizarOpcionesCompilado(opciones);
+    if (!clips.length) {
+      return `
+        <div class="review-empty">
+          Sin clips elegibles. Los eventos necesitan minuto de video; las atajadas entran al compilado desde ${atajadasMinimas} o superior.
+        </div>
+      `;
+    }
+
+    return clips.map((clip, index) => {
+      const href = reviewLink ? generarLinkConTimestampSegundos(reviewLink, clip.inicio) : '';
+      return `
+        <div class="review-clip-row">
+          <div class="min-w-0">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+              <span class="badge bg-secondary">${index + 1}</span>
+              <span class="badge ${clip.badgeClass}">${escaparHtmlPlano(clip.etiqueta)}</span>
+              <strong class="text-white text-truncate">${escaparHtmlPlano(clip.jugadorNombre)}</strong>
+              ${clip.tipo === 'atajadas' ? `<span class="review-time-chip">${Number(clip.cantidad) || 0}</span>` : ''}
+            </div>
+            <div class="review-clip-meta">
+              Partido ${escaparHtmlPlano(formatearTiempoReview(clip.minutoPartido))}
+              - Jugada ${escaparHtmlPlano(formatearSegundosVideo(clip.reviewSegundos))}
+              - Corte ${escaparHtmlPlano(formatearSegundosVideo(clip.inicio))}-${escaparHtmlPlano(formatearSegundosVideo(clip.fin))}
+              - ${clip.pre}s antes / ${clip.post}s despues
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-dark border border-secondary">${clip.duracion}s</span>
+            ${href ? `
+              <a class="btn btn-sm btn-outline-light" href="${escaparAtributoHtml(href)}" target="_blank" rel="noopener noreferrer" title="Abrir corte">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function obtenerMimeCompilado() {
+    if (!window.MediaRecorder) return '';
+    const candidatos = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    return candidatos.find(tipo => MediaRecorder.isTypeSupported(tipo)) || '';
+  }
+
+  function setEstadoCompilado(statusEl, mensaje, tipo = 'info') {
+    if (!statusEl) return;
+    const clases = {
+      info: 'small text-light-emphasis mt-2',
+      warning: 'small text-warning mt-2',
+      error: 'small text-danger mt-2',
+      success: 'small text-success mt-2'
+    };
+    statusEl.className = clases[tipo] || clases.info;
+    statusEl.textContent = mensaje || '';
+  }
+
+  function normalizarNombreArchivo(valor) {
+    return String(valor || 'compilado')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'compilado';
+  }
+
+  function descargarBlob(blob, nombreArchivo) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nombreArchivo;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function descargarJsonCompilado(clips, nombreBase, reviewLink = '', opciones = {}) {
+    if (!clips.length) {
+      showToast('No hay cortes elegibles para descargar.', 'warning');
+      return;
+    }
+
+    const opcionesCompilado = normalizarOpcionesCompilado(opciones);
+    const payload = {
+      generado_en: new Date().toISOString(),
+      review_link: reviewLink || null,
+      formato: 't5-review-compilado-v1',
+      compilado: {
+        atajadas_minimas: opcionesCompilado.atajadasMinimas
+      },
+      clips: clips.map((clip, index) => ({
+        orden: index + 1,
+        tipo: clip.tipo,
+        etiqueta: clip.etiqueta,
+        jugador_id: clip.jugadorId,
+        jugador_nombre: clip.jugadorNombre,
+        cantidad: clip.cantidad,
+        minuto_partido: clip.minutoPartido,
+        review_segundos: clip.reviewSegundos,
+        inicio_segundos: clip.inicio,
+        fin_segundos: clip.fin,
+        duracion_segundos: clip.duracion,
+        pre_segundos: clip.pre,
+        post_segundos: clip.post,
+        link_inicio: reviewLink ? generarLinkConTimestampSegundos(reviewLink, clip.inicio) : null,
+        metadata: clip.metadata || {}
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}-cortes.json`);
+  }
+
+  const FFMPEG_WASM_MODULE_URL = 'https://esm.sh/@ffmpeg/ffmpeg@0.12.15';
+  const FFMPEG_WASM_UTIL_URL = 'https://esm.sh/@ffmpeg/util@0.12.2';
+  const FFMPEG_WASM_ESM_BASE = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
+  const FFMPEG_WASM_CORE_BASE = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
+  let ffmpegWasmPromise = null;
+  let ffmpegClassWorkerUrlPromise = null;
+
+  function obtenerMensajeError(error) {
+    return error?.message || String(error || 'Error desconocido');
+  }
+
+  async function crearClassWorkerUrlFFmpeg() {
+    if (!ffmpegClassWorkerUrlPromise) {
+      ffmpegClassWorkerUrlPromise = (async () => {
+        const response = await fetch(`${FFMPEG_WASM_ESM_BASE}/worker.js`, { mode: 'cors' });
+        if (!response.ok) {
+          throw new Error(`No se pudo cargar worker.js de ffmpeg.wasm: ${response.status}`);
+        }
+
+        const source = (await response.text())
+          .replaceAll('from "./const.js"', `from "${FFMPEG_WASM_ESM_BASE}/const.js"`)
+          .replaceAll('from "./errors.js"', `from "${FFMPEG_WASM_ESM_BASE}/errors.js"`);
+
+        return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+      })().catch(error => {
+        ffmpegClassWorkerUrlPromise = null;
+        throw error;
+      });
+    }
+
+    return ffmpegClassWorkerUrlPromise;
+  }
+
+  function obtenerDatosBeelupDesdeUrl(reviewLink) {
+    const texto = String(reviewLink || '').trim();
+    if (!texto) return null;
+
+    try {
+      const url = new URL(texto, window.location.href);
+      const host = url.hostname.toLowerCase();
+      const id = url.searchParams.get('id');
+
+      if (!host.includes('beelup.com') || !id) return null;
+
+      return {
+        id,
+        camara: url.searchParams.get('c') || url.searchParams.get('camara') || ''
+      };
+    } catch (error) {
+      const match = texto.match(/(?:id=)([0-9]+)/i);
+      return match ? { id: match[1], camara: '' } : null;
+    }
+  }
+
+  function crearUrlPlaylistBeelup(reviewLink, formato = 'json') {
+    const datos = obtenerDatosBeelupDesdeUrl(reviewLink);
+    if (!datos) return '';
+
+    const params = new URLSearchParams({
+      id: datos.id,
+      camara: datos.camara || '',
+      tipo: 'todo',
+      formato
+    });
+
+    if (formato === 'm3u8') {
+      params.set('desde', '');
+      params.set('duracion', '');
+    }
+
+    return `https://beelup.com/obtener.video.playlist.php?${params.toString()}`;
+  }
+
+  async function cargarPlaylistBeelup(reviewLink) {
+    const playlistUrl = crearUrlPlaylistBeelup(reviewLink, 'json');
+    if (!playlistUrl) {
+      throw new Error('El link no parece ser de Beelup.');
+    }
+
+    const response = await fetch(playlistUrl, { mode: 'cors' });
+    if (!response.ok) {
+      throw new Error(`Beelup respondio ${response.status} al pedir la playlist.`);
+    }
+
+    const data = await response.json();
+    const segmentos = (Array.isArray(data?.segmentos) ? data.segmentos : [])
+      .filter(segmento => segmento?.tipo === 'video' && segmento.url)
+      .map((segmento, index) => {
+        const desde = Number(segmento.segundos_desde);
+        const hasta = Number(segmento.segundos_hasta);
+        const duracion = Number(segmento.duracion);
+        const inicio = Number.isFinite(desde) ? desde : index * (Number.isFinite(duracion) ? duracion : 0);
+        const fin = Number.isFinite(hasta) ? hasta : inicio + (Number.isFinite(duracion) ? duracion : 0);
+
+        return {
+          index,
+          id: segmento.id || index + 1,
+          url: segmento.url,
+          inicio,
+          fin,
+          duracion: Math.max(0, fin - inicio),
+          fecha: segmento.fecha_actual || null
+        };
+      })
+      .filter(segmento => Number.isFinite(segmento.inicio) && Number.isFinite(segmento.fin) && segmento.fin > segmento.inicio)
+      .sort((a, b) => a.inicio - b.inicio);
+
+    if (!segmentos.length) {
+      throw new Error('La playlist de Beelup no trajo segmentos de video.');
+    }
+
+    return {
+      url: playlistUrl,
+      datos: data,
+      segmentos,
+      duracion: Math.max(...segmentos.map(segmento => segmento.fin))
+    };
+  }
+
+  function prepararTrabajosCompiladoBeelup(playlist, clips) {
+    return clips.map((clip, index) => {
+      const inicio = Math.max(0, Number(clip.inicio) || 0);
+      const fin = Math.min(Number(playlist.duracion) || 0, Number(clip.fin) || 0);
+
+      if (!Number.isFinite(inicio) || !Number.isFinite(fin) || fin <= inicio) return null;
+
+      const segmentos = playlist.segmentos.filter(segmento =>
+        segmento.fin > inicio && segmento.inicio < fin
+      );
+
+      if (!segmentos.length) return null;
+
+      return {
+        clip,
+        index,
+        inicio,
+        fin,
+        duracion: fin - inicio,
+        segmentos,
+        offset: Math.max(0, inicio - segmentos[0].inicio)
+      };
+    }).filter(Boolean);
+  }
+
+  async function cargarFFmpegWasm(statusEl) {
+    if (!window.WebAssembly || !window.Worker || !window.Blob || !window.URL) {
+      throw new Error('Este navegador no soporta ffmpeg.wasm.');
+    }
+
+    if (!ffmpegWasmPromise) {
+      ffmpegWasmPromise = (async () => {
+        setEstadoCompilado(statusEl, 'Cargando motor ffmpeg.wasm...', 'info');
+        const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
+          import(FFMPEG_WASM_MODULE_URL),
+          import(FFMPEG_WASM_UTIL_URL)
+        ]);
+
+        const ffmpeg = new FFmpeg();
+        ffmpeg.on('log', ({ message }) => {
+          if (message) console.debug('[ffmpeg.wasm]', message);
+        });
+
+        await ffmpeg.load({
+          classWorkerURL: await crearClassWorkerUrlFFmpeg(),
+          coreURL: await toBlobURL(`${FFMPEG_WASM_CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${FFMPEG_WASM_CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm')
+        });
+
+        return ffmpeg;
+      })().catch(error => {
+        ffmpegWasmPromise = null;
+        throw error;
+      });
+    }
+
+    return ffmpegWasmPromise;
+  }
+
+  async function escribirTextoFFmpeg(ffmpeg, nombreArchivo, contenido) {
+    await ffmpeg.writeFile(nombreArchivo, new TextEncoder().encode(contenido));
+  }
+
+  async function borrarArchivoFFmpeg(ffmpeg, nombreArchivo) {
+    try {
+      await ffmpeg.deleteFile(nombreArchivo);
+    } catch (error) {
+      // El archivo puede no existir si ffmpeg fallo antes de escribirlo.
+    }
+  }
+
+  function formatearDecimalFFmpeg(valor) {
+    return Math.max(0, Number(valor) || 0).toFixed(3);
+  }
+
+  function obtenerTextoMarcadorOverlay(metadata = {}) {
+    if (metadata.marcador_texto) {
+      return String(metadata.marcador_texto).replace(/\s*-\s*/g, '-');
+    }
+    const equipo1Goles = Number(metadata.marcador_equipo1);
+    const equipo2Goles = Number(metadata.marcador_equipo2);
+    if (Number.isFinite(equipo1Goles) && Number.isFinite(equipo2Goles)) {
+      return `${equipo1Goles}-${equipo2Goles}`;
+    }
+    return '--';
+  }
+
+  function calcularMarcadorClipsCompilado(clips = [], hastaReviewSegundos = null) {
+    const limite = Number(hastaReviewSegundos);
+    if (!Number.isFinite(limite) || !Array.isArray(clips)) return null;
+
+    let tieneFuente = false;
+    const marcador = { equipo1: 0, equipo2: 0 };
+
+    clips.forEach(clip => {
+      if (clip?.tipo !== 'gol') return;
+
+      const equipo = Number(clip.metadata?.equipo ?? clip.equipo);
+      const reviewSegundos = Number(clip.reviewSegundos);
+      if ((equipo !== 1 && equipo !== 2) || !Number.isFinite(reviewSegundos)) return;
+
+      tieneFuente = true;
+      if (reviewSegundos > limite) return;
+
+      if (equipo === 1) marcador.equipo1 += 1;
+      if (equipo === 2) marcador.equipo2 += 1;
+    });
+
+    if (!tieneFuente) return null;
+    return `${marcador.equipo1}-${marcador.equipo2}`;
+  }
+
+  function obtenerDatosOverlayClip(clip, index = 0, total = 1, opciones = {}) {
+    const metadata = completarMetadataNombresCompilado(clip.metadata || {}, clip.jugadorId, clip.jugadorNombre);
+    const jugadorNombre = clip.jugadorNombre || metadata.jugador_nombre || 'Jugador';
+    const asistenciaNombre = metadata.asistencia_nombre || metadata.asistidor_nombre || null;
+    const cagadaNombre = metadata.cagada_jugador_nombre || metadata.cagada_nombre || null;
+    const goleadorNombre = metadata.goleador_nombre || null;
+    const minutoPartidoSegundos = Number(opciones.minutoPartidoSegundos);
+    const minutoPartidoTexto = Number.isFinite(minutoPartidoSegundos)
+      ? formatearSegundosVideo(minutoPartidoSegundos)
+      : formatearTiempoReview(clip.minutoPartido);
+    const marcadorDinamico = calcularMarcadorClipsCompilado(opciones.clipsMarcador, opciones.reviewSegundosMarcador);
+    const datos = {
+      titulo: String(clip.etiqueta || 'Jugada').toUpperCase(),
+      principal: jugadorNombre,
+      detalles: [],
+      color: '#facc15',
+      marcador: marcadorDinamico || obtenerTextoMarcadorOverlay(metadata),
+      minutoPartido: minutoPartidoTexto,
+      tiempo: formatearSegundosVideo(clip.reviewSegundos),
+      orden: `${index + 1}/${Math.max(1, total)}`
+    };
+
+    if (clip.tipo === 'gol') {
+      datos.titulo = metadata.es_gol_en_contra ? 'GOL EN CONTRA' : 'GOL';
+      datos.principal = `Gol: ${jugadorNombre}`;
+      datos.color = '#22c55e';
+      if (asistenciaNombre) datos.detalles.push(`Asistencia: ${asistenciaNombre}`);
+      if (cagadaNombre) datos.detalles.push(`Cagada: ${cagadaNombre}`);
+    } else if (clip.tipo === 'atajadas') {
+      datos.titulo = 'ATAJADA';
+      datos.principal = `Atajada: ${jugadorNombre}`;
+      datos.color = '#38bdf8';
+    } else if (clip.tipo === 'cagada' || clip.tipo === 'cagada_gol') {
+      datos.titulo = clip.tipo === 'cagada_gol' ? 'CAGADA EN GOL' : 'CAGADA';
+      datos.principal = `Cagada: ${jugadorNombre}`;
+      datos.color = '#fb7185';
+      if (goleadorNombre) datos.detalles.push(`Gol de: ${goleadorNombre}`);
+      if (asistenciaNombre) datos.detalles.push(`Asistencia: ${asistenciaNombre}`);
+    }
+
+    return datos;
+  }
+
+  function dibujarRectRedondeadoCompilado(ctx, x, y, width, height, radius) {
+    const radio = Math.max(0, Math.min(radius, width / 2, height / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + radio, y);
+    ctx.lineTo(x + width - radio, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radio);
+    ctx.lineTo(x + width, y + height - radio);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radio, y + height);
+    ctx.lineTo(x + radio, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radio);
+    ctx.lineTo(x, y + radio);
+    ctx.quadraticCurveTo(x, y, x + radio, y);
+    ctx.closePath();
+  }
+
+  function recortarTextoCanvas(ctx, texto, maxWidth) {
+    const valor = String(texto || '');
+    if (ctx.measureText(valor).width <= maxWidth) return valor;
+
+    let recortado = valor;
+    while (recortado.length > 1 && ctx.measureText(`${recortado}...`).width > maxWidth) {
+      recortado = recortado.slice(0, -1);
+    }
+    return `${recortado.trimEnd()}...`;
+  }
+
+  function dibujarTextoTruncadoCanvas(ctx, texto, x, y, maxWidth) {
+    ctx.fillText(recortarTextoCanvas(ctx, texto, maxWidth), x, y);
+  }
+
+  function convertirCanvasAPngBytes(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(async blob => {
+        if (!blob) {
+          reject(new Error('No se pudo crear el overlay PNG.'));
+          return;
+        }
+        resolve(new Uint8Array(await blob.arrayBuffer()));
+      }, 'image/png');
+    });
+  }
+
+  function obtenerSegundosPartidoOverlayClip(clip, segundosDesdeInicio = 0) {
+    const minutoPartido = Number(clip?.minutoPartido);
+    if (!Number.isFinite(minutoPartido)) return null;
+
+    const segundosBase = (minutoPartido * 60) - (Number(clip?.pre) || 0);
+    return Math.max(0, Math.round(segundosBase + (Number(segundosDesdeInicio) || 0)));
+  }
+
+  function obtenerCantidadOverlaysTemporizados(duracion) {
+    return Math.max(1, Math.ceil(Math.max(0, Number(duracion) || 0)));
+  }
+
+  async function crearOverlayCompiladoPng(clip, index = 0, total = 1, opciones = {}) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1920;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No se pudo preparar el canvas del overlay.');
+
+    try {
+      await document.fonts?.load('700 64px Inter');
+      await document.fonts?.load('600 36px Inter');
+    } catch (error) {
+      // Si la fuente no esta disponible, el canvas usa el fallback del sistema.
+    }
+
+    const fuente = 'Inter, "Segoe UI", Arial, sans-serif';
+    const datos = obtenerDatosOverlayClip(clip, index, total, opciones);
+    const esAtajada = clip.tipo === 'atajadas';
+    const tieneDetalles = !esAtajada && datos.detalles.length > 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const gradienteInferior = ctx.createLinearGradient(0, 780, 0, 1080);
+    gradienteInferior.addColorStop(0, 'rgba(2, 6, 23, 0)');
+    gradienteInferior.addColorStop(0.58, 'rgba(2, 6, 23, 0.36)');
+    gradienteInferior.addColorStop(1, 'rgba(2, 6, 23, 0.78)');
+    ctx.fillStyle = gradienteInferior;
+    ctx.fillRect(0, 780, 1920, 300);
+
+    const marcadorPartes = String(datos.marcador || '0-0').split('-').map(parte => parte.trim());
+    const scoreLocal = /^\d+$/.test(marcadorPartes[0] || '') ? marcadorPartes[0] : '0';
+    const scoreVisitante = /^\d+$/.test(marcadorPartes[1] || '') ? marcadorPartes[1] : '0';
+
+    const marcadorX = 12;
+    const marcadorY = 10;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
+    dibujarRectRedondeadoCompilado(ctx, marcadorX, marcadorY, 380, 50, 10);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f8fafc';
+    dibujarRectRedondeadoCompilado(ctx, marcadorX + 10, marcadorY + 8, 76, 34, 7);
+    ctx.fill();
+    ctx.font = `900 20px ${fuente}`;
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.fillText(datos.minutoPartido && datos.minutoPartido !== '--' ? datos.minutoPartido : datos.tiempo, marcadorX + 48, marcadorY + 26);
+    ctx.textAlign = 'left';
+
+    ctx.fillStyle = '#60a5fa';
+    ctx.beginPath();
+    ctx.arc(marcadorX + 106, marcadorY + 26, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = `900 18px ${fuente}`;
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('E1', marcadorX + 124, marcadorY + 26);
+
+    ctx.fillStyle = '#2dd4bf';
+    dibujarRectRedondeadoCompilado(ctx, marcadorX + 154, marcadorY + 8, 44, 34, 7);
+    ctx.fill();
+    ctx.fillStyle = '#06211e';
+    ctx.font = `900 25px ${fuente}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(scoreLocal, marcadorX + 176, marcadorY + 26);
+    ctx.fillStyle = '#2dd4bf';
+    dibujarRectRedondeadoCompilado(ctx, marcadorX + 206, marcadorY + 8, 44, 34, 7);
+    ctx.fill();
+    ctx.fillStyle = '#06211e';
+    ctx.fillText(scoreVisitante, marcadorX + 228, marcadorY + 26);
+    ctx.textAlign = 'left';
+
+    ctx.font = `900 18px ${fuente}`;
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('E2', marcadorX + 280, marcadorY + 26);
+    ctx.fillStyle = '#fb7185';
+    ctx.beginPath();
+    ctx.arc(marcadorX + 318, marcadorY + 26, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.textBaseline = 'alphabetic';
+
+    const panelX = 34;
+    const panelH = esAtajada ? 64 : (tieneDetalles ? 96 : 76);
+    const panelY = 1080 - panelH - 32;
+    const panelW = esAtajada ? 520 : (tieneDetalles ? 760 : 520);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
+    dibujarRectRedondeadoCompilado(ctx, panelX, panelY, panelW, panelH, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = datos.color;
+    dibujarRectRedondeadoCompilado(ctx, panelX + 16, panelY + 16, 6, panelH - 32, 4);
+    ctx.fill();
+
+    const contenidoX = panelX + 38;
+    if (esAtajada) {
+      ctx.font = `900 30px ${fuente}`;
+      ctx.fillStyle = '#ffffff';
+      dibujarTextoTruncadoCanvas(ctx, datos.principal, contenidoX, panelY + 41, panelW - 58);
+    } else {
+      ctx.font = `800 16px ${fuente}`;
+      ctx.fillStyle = datos.color;
+      ctx.fillText(datos.titulo, contenidoX, panelY + 29);
+      ctx.font = `900 30px ${fuente}`;
+      ctx.fillStyle = '#ffffff';
+      dibujarTextoTruncadoCanvas(ctx, datos.principal, contenidoX, panelY + 59, panelW - 58);
+
+      const detalleTexto = datos.detalles.filter(Boolean).join('  /  ');
+      if (detalleTexto) {
+        ctx.font = `600 16px ${fuente}`;
+        ctx.fillStyle = 'rgba(226, 232, 240, 0.9)';
+        dibujarTextoTruncadoCanvas(ctx, detalleTexto, contenidoX, panelY + 82, panelW - 58);
+      }
+    }
+
+    return convertirCanvasAPngBytes(canvas);
+  }
+
+  async function descargarSegmentoBeelup(segmento) {
+    const response = await fetch(segmento.url, { mode: 'cors' });
+    if (!response.ok) {
+      throw new Error(`No se pudo bajar segmento ${segmento.id || segmento.index + 1}: ${response.status}`);
+    }
+
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  function normalizarOverlaysCompilado(overlayNames = []) {
+    if (!overlayNames) return [];
+    if (Array.isArray(overlayNames)) return overlayNames.filter(Boolean);
+    return [overlayNames].filter(Boolean);
+  }
+
+  function construirFiltroVideoCompilado(duracion, overlayNames = []) {
+    const duracionNumerica = Math.max(0, Number(duracion) || 0);
+    const fadeDuracion = Math.min(0.22, Math.max(0.08, duracionNumerica / 14));
+    const fadeInicioSalida = Math.max(0, duracionNumerica - fadeDuracion);
+    const fadeFiltro = `fade=t=in:st=0:d=${formatearDecimalFFmpeg(fadeDuracion)},fade=t=out:st=${formatearDecimalFFmpeg(fadeInicioSalida)}:d=${formatearDecimalFFmpeg(fadeDuracion)}`;
+    const overlays = normalizarOverlaysCompilado(overlayNames);
+
+    if (!overlays.length) return `${fadeFiltro},format=yuv420p`;
+
+    const filtros = [];
+    let baseLabel = '0:v';
+    overlays.forEach((_, index) => {
+      const inputIndex = index + 1;
+      const overlayLabel = `ov${index}`;
+      const scaledBaseLabel = `base${index}`;
+      const outputLabel = `vtmp${index}`;
+      const inicio = Math.min(index, duracionNumerica);
+      const fin = Math.min(index + 1, duracionNumerica);
+      const finSeguro = Math.max(inicio, fin - 0.001);
+
+      filtros.push(`[${inputIndex}:v][${baseLabel}]scale2ref=w=main_w:h=main_h[${overlayLabel}][${scaledBaseLabel}]`);
+      filtros.push(`[${scaledBaseLabel}][${overlayLabel}]overlay=0:0:format=auto:enable='between(t,${formatearDecimalFFmpeg(inicio)},${formatearDecimalFFmpeg(finSeguro)})'[${outputLabel}]`);
+      baseLabel = outputLabel;
+    });
+
+    filtros.push(`[${baseLabel}]${fadeFiltro},format=yuv420p[v]`);
+    return filtros.join(';');
+  }
+
+  function construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, codec = 'h264') {
+    const overlays = normalizarOverlaysCompilado(overlayNames);
+    const args = [
+      '-hide_banner',
+      '-y',
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', listName
+    ];
+
+    overlays.forEach(overlayName => {
+      args.push('-loop', '1', '-i', overlayName);
+    });
+
+    args.push(
+      '-ss', formatearDecimalFFmpeg(offset),
+      '-t', formatearDecimalFFmpeg(duracion)
+    );
+
+    if (overlays.length) {
+      args.push(
+        '-filter_complex', construirFiltroVideoCompilado(duracion, overlays),
+        '-map', '[v]',
+        '-map', '0:a:0?'
+      );
+    } else {
+      args.push(
+        '-vf', construirFiltroVideoCompilado(duracion),
+        '-map', '0:v:0',
+        '-map', '0:a:0?'
+      );
+    }
+
+    if (codec === 'h264') {
+      args.push(
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-crf', '28',
+        '-pix_fmt', 'yuv420p'
+      );
+    } else {
+      args.push(
+        '-c:v', 'mpeg4',
+        '-q:v', '5',
+        '-pix_fmt', 'yuv420p'
+      );
+    }
+
+    args.push(
+      '-c:a', 'aac',
+      '-b:a', '96k',
+      '-movflags', '+faststart',
+      outputName
+    );
+
+    return args;
+  }
+
+  async function ejecutarClipFFmpeg(ffmpeg, listName, outputName, offset, duracion, overlayNames = []) {
+    const argsH264 = construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, 'h264');
+
+    try {
+      await ffmpeg.exec(argsH264);
+      return;
+    } catch (error) {
+      console.warn('Fallo libx264 en ffmpeg.wasm, reintentando con mpeg4:', error);
+      await borrarArchivoFFmpeg(ffmpeg, outputName);
+    }
+
+    await ffmpeg.exec(construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, 'mpeg4'));
+  }
+
+  async function concatenarClipsFFmpeg(ffmpeg, clipNames, outputName) {
+    if (clipNames.length === 1) {
+      return clipNames[0];
+    }
+
+    const listName = `${outputName.replace(/\.mp4$/i, '')}_clips.txt`;
+    await escribirTextoFFmpeg(ffmpeg, listName, clipNames.map(name => `file '${name}'`).join('\n'));
+
+    try {
+      await ffmpeg.exec([
+        '-hide_banner',
+        '-y',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', listName,
+        '-c', 'copy',
+        '-movflags', '+faststart',
+        outputName
+      ]);
+      return outputName;
+    } finally {
+      await borrarArchivoFFmpeg(ffmpeg, listName);
+    }
+  }
+
+  async function generarMp4CompiladoDesdeBeelup(reviewLink, clips, statusEl, nombreBase = 'compilado') {
+    if (!clips.length) {
+      setEstadoCompilado(statusEl, 'No hay cortes elegibles para generar.', 'warning');
+      return;
+    }
+
+    if (!obtenerDatosBeelupDesdeUrl(reviewLink)) {
+      setEstadoCompilado(statusEl, 'Carga un link valido de Beelup para generar el MP4 automatico.', 'warning');
+      return;
+    }
+
+    const archivosTemporales = [];
+    const clipNames = [];
+    const jobId = `t5_${Date.now()}_${Math.round(Math.random() * 1000)}`;
+    let ffmpeg = null;
+
+    try {
+      setEstadoCompilado(statusEl, 'Leyendo playlist de Beelup...', 'info');
+      const playlist = await cargarPlaylistBeelup(reviewLink);
+      const trabajos = prepararTrabajosCompiladoBeelup(playlist, clips);
+
+      if (!trabajos.length) {
+        setEstadoCompilado(statusEl, 'Los cortes quedan fuera de la duracion disponible en Beelup.', 'warning');
+        return;
+      }
+
+      ffmpeg = await cargarFFmpegWasm(statusEl);
+      const duracionTotal = trabajos.reduce((sum, trabajo) => sum + trabajo.duracion, 0);
+      setEstadoCompilado(statusEl, `Preparando ${trabajos.length} corte(s), ${formatearSegundosVideo(duracionTotal)} finales.`, 'info');
+
+      for (let trabajoIndex = 0; trabajoIndex < trabajos.length; trabajoIndex += 1) {
+        const trabajo = trabajos[trabajoIndex];
+        const segmentFiles = [];
+
+        for (let segmentoIndex = 0; segmentoIndex < trabajo.segmentos.length; segmentoIndex += 1) {
+          const segmento = trabajo.segmentos[segmentoIndex];
+          const segmentName = `${jobId}_c${trabajoIndex}_s${segmentoIndex}.ts`;
+          setEstadoCompilado(
+            statusEl,
+            `Bajando corte ${trabajoIndex + 1}/${trabajos.length}, segmento ${segmentoIndex + 1}/${trabajo.segmentos.length}...`,
+            'info'
+          );
+          await ffmpeg.writeFile(segmentName, await descargarSegmentoBeelup(segmento));
+          segmentFiles.push(segmentName);
+          archivosTemporales.push(segmentName);
+        }
+
+        const listName = `${jobId}_clip_${trabajoIndex}.txt`;
+        const clipName = `${jobId}_clip_${trabajoIndex}.mp4`;
+        const overlayNames = [];
+        archivosTemporales.push(listName, clipName);
+        await escribirTextoFFmpeg(ffmpeg, listName, segmentFiles.map(name => `file '${name}'`).join('\n'));
+
+        setEstadoCompilado(
+          statusEl,
+          `Preparando overlay ${trabajoIndex + 1}/${trabajos.length}: ${trabajo.clip.etiqueta}...`,
+          'info'
+        );
+        const cantidadOverlays = obtenerCantidadOverlaysTemporizados(trabajo.duracion);
+        for (let overlayIndex = 0; overlayIndex < cantidadOverlays; overlayIndex += 1) {
+          const overlayName = `${jobId}_overlay_${trabajoIndex}_${overlayIndex}.png`;
+          overlayNames.push(overlayName);
+          archivosTemporales.push(overlayName);
+          await ffmpeg.writeFile(overlayName, await crearOverlayCompiladoPng(trabajo.clip, trabajoIndex, trabajos.length, {
+            minutoPartidoSegundos: obtenerSegundosPartidoOverlayClip(trabajo.clip, overlayIndex),
+            reviewSegundosMarcador: trabajo.clip.inicio + overlayIndex,
+            clipsMarcador: clips
+          }));
+        }
+
+        setEstadoCompilado(
+          statusEl,
+          `Codificando corte ${trabajoIndex + 1}/${trabajos.length}: ${trabajo.clip.etiqueta} (${formatearSegundosVideo(trabajo.inicio)}-${formatearSegundosVideo(trabajo.fin)})...`,
+          'info'
+        );
+        await ejecutarClipFFmpeg(ffmpeg, listName, clipName, trabajo.offset, trabajo.duracion, overlayNames);
+        clipNames.push(clipName);
+
+        for (const overlayName of overlayNames) {
+          await borrarArchivoFFmpeg(ffmpeg, overlayName);
+        }
+        await borrarArchivoFFmpeg(ffmpeg, listName);
+        for (const segmentName of segmentFiles) {
+          await borrarArchivoFFmpeg(ffmpeg, segmentName);
+        }
+      }
+
+      const outputName = `${jobId}_compilado.mp4`;
+      archivosTemporales.push(outputName);
+      setEstadoCompilado(statusEl, 'Uniendo cortes en MP4 final...', 'info');
+      const finalName = await concatenarClipsFFmpeg(ffmpeg, clipNames, outputName);
+      const data = await ffmpeg.readFile(finalName);
+      const blob = new Blob([data], { type: 'video/mp4' });
+
+      if (!blob.size) {
+        throw new Error('El MP4 final se genero vacio.');
+      }
+
+      descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}.mp4`);
+      setEstadoCompilado(statusEl, `MP4 listo: ${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB descargados.`, 'success');
+    } catch (error) {
+      console.error('Error generando MP4 Beelup:', error);
+      setEstadoCompilado(statusEl, `No se pudo generar el MP4: ${obtenerMensajeError(error)}`, 'error');
+    } finally {
+      if (ffmpeg) {
+        for (const archivo of archivosTemporales.reverse()) {
+          await borrarArchivoFFmpeg(ffmpeg, archivo);
+        }
+      }
+    }
+  }
+
+  function esperarEventoUnaVez(target, eventName, timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timeout esperando ${eventName}`));
+      }, timeoutMs);
+
+      const onEvent = () => {
+        cleanup();
+        resolve();
+      };
+
+      const onError = () => {
+        cleanup();
+        reject(new Error(`Error de video durante ${eventName}`));
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        target.removeEventListener(eventName, onEvent);
+        target.removeEventListener('error', onError);
+      };
+
+      target.addEventListener(eventName, onEvent, { once: true });
+      target.addEventListener('error', onError, { once: true });
+    });
+  }
+
+  function esperarVideoHasta(video, finSegundos) {
+    return new Promise(resolve => {
+      const revisar = () => {
+        if (video.ended || video.currentTime >= finSegundos) {
+          resolve();
+          return;
+        }
+        window.requestAnimationFrame(revisar);
+      };
+      revisar();
+    });
+  }
+
+  function obtenerStreamVideo(video) {
+    if (typeof video.captureStream === 'function') return video.captureStream();
+    if (typeof video.mozCaptureStream === 'function') return video.mozCaptureStream();
+    return null;
+  }
+
+  async function irATiempoVideo(video, segundos) {
+    const destino = Math.max(0, Number(segundos) || 0);
+    if (Math.abs(video.currentTime - destino) < 0.05) return;
+
+    const seeked = esperarEventoUnaVez(video, 'seeked', 15000);
+    video.currentTime = destino;
+    await seeked;
+  }
+
+  async function generarVideoCompiladoDesdeArchivo(file, clips, statusEl, nombreBase = 'compilado') {
+    if (!file) {
+      setEstadoCompilado(statusEl, 'Carga primero el video fuente del partido.', 'warning');
+      return;
+    }
+
+    if (!clips.length) {
+      setEstadoCompilado(statusEl, 'No hay cortes elegibles para generar.', 'warning');
+      return;
+    }
+
+    if (!window.MediaRecorder) {
+      setEstadoCompilado(statusEl, 'Este navegador no soporta MediaRecorder para generar video.', 'error');
+      return;
+    }
+
+    const mimeType = obtenerMimeCompilado();
+    if (!mimeType) {
+      setEstadoCompilado(statusEl, 'Este navegador no soporta salida WebM para el compilado.', 'error');
+      return;
+    }
+
+    const video = document.createElement('video');
+    const sourceUrl = URL.createObjectURL(file);
+    video.src = sourceUrl;
+    video.preload = 'auto';
+    video.playsInline = true;
+    video.muted = false;
+    video.style.position = 'fixed';
+    video.style.left = '-10000px';
+    video.style.top = '0';
+    video.style.width = '320px';
+    video.style.height = '180px';
+    video.style.opacity = '0.01';
+    document.body.appendChild(video);
+
+    try {
+      setEstadoCompilado(statusEl, 'Preparando video fuente...', 'info');
+      if (video.readyState < 1) {
+        await esperarEventoUnaVez(video, 'loadedmetadata', 20000);
+      }
+
+      const duracionVideo = Number(video.duration);
+      if (!Number.isFinite(duracionVideo) || duracionVideo <= 0) {
+        throw new Error('No se pudo leer la duracion del video fuente.');
+      }
+
+      const clipsValidos = clips
+        .map(clip => ({
+          ...clip,
+          inicio: Math.max(0, Math.min(clip.inicio, duracionVideo)),
+          fin: Math.max(0, Math.min(clip.fin, duracionVideo))
+        }))
+        .filter(clip => clip.fin > clip.inicio);
+
+      if (!clipsValidos.length) {
+        setEstadoCompilado(statusEl, 'Los cortes quedan fuera de la duracion del video fuente.', 'warning');
+        return;
+      }
+
+      const stream = obtenerStreamVideo(video);
+      if (!stream) {
+        throw new Error('El navegador no permite capturar el video fuente.');
+      }
+
+      const chunks = [];
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorder.addEventListener('dataavailable', event => {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+      });
+
+      const stopped = new Promise(resolve => recorder.addEventListener('stop', resolve, { once: true }));
+      recorder.start(500);
+      if (recorder.state === 'recording') recorder.pause();
+
+      const duracionTotal = clipsValidos.reduce((sum, clip) => sum + (clip.fin - clip.inicio), 0);
+      setEstadoCompilado(statusEl, `Generando ${clipsValidos.length} cortes. Tarda aprox. ${formatearSegundosVideo(duracionTotal)}.`, 'info');
+
+      for (let i = 0; i < clipsValidos.length; i += 1) {
+        const clip = clipsValidos[i];
+        setEstadoCompilado(statusEl, `Grabando corte ${i + 1}/${clipsValidos.length}: ${clip.etiqueta} (${formatearSegundosVideo(clip.inicio)}-${formatearSegundosVideo(clip.fin)})`, 'info');
+
+        video.pause();
+        await irATiempoVideo(video, clip.inicio);
+
+        if (recorder.state === 'paused') recorder.resume();
+        await video.play();
+        await esperarVideoHasta(video, clip.fin);
+        video.pause();
+        if (recorder.state === 'recording') recorder.pause();
+      }
+
+      if (recorder.state !== 'inactive') recorder.stop();
+      await stopped;
+
+      const blob = new Blob(chunks, { type: mimeType });
+      if (!blob.size) {
+        throw new Error('El compilado se genero vacio.');
+      }
+
+      descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}.webm`);
+      setEstadoCompilado(statusEl, `Compilado listo: ${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB descargados.`, 'success');
+    } catch (error) {
+      console.error('Error generando compilado:', error);
+      setEstadoCompilado(statusEl, `No se pudo generar el compilado: ${error.message}`, 'error');
+    } finally {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.remove();
+      URL.revokeObjectURL(sourceUrl);
+    }
+  }
+
+  function calcularMarcadorEventos(hastaReviewSegundos = null) {
+    const limiteReview = Number(hastaReviewSegundos);
+    const filtrarPorReview = Number.isFinite(limiteReview);
+
+    return eventos.reduce((acc, evento) => {
+      if (filtrarPorReview) {
+        const eventoReviewSegundos = obtenerReviewSegundosDesdeEvento(evento, evento.minuto);
+        if (!Number.isFinite(Number(eventoReviewSegundos)) || Number(eventoReviewSegundos) > limiteReview) {
+          return acc;
+        }
+      }
+
+      const equipo = Number(evento.equipo);
+      if (equipo === 1) acc.equipo1 += 1;
+      if (equipo === 2) acc.equipo2 += 1;
+      return acc;
+    }, { equipo1: 0, equipo2: 0 });
+  }
+
+  function renderizarEquipoReview(containerId, equipoNombre, jugadores) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (jugadores.length === 0) {
+      container.innerHTML = '<div class="review-empty">Sin jugadores</div>';
+      return;
+    }
+
+    container.innerHTML = jugadores.map((jugador, index) => `
+      <div class="review-player-row">
+        <span class="text-truncate">${escaparHtmlPlano(jugador.nombre)}</span>
+        <button type="button" class="btn btn-sm btn-outline-danger" data-review-remove-player="${index}" data-review-team="${equipoNombre}" title="Quitar">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('[data-review-remove-player]').forEach(button => {
+      button.addEventListener('click', () => {
+        quitarJugadorDesdeReview(button.dataset.reviewTeam, Number(button.dataset.reviewRemovePlayer));
+      });
+    });
+  }
+
+  function vincularFilasSeekReview(container) {
+    if (!container) return;
+    container.querySelectorAll('[data-review-seek-seconds]').forEach(row => {
+      const irAlMinuto = event => {
+        if (event?.target?.closest?.('button, a, input, select, textarea, [data-no-seek]')) return;
+        buscarEnReproductorReviewA(row.dataset.reviewSeekSeconds);
+      };
+
+      row.addEventListener('click', irAlMinuto);
+      row.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        irAlMinuto(event);
+      });
+    });
+  }
+
+  function renderizarEventosReview() {
+    const marcador = calcularMarcadorEventos();
+    const marcadorEl = document.getElementById('review-marcador');
+    const resultadoEl = document.getElementById('review-resultado');
+    const ganadorEl = document.getElementById('review-ganador');
+    const countEl = document.getElementById('review-event-count');
+    const listEl = document.getElementById('review-eventos-list');
+
+    if (marcadorEl) marcadorEl.textContent = `${marcador.equipo1} - ${marcador.equipo2}`;
+    if (resultadoEl) resultadoEl.value = `${marcador.equipo1}-${marcador.equipo2}`;
+    if (ganadorEl) {
+      ganadorEl.value = marcador.equipo1 > marcador.equipo2 ? '1' : marcador.equipo2 > marcador.equipo1 ? '2' : (eventos.length ? '0' : '');
+    }
+    if (countEl) countEl.textContent = eventos.length;
+    actualizarScorebugReview();
+
+    if (!listEl) return;
+    if (eventos.length === 0) {
+      listEl.innerHTML = '<div class="review-empty">Sin goles cargados</div>';
+      return;
+    }
+
+    listEl.innerHTML = eventos.map((evento, index) => {
+      const asistencia = evento.asistencia_id ? obtenerNombreJugadorActual(evento.asistencia_id) : 'Sin asistencia';
+      const cagada = evento.cagada_id ? obtenerNombreJugadorActual(evento.cagada_id) : 'Sin cagada';
+      const reviewSegundos = obtenerReviewSegundosDesdeEvento(evento, evento.minuto);
+      const seekAttrs = Number.isFinite(Number(reviewSegundos))
+        ? `data-review-seek-seconds="${Math.max(0, Math.round(Number(reviewSegundos)))}" role="button" tabindex="0" title="Ir al minuto ${escaparAtributoHtml(formatearSegundosVideo(reviewSegundos))}"`
+        : '';
+      return `
+        <div class="review-event-row" ${seekAttrs}>
+          <div class="min-w-0">
+            <div class="fw-bold text-white">${index + 1}. ${escaparHtmlPlano(obtenerNombreJugadorActual(evento.goleador_id))}</div>
+            <div class="small text-light-emphasis">
+              Partido ${escaparHtmlPlano(formatearTiempoReview(evento.minuto))} - Minuto ${escaparHtmlPlano(formatearSegundosVideo(reviewSegundos))} - ${escaparHtmlPlano(asistencia)} - ${escaparHtmlPlano(cagada)}
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge ${evento.equipo === 1 ? 'bg-primary' : 'bg-danger'}">E${evento.equipo}</span>
+            ${evento.es_en_contra ? '<span class="badge bg-warning text-dark">EC</span>' : ''}
+            <button type="button" class="btn btn-sm btn-outline-danger" data-review-remove-event="${index}" title="Quitar gol">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    vincularFilasSeekReview(listEl);
+    listEl.querySelectorAll('[data-review-remove-event]').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        eventos.splice(Number(button.dataset.reviewRemoveEvent), 1);
+        renderizarTablaGoles();
+        actualizarMarcadorAutomatico();
+        renderizarReviewSandbox();
+      });
+    });
+  }
+
+  function renderizarStatsReview(tipo) {
+    const listId = tipo === 'atajadas' ? 'review-atajadas-list' : 'review-cagadas-list';
+    const listEl = document.getElementById(listId);
+    if (!listEl) return;
+
+    const items = reviewSandbox[tipo];
+    if (items.length === 0) {
+      listEl.innerHTML = `<div class="review-empty">Sin ${tipo}</div>`;
+      return;
+    }
+
+    listEl.innerHTML = items.map((item, index) => {
+      const reviewSegundos = obtenerReviewSegundosDesdeEvento(item, item.minuto);
+      const seekAttrs = tipo === 'atajadas' && Number.isFinite(Number(reviewSegundos))
+        ? `data-review-seek-seconds="${Math.max(0, Math.round(Number(reviewSegundos)))}" role="button" tabindex="0" title="Ir al minuto ${escaparAtributoHtml(formatearSegundosVideo(reviewSegundos))}"`
+        : '';
+      return `
+        <div class="review-stat-row" ${seekAttrs}>
+          <div class="min-w-0">
+            <div class="text-truncate">${escaparHtmlPlano(obtenerNombreJugadorActual(item.jugador_id))}</div>
+            <div class="small text-light-emphasis">
+              Partido ${escaparHtmlPlano(formatearTiempoReview(item.minuto))} - Minuto ${escaparHtmlPlano(formatearSegundosVideo(reviewSegundos))}
+            </div>
+          </div>
+          <span class="d-flex align-items-center gap-2">
+            <strong>${Number(item.cantidad) || 0}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-review-remove-stat="${index}" data-review-stat-type="${tipo}" title="Quitar">
+              <i class="bi bi-x"></i>
+            </button>
+          </span>
+        </div>
+      `;
+    }).join('');
+
+    vincularFilasSeekReview(listEl);
+    listEl.querySelectorAll('[data-review-remove-stat]').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        reviewSandbox[button.dataset.reviewStatType].splice(Number(button.dataset.reviewRemoveStat), 1);
+        renderizarReviewSandbox();
+      });
+    });
+  }
+
+  function renderizarCompiladoReviewSandbox() {
+    const listEl = document.getElementById('review-compilado-list');
+    const countEl = document.getElementById('review-compilado-count');
+    if (!listEl) return;
+
+    const opcionesCompilado = normalizarOpcionesCompilado();
+    const clips = construirClipsCompiladoSandbox(opcionesCompilado);
+    if (countEl) countEl.textContent = clips.length;
+
+    const reviewLink = normalizarReviewUrl(document.getElementById('review-link')?.value) ||
+      normalizarReviewUrl(document.getElementById('youtube-link-partido')?.value) ||
+      '';
+
+    listEl.innerHTML = renderizarClipsCompiladoHtml(clips, reviewLink, opcionesCompilado);
+  }
+
+  function obtenerDatosCompiladoSandbox() {
+    const opcionesCompilado = normalizarOpcionesCompilado();
+    const clips = construirClipsCompiladoSandbox(opcionesCompilado);
+    const reviewLink = normalizarReviewUrl(document.getElementById('review-link')?.value) ||
+      normalizarReviewUrl(document.getElementById('youtube-link-partido')?.value) ||
+      '';
+    const fecha = document.getElementById('review-fecha')?.value || new Date().toISOString().slice(0, 10);
+    return {
+      clips,
+      reviewLink,
+      nombreBase: `compilado-t5-${fecha}`,
+      opcionesCompilado
+    };
+  }
+
+  function exportarCompiladoSandbox() {
+    const { clips, reviewLink, nombreBase, opcionesCompilado } = obtenerDatosCompiladoSandbox();
+    descargarJsonCompilado(clips, nombreBase, reviewLink, opcionesCompilado);
+  }
+
+  function obtenerValorReviewInput(id) {
+    return document.getElementById(id)?.value || '';
+  }
+
+  function setValorReviewInput(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value ?? '';
+  }
+
+  function serializarJugadorReview(jugador) {
+    if (!jugador?.id) return null;
+    return {
+      id: jugador.id,
+      nombre: jugador.nombre || 'Jugador',
+      pulmon: jugador.pulmon ?? null
+    };
+  }
+
+  function crearPayloadAnalisisReviewSandbox() {
+    const reviewLink = normalizarReviewUrl(obtenerValorReviewInput('review-link')) ||
+      normalizarReviewUrl(obtenerValorReviewInput('youtube-link-partido')) ||
+      '';
+    const fecha = obtenerValorReviewInput('review-fecha') || new Date().toISOString().slice(0, 10);
+    const marcador = calcularMarcadorEventos();
+    const opcionesCompilado = normalizarOpcionesCompilado();
+
+    return {
+      formato: 't5-review-sandbox-v1',
+      generado_en: new Date().toISOString(),
+      review_link: reviewLink,
+      partido: {
+        fecha,
+        cancha: obtenerValorReviewInput('review-cancha'),
+        temporada_id: obtenerValorReviewInput('review-temporada'),
+        resultado: obtenerValorReviewInput('review-resultado') || `${marcador.equipo1}-${marcador.equipo2}`,
+        ganador: obtenerValorReviewInput('review-ganador'),
+        inicio: {
+          minuto: obtenerValorReviewInput('review-inicio-minuto'),
+          segundo: obtenerValorReviewInput('review-inicio-segundo')
+        }
+      },
+      equipos: {
+        equipo1: equipo1.map(serializarJugadorReview).filter(Boolean),
+        equipo2: equipo2.map(serializarJugadorReview).filter(Boolean)
+      },
+      eventos: eventos.map((evento, index) => ({
+        orden: index + 1,
+        goleador_id: evento.goleador_id,
+        goleador_nombre: obtenerNombreJugadorActual(evento.goleador_id),
+        asistencia_id: evento.asistencia_id || null,
+        asistencia_nombre: evento.asistencia_id ? obtenerNombreJugadorActual(evento.asistencia_id) : null,
+        cagada_id: evento.cagada_id || null,
+        cagada_nombre: evento.cagada_id ? obtenerNombreJugadorActual(evento.cagada_id) : null,
+        equipo: evento.equipo,
+        es_en_contra: !!evento.es_en_contra,
+        minuto: evento.minuto ?? null,
+        review_segundos: obtenerReviewSegundosDesdeEvento(evento, evento.minuto)
+      })),
+      atajadas: reviewSandbox.atajadas.map((item, index) => ({
+        orden: index + 1,
+        jugador_id: item.jugador_id,
+        jugador_nombre: obtenerNombreJugadorActual(item.jugador_id),
+        cantidad: Number(item.cantidad) || 0,
+        minuto: item.minuto ?? null,
+        review_segundos: obtenerReviewSegundosDesdeEvento(item, item.minuto)
+      })),
+      cagadas: reviewSandbox.cagadas.map((item, index) => ({
+        orden: index + 1,
+        jugador_id: item.jugador_id,
+        jugador_nombre: obtenerNombreJugadorActual(item.jugador_id),
+        cantidad: Number(item.cantidad) || 0,
+        minuto: item.minuto ?? null,
+        review_segundos: obtenerReviewSegundosDesdeEvento(item, item.minuto)
+      })),
+      reconocimientos: {
+        mvp_id: obtenerValorReviewInput('review-mvp') || null,
+        ace_id: obtenerValorReviewInput('review-ace') || null
+      },
+      compilado: {
+        atajadas_minimas: opcionesCompilado.atajadasMinimas
+      },
+      resumen: {
+        marcador: `${marcador.equipo1}-${marcador.equipo2}`,
+        goles: eventos.length,
+        atajadas: reviewSandbox.atajadas.length,
+        cagadas: reviewSandbox.cagadas.length,
+        clips_compilado: construirClipsCompiladoSandbox(opcionesCompilado).length
+      }
+    };
+  }
+
+  function exportarAnalisisReviewSandbox() {
+    const payload = crearPayloadAnalisisReviewSandbox();
+    const fecha = payload.partido?.fecha || new Date().toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    descargarBlob(blob, `${normalizarNombreArchivo(`review-t5-${fecha}`)}.json`);
+    showToast('Analisis de review exportado.', 'success');
+  }
+
+  function reconstruirJugadorReviewDesdeSnapshot(jugador) {
+    const jugadorId = jugador?.id ?? jugador?.jugador_id ?? jugador?.jugadorId;
+    if (!jugadorId) return null;
+    const existente = todosLosJugadores.find(item => String(item.id) === String(jugadorId));
+    const base = existente || {
+      id: jugadorId,
+      nombre: jugador?.nombre || jugador?.jugador_nombre || jugador?.jugadorNombre || 'Jugador',
+      pulmon: jugador?.pulmon ?? null
+    };
+    return construirJugadorConEstadisticas(base);
+  }
+
+  function normalizarReviewSegundosImportado(item) {
+    const directo = Number(item?.review_segundos ?? item?.reviewSegundos);
+    return Number.isFinite(directo) ? Math.max(0, Math.round(directo)) : null;
+  }
+
+  function normalizarMinutoImportado(item) {
+    const minuto = Number(item?.minuto ?? item?.minuto_partido ?? item?.minutoPartido);
+    return Number.isFinite(minuto) ? minuto : null;
+  }
+
+  function normalizarEventoReviewImportado(item) {
+    const goleadorId = item?.goleador_id ?? item?.goleadorId;
+    if (!goleadorId) return null;
+    const asistenciaId = item?.asistencia_id ?? item?.asistenciaId ?? null;
+    const cagadaId = item?.cagada_id ?? item?.cagadaId ?? item?.cagada_jugador_id ?? null;
+    const equipo = Number(item?.equipo) || obtenerEquipoJugadorActual(goleadorId) || 1;
+    const evento = {
+      goleador_id: goleadorId,
+      asistencia_id: asistenciaId && asistenciaId !== 'nadie' ? asistenciaId : null,
+      cagada_id: cagadaId && cagadaId !== 'nadie' ? cagadaId : null,
+      equipo: equipo === 2 ? 2 : 1,
+      es_en_contra: !!(item?.es_en_contra ?? item?.esEnContra),
+      minuto: normalizarMinutoImportado(item)
+    };
+    const reviewSegundos = normalizarReviewSegundosImportado(item);
+    if (reviewSegundos !== null) evento.review_segundos = reviewSegundos;
+    return evento;
+  }
+
+  function normalizarStatReviewImportado(item) {
+    const jugadorId = item?.jugador_id ?? item?.jugadorId;
+    if (!jugadorId) return null;
+    const cantidad = Number(item?.cantidad) || 0;
+    if (cantidad <= 0) return null;
+    const stat = {
+      jugador_id: jugadorId,
+      cantidad,
+      minuto: normalizarMinutoImportado(item)
+    };
+    const reviewSegundos = normalizarReviewSegundosImportado(item);
+    if (reviewSegundos !== null) stat.review_segundos = reviewSegundos;
+    return stat;
+  }
+
+  function restaurarAnalisisReviewSandbox(data) {
+    const payload = data?.formato === 't5-review-sandbox-v1' ? data : {
+      review_link: data?.review_link || data?.reviewLink || '',
+      partido: data?.partido || {},
+      equipos: {
+        equipo1: data?.equipo1 || data?.equipos?.equipo1 || [],
+        equipo2: data?.equipo2 || data?.equipos?.equipo2 || []
+      },
+      eventos: data?.eventos || [],
+      atajadas: data?.atajadas || [],
+      cagadas: data?.cagadas || [],
+      reconocimientos: {
+        mvp_id: data?.mvpId || data?.reconocimientos?.mvp_id || null,
+        ace_id: data?.aceId || data?.reconocimientos?.ace_id || null
+      }
+    };
+
+    const partido = payload.partido || {};
+    const inicio = partido.inicio || payload.inicio || {};
+    const reconocimientos = payload.reconocimientos || {};
+    const temporadaId = partido.temporada_id || partido.temporadaId || '';
+    const mvpId = reconocimientos.mvp_id || reconocimientos.mvpId || '';
+    const aceId = reconocimientos.ace_id || reconocimientos.aceId || '';
+
+    equipo1 = (payload.equipos?.equipo1 || []).map(reconstruirJugadorReviewDesdeSnapshot).filter(Boolean);
+    equipo2 = (payload.equipos?.equipo2 || []).map(reconstruirJugadorReviewDesdeSnapshot).filter(Boolean);
+    window.equipo1 = equipo1;
+    window.equipo2 = equipo2;
+
+    eventos = (payload.eventos || []).map(normalizarEventoReviewImportado).filter(Boolean);
+    reviewSandbox.atajadas = (payload.atajadas || []).map(normalizarStatReviewImportado).filter(Boolean);
+    reviewSandbox.cagadas = (payload.cagadas || []).map(normalizarStatReviewImportado).filter(Boolean);
+
+    const reviewLink = normalizarReviewUrl(payload.review_link || payload.reviewLink || '') || '';
+    setValorReviewInput('review-link', reviewLink);
+    setValorReviewInput('youtube-link-partido', obtenerLinkYouTubeReview(reviewLink));
+    setValorReviewInput('review-fecha', partido.fecha || '');
+    setValorReviewInput('review-cancha', partido.cancha || '');
+    setValorReviewInput('review-temporada', temporadaId);
+    setValorReviewInput('review-inicio-minuto', inicio.minuto ?? '');
+    setValorReviewInput('review-inicio-segundo', inicio.segundo ?? '');
+    setValorReviewInput('review-compilado-atajadas-min', Number(payload.compilado?.atajadas_minimas) === 5 ? '5' : '3');
+
+    renderizarTablaGoles();
+    actualizarMarcadorAutomatico();
+    renderizarReviewSandbox();
+
+    setValorReviewInput('review-temporada', temporadaId);
+    setValorReviewInput('review-mvp', mvpId);
+    setValorReviewInput('review-ace', aceId);
+    setValorReviewInput('review-resultado', partido.resultado || obtenerValorReviewInput('review-resultado'));
+    setValorReviewInput('review-ganador', partido.ganador || obtenerValorReviewInput('review-ganador'));
+    updateSearchableSelects(document.getElementById('review-sandbox-content') || document);
+    enviarEstadoAnotacionReview();
+  }
+
+  async function importarAnalisisReviewSandboxDesdeArchivo(file) {
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      restaurarAnalisisReviewSandbox(data);
+      showToast('Analisis de review importado.', 'success');
+    } catch (error) {
+      console.error('No se pudo importar analisis de review:', error);
+      showToast(`No se pudo importar el JSON: ${obtenerMensajeError(error)}`, 'error');
+    }
+  }
+
+  async function generarCompiladoSandbox() {
+    const { clips, nombreBase } = obtenerDatosCompiladoSandbox();
+    const fileInput = document.getElementById('review-compilado-video');
+    const statusEl = document.getElementById('review-compilado-status');
+    const button = document.getElementById('review-build-compilado');
+    const file = fileInput?.files?.[0] || null;
+
+    if (button) button.disabled = true;
+    try {
+      await generarVideoCompiladoDesdeArchivo(file, clips, statusEl, nombreBase);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function generarCompiladoSandboxBeelup() {
+    const { clips, reviewLink, nombreBase } = obtenerDatosCompiladoSandbox();
+    const statusEl = document.getElementById('review-compilado-status');
+    const button = document.getElementById('review-build-compilado-beelup');
+
+    if (button) button.disabled = true;
+    try {
+      await generarMp4CompiladoDesdeBeelup(reviewLink, clips, statusEl, nombreBase);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  function renderizarReviewSandbox() {
+    if (!document.getElementById('review-sandbox-content')) return;
+
+    const jugadoresOrdenados = [...todosLosJugadores].sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const jugadoresPartido = jugadoresDelPartidoActual().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const disponibles = jugadoresOrdenados.filter(jugador => !obtenerEquipoJugadorActual(jugador.id));
+
+    poblarTemporadasReviewSandbox();
+    poblarSelectReview('review-jugador-select', disponibles, 'Seleccionar jugador');
+    poblarSelectReview('review-goleador', jugadoresPartido, 'Goleador');
+    poblarSelectReview('review-asistencia', jugadoresPartido, 'Sin asistencia');
+    poblarSelectReview('review-cagada-gol', jugadoresPartido, 'Sin cagada');
+    poblarSelectReview('review-mvp', jugadoresPartido, 'Sin MVP');
+    poblarSelectReview('review-ace', jugadoresPartido, 'Sin ACE');
+    poblarSelectReview('review-atajadas-jugador', jugadoresPartido, 'Jugador');
+    poblarSelectReview('review-cagadas-jugador', jugadoresPartido, 'Jugador');
+    initializeSearchableSelects(document.getElementById('review-sandbox-content'));
+
+    renderizarEquipoReview('review-equipo1-list', 'equipo1', equipo1);
+    renderizarEquipoReview('review-equipo2-list', 'equipo2', equipo2);
+    renderizarEventosReview();
+    renderizarStatsReview('atajadas');
+    renderizarStatsReview('cagadas');
+    renderizarCompiladoReviewSandbox();
+    enviarEstadoAnotacionReview();
+  }
+
+  function agregarEventoReviewSandbox() {
+    const goleadorId = document.getElementById('review-goleador')?.value || '';
+    const asistenciaId = document.getElementById('review-asistencia')?.value || '';
+    const cagadaId = document.getElementById('review-cagada-gol')?.value || '';
+    const golEnContra = !!document.getElementById('review-gol-contra')?.checked;
+
+    if (!goleadorId) {
+      showToast('Selecciona un goleador.', 'warning');
+      return;
+    }
+
+    const equipoGoleador = obtenerEquipoJugadorActual(goleadorId);
+    if (!equipoGoleador) {
+      showToast('El goleador debe estar en un equipo.', 'error');
+      return;
+    }
+
+    let asistenciaFinal = asistenciaId || null;
+    if (asistenciaFinal && asistenciaFinal === goleadorId) {
+      showToast('Un jugador no puede asistirse a si mismo.', 'warning');
+      asistenciaFinal = null;
+    }
+
+    const tiempoPartido = obtenerTiempoPartidoDesdeInputs('review-minuto', 'review-segundo');
+    const minuto = tiempoPartido.minuto;
+    const equipo = golEnContra ? (equipoGoleador === 1 ? 2 : 1) : equipoGoleador;
+
+    eventos.push({
+      goleador_id: goleadorId,
+      asistencia_id: asistenciaFinal,
+      cagada_id: cagadaId || null,
+      equipo,
+      es_en_contra: golEnContra,
+      minuto,
+      review_segundos: tiempoPartido.reviewSegundos
+    });
+
+    ['review-goleador', 'review-asistencia', 'review-cagada-gol'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    limpiarInputsTiempoReview(['review-minuto', 'review-segundo']);
+    const contra = document.getElementById('review-gol-contra');
+    if (contra) contra.checked = false;
+
+    renderizarTablaGoles();
+    actualizarMarcadorAutomatico();
+    renderizarReviewSandbox();
+  }
+
+  function agregarStatReview(tipo) {
+    const jugadorId = document.getElementById(tipo === 'atajadas' ? 'review-atajadas-jugador' : 'review-cagadas-jugador')?.value || '';
+    const cantidadInput = document.getElementById(tipo === 'atajadas' ? 'review-atajadas-cantidad' : 'review-cagadas-cantidad');
+    const cantidad = parseInt(cantidadInput?.value, 10) || 0;
+    const tiempoPartido = tipo === 'atajadas'
+      ? (obtenerTiempoPartidoDesdeReproductor() || { minuto: null, segundos: null, reviewSegundos: null })
+      : obtenerTiempoPartidoDesdeInputs('review-cagadas-minuto', 'review-cagadas-segundo');
+
+    if (!jugadorId || cantidad <= 0) {
+      showToast('Selecciona jugador y cantidad mayor a cero.', 'warning');
+      return;
+    }
+
+    const lista = reviewSandbox[tipo];
+    lista.push({
+      jugador_id: jugadorId,
+      cantidad,
+      minuto: tiempoPartido.minuto,
+      review_segundos: tiempoPartido.reviewSegundos
+    });
+
+    if (cantidadInput) cantidadInput.value = '';
+    if (tipo === 'cagadas') {
+      limpiarInputsTiempoReview(['review-cagadas-minuto', 'review-cagadas-segundo']);
+    }
+    renderizarReviewSandbox();
+  }
+
+  function sincronizarMetricasReviewConFormulario(containerId, rowClass, selectClass, inputClass, items, removeFnName) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const itemsAgrupados = agruparMetricasReview(items);
+    const rows = itemsAgrupados.length > 0 ? itemsAgrupados : [{ jugador_id: '', cantidad: '' }];
+    container.innerHTML = rows.map(() => `
+      <div class="${rowClass} row g-2 mb-2">
+        <div class="col-8">
+          <select class="form-select form-select-sm ${selectClass}">
+            <option value="">Seleccionar jugador</option>
+          </select>
+        </div>
+        <div class="col-3">
+          <input type="number" class="form-control form-control-sm ${inputClass}" placeholder="0" min="0">
+        </div>
+        <div class="col-1">
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="${removeFnName}(this)">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    poblarSelectoresDinamicos();
+
+    container.querySelectorAll(`.${rowClass}`).forEach((row, index) => {
+      const item = rows[index];
+      const select = row.querySelector(`.${selectClass}`);
+      const input = row.querySelector(`.${inputClass}`);
+      if (select) select.value = item.jugador_id || '';
+      if (input) input.value = item.cantidad || '';
+    });
+  }
+
+  function sincronizarReviewConFormularioPrincipal() {
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? '';
+    };
+
+    const reviewLink = normalizarReviewUrl(document.getElementById('review-link')?.value) || '';
+    if (reviewLink) {
+      setValue('review-link', reviewLink);
+    }
+
+    setValue('fecha-partido', document.getElementById('review-fecha')?.value || document.getElementById('fecha-partido')?.value || '');
+    setValue('cancha-partido', document.getElementById('review-cancha')?.value || document.getElementById('cancha-partido')?.value || '');
+    setValue('resultado-final', document.getElementById('review-resultado')?.value || document.getElementById('resultado-final')?.value || '');
+    setValue('equipo-ganador', document.getElementById('review-ganador')?.value || document.getElementById('equipo-ganador')?.value || '');
+    setValue('temporada-partido', document.getElementById('review-temporada')?.value || document.getElementById('temporada-partido')?.value || '');
+    setValue('youtube-link-partido', obtenerLinkYouTubeReview(reviewLink) || document.getElementById('youtube-link-partido')?.value || '');
+    setValue('mvp-partido', document.getElementById('review-mvp')?.value || '');
+    setValue('ace-partido', document.getElementById('review-ace')?.value || '');
+
+    sincronizarMetricasReviewConFormulario(
+      'atajadas-container',
+      'atajadas-row',
+      'atajadas-jugador',
+      'atajadas-cantidad',
+      reviewSandbox.atajadas,
+      'eliminarAtajada'
+    );
+    sincronizarMetricasReviewConFormulario(
+      'cagadas-container',
+      'cagadas-row',
+      'cagadas-jugador',
+      'cagadas-cantidad',
+      reviewSandbox.cagadas,
+      'eliminarCagada'
+    );
+  }
+
+  async function guardarPartidoReviewSandbox() {
+    document.body.dataset.guardandoReviewSandbox = '1';
+    try {
+      sincronizarReviewConFormularioPrincipal();
+      const guardadoOk = await cargarPartido();
+      if (guardadoOk) {
+        reviewSandbox.atajadas = [];
+        reviewSandbox.cagadas = [];
+        ['review-fecha', 'review-cancha', 'review-resultado', 'review-ganador', 'review-mvp', 'review-ace', 'review-inicio-minuto', 'review-inicio-segundo'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+        renderizarReviewSandbox();
+      }
+    } finally {
+      delete document.body.dataset.guardandoReviewSandbox;
+    }
+  }
+
+  function initReviewSandbox() {
+    if (!document.getElementById('review-sandbox-content')) return;
+    if (document.body.dataset.reviewSandboxBound === '1') return;
+    document.body.dataset.reviewSandboxBound = '1';
+    inicializarCanalesPopupReview();
+    inicializarScorebugReview();
+
+    document.getElementById('review-load-link')?.addEventListener('click', cargarLinkReviewSandbox);
+    document.getElementById('review-popup-link')?.addEventListener('click', abrirPopupReviewSandbox);
+    document.getElementById('review-annotation-popup-link')?.addEventListener('click', abrirPopupAnotacionReview);
+    document.getElementById('review-open-link')?.addEventListener('click', abrirLinkReviewSandbox);
+    document.getElementById('review-add-equipo1')?.addEventListener('click', () => agregarJugadorAEquipoDesdeId('equipo1', document.getElementById('review-jugador-select')?.value));
+    document.getElementById('review-add-equipo2')?.addEventListener('click', () => agregarJugadorAEquipoDesdeId('equipo2', document.getElementById('review-jugador-select')?.value));
+    document.getElementById('review-add-gol')?.addEventListener('click', agregarEventoReviewSandbox);
+    document.getElementById('review-add-atajadas')?.addEventListener('click', () => agregarStatReview('atajadas'));
+    document.getElementById('review-add-cagadas')?.addEventListener('click', () => agregarStatReview('cagadas'));
+    document.getElementById('review-save-partido')?.addEventListener('click', guardarPartidoReviewSandbox);
+    document.getElementById('review-export-analysis')?.addEventListener('click', exportarAnalisisReviewSandbox);
+    document.getElementById('review-import-analysis')?.addEventListener('click', () => {
+      document.getElementById('review-import-analysis-file')?.click();
+    });
+    document.getElementById('review-import-analysis-file')?.addEventListener('change', async event => {
+      const input = event.currentTarget;
+      await importarAnalisisReviewSandboxDesdeArchivo(input?.files?.[0] || null);
+      if (input) input.value = '';
+    });
+    document.getElementById('review-export-compilado')?.addEventListener('click', exportarCompiladoSandbox);
+    document.getElementById('review-build-compilado-beelup')?.addEventListener('click', generarCompiladoSandboxBeelup);
+    document.getElementById('review-build-compilado')?.addEventListener('click', generarCompiladoSandbox);
+    document.getElementById('review-compilado-atajadas-min')?.addEventListener('change', renderizarCompiladoReviewSandbox);
+    ['review-inicio-minuto', 'review-inicio-segundo'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => {
+        renderizarEventosReview();
+        renderizarStatsReview('atajadas');
+        renderizarStatsReview('cagadas');
+        renderizarCompiladoReviewSandbox();
+        actualizarEstadoPopupReview();
+      });
+    });
+
+    const tab = document.getElementById('review-sandbox-tab');
+    if (tab) {
+      tab.addEventListener('shown.bs.tab', () => {
+        const fecha = document.getElementById('review-fecha');
+        if (fecha && !fecha.value) {
+          fecha.value = new Date().toISOString().slice(0, 10);
+        }
+        renderizarReviewSandbox();
+      });
+    }
+
+    window.renderizarReviewSandbox = renderizarReviewSandbox;
+    renderizarReviewSandbox();
   }
 
   // Funciones para agregar/eliminar filas dinámicas
@@ -7322,10 +11362,10 @@ const initApp = () => {
     const container = document.getElementById('atajadas-container');
     const nuevaFila = document.createElement('div');
     nuevaFila.className = 'atajadas-row row g-2 mb-2';
-    
+
     nuevaFila.innerHTML = `
       <div class="col-8">
-        <select class="form-select form-select-sm atajadas-jugador">
+        <select class="form-select form-select-sm atajadas-jugador searchable-select">
           <option value="">Seleccionar jugador</option>
         </select>
       </div>
@@ -7338,7 +11378,7 @@ const initApp = () => {
         </button>
       </div>
     `;
-    
+
     container.appendChild(nuevaFila);
     poblarSelectoresDinamicos(); // Poblar el nuevo selector
   };
@@ -7354,10 +11394,10 @@ const initApp = () => {
     const container = document.getElementById('cagadas-container');
     const nuevaFila = document.createElement('div');
     nuevaFila.className = 'cagadas-row row g-2 mb-2';
-    
+
     nuevaFila.innerHTML = `
       <div class="col-8">
-        <select class="form-select form-select-sm cagadas-jugador">
+        <select class="form-select form-select-sm cagadas-jugador searchable-select">
           <option value="">Seleccionar jugador</option>
         </select>
       </div>
@@ -7370,7 +11410,7 @@ const initApp = () => {
         </button>
       </div>
     `;
-    
+
     container.appendChild(nuevaFila);
     poblarSelectoresDinamicos(); // Poblar el nuevo selector
   };
@@ -7383,7 +11423,7 @@ const initApp = () => {
   };
 
   // --- Lógica de negocio ---
-  
+
   window.quitarJugador = (equipo, index) => {
       if (equipo === 'equipo1') {
           const jugadorRemovido = equipo1[index];
@@ -7399,12 +11439,14 @@ const initApp = () => {
       renderizarEquipos().catch(error => {
         console.error('Error al renderizar equipos:', error);
       });
+      renderizarReviewSandbox();
   };
 
   window.quitarEvento = (index) => {
       eventos.splice(index, 1);
       renderizarTablaGoles();
       actualizarMarcadorAutomatico();
+      renderizarReviewSandbox();
   }
 
   // Función para ocultar el campo equipo del gol
@@ -7419,14 +11461,14 @@ const initApp = () => {
   window.actualizarSelectACE = function() {
       const equipoGanadorSelect = document.getElementById('equipo-ganador');
       const aceSelect = document.getElementById('ace-partido');
-      
+
       if (!equipoGanadorSelect || !aceSelect) return;
-      
+
       const equipoGanador = equipoGanadorSelect.value;
-      
+
       // Limpiar selector de ACE
       aceSelect.innerHTML = '<option value="">Seleccionar ACE</option>';
-      
+
       // Si no hay equipo ganador seleccionado o es empate, mostrar todos los jugadores
       if (!equipoGanador || equipoGanador === '0') {
           const todosLosJugadores = [...equipo1, ...equipo2];
@@ -7438,7 +11480,7 @@ const initApp = () => {
           });
           return;
       }
-      
+
       // Determinar el equipo perdedor (ACE viene del equipo perdedor)
       let equipoPerdedor = [];
       if (equipoGanador === '1') {
@@ -7448,7 +11490,7 @@ const initApp = () => {
           // Equipo 2 ganó, ACE viene del equipo 1
           equipoPerdedor = equipo1;
       }
-      
+
       // Poblar selector con jugadores del equipo perdedor
       equipoPerdedor.forEach(jugador => {
           const option = document.createElement('option');
@@ -7462,42 +11504,42 @@ const initApp = () => {
     const inputId = equipo === 'equipo1' ? 'input-equipo1' : 'input-equipo2';
     const input = document.getElementById(inputId);
     const nombreJugador = input.value.trim();
-    
+
     if (!nombreJugador) {
       showToast('Por favor ingresa un nombre', 'warning');
       return;
     }
-    
+
     // Validar que el jugador exista en la base de datos
-    const jugadorExistente = todosLosJugadores.find(j => 
+    const jugadorExistente = todosLosJugadores.find(j =>
       j.nombre.toLowerCase() === nombreJugador.toLowerCase()
     );
-    
+
     if (!jugadorExistente) {
       showToast(`El jugador "${nombreJugador}" no existe en la base de datos. Agrégalo primero desde el botón "+" en la tabla de estadísticas.`, 'error');
       return;
     }
-    
+
     // Verificar si el jugador ya está en algún equipo
     const equipoActual = equipo === 'equipo1' ? equipo1 : equipo2;
     const equipoOpuesto = equipo === 'equipo1' ? equipo2 : equipo1;
-    
+
     const yaEstaEnEquipoActual = equipoActual.find(j => j.id === jugadorExistente.id);
     const yaEstaEnEquipoOpuesto = equipoOpuesto.find(j => j.id === jugadorExistente.id);
-    
+
     if (yaEstaEnEquipoActual) {
       showToast(`${jugadorExistente.nombre} ya está en este equipo`, 'warning');
       return;
     }
-    
+
     if (yaEstaEnEquipoOpuesto) {
       showToast(`${jugadorExistente.nombre} ya está en el equipo contrario`, 'warning');
       return;
     }
-    
+
     // Buscar las estadísticas del jugador en los datos cargados
     const estadisticasJugador = datosJugadores.find(j => j.jugadores.id === jugadorExistente.id);
-    
+
     // Crear objeto jugador con estadísticas
     const jugadorConEstadisticas = {
       ...jugadorExistente,
@@ -7516,7 +11558,7 @@ const initApp = () => {
       // Asegurar que pulmon siempre se mantenga del jugador original
       pulmon: jugadorExistente.pulmon
     };
-    
+
     // Agregar el jugador al equipo
     if (equipo === 'equipo1') {
       equipo1.push(jugadorConEstadisticas);
@@ -7527,7 +11569,7 @@ const initApp = () => {
       window.equipo2 = equipo2; // Actualizar referencia global
       showToast(`${jugadorExistente.nombre} agregado al Equipo 2`, 'success');
     }
-    
+
     input.value = ''; // Limpiar el input
     renderizarEquipos().catch(error => {
       console.error('Error al renderizar equipos:', error);
@@ -7554,7 +11596,7 @@ const initApp = () => {
       // Detectar automáticamente el equipo del goleador
       const jugadoresDelPartido = [...equipo1, ...equipo2];
       const goleador = jugadoresDelPartido.find(j => j.id === goleador_id);
-      
+
       if (!goleador) {
           showToast('Error: El goleador debe estar en uno de los equipos.', 'error');
           return;
@@ -7562,10 +11604,10 @@ const initApp = () => {
 
       // Determinar equipo del goleador (1 si está en equipo1, 2 si está en equipo2)
       const equipoGoleador = equipo1.find(j => j.id === goleador_id) ? 1 : 2;
-      
+
       // Si es gol en contra, el gol se asigna al equipo contrario
       const equipo = golEnContraChecked ? (equipoGoleador === 1 ? 2 : 1) : equipoGoleador;
-      
+
       // Asegurar que el asistidor no sea el mismo que el goleador
       let asistencia_final = null;
       if (asistencia_id && asistencia_id !== 'nadie' && asistencia_id !== goleador_id) {
@@ -7596,9 +11638,9 @@ const initApp = () => {
           es_en_contra: golEnContraChecked, // Agregar esta marca para claridad
           minuto: tiempoEnMinutos  // Guardamos el tiempo en minutos decimales
       });
-      
+
       const goleadorNombre = goleador.nombre;
-      const asistidorNombre = asistencia_final 
+      const asistidorNombre = asistencia_final
           ? jugadoresDelPartido.find(j => j.id === asistencia_final)?.nombre || 'N/A'
           : null;
       const cagadaNombre = cagada_final
@@ -7613,16 +11655,17 @@ const initApp = () => {
       const mensaje = detalles.length > 0
           ? `Gol agregado: ${goleadorNombre}${tipoGol} (${detalles.join(' | ')})`
           : `Gol agregado: ${goleadorNombre}${tipoGol}`;
-      
+
       showToast(mensaje, golEnContraChecked ? 'warning' : 'success');
       renderizarTablaGoles();
       actualizarMarcadorAutomatico();
-      
+      renderizarReviewSandbox();
+
       // Resetear inputs (tanto selectores como inputs buscables)
       const goleadorElement = document.getElementById('goleador');
       const asistenciaElement = document.getElementById('asistencia');
       const cagadaElement = document.getElementById('cagada-gol');
-      
+
       if (goleadorElement) {
         if (goleadorElement.style.display === 'none') {
           // Es un input buscable
@@ -7633,7 +11676,7 @@ const initApp = () => {
           goleadorElement.selectedIndex = 0;
         }
       }
-      
+
       if (asistenciaElement) {
         if (asistenciaElement.style.display === 'none') {
           // Es un input buscable
@@ -7653,7 +11696,7 @@ const initApp = () => {
           cagadaElement.selectedIndex = 0;
         }
       }
-      
+
       // Resetear checkbox de gol en contra
       const golEnContraElement = document.getElementById('gol-en-contra');
       if (golEnContraElement) {
@@ -7708,12 +11751,235 @@ const initApp = () => {
       }
   }
 
+  async function insertarPartidoConFallbackReview(partidoData) {
+      let { data, error } = await supabase
+          .from('partidos')
+          .insert([partidoData])
+          .select()
+          .single();
+
+      if (error && Object.prototype.hasOwnProperty.call(partidoData, 'review_inicio_segundos') && esErrorColumnaFaltante(error, 'review_inicio_segundos')) {
+          console.warn('La columna partidos.review_inicio_segundos no existe. Reintentando sin ese campo...');
+          const { review_inicio_segundos, ...partidoSinReviewInicio } = partidoData;
+
+          const reintento = await supabase
+              .from('partidos')
+              .insert([partidoSinReviewInicio])
+              .select()
+              .single();
+
+          data = reintento.data;
+          error = reintento.error;
+
+          if (!error) {
+              showToast('Partido guardado, pero falta partidos.review_inicio_segundos. Ejecuta review_events_schema.sql.', 'warning');
+          }
+      }
+
+      return { data, error };
+  }
+
+  async function insertarGolesConFallbackReview(golesData) {
+      const columnasOpcionalesOmitidas = new Set();
+      let golesError = null;
+
+      for (let intento = 0; intento < 3; intento += 1) {
+          const payload = golesData.map(gol => {
+              const copia = { ...gol };
+              columnasOpcionalesOmitidas.forEach(columna => {
+                  delete copia[columna];
+              });
+              return copia;
+          });
+
+          const { error } = await supabase
+              .from('goles')
+              .insert(payload);
+
+          golesError = error;
+          if (!golesError) {
+              if (columnasOpcionalesOmitidas.has('cagada_jugador_id')) {
+                  showToast('Se guardaron los goles, pero falta la columna cagada_jugador_id. Ejecuta add_cagada_jugador_id.sql.', 'warning');
+              }
+              if (columnasOpcionalesOmitidas.has('review_segundos')) {
+                  showToast('Se guardaron los goles, pero falta goles.review_segundos. Ejecuta review_events_schema.sql.', 'warning');
+              }
+              return null;
+          }
+
+          const columnaFaltante = ['cagada_jugador_id', 'review_segundos'].find(columna =>
+              !columnasOpcionalesOmitidas.has(columna) && esErrorColumnaFaltante(golesError, columna)
+          );
+
+          if (!columnaFaltante) {
+              return golesError;
+          }
+
+          console.warn(`La columna goles.${columnaFaltante} no existe. Reintentando sin ese campo...`);
+          columnasOpcionalesOmitidas.add(columnaFaltante);
+      }
+
+      return golesError;
+  }
+
+  function construirReviewEventosPartido(partidoId, reviewInicioSegundos, { mvpId = null, aceId = null } = {}) {
+      const filas = [];
+      const reviewInicio = Number(reviewInicioSegundos) || 0;
+
+      const agregarFila = (tipo, jugadorId, minutoPartido, cantidad = 1, metadata = {}) => {
+          if (!jugadorId) return;
+          const cantidadNormalizada = Math.max(1, Number(cantidad) || 1);
+          const reviewSegundosDirecto = Number(metadata.review_segundos);
+          const reviewSegundos = Number.isFinite(reviewSegundosDirecto)
+              ? Math.max(0, Math.round(reviewSegundosDirecto))
+              : calcularReviewSegundosDesdeMinuto(minutoPartido, reviewInicio);
+          const configCompilado = obtenerConfigCompilado(tipo, cantidadNormalizada);
+          const compilado = configCompilado.incluir && reviewSegundos !== null && reviewSegundos !== undefined
+              ? {
+                  incluir: true,
+                  pre_segundos: configCompilado.pre,
+                  post_segundos: configCompilado.post,
+                  inicio_segundos: Math.max(0, Math.round(reviewSegundos - configCompilado.pre)),
+                  fin_segundos: Math.max(0, Math.round(reviewSegundos + configCompilado.post))
+              }
+              : {
+                  incluir: false
+              };
+
+          filas.push({
+              partido_id: partidoId,
+              jugador_id: jugadorId,
+              tipo,
+              cantidad: cantidadNormalizada,
+              minuto_partido: minutoPartido !== null && minutoPartido !== undefined ? minutoPartido : null,
+              review_segundos: reviewSegundos,
+              metadata: {
+                  ...metadata,
+                  review_segundos_capturado: Number.isFinite(reviewSegundosDirecto),
+                  review_inicio_segundos: reviewInicio,
+                  compilado
+              }
+          });
+      };
+
+      eventos.forEach((evento, index) => {
+          const reviewSegundos = obtenerReviewSegundosDesdeEvento(evento, evento.minuto);
+          const goleadorNombre = obtenerNombreJugadorActual(evento.goleador_id);
+          const asistenciaNombre = evento.asistencia_id ? obtenerNombreJugadorActual(evento.asistencia_id) : null;
+          const cagadaNombre = evento.cagada_id ? obtenerNombreJugadorActual(evento.cagada_id) : null;
+          const metadataBase = {
+              origen: 'review_sandbox',
+              orden: index + 1,
+              equipo: evento.equipo,
+              es_gol_en_contra: !!evento.es_en_contra,
+              review_segundos: reviewSegundos,
+              goleador_id: evento.goleador_id,
+              goleador_nombre: goleadorNombre,
+              asistidor_id: evento.asistencia_id || null,
+              asistencia_id: evento.asistencia_id || null,
+              asistencia_nombre: asistenciaNombre,
+              cagada_jugador_id: evento.cagada_id || null,
+              cagada_id: evento.cagada_id || null,
+              cagada_jugador_nombre: cagadaNombre,
+              cagada_nombre: cagadaNombre,
+              ...calcularMarcadorHastaCompilado(reviewSegundos, evento.minuto, eventos)
+          };
+
+          agregarFila('gol', evento.goleador_id, evento.minuto, 1, {
+              ...metadataBase,
+              asistidor_id: evento.asistencia_id || null,
+              asistencia_nombre: asistenciaNombre,
+              cagada_jugador_id: evento.cagada_id || null,
+              cagada_jugador_nombre: cagadaNombre
+          });
+
+          if (evento.asistencia_id) {
+              agregarFila('asistencia', evento.asistencia_id, evento.minuto, 1, {
+                  ...metadataBase,
+                  goleador_id: evento.goleador_id,
+                  goleador_nombre: goleadorNombre
+              });
+          }
+
+          if (evento.cagada_id) {
+              agregarFila('cagada_gol', evento.cagada_id, evento.minuto, 1, {
+                  ...metadataBase,
+                  goleador_id: evento.goleador_id,
+                  goleador_nombre: goleadorNombre,
+                  cagada_jugador_id: evento.cagada_id,
+                  cagada_jugador_nombre: cagadaNombre,
+                  cagada_nombre: cagadaNombre
+              });
+          }
+      });
+
+      reviewSandbox.atajadas.forEach((item, index) => {
+          const reviewSegundos = obtenerReviewSegundosDesdeEvento(item, item.minuto);
+          const jugadorNombre = obtenerNombreJugadorActual(item.jugador_id);
+          agregarFila('atajadas', item.jugador_id, item.minuto, item.cantidad, {
+              origen: 'review_sandbox',
+              orden: index + 1,
+              review_segundos: reviewSegundos,
+              atajadas_jugador_id: item.jugador_id,
+              atajadas_jugador_nombre: jugadorNombre,
+              ...calcularMarcadorHastaCompilado(reviewSegundos, item.minuto, eventos)
+          });
+      });
+
+      reviewSandbox.cagadas.forEach((item, index) => {
+          const reviewSegundos = obtenerReviewSegundosDesdeEvento(item, item.minuto);
+          const jugadorNombre = obtenerNombreJugadorActual(item.jugador_id);
+          agregarFila('cagada', item.jugador_id, item.minuto, item.cantidad, {
+              origen: 'review_sandbox',
+              orden: index + 1,
+              review_segundos: reviewSegundos,
+              cagada_jugador_id: item.jugador_id,
+              cagada_jugador_nombre: jugadorNombre,
+              cagada_nombre: jugadorNombre,
+              ...calcularMarcadorHastaCompilado(reviewSegundos, item.minuto, eventos)
+          });
+      });
+
+      if (mvpId) {
+          agregarFila('mvp', mvpId, null, 1, { origen: 'review_sandbox', sin_momento: true });
+      }
+
+      if (aceId) {
+          agregarFila('ace', aceId, null, 1, { origen: 'review_sandbox', sin_momento: true });
+      }
+
+      return filas;
+  }
+
+  async function guardarReviewEventosPartido(partidoId, reviewInicioSegundos, opciones = {}) {
+      const reviewEventos = construirReviewEventosPartido(partidoId, reviewInicioSegundos, opciones);
+      if (reviewEventos.length === 0) return;
+
+      const { error } = await supabase
+          .from('review_eventos')
+          .insert(reviewEventos);
+
+      if (!error) {
+          console.log('Eventos de review guardados:', reviewEventos.length);
+          return;
+      }
+
+      if (esErrorTablaFaltante(error, 'review_eventos')) {
+          console.warn('La tabla review_eventos no existe. Ejecuta review_events_schema.sql.', error);
+          showToast('Partido guardado, pero falta review_eventos. Ejecuta review_events_schema.sql para guardar timestamps de review.', 'warning');
+          return;
+      }
+
+      console.error('Error al guardar eventos de review:', error);
+      throw new Error(`Error al guardar eventos de review: ${error.message}`);
+  }
+
   async function cargarPartido() {
       // Verificar permisos de administrador
       if (!verificarPermisosAdmin('guardar un partido')) {
-          return;
+          return false;
       }
-      
+
       const fecha = document.getElementById('fecha-partido').value;
       const cancha = document.getElementById('cancha-partido').value;
       const resultado = document.getElementById('resultado-final').value;
@@ -7721,21 +11987,29 @@ const initApp = () => {
       const equipo_ganador = equipoGanadorSelect ? equipoGanadorSelect.value : null;
       const temporadaPartidoSelect = document.getElementById('temporada-partido');
       const temporada_id = temporadaPartidoSelect ? temporadaPartidoSelect.value : null;
-      const youtube_link = document.getElementById('youtube-link-partido').value.trim() || null;
+      const youtubeLinkInput = document.getElementById('youtube-link-partido').value.trim();
+      const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
+      const guardandoDesdeReview = document.body.dataset.guardandoReviewSandbox === '1';
+      const review_inicio_segundos = guardandoDesdeReview ? obtenerReviewInicioSegundos() : null;
 
       if (!fecha || !cancha || !resultado || !equipo_ganador) {
           showToast('Completa todos los datos del partido (fecha, cancha, resultado, equipo ganador).', 'warning');
-          return;
+          return false;
       }
 
       if (!temporada_id) {
           showToast('Debes seleccionar una temporada para el partido.', 'warning');
-          return;
+          return false;
+      }
+
+      if (youtubeLinkInput && !youtube_link) {
+          showToast('El link de review para Historial debe ser de YouTube.', 'warning');
+          return false;
       }
 
       if (equipo1.length === 0 || equipo2.length === 0) {
           showToast('Debes tener jugadores en ambos equipos para guardar el partido.', 'warning');
-          return;
+          return false;
       }
 
       try {
@@ -7754,7 +12028,7 @@ const initApp = () => {
           document.querySelectorAll('.atajadas-row').forEach(row => {
               const jugadorSelect = row.querySelector('.atajadas-jugador');
               const cantidadInput = row.querySelector('.atajadas-cantidad');
-              
+
               if (jugadorSelect && cantidadInput && jugadorSelect.value && cantidadInput.value) {
                   atajadas.push({
                       jugador_id: jugadorSelect.value,
@@ -7768,7 +12042,7 @@ const initApp = () => {
           document.querySelectorAll('.cagadas-row').forEach(row => {
               const jugadorSelect = row.querySelector('.cagadas-jugador');
               const cantidadInput = row.querySelector('.cagadas-cantidad');
-              
+
               if (jugadorSelect && cantidadInput && jugadorSelect.value && cantidadInput.value) {
                   cagadas.push({
                       jugador_id: jugadorSelect.value,
@@ -7787,14 +12061,14 @@ const initApp = () => {
               youtube_link: youtube_link
           };
 
+          if (guardandoDesdeReview) {
+              partidoData.review_inicio_segundos = review_inicio_segundos;
+          }
+
           console.log('Guardando partido:', partidoData);
 
           // Insertar partido en Supabase
-          const { data: partidoInsertado, error: partidoError } = await supabase
-              .from('partidos')
-              .insert([partidoData])
-              .select()
-              .single();
+          const { data: partidoInsertado, error: partidoError } = await insertarPartidoConFallbackReview(partidoData);
 
           if (partidoError) {
               console.error('Error al insertar partido:', partidoError);
@@ -7806,7 +12080,7 @@ const initApp = () => {
 
           // Insertar jugadores del partido en la tabla jugador_partido
           const jugadoresPartidoData = [];
-          
+
           // Agregar jugadores del equipo 1
           equipo1.forEach(jugador => {
               jugadoresPartidoData.push({
@@ -7825,7 +12099,7 @@ const initApp = () => {
                   pulmon: jugador.pulmon || 0
               });
           });
-          
+
           // Agregar jugadores del equipo 2
           equipo2.forEach(jugador => {
               jugadoresPartidoData.push({
@@ -7852,13 +12126,13 @@ const initApp = () => {
 
           if (jugadoresError) {
               console.error('Error al insertar jugadores del partido:', jugadoresError);
-              
+
               // Verificar si es el error específico de la vista estadisticas_jugador
               if (jugadoresError.message && jugadoresError.message.includes('estadisticas_jugador')) {
                   console.warn('⚠️ Error de vista estadisticas_jugador detectado - Este error es conocido y será ignorado');
                   console.warn('💡 SOLUCIÓN: Elimina los triggers que intentan escribir en la vista estadisticas_jugador');
                   showToast('⚠️ Partido guardado con advertencias. Los triggers de estadísticas automáticas fallan (normal).', 'warning');
-                  
+
                   // Continuar con el resto del proceso sin lanzar error
                   console.log('🔄 Continuando con guardado de goles...');
               } else {
@@ -7874,9 +12148,9 @@ const initApp = () => {
               const golesData = eventos.map(evento => {
                   // Verificar que goleador y asistidor no sean la misma persona
                   let asistidor_id = null;
-                  if (evento.asistencia_id && 
-                      evento.asistencia_id !== 'nadie' && 
-                      evento.asistencia_id !== '' && 
+                  if (evento.asistencia_id &&
+                      evento.asistencia_id !== 'nadie' &&
+                      evento.asistencia_id !== '' &&
                       evento.asistencia_id !== evento.goleador_id) {
                       asistidor_id = evento.asistencia_id;
                   }
@@ -7891,7 +12165,7 @@ const initApp = () => {
                   // Determinar si es gol en contra
                   const equipoRealGoleador = equipo1.find(j => j.id === evento.goleador_id) ? 1 : 2;
                   const esGolEnContra = evento.es_en_contra || (evento.equipo !== equipoRealGoleador);
-                  
+
                   return {
                       partido_id: partido_id,
                       goleador_id: evento.goleador_id,
@@ -7901,25 +12175,32 @@ const initApp = () => {
                       es_gol_en_contra: esGolEnContra, // Nueva columna
                       minuto: evento.minuto !== undefined ? evento.minuto : null
                   };
+
+                  if (guardandoDesdeReview) {
+                      const reviewSegundosEvento = Number(evento.review_segundos);
+                      golData.review_segundos = Number.isFinite(reviewSegundosEvento)
+                          ? Math.max(0, Math.round(reviewSegundosEvento))
+                          : calcularReviewSegundosDesdeMinuto(golData.minuto, review_inicio_segundos);
+                  }
+
+                  return golData;
               });
 
               // Contar goles normales vs en contra para logging
               const golesNormales = golesData.filter(g => !g.es_gol_en_contra);
               const golesEnContra = golesData.filter(g => g.es_gol_en_contra);
-              
+
               console.log(`📊 Total goles: ${golesData.length} | Normales: ${golesNormales.length} | En contra: ${golesEnContra.length}`);
-              
+
               if (golesEnContra.length > 0) {
-                  console.log('🔄 Goles en contra que se guardarán con flag especial:', 
+                  console.log('🔄 Goles en contra que se guardarán con flag especial:',
                       golesEnContra.map(g => {
                           const goleadorNombre = [...equipo1, ...equipo2].find(j => j.id === g.goleador_id)?.nombre || 'N/A';
                           return `${goleadorNombre} → Equipo ${g.equipo}`;
                       }));
               }
 
-              let { error: golesError } = await supabase
-                  .from('goles')
-                  .insert(golesData);
+              let golesError = await insertarGolesConFallbackReview(golesData);
 
               if (golesError && esErrorColumnaCagadaFaltante(golesError)) {
                   console.warn('⚠️ La columna goles.cagada_jugador_id no existe. Reintentando sin ese campo...');
@@ -7938,7 +12219,7 @@ const initApp = () => {
 
               if (golesError) {
                   console.error('Error al insertar goles:', golesError);
-                  
+
                   // Verificar si es el error específico de la vista estadisticas_jugador
                   if (golesError.message && golesError.message.includes('estadisticas_jugador')) {
                       console.warn('⚠️ Error de vista estadisticas_jugador en goles detectado - Ignorando');
@@ -7949,7 +12230,7 @@ const initApp = () => {
               }
 
               console.log('✅ Todos los goles insertados en la DB:', golesData.length);
-              
+
               if (golesEnContra.length > 0) {
                   showToast(`🔄 ${golesEnContra.length} gol(es) en contra registrados (aparecen en historial)`, 'info');
               }
@@ -7966,7 +12247,7 @@ const initApp = () => {
 
                   if (atajadasError) {
                       console.error('Error al actualizar atajadas:', atajadasError);
-                      
+
                       // Verificar si es el error específico de la vista estadisticas_jugador
                       if (atajadasError.message && atajadasError.message.includes('estadisticas_jugador')) {
                           console.warn('⚠️ Error de vista estadisticas_jugador en atajadas detectado - Ignorando');
@@ -7990,7 +12271,7 @@ const initApp = () => {
 
                   if (cagadasError) {
                       console.error('Error al actualizar cagadas:', cagadasError);
-                      
+
                       // Verificar si es el error específico de la vista estadisticas_jugador
                       if (cagadasError.message && cagadasError.message.includes('estadisticas_jugador')) {
                           console.warn('⚠️ Error de vista estadisticas_jugador en cagadas detectado - Ignorando');
@@ -8003,9 +12284,16 @@ const initApp = () => {
               console.log('Cagadas actualizadas:', cagadas.length);
           }
 
+          if (guardandoDesdeReview) {
+              await guardarReviewEventosPartido(partido_id, review_inicio_segundos, {
+                  mvpId: mvp_id,
+                  aceId: ace_id
+              });
+          }
+
           // Éxito!
           showToast('¡Partido guardado exitosamente! 🎉', 'success');
-          
+
           // Limpiar formulario
           document.getElementById('fecha-partido').value = '';
           document.getElementById('cancha-partido').value = '';
@@ -8017,11 +12305,11 @@ const initApp = () => {
           document.getElementById('mvp-partido').value = '';
           document.getElementById('ace-partido').value = '';
           document.getElementById('youtube-link-partido').value = '';
-          
+
           // Limpiar eventos
           eventos.length = 0;
           renderizarTablaGoles();
-          
+
           // Limpiar inputs buscables
           const inputGoleador = document.getElementById('goleador_input');
           const inputAsistencia = document.getElementById('asistencia_input');
@@ -8029,7 +12317,7 @@ const initApp = () => {
           if (inputGoleador) inputGoleador.value = '';
           if (inputAsistencia) inputAsistencia.value = '';
           if (inputCagada) inputCagada.value = '';
-          
+
           // Limpiar atajadas y cagadas extra (mantener solo una fila)
           document.querySelectorAll('.atajadas-row').forEach((row, index) => {
               if (index === 0) {
@@ -8039,7 +12327,7 @@ const initApp = () => {
                   row.remove();
               }
           });
-          
+
           document.querySelectorAll('.cagadas-row').forEach((row, index) => {
               if (index === 0) {
                   row.querySelector('.cagadas-jugador').value = '';
@@ -8062,13 +12350,13 @@ const initApp = () => {
           btnCargar.innerHTML = '<i class="bi bi-save me-2"></i>Cargar Partido Completo';
       }
   }
-  
+
   async function cargarEstadisticas() {
     // Obtener temporada seleccionada desde los selectores
     const selectorTemporada = document.getElementById('selector-temporada');
     const selectorTemporadaMobile = document.getElementById('selector-temporada-mobile');
     const temporadaSeleccionada = selectorTemporada?.value || selectorTemporadaMobile?.value || '';
-    
+
     console.log('📊 Cargando estadísticas con temporada:', temporadaSeleccionada);
 
     // Determina a qué equipo se le suma un gol, con fallback para datos viejos.
@@ -8125,7 +12413,7 @@ const initApp = () => {
 
       return resultado;
     };
-    
+
     // PARCHE ESPECIAL PARA TEMPORADA 1: Usar vista_estadisticas_por_temporada
     if (temporadaSeleccionada && temporadaSeleccionada !== '') {
       // Verificar si es temporada 1 consultando el nombre de la temporada
@@ -8134,10 +12422,10 @@ const initApp = () => {
         .select('id, nombre')
         .eq('id', temporadaSeleccionada)
         .single();
-      
+
       if (temporadaInfo && (temporadaInfo.nombre.includes('Temporada 1') || temporadaInfo.id === '1' || temporadaInfo.id === 1)) {
         console.log('🏆 PARCHE TEMPORADA 1: Usando estadisticas_temporada');
-        
+
         try {
           // Primero obtener las estadísticas de la temporada
           const { data: statsData, error: statsError } = await supabase
@@ -8162,12 +12450,12 @@ const initApp = () => {
               bita_defeat
             `)
             .eq('temporada_id', temporadaSeleccionada);
-          
+
           if (statsError) {
             console.error('❌ Error al cargar estadisticas_temporada:', statsError);
             throw statsError;
           }
-          
+
           if (!statsData || statsData.length === 0) {
             console.log('⚠️ No se encontraron datos en estadisticas_temporada para temporada 1');
             throw new Error('Sin datos en estadisticas_temporada');
@@ -8199,7 +12487,7 @@ const initApp = () => {
           const golesEquipoPorJugador = partidosTempError
             ? {}
             : calcularGolesEquipoPorJugador(partidosTempData || []);
-          
+
           // Luego obtener la información de los jugadores por separado
           const jugadorIds = statsData.map(stat => stat.jugador_id);
           const { data: jugadoresData, error: jugadoresError } = await supabase
@@ -8218,12 +12506,12 @@ const initApp = () => {
               )
             `)
             .in('id', jugadorIds);
-          
+
           if (jugadoresError) {
             console.error('❌ Error al cargar jugadores:', jugadoresError);
             throw jugadoresError;
           }
-          
+
           // Combinar las estadísticas con la información de los jugadores
           const vistaData = statsData.map(stat => {
             const jugadorInfo = jugadoresData.find(j => j.id === stat.jugador_id);
@@ -8232,10 +12520,10 @@ const initApp = () => {
               jugadores: jugadorInfo
             };
                      }).filter(item => item.jugadores); // Filtrar solo los que tienen información de jugador
-          
+
           if (vistaData && vistaData.length > 0) {
             console.log('✅ Datos de temporada 1 cargados desde estadisticas_temporada:', vistaData.length, 'jugadores');
-            
+
             // Procesar datos de estadisticas_temporada para que sean compatibles
             const datosVista = vistaData.map(jugadorData => ({
               ...jugadorData,
@@ -8244,7 +12532,7 @@ const initApp = () => {
               rendimiento_ataque: null,
               rendimiento_arquero: null
             }));
-            
+
             // Transformar a formato compatible
             datosJugadores = datosVista.map((jugadorData) => {
               const golesEquipoJugador = golesEquipoPorJugador[jugadorData.jugador_id] || {
@@ -8273,9 +12561,9 @@ const initApp = () => {
                 rendimiento_ataque: jugadorData.rendimiento_ataque,
                 rendimiento_arquero: jugadorData.rendimiento_arquero
               };
-              
+
               const winrate = jugadorData.winrate || 0;
-              
+
               return {
                 ...stats,
                 winrate,
@@ -8283,10 +12571,10 @@ const initApp = () => {
                 nombre: jugadorData.jugadores.nombre
               };
             });
-            
+
             // Actualizar referencia global
             window.datosJugadores = datosJugadores;
-            
+
             // Renderizar tabla y salir de la función
             await renderizarTablaOrdenada();
             return;
@@ -8297,10 +12585,10 @@ const initApp = () => {
         }
       }
     }
-    
+
     // LÓGICA NORMAL: Calcular estadísticas directamente desde jugador_partido
     let data, error;
-    
+
     try {
       // Consulta para obtener todos los partidos de la temporada con sus goles
       let partidosQuery = supabase
@@ -8340,25 +12628,25 @@ const initApp = () => {
             es_gol_en_contra
           )
         `);
-      
+
       // Filtrar por temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         console.log('🏆 Aplicando filtro de temporada en estadísticas:', temporadaSeleccionada);
         partidosQuery = partidosQuery.eq('temporada_id', temporadaSeleccionada);
       }
-      
+
       const result = await partidosQuery;
-      
+
       console.log('📋 Resultado de consulta partidos con goles:', result);
       console.log('🔍 Partidos obtenidos:', result.data?.length || 0);
-      
+
       if (result.error) {
         throw result.error;
       }
-      
+
       // Procesar datos para calcular estadísticas por jugador
       const jugadoresStats = {};
-      
+
       result.data?.forEach(partido => {
         const jugadoresPartido = partido.jugador_partido || [];
 
@@ -8373,7 +12661,7 @@ const initApp = () => {
         // Procesar cada jugador que participó en este partido
         jugadoresPartido.forEach(jp => {
           const jugadorId = jp.jugador_id;
-          
+
           if (!jugadoresStats[jugadorId]) {
             jugadoresStats[jugadorId] = {
               jugador_id: jugadorId,
@@ -8400,12 +12688,12 @@ const initApp = () => {
               rendimiento_arquero: null
             };
           }
-          
+
           const stats = jugadoresStats[jugadorId];
-          
+
           // Incrementar partidos jugados
           stats.pj += 1;
-          
+
           // Determinar resultado del partido para este jugador
           const equipoGanador = partido.equipo_ganador;
           if (equipoGanador === jp.equipo) {
@@ -8427,7 +12715,7 @@ const initApp = () => {
             stats.goles_favor_equipo += golesEquipo2;
             stats.goles_recibidos_equipo += golesEquipo1;
           }
-          
+
           // Sumar estadísticas individuales (SIN goles y asistencias aún)
           stats.cagadas_en_gol += jp.cagadas || 0;
           stats.atajadas += jp.atajadas || 0;
@@ -8436,7 +12724,7 @@ const initApp = () => {
           stats.capitan_defeat += jp.capitan_defeat ? 1 : 0;
           stats.bita_defeat += jp.bita_defeat ? 1 : 0;
         });
-        
+
         // Procesar goles del partido para contar goles y asistencias (INCLUIR goles en contra por separado)
         partido.goles?.forEach(gol => {
           if (gol.es_gol_en_contra) {
@@ -8449,7 +12737,7 @@ const initApp = () => {
             if (gol.goleador_id && jugadoresStats[gol.goleador_id]) {
               jugadoresStats[gol.goleador_id].goles += 1;
             }
-            
+
             // Contar asistencia para el asistidor (solo en goles normales)
             if (gol.asistidor_id && jugadoresStats[gol.asistidor_id]) {
               jugadoresStats[gol.asistidor_id].asistencias += 1;
@@ -8457,25 +12745,25 @@ const initApp = () => {
           }
         });
       });
-      
+
       // Calcular winrate para cada jugador (empates valen 1 punto)
       Object.values(jugadoresStats).forEach(stats => {
         const puntosObtenidos = (stats.pg * 3) + (stats.pe * 1); // Victoria=3pts, Empate=1pt, Derrota=0pts
         const puntosTotalesDisputados = stats.pj * 3; // Puntos máximos posibles
         stats.winrate = puntosTotalesDisputados > 0 ? Math.round((puntosObtenidos / puntosTotalesDisputados) * 100) : 0;
       });
-      
+
       data = Object.values(jugadoresStats);
       error = null;
-      
+
       console.log('📈 Estadísticas calculadas:', data.length, 'jugadores');
-      
+
     } catch (err) {
       console.error('Error al calcular estadísticas:', err);
       error = err;
       data = null;
     }
-    
+
     if (error || !data || data.length === 0) {
       // Fallback: usar tabla jugadores directamente (para casos sin partidos)
       console.log('🔄 Usando tabla jugadores como fallback...');
@@ -8490,13 +12778,13 @@ const initApp = () => {
           )
         )
       `);
-      
+
       if (result.error) {
         console.error('Error al cargar estadísticas:', result.error);
         showToast('Error al cargar estadísticas', 'error');
         return;
       }
-      
+
       // Transformar datos para que sean compatibles con el formato esperado
       data = result.data.map(jugador => ({
         jugador_id: jugador.id,
@@ -8530,9 +12818,9 @@ const initApp = () => {
     }
     // Los datos ya vienen agrupados por jugador desde el cálculo anterior
     console.log('👥 Datos de jugadores procesados:', data);
-    
+
     datosJugadores = data.map((jugadorData) => {
-      
+
       // Función para crear badges de colores según el valor
       const createBadge = (value, type = 'default') => {
         const val = value ?? 0;
@@ -8559,10 +12847,10 @@ const initApp = () => {
         if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
           return '<span class="text-muted small">Sin posición</span>';
         }
-        
+
         const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
         const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
-        
+
         let html = '';
         if (primaria) {
           const icono = iconosPosiciones[primaria.posicion_id] || '❓';
@@ -8574,10 +12862,10 @@ const initApp = () => {
           const nombre = nombresPosiciones[secundaria.posicion_id] || 'N/A';
           html += `<span class="badge bg-outline-secondary" title="Posición Secundaria">${icono} ${nombre}</span>`;
         }
-        
+
         return html || '<span class="text-muted small">Sin posición</span>';
       };
-      
+
       // Los datos ya vienen calculados, no necesitamos sumar
       const stats = {
         total_puntos: jugadorData.total_puntos || 0,
@@ -8599,10 +12887,10 @@ const initApp = () => {
         rendimiento_ataque: jugadorData.rendimiento_ataque,
         rendimiento_arquero: jugadorData.rendimiento_arquero
       };
-      
+
       // El winrate ya viene calculado
       const winrate = jugadorData.winrate || 0;
-      
+
       // Debug específico para Boska
       if (jugadorData.jugadores?.nombre.toLowerCase().includes('boska')) {
         console.log('🔍 DEBUG BOSKA (NUEVA LÓGICA):');
@@ -8610,7 +12898,7 @@ const initApp = () => {
         console.log('📈 Stats procesadas:', stats);
         console.log('🎯 PJ final:', stats.pj);
       }
-      
+
       // Retornar objeto con todos los datos necesarios
       return {
         ...stats,
@@ -8620,10 +12908,10 @@ const initApp = () => {
         nombre: jugadorData.jugadores.nombre
       };
     });
-    
+
     // Actualizar referencia global para el algoritmo genético
     window.datosJugadores = datosJugadores;
-    
+
     // Renderizar tabla ordenada
     await renderizarTablaOrdenada();
   }
@@ -8632,9 +12920,9 @@ const initApp = () => {
   async function calcularRachasMasLargas(data) {
     try {
       // Obtener temporada seleccionada para filtrar correctamente
-      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
+      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
                                    document.getElementById('selector-temporada-mobile')?.value || '';
-      
+
       // Query base para obtener partidos con jugadores
       let query = supabase
         .from('partidos')
@@ -8653,53 +12941,53 @@ const initApp = () => {
           )
         `)
         .order('fecha', { ascending: false }); // Más recientes primero
-      
+
       // Filtrar por temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         query = query.eq('temporada_id', temporadaSeleccionada);
       }
-      
+
       const { data: partidos, error } = await query;
-      
+
       if (error || !partidos || partidos.length === 0) {
         return { mejorRachaVictorias: null, mejorRachaDerrota: null };
       }
-      
+
       const rachasHistoricas = {};
-      
+
       // Para cada jugador en los datos, calcular todas sus rachas históricas
       data.forEach(jugadorData => {
         const jugadorId = jugadorData.jugadores?.id;
         if (!jugadorId) return;
-        
+
         // Obtener partidos donde participó este jugador (ordenados por fecha asc para calcular rachas)
         const partidosJugador = partidos
-          .filter(partido => 
+          .filter(partido =>
             partido.jugador_partido?.some(jp => jp.jugador_id === jugadorId)
           )
           .reverse(); // Convertir a orden cronológico
-        
+
         if (partidosJugador.length === 0) {
-          rachasHistoricas[jugadorId] = { 
-            mejorRachaVictorias: 0, 
-            mejorRachaDerrota: 0, 
-            nombre: jugadorData.jugadores.nombre 
+          rachasHistoricas[jugadorId] = {
+            mejorRachaVictorias: 0,
+            mejorRachaDerrota: 0,
+            nombre: jugadorData.jugadores.nombre
           };
           return;
         }
-        
+
         let mejorRachaVictorias = 0;
         let mejorRachaDerrota = 0;
         let rachaActualVictorias = 0;
         let rachaActualDerrota = 0;
-        
+
         for (const partido of partidosJugador) {
           const jugadorEnPartido = partido.jugador_partido.find(jp => jp.jugador_id === jugadorId);
           if (!jugadorEnPartido) continue;
-          
+
           const equipoJugador = jugadorEnPartido.equipo;
           const equipoGanador = partido.equipo_ganador;
-          
+
           // Determinar resultado
           if (equipoGanador === equipoJugador) {
             // Victoria
@@ -8717,18 +13005,18 @@ const initApp = () => {
             rachaActualDerrota = 0;
           }
         }
-        
+
         rachasHistoricas[jugadorId] = {
           mejorRachaVictorias,
           mejorRachaDerrota,
           nombre: jugadorData.jugadores?.nombre || jugadorData.nombre || 'Jugador Desconocido'
         };
       });
-      
+
       // Encontrar jugador con la racha de victorias más larga
       let mejorRachaVictorias = null;
       let maxRachaVictorias = 0;
-      
+
       Object.keys(rachasHistoricas).forEach(jugadorId => {
         const racha = rachasHistoricas[jugadorId];
         if (racha.mejorRachaVictorias > maxRachaVictorias) {
@@ -8740,9 +13028,9 @@ const initApp = () => {
           console.log('🔥 Nueva mejor racha encontrada:', mejorRachaVictorias);
         }
       });
-      
+
       return { mejorRachaVictorias, mejorRachaDerrota: null };
-      
+
     } catch (error) {
       console.error('Error al calcular rachas más largas:', error);
       return { mejorRachaVictorias: null, mejorRachaDerrota: null };
@@ -8752,36 +13040,36 @@ const initApp = () => {
   async function renderizarDestacados(data) {
     const container = document.getElementById('destacados-container');
     if (!container || data.length === 0) return;
-    
+
     // Calcular los mejores en cada categoría
-    const mejorPuntos = data.reduce((max, jugador) => 
+    const mejorPuntos = data.reduce((max, jugador) =>
       (jugador.total_puntos || 0) > (max.total_puntos || 0) ? jugador : max
     );
-    
-    const mejorGoles = data.reduce((max, jugador) => 
+
+    const mejorGoles = data.reduce((max, jugador) =>
       (jugador.goles || 0) > (max.goles || 0) ? jugador : max
     );
-    
-    const mejorAtajadas = data.reduce((max, jugador) => 
+
+    const mejorAtajadas = data.reduce((max, jugador) =>
       (jugador.atajadas || 0) > (max.atajadas || 0) ? jugador : max
     );
-    
-    const mejorAsistencias = data.reduce((max, jugador) => 
+
+    const mejorAsistencias = data.reduce((max, jugador) =>
       (jugador.asistencias || 0) > (max.asistencias || 0) ? jugador : max
     );
-    
+
     // Mejor winrate (mínimo 10 partidos)
     const jugadoresConMinPartidos = data.filter(j => (j.pj || 0) >= 10);
-    const mejorWinrate = jugadoresConMinPartidos.length > 0 
-      ? jugadoresConMinPartidos.reduce((max, jugador) => 
+    const mejorWinrate = jugadoresConMinPartidos.length > 0
+      ? jugadoresConMinPartidos.reduce((max, jugador) =>
           (jugador.winrate || 0) > (max.winrate || 0) ? jugador : max
         )
       : null;
-    
+
     // Racha de victorias más larga
     const rachasMasLargas = await calcularRachasMasLargas(data);
     const mejorRachaVictorias = rachasMasLargas.mejorRachaVictorias;
-    
+
     const destacados = [
       {
         categoria: 'Más Puntos',
@@ -8833,7 +13121,7 @@ const initApp = () => {
         clase: 'racha-victorias'
       }
     ];
-    
+
     container.innerHTML = destacados.map(destacado => {
       if (!destacado.jugador) {
         return `
@@ -8848,7 +13136,7 @@ const initApp = () => {
           </div>
         `;
       }
-      
+
       return `
         <div class="col-lg col-md-6">
           <div class="destacado-card ${destacado.clase} rounded-3 p-3 text-center">
@@ -8866,33 +13154,33 @@ const initApp = () => {
   function renderizarMejoresPorPuesto(data) {
     const container = document.getElementById('mejores-puesto-container');
     if (!container || data.length === 0) return;
-    
+
     // Función para obtener la posición primaria de un jugador
     const obtenerPosicionPrimaria = (jugador) => {
       if (!jugador.jugadores?.jugador_posicion) return null;
       const primaria = jugador.jugadores.jugador_posicion.find(jp => jp.es_primaria);
       return primaria ? primaria.posicion.nombre : null;
     };
-    
+
     // Función para verificar si un jugador puede jugar en una posición (primaria o secundaria)
     const puedeJugarEn = (jugador, posicion) => {
       if (!jugador.jugadores?.jugador_posicion) return false;
       return jugador.jugadores.jugador_posicion.some(jp => jp.posicion.nombre === posicion);
     };
-    
+
     // Filtrar jugadores con un mínimo de partidos para estadísticas más significativas
     const jugadoresConMinPartidos = data.filter(j => (j.pj || 0) >= 5);
-    
+
     // NUEVA LÓGICA COMPLEJA: Separar jugadores principales vs contribuyentes (igual que el radar)
     const arqueros = jugadoresConMinPartidos.filter(j => puedeJugarEn(j, 'Arquero'));
     const defensores = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Defensor');
-    
+
     // MEDIOCAMPO: Principales + Secundarios (65% contribución)
     const mediocampistasPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Mediocampo');
-    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j => 
+    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j =>
       obtenerPosicionPrimaria(j) !== 'Mediocampo' && puedeJugarEn(j, 'Mediocampo')
     );
-    
+
     // ATAQUE: Principales + Contribuyentes ofensivos
     const atacantesPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Atacante');
     const contribuyentesOfensivos = jugadoresConMinPartidos.filter(j => {
@@ -8900,7 +13188,7 @@ const initApp = () => {
       const tieneAsistencias = (j.asistencias || 0) > 0;
       return tieneGoles || tieneAsistencias;
     });
-    
+
     // FUNCIONES DE SCORE (mismas que el radar, ajustadas)
     const calcularScoreArquero = (jugador) => {
       const pj = jugador.pj || 1;
@@ -8908,14 +13196,14 @@ const initApp = () => {
       const atajadasPorPartido = (jugador.atajadas || 0) / pj;
       return winrate * 0.4 + atajadasPorPartido * 25; // Reducido como en radar
     };
-    
+
     const calcularScoreDefensor = (jugador) => {
       const pj = jugador.pj || 1;
       const winrate = jugador.winrate || 0;
       const cagadasPorPartido = (jugador.cagadas_en_gol || 0) / pj;
       return Math.max(winrate - (cagadasPorPartido * 10), 0);
     };
-    
+
     // SCORE COMPLEJO PARA MEDIOCAMPO
     const calcularScoreMediocampo = (jugador, esPrincipal = true) => {
       const pj = jugador.pj || 1;
@@ -8925,14 +13213,14 @@ const initApp = () => {
       const scoreBase = (golesPorPartido + asistPorPartido) * 20 + winrate * 0.5;
       return esPrincipal ? scoreBase : scoreBase * 0.65; // 65% para secundarios
     };
-    
+
     // SCORE COMPLEJO PARA ATAQUE
     const calcularScoreAtaque = (jugador, esPrincipal = true) => {
       const pj = jugador.pj || 1;
       const golesPorPartido = (jugador.goles || 0) / pj;
       const asistPorPartido = (jugador.asistencias || 0) / pj;
       const winrate = jugador.winrate || 0;
-      
+
       if (esPrincipal) {
         // Main atacantes: formula completa
         return (golesPorPartido + asistPorPartido) * 40 + winrate * 1.0;
@@ -8941,24 +13229,24 @@ const initApp = () => {
         return (golesPorPartido + asistPorPartido) * 25;
       }
     };
-    
+
     // ENCONTRAR MEJORES CON LÓGICA COMPLEJA
-    const mejorArquero = arqueros.length > 0 
-      ? arqueros.reduce((max, jugador) => 
+    const mejorArquero = arqueros.length > 0
+      ? arqueros.reduce((max, jugador) =>
           calcularScoreArquero(jugador) > calcularScoreArquero(max) ? jugador : max
-        ) 
+        )
       : null;
-    
+
     const mejorDefensor = defensores.length > 0
-      ? defensores.reduce((max, jugador) => 
+      ? defensores.reduce((max, jugador) =>
           calcularScoreDefensor(jugador) > calcularScoreDefensor(max) ? jugador : max
         )
       : null;
-    
+
     // MEJOR MEDIOCAMPO (combinando principales y secundarios)
     let mejorMediocampista = null;
     let mejorScoreMediocampo = 0;
-    
+
     // Evaluar principales
     mediocampistasPrincipales.forEach(jugador => {
       const score = calcularScoreMediocampo(jugador, true);
@@ -8967,7 +13255,7 @@ const initApp = () => {
         mejorMediocampista = jugador;
       }
     });
-    
+
     // Evaluar secundarios
     mediocampistasSecundarios.forEach(jugador => {
       const score = calcularScoreMediocampo(jugador, false);
@@ -8976,11 +13264,11 @@ const initApp = () => {
         mejorMediocampista = jugador;
       }
     });
-    
+
     // MEJOR ATACANTE (combinando principales y contribuyentes)
     let mejorAtacante = null;
     let mejorScoreAtaque = 0;
-    
+
     // Evaluar principales
     atacantesPrincipales.forEach(jugador => {
       const score = calcularScoreAtaque(jugador, true);
@@ -8989,7 +13277,7 @@ const initApp = () => {
         mejorAtacante = jugador;
       }
     });
-    
+
     // Evaluar contribuyentes (no principales)
     contribuyentesOfensivos.forEach(jugador => {
       if (obtenerPosicionPrimaria(jugador) !== 'Atacante') {
@@ -9000,7 +13288,7 @@ const initApp = () => {
         }
       }
     });
-    
+
     const mejoresPorPuesto = [
       {
         posicion: 'Arquero',
@@ -9045,7 +13333,7 @@ const initApp = () => {
         ] : []
       }
     ];
-    
+
     container.innerHTML = mejoresPorPuesto.map(puesto => {
       if (!puesto.jugador) {
         return `
@@ -9061,7 +13349,7 @@ const initApp = () => {
           </div>
         `;
       }
-      
+
       return `
         <div class="col-lg-3 col-md-6">
           <div class="mejor-puesto-card ${puesto.clase} rounded-3 p-3 text-center">
@@ -9085,13 +13373,13 @@ const initApp = () => {
   // Función para calcular rachas actuales de jugadores
   async function calcularRachasJugadores(jugadoresData) {
     console.log('🔥 Calculando rachas de jugadores...');
-    
+
     const rachas = {};
-    
+
     // Obtener temporada seleccionada para filtrar correctamente
-    const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
+    const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
                                  document.getElementById('selector-temporada-mobile')?.value || '';
-    
+
     // PARCHE TEMPORADA 1: No calcular rachas para temporada 1
     if (temporadaSeleccionada && temporadaSeleccionada !== '') {
       const { data: temporadaInfo } = await supabase
@@ -9099,7 +13387,7 @@ const initApp = () => {
         .select('id, nombre')
         .eq('id', temporadaSeleccionada)
         .single();
-      
+
       if (temporadaInfo && (temporadaInfo.nombre.includes('Temporada 1') || temporadaInfo.id === '1' || temporadaInfo.id === 1)) {
         console.log('🏆 PARCHE TEMPORADA 1: Saltando cálculo de rachas (usa estadisticas_temporada, no partidos individuales)');
         // Devolver rachas vacías para todos los jugadores
@@ -9112,7 +13400,7 @@ const initApp = () => {
         return rachas;
       }
     }
-    
+
     try {
       // Query base para obtener partidos con jugadores
       let query = supabase
@@ -9128,53 +13416,53 @@ const initApp = () => {
           )
         `)
         .order('fecha', { ascending: false }); // Más recientes primero
-      
+
       // Filtrar por temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         query = query.eq('temporada_id', temporadaSeleccionada);
       }
-      
+
       const { data: partidos, error } = await query;
-      
+
       if (error) {
         console.error('Error al cargar partidos para rachas:', error);
         return {};
       }
-      
+
       if (!partidos || partidos.length === 0) {
         console.log('No hay partidos para calcular rachas');
         return {};
       }
-      
+
       console.log('📅 Partidos para calcular rachas:', partidos.length);
-      
+
       // Para cada jugador, calcular su racha actual
       jugadoresData.forEach(jugador => {
         const jugadorId = jugador.jugadores?.id;
         if (!jugadorId) return;
-        
+
         // Obtener partidos donde participó este jugador (ordenados por fecha desc)
-        const partidosJugador = partidos.filter(partido => 
+        const partidosJugador = partidos.filter(partido =>
           partido.jugador_partido?.some(jp => jp.jugador_id === jugadorId)
         );
-        
+
         if (partidosJugador.length === 0) {
           rachas[jugadorId] = { tipo: null, cantidad: 0 };
           return;
         }
-        
+
         // Calcular racha desde el partido más reciente hacia atrás
         let rachaActual = 0;
         let tipoRacha = null; // 'win' o 'defeat'
-        
+
         for (const partido of partidosJugador) {
           // Encontrar el equipo del jugador en este partido
           const jugadorEnPartido = partido.jugador_partido.find(jp => jp.jugador_id === jugadorId);
           if (!jugadorEnPartido) continue;
-          
+
           const equipoJugador = jugadorEnPartido.equipo;
           const equipoGanador = partido.equipo_ganador;
-          
+
           // Determinar si ganó, empató o perdió
           let resultado;
           if (equipoGanador === equipoJugador) {
@@ -9184,7 +13472,7 @@ const initApp = () => {
           } else {
             resultado = 'defeat';
           }
-          
+
           // Lógica de racha - Los empates NO cuentan para rachas
           if (rachaActual === 0) {
             // Primer partido, establecer tipo de racha
@@ -9200,7 +13488,7 @@ const initApp = () => {
             }
           } else {
             // Continuar racha existente
-            if ((tipoRacha === 'win' && resultado === 'win') || 
+            if ((tipoRacha === 'win' && resultado === 'win') ||
                 (tipoRacha === 'defeat' && resultado === 'defeat')) {
               rachaActual++;
             } else {
@@ -9209,17 +13497,17 @@ const initApp = () => {
             }
           }
         }
-        
+
         // Solo considerar rachas significativas (2 o más)
         rachas[jugadorId] = {
           tipo: rachaActual >= 2 ? tipoRacha : null,
           cantidad: rachaActual >= 2 ? rachaActual : 0
         };
       });
-      
+
       console.log('🔥❄️ Rachas calculadas:', rachas);
       return rachas;
-      
+
     } catch (error) {
       console.error('Error al calcular rachas:', error);
       return {};
@@ -9229,23 +13517,23 @@ const initApp = () => {
   async function renderizarTablaConDatos(data) {
     const tbody = document.getElementById('stats-table-body');
     tbody.innerHTML = '';
-    
+
     // Renderizar destacados primero (con datos filtrados)
     await renderizarDestacados(data);
-    
+
     // Renderizar mejores por puesto
     renderizarMejoresPorPuesto(data);
-    
+
     // Calcular rachas de todos los jugadores
     const rachas = await calcularRachasJugadores(data);
-    
+
     // Función para crear el icono de racha
     const crearIconoRacha = (jugadorId) => {
       const racha = rachas[jugadorId];
       if (!racha || !racha.tipo || racha.cantidad < 2) {
         return '';
       }
-      
+
       if (racha.tipo === 'win') {
         return `<span class="ms-2 badge bg-warning text-dark fw-bold" title="En racha de ${racha.cantidad} victorias">
                   🔥 ${racha.cantidad}
@@ -9257,7 +13545,7 @@ const initApp = () => {
       }
       return '';
     };
-    
+
     const obtenerNumeroEstadistica = (value) => {
       const numero = Number(value);
       return Number.isFinite(numero) ? numero : 0;
@@ -9341,10 +13629,10 @@ const initApp = () => {
       const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
       const puntosPP = (jugador.total_puntos || 0) / pj;
       const atajadasPP = (jugador.atajadas || 0) / pj;
-      
+
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       const rendArquero = atajadasPP * 0.66;
-      
+
       return rendAtaque + rendArquero;
     };
 
@@ -9352,11 +13640,11 @@ const initApp = () => {
     const skills = data.map(j => calcularSkillIndividual(j));
     const minSkill = Math.min(...skills);
     const maxSkill = Math.max(...skills);
-    
+
     // Función para obtener color según skill
     const obtenerColorSkill = (skill) => {
       const normalizado = (skill - minSkill) / (maxSkill - minSkill || 1);
-      
+
       if (normalizado >= 0.8) return 'skill-excellent'; // Verde brillante
       if (normalizado >= 0.6) return 'skill-good';      // Verde
       if (normalizado >= 0.4) return 'skill-average';   // Amarillo
@@ -9368,13 +13656,13 @@ const initApp = () => {
       const tr = document.createElement('tr');
       const golesFavorEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_favor_equipo');
       const golesRecibidosEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_recibidos_equipo');
-      
+
       const posicion = index + 1;
       let positionClass = 'position-other';
       if (posicion === 1) positionClass = 'position-1';
       else if (posicion === 2) positionClass = 'position-2';
       else if (posicion === 3) positionClass = 'position-3';
-      
+
       const skillIndividual = calcularSkillIndividual(jugadorData);
       const colorSkill = obtenerColorSkill(skillIndividual);
       const jugadorIdArg = escaparTextoParaJs(jugadorData.jugadores.id);
@@ -9426,12 +13714,12 @@ const initApp = () => {
       `;
       tbody.appendChild(tr);
     });
-    
+
     // Aplicar highlight después de renderizar
     setTimeout(() => {
       updateSortIndicators();
     }, 10);
-    
+
     // Actualizar campeones después de renderizar la tabla
     setTimeout(async () => {
       if (typeof window.actualizarCampeonesEnEstadisticas === 'function') {
@@ -9512,18 +13800,18 @@ const initApp = () => {
     if (!verificarPermisosAdmin('agregar un jugador')) {
         return;
     }
-    
+
     // Insertar el jugador
     const jugadorObject = { nombre: nombre };
     if (pulmon !== null) {
       jugadorObject.pulmon = pulmon;
     }
-    
+
     const { data: jugadorData, error: jugadorError } = await supabase
       .from('jugadores')
       .insert([jugadorObject])
       .select();
-    
+
     if (jugadorError) {
       throw jugadorError;
     }
@@ -9538,18 +13826,18 @@ const initApp = () => {
     if (!verificarPermisosAdmin('editar un jugador')) {
         return;
     }
-    
+
     // Actualizar nombre del jugador
     const updateObject = { nombre: nombre };
     if (pulmon !== null) {
       updateObject.pulmon = pulmon;
     }
-    
+
     const { error: jugadorError } = await supabase
       .from('jugadores')
       .update(updateObject)
       .eq('id', jugadorId);
-    
+
     if (jugadorError) {
       throw jugadorError;
     }
@@ -9571,7 +13859,7 @@ const initApp = () => {
   // Función auxiliar para asignar posiciones a un jugador
   async function asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria) {
     const posicionesAInsertar = [];
-    
+
     // Posición principal
     posicionesAInsertar.push({
       jugador_id: jugadorId,
@@ -9598,11 +13886,11 @@ const initApp = () => {
   }
 
 
-  
 
-  
 
-  
+
+
+
 
 
 
@@ -9613,7 +13901,7 @@ const initApp = () => {
       console.error('❌ Container historial-partidos-container NO encontrado!');
       return;
     }
-    
+
     try {
       // Mostrar loading
       container.innerHTML = `
@@ -9624,17 +13912,17 @@ const initApp = () => {
           <p class="text-light-emphasis mt-2 mb-0">Buscando partidos...</p>
         </div>
       `;
-      
+
       // Obtener temporada seleccionada para filtrar
       const selectorTemporada = document.getElementById('selector-temporada');
       const selectorTemporadaMobile = document.getElementById('selector-temporada-mobile');
       const temporadaSeleccionada = selectorTemporada?.value || selectorTemporadaMobile?.value || '';
-      
+
       // Obtener cantidad de partidos a mostrar
       const cantidadElement = document.getElementById('cantidad-partidos');
       const valorCantidad = cantidadElement?.value || '5';
       const cantidad = (valorCantidad === 'all') ? null : (parseInt(valorCantidad) || 5);
-      
+
       // Construir consulta con filtro de temporada si está seleccionada
       let query = supabase
         .from('partidos')
@@ -9675,20 +13963,20 @@ const initApp = () => {
             es_gol_en_contra
           )
         `);
-      
+
       // Aplicar filtro de temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         console.log('🏆 Aplicando filtro de temporada:', temporadaSeleccionada);
         query = query.eq('temporada_id', temporadaSeleccionada);
       }
-      
+
       // Aplicar orden y límite
       let ejecutar = query.order('fecha', { ascending: false });
       if (typeof cantidad === 'number' && cantidad > 0) {
         ejecutar = ejecutar.limit(cantidad);
       }
       const { data: partidos, error } = await ejecutar;
-      
+
       console.log('📊 Resultado consulta partidos:', { partidos, error });
 
       if (error) {
@@ -9698,7 +13986,7 @@ const initApp = () => {
       }
 
       console.log('✅ Consulta exitosa, partidos encontrados:', partidos?.length || 0);
-      
+
       if (!partidos || partidos.length === 0) {
         console.log('ℹ️ No hay partidos para mostrar');
         mostrarMensajeSinPartidos(container);
@@ -9721,7 +14009,7 @@ const initApp = () => {
           .from('jugadores')
           .select('id, nombre')
           .in('id', Array.from(jugadorIds));
-        
+
         if (jugadores) {
           jugadores.forEach(jugador => {
             jugadoresMap[jugador.id] = jugador;
@@ -9742,7 +14030,7 @@ const initApp = () => {
       });
 
       console.log('🎯 Mostrando partidos en la interfaz...');
-      
+
       // Guardar todos los partidos para el filtrado
       todosLosPartidos = partidos;
 
@@ -9759,7 +14047,7 @@ const initApp = () => {
           destacarPartidoEnHistorial(partidoIdPendiente);
         });
       }
-      
+
     } catch (error) {
       console.warn('Error al cargar historial (esperado en versión simplificada):', error);
       mostrarMensajeSinPartidos(container);
@@ -9788,16 +14076,16 @@ const initApp = () => {
       </div>
     `;
   }
-  
+
   // Función para crear partidos dummy para testing
   async function crearPartidosDummy() {
     try {
       console.log('🧪 Creando partidos de prueba...');
-      
+
       // Verificar si hay temporadas
       const { data: temporadas } = await supabase.from('temporadas').select('id').limit(1);
       let temporadaId = temporadas?.[0]?.id || null;
-      
+
       if (!temporadaId) {
         // Crear una temporada si no existe
         const { data: nuevaTemporada } = await supabase
@@ -9807,7 +14095,7 @@ const initApp = () => {
           .single();
         temporadaId = nuevaTemporada?.id;
       }
-      
+
       const partidosEjemplo = [
         {
           fecha: '2024-01-15',
@@ -9831,30 +14119,30 @@ const initApp = () => {
           temporada_id: temporadaId
         }
       ];
-      
+
       const { error } = await supabase
         .from('partidos')
         .insert(partidosEjemplo);
-        
+
       if (error) {
         console.error('Error al crear partidos dummy:', error);
         showToast('Error al crear partidos de prueba: ' + error.message, 'error');
         return;
       }
-      
+
       showToast('✅ Partidos de prueba creados exitosamente!', 'success');
-      
+
       // Recargar el historial
       setTimeout(() => {
         cargarHistorialPartidos();
       }, 500);
-      
+
     } catch (error) {
       console.error('Error creando partidos dummy:', error);
       showToast('Error inesperado al crear partidos de prueba', 'error');
     }
   }
-  
+
   // Hacer la función global
   window.crearPartidosDummy = crearPartidosDummy;
 
@@ -9866,7 +14154,7 @@ const initApp = () => {
       // Verificar si hay temporadas
       const { data: temporadas } = await supabase.from('temporadas').select('id').limit(1);
       let temporadaId = temporadas?.[0]?.id || null;
-      
+
       if (!temporadaId) {
         // Crear una temporada si no existe
         const { data: nuevaTemporada } = await supabase
@@ -9918,7 +14206,7 @@ const initApp = () => {
 
       // 3. Simular la función editarYouTubeLink (agregar link)
       const linkInicial = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-      
+
       console.log('📹 Simulando agregar link de YouTube...');
       const { error: errorAgregar } = await supabase
         .from('partidos')
@@ -9948,7 +14236,7 @@ const initApp = () => {
 
       // 5. Simular la edición del link (cambiar link)
       const nuevoLink = 'https://www.youtube.com/watch?v=abc123test';
-      
+
       console.log('✏️ Simulando edición del link...');
       const { error: errorEditar } = await supabase
         .from('partidos')
@@ -10045,7 +14333,7 @@ const initApp = () => {
     console.log('  esAdmin:', esAdmin);
     console.log('  usuarioActual:', usuarioActual);
     console.log('  Permisos de admin para test:', verificarPermisosAdmin('operación de test'));
-    
+
     if (esAdmin) {
       console.log('✅ Eres administrador - deberías ver todos los botones');
     } else {
@@ -10053,12 +14341,12 @@ const initApp = () => {
       console.log('💡 Para ser admin, inicia sesión primero');
     }
   };
-  
+
   console.log('🔍 Función de debug disponible: window.debugAdmin()');
 
   async function mostrarPartidosBasicos(container, partidos) {
     console.log('🎨 Mostrando partidos con detalles completos:', partidos);
-    
+
     const calcularSkillPartido = ({
       goles = 0,
       asistencias = 0,
@@ -10084,7 +14372,7 @@ const initApp = () => {
     };
 
     const esDefensor = (jugador) => obtenerPosicionPrimariaJugador(jugador) === 'Defensor';
-    
+
     const obtenerSkillEsperadoJugador = (jugadorId) => {
       try {
         const datos = window.datosJugadores || [];
@@ -10138,9 +14426,9 @@ const initApp = () => {
       if (!jugadorId) return null;
       return skillRankingMap.get(jugadorId) ?? null;
     };
-    
+
     let html = '<div class="row g-4">';
-    
+
     // Continuar con los partidos
     partidos.forEach((partido, index) => {
       // Arreglar problema de zona horaria - agregar tiempo para evitar offset
@@ -10151,22 +14439,22 @@ const initApp = () => {
         month: 'short',
         day: 'numeric'
       });
-      
+
       // Separar jugadores por equipo
       const equipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
       const equipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
-      
+
       // Calcular marcador desde los goles registrados
       let golesEquipo1 = 0;
       let golesEquipo2 = 0;
-      
+
       if (partido.goles && partido.goles.length > 0) {
         partido.goles.forEach(gol => {
           const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
           if (jugadorData) {
             // Determinar si es gol en contra comparando el equipo del gol con el equipo del jugador
             const esEnContra = gol.equipo !== jugadorData.equipo;
-            
+
             if (esEnContra) {
               // Gol en contra suma al equipo contrario
               if (jugadorData.equipo === 1) golesEquipo2++;
@@ -10179,12 +14467,12 @@ const initApp = () => {
           }
         });
       }
-      
+
       // Determinar ganador y color del card
       let equipoGanador = '';
       let colorCard = 'border-secondary';
       let iconoResultado = '🤝';
-      
+
       if (partido.equipo_ganador === 1) {
         equipoGanador = 'Equipo 1';
         colorCard = 'border-primary';
@@ -10197,11 +14485,11 @@ const initApp = () => {
         equipoGanador = 'Empate';
         iconoResultado = '🤝';
       }
-      
+
       // Obtener MVP y ACE
       const mvpData = partido.jugador_partido?.find(jp => jp.mvp);
       const aceData = partido.jugador_partido?.find(jp => jp.ace);
-      
+
       // Calcular estadísticas totales
       const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.cagadas || 0), 0) || 0;
       const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
@@ -10271,7 +14559,8 @@ const initApp = () => {
 
       const skillEquipo1 = skillEquipo(equipo1);
       const skillEquipo2 = skillEquipo(equipo2);
-      
+      const youtubeReviewLink = obtenerLinkYouTubeReview(partido.youtube_link);
+
       html += `
         <div class="col-lg-6 col-md-12">
           <div class="glass-effect rounded-3 p-4 h-100 border-top border-3 ${colorCard} partido-card" data-partido-id="${partido.id}">
@@ -10295,13 +14584,18 @@ const initApp = () => {
                   <div class="badge bg-primary fs-5 px-3 py-2">
                     ${golesEquipo1} - ${golesEquipo2}
                   </div>
-                  ${partido.youtube_link ? `
-                    <a href="${partido.youtube_link}" target="_blank" class="btn btn-sm btn-outline-danger" title="Ver review en YouTube">
-                      <i class="bi bi-youtube"></i>
+                  ${youtubeReviewLink ? `
+                    <a href="${youtubeReviewLink}" target="_blank" class="btn btn-sm btn-outline-danger" title="Ver review en YouTube">
+                      <i class="bi bi-camera-video"></i>
                     </a>
                   ` : ''}
+                  ${partido.youtube_link ? `
+                    <button onclick="mostrarCompiladoPartido('${partido.id}')" class="btn btn-sm btn-outline-success" title="Ver compilado">
+                      <i class="bi bi-scissors"></i>
+                    </button>
+                  ` : ''}
                   ${esAdmin ? `
-                    <button onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-info" title="Editar link de YouTube">
+                    <button onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-info" title="Editar link de review">
                       <i class="bi bi-camera-video"></i>
                     </button>
                     <button onclick="console.log('🖱️ CLICK detectado en botón editar'); editarPartido('${partido.id}')" class="btn btn-sm btn-outline-warning" title="Editar partido completo">
@@ -10315,7 +14609,7 @@ const initApp = () => {
                 ${equipoGanador !== 'Empate' ? `<div class="text-success small fw-bold">🏆 ${equipoGanador}</div>` : '<div class="text-warning small fw-bold">🤝 Empate</div>'}
               </div>
             </div>
-            
+
             <!-- Equipos -->
             <div class="row g-3 mb-3">
               <div class="col-6">
@@ -10327,10 +14621,10 @@ const initApp = () => {
 
                       const stats = [];
                       if (golesDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(golesDelJugador, partido.youtube_link, 'gol'));
+                        stats.push(generarIconosConLinks(golesDelJugador, youtubeReviewLink, 'gol'));
                       }
                       if (asistenciasDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(asistenciasDelJugador, partido.youtube_link, 'asistencia'));
+                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeReviewLink, 'asistencia'));
                       }
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
@@ -10338,7 +14632,7 @@ const initApp = () => {
                       const skillLabel = Number.isFinite(skill)
                         ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
                         : '';
-                      
+
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
@@ -10367,10 +14661,10 @@ const initApp = () => {
 
                       const stats = [];
                       if (golesDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(golesDelJugador, partido.youtube_link, 'gol'));
+                        stats.push(generarIconosConLinks(golesDelJugador, youtubeReviewLink, 'gol'));
                       }
                       if (asistenciasDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(asistenciasDelJugador, partido.youtube_link, 'asistencia'));
+                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeReviewLink, 'asistencia'));
                       }
                       if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
                       if (jp.cagadas > 0) stats.push(`💥${jp.cagadas}`);
@@ -10378,7 +14672,7 @@ const initApp = () => {
                       const skillLabel = Number.isFinite(skill)
                         ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
                         : '';
-                      
+
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
@@ -10399,7 +14693,7 @@ const initApp = () => {
                 </div>
               </div>
             </div>
-            
+
             <!-- Reconocimientos y estadísticas -->
             <div class="row g-2 mb-3">
               ${mvpData ? `
@@ -10431,14 +14725,14 @@ const initApp = () => {
                 </div>
               ` : ''}
             </div>
-            
+
             <!-- Leyenda del Mundialito para este partido -->
             ${typeof generarLeyendaMundialito === 'function' ? generarLeyendaMundialito(partido) : ''}
           </div>
         </div>
       `;
     });
-    
+
     html += '</div>';
     container.innerHTML = html;
   }
@@ -10453,7 +14747,7 @@ const initApp = () => {
 
       // Simular el mundialito hasta este partido para obtener cambios
       const cambios = simularMundialitoHastaPartido(partido);
-      
+
       if (!cambios || cambios.length === 0) {
         return '';
       }
@@ -10467,12 +14761,12 @@ const initApp = () => {
 
       let leyendaHtml = '<div class="mt-3 pt-2 border-top border-secondary">';
       leyendaHtml += '<div class="small text-light-emphasis mb-2"><i class="bi bi-trophy me-1"></i><strong>Mundialito T5:</strong></div>';
-      
+
       if (clasificados.length > 0) {
         leyendaHtml += '<div class="d-flex flex-wrap gap-1 mb-1">';
         clasificados.forEach(c => {
           const icono = c.fase === 'campeon' ? '👑' : '✅';
-          const faseTexto = c.fase === 'campeon' ? 'Campeón' : 
+          const faseTexto = c.fase === 'campeon' ? 'Campeón' :
                            c.fase === 'final' ? 'Final' :
                            c.fase === 'semis' ? 'Semis' :
                            c.fase === '4tos' ? 'Cuartos' :
@@ -10575,7 +14869,7 @@ const initApp = () => {
       // Misma lógica que procesarPartidoMundial pero registrando cambios
       if (jugador.fase === 'grupos') {
         jugador.partidosGrupos++;
-        
+
         if (resultado === 'victoria') {
           jugador.victoriasGrupos++;
           jugador.victorias++;
@@ -10620,7 +14914,7 @@ const initApp = () => {
         }
       } else {
         const pasa = evaluarPasePlayoffs(jugador, resultado);
-        
+
         if (resultado === 'victoria') {
           jugador.victorias++;
         } else if (resultado === 'empate') {
@@ -10628,10 +14922,10 @@ const initApp = () => {
         } else if (resultado === 'derrota') {
           jugador.derrotas++;
         }
-        
+
         if (pasa) {
           const faseAnterior = jugador.fase;
-          
+
           if (jugador.fase === '8vos') {
             jugador.fase = '4tos';
           } else if (jugador.fase === '4tos') {
@@ -10642,7 +14936,7 @@ const initApp = () => {
             jugador.fase = 'campeon';
             jugador.campeon = true;
           }
-          
+
           const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -11713,10 +16007,10 @@ const initApp = () => {
     // Cambiar a la pestaña de ranking
     const rankingTab = document.getElementById('ranking-skill-tab');
     const rankingTabContent = document.getElementById('ranking-skill-content');
-    
+
     // Activar la pestaña
     rankingTab.click();
-    
+
     // Cargar el ranking
     cargarRankingSkill();
   };
@@ -11724,7 +16018,7 @@ const initApp = () => {
   // Función para cargar el ranking en la pestaña
   window.cargarRankingSkill = async function() {
     const container = document.getElementById('ranking-skill-container');
-    
+
     try {
       // Mostrar loading
       container.innerHTML = `
@@ -11735,7 +16029,7 @@ const initApp = () => {
           <p class="text-light-emphasis mt-2">Calculando posiciones...</p>
         </div>
       `;
-      
+
       // Obtener estadísticas actuales
       let estadisticas = window.datosJugadores || [];
       if (estadisticas.length === 0) {
@@ -11748,17 +16042,17 @@ const initApp = () => {
         `;
         return;
       }
-      
+
       // Aplicar filtro por cantidad mínima de partidos
       const filtroPartidos = parseInt(document.getElementById('filtro-partidos-ranking')?.value) || 0;
       if (filtroPartidos > 0) {
         estadisticas = estadisticas.filter(jugador => (jugador.pj || 0) >= filtroPartidos);
       }
-      
+
       // Función para calcular rendimiento individual
       const calcularRendimiento = (jugador) => {
         const pj = jugador.pj || 1;
-        
+
         // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
         const golesPP = (jugador.goles || 0) / pj;
         const mvpPP = (jugador.mvp_count || 0) / pj;
@@ -11767,13 +16061,13 @@ const initApp = () => {
         const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
         const puntosPP = (jugador.total_puntos || 0) / pj;
         const atajadasPP = (jugador.atajadas || 0) / pj;
-        
+
         const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
         const rendArquero = atajadasPP * 0.4;
-        
+
         return rendAtaque + rendArquero;
       };
-      
+
       // Crear ranking ordenado por skill individual
       const ranking = [...estadisticas]
         .sort((a, b) => calcularRendimiento(b) - calcularRendimiento(a))
@@ -11787,18 +16081,18 @@ const initApp = () => {
       const skills = ranking.map(j => j.rendimiento);
       const minSkill = Math.min(...skills);
       const maxSkill = Math.max(...skills);
-      
+
       // Función para obtener color según skill (igual que en tabla principal)
       const obtenerColorSkill = (skill) => {
         const normalizado = (skill - minSkill) / (maxSkill - minSkill || 1);
-        
+
         if (normalizado >= 0.8) return 'skill-excellent'; // Verde brillante
         if (normalizado >= 0.6) return 'skill-good';      // Verde
         if (normalizado >= 0.4) return 'skill-average';   // Amarillo
         if (normalizado >= 0.2) return 'skill-below';     // Naranja
         return 'skill-poor';                              // Rojo
       };
-      
+
       // Variables para ordenamiento del ranking
       let currentSortRanking = 'skill';
       let currentOrderRanking = 'desc';
@@ -11807,7 +16101,7 @@ const initApp = () => {
       const sortRanking = (rankings, field, order) => {
         return [...rankings].sort((a, b) => {
           let aVal, bVal;
-          
+
           if (field === 'nombre') {
             aVal = a.jugadores?.nombre || '';
             bVal = b.jugadores?.nombre || '';
@@ -11843,10 +16137,10 @@ const initApp = () => {
             aVal = a[field] || 0;
             bVal = b[field] || 0;
           }
-          
+
           if (typeof aVal === 'string') aVal = parseFloat(aVal) || 0;
           if (typeof bVal === 'string') bVal = parseFloat(bVal) || 0;
-          
+
           return order === 'asc' ? aVal - bVal : bVal - aVal;
         });
       };
@@ -11872,7 +16166,7 @@ const initApp = () => {
             </thead>
             <tbody id="ranking-tbody">
       `;
-      
+
       // Función para renderizar las filas del ranking
       const renderRankingRows = (rankings) => {
         let rowsHtml = '';
@@ -11880,7 +16174,7 @@ const initApp = () => {
           const positionClass = (index + 1) <= 3 ? `position-${index + 1}` : 'position-other';
           const golesAsistencias = (jugador.goles || 0) + (jugador.asistencias || 0);
           const colorSkill = obtenerColorSkill(jugador.rendimiento);
-          
+
           // Calcular rendimientos separados
           const pj = jugador.pj || 1;
           const golesPP = (jugador.goles || 0) / pj;
@@ -11890,10 +16184,10 @@ const initApp = () => {
           const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
-          
+
           const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
           const rendArquero = atajadasPP * 0.4;
-          
+
           const tooltipContent = `Cálculo detallado (por partido):
 ATAQUE:
 • Goles: ${golesPP.toFixed(2)} × 5 = ${(golesPP * 5).toFixed(1)}
@@ -11908,7 +16202,7 @@ ARQUERO:
 • Atajadas: ${atajadasPP.toFixed(2)} × 0.4 = ${rendArquero.toFixed(1)}
 
 TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
-          
+
           rowsHtml += `
             <tr class="ranking-row" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${tooltipContent}">
               <td class="text-center">
@@ -11940,12 +16234,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Renderizar filas iniciales
       html += renderRankingRows(ranking);
-      
+
       html += `
             </tbody>
           </table>
         </div>
-        
+
         <div class="mt-3">
           <div class="row g-3 text-center">
             <div class="col-md-3">
@@ -11967,9 +16261,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           </div>
         </div>
       `;
-      
+
       container.innerHTML = html;
-      
+
       // Activar tooltips después de cargar el contenido
       setTimeout(() => {
         const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -11996,13 +16290,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               currentSortRanking = sortField;
               currentOrderRanking = sortField === 'nombre' ? 'asc' : 'desc';
             }
-            
+
             // Reordenar y rerenderizar tabla
             const sortedRanking = sortRanking(ranking, currentSortRanking, currentOrderRanking);
             const tbody = container.querySelector('#ranking-tbody');
             if (tbody) {
               tbody.innerHTML = renderRankingRows(sortedRanking);
-              
+
               // Reactivar tooltips
               setTimeout(() => {
                 const newTooltips = tbody.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -12019,7 +16313,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           }
         }
       });
-      
+
     } catch (error) {
       console.error('Error al cargar ranking skill:', error);
       container.innerHTML = `
@@ -12288,13 +16582,219 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Hacer las funciones globales
   window.cargarHistorialPartidos = cargarHistorialPartidos;
 
+  async function cargarReviewEventosGuardados(partidoId) {
+    const selectConJugador = `
+      id,
+      partido_id,
+      jugador_id,
+      tipo,
+      cantidad,
+      minuto_partido,
+      review_segundos,
+      metadata,
+      jugadores (
+        id,
+        nombre
+      )
+    `;
+
+    let { data, error } = await supabase
+      .from('review_eventos')
+      .select(selectConJugador)
+      .eq('partido_id', partidoId)
+      .order('review_segundos', { ascending: true });
+
+    if (error && esErrorTablaFaltante(error, 'review_eventos')) {
+      return {
+        data: [],
+        error,
+        tablaFaltante: true
+      };
+    }
+
+    const textoError = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+    const debeReintentarSinRelacion = error &&
+      (textoError.includes('relationship') || textoError.includes('schema cache') || textoError.includes('jugadores'));
+
+    if (debeReintentarSinRelacion) {
+      const reintento = await supabase
+        .from('review_eventos')
+        .select('id, partido_id, jugador_id, tipo, cantidad, minuto_partido, review_segundos, metadata')
+        .eq('partido_id', partidoId)
+        .order('review_segundos', { ascending: true });
+
+      data = reintento.data;
+      error = reintento.error;
+
+      if (!error && data?.length) {
+        const jugadorIds = [...new Set(data.map(evento => evento.jugador_id).filter(Boolean))];
+        if (jugadorIds.length) {
+          const { data: jugadores } = await supabase
+            .from('jugadores')
+            .select('id, nombre')
+            .in('id', jugadorIds);
+
+          const jugadoresMap = new Map((jugadores || []).map(jugador => [String(jugador.id), jugador]));
+          data = data.map(evento => ({
+            ...evento,
+            jugadores: jugadoresMap.get(String(evento.jugador_id)) || null
+          }));
+        }
+      }
+    }
+
+    return {
+      data: data || [],
+      error
+    };
+  }
+
+  window.mostrarCompiladoPartido = async function(partidoId) {
+    const partido = todosLosPartidos.find(p => p.id === partidoId);
+    const modalEl = document.getElementById('compiladoPartidoModal');
+    const titleEl = document.getElementById('compiladoPartidoModalLabel');
+    const bodyEl = document.getElementById('compiladoPartidoModalBody');
+    if (!modalEl || !titleEl || !bodyEl) return;
+
+    const fecha = partido?.fecha
+      ? new Date(partido.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : 'Partido';
+
+    titleEl.innerHTML = `<i class="bi bi-scissors me-2"></i>Compilado - ${escaparHtmlPlano(fecha)}`;
+    bodyEl.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-light-emphasis mt-2 mb-0">Buscando eventos de review...</p>
+      </div>
+    `;
+
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    const { data: reviewEventos, error, tablaFaltante } = await cargarReviewEventosGuardados(partidoId);
+
+    if (tablaFaltante) {
+      bodyEl.innerHTML = `
+        <div class="alert alert-warning mb-0">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Falta la tabla <strong>review_eventos</strong>. Ejecuta <code>review_events_schema.sql</code> para recuperar eventos individuales.
+        </div>
+      `;
+      return;
+    }
+
+    if (error) {
+      console.error('Error al cargar eventos de review:', error);
+      bodyEl.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-x-circle me-2"></i>
+          No se pudo cargar el compilado: ${escaparHtmlPlano(error.message || 'Error desconocido')}
+        </div>
+      `;
+      return;
+    }
+
+    let opcionesCompilado = { atajadasMinimas: 3 };
+    let clips = construirClipsCompiladoDesdeEventos(reviewEventos, opcionesCompilado);
+    let duracionTotal = clips.reduce((acc, clip) => acc + clip.duracion, 0);
+    const linkPartido = normalizarReviewUrl(partido?.youtube_link) || '';
+    const reviewLink = obtenerLinkYouTubeReview(linkPartido);
+    const beelupLink = obtenerDatosBeelupDesdeUrl(linkPartido) ? linkPartido : '';
+    const puedeGenerarBeelup = () => clips.length > 0 && !!beelupLink;
+
+    bodyEl.innerHTML = `
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div class="text-light-emphasis small">
+          <span id="compilado-modal-count">${clips.length}</span> corte(s) - Duracion estimada <span id="compilado-modal-duration">${escaparHtmlPlano(formatearSegundosVideo(duracionTotal))}</span>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <label for="compilado-modal-atajadas-min" class="form-label text-light small mb-0">Atajadas</label>
+          <select id="compilado-modal-atajadas-min" class="form-select form-select-sm" style="width: auto;">
+            <option value="3">3 o mas</option>
+            <option value="5">Solo 5</option>
+          </select>
+          ${reviewLink ? `
+            <a class="btn btn-sm btn-outline-light" href="${escaparAtributoHtml(reviewLink)}" target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-camera-video me-1"></i>Review completa
+            </a>
+          ` : ''}
+        </div>
+      </div>
+      <div class="review-clip-list" id="compilado-modal-list">
+        ${renderizarClipsCompiladoHtml(clips, reviewLink, opcionesCompilado)}
+      </div>
+      <div class="border border-secondary border-opacity-25 rounded-3 p-3 mt-3">
+        <label class="form-label text-light small mb-1">Compilado descargable</label>
+        <input type="file" id="compilado-modal-video" class="form-control form-control-sm mb-2" accept="video/*">
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="compilado-modal-export" class="btn btn-outline-light btn-sm" ${clips.length ? '' : 'disabled'}>
+            <i class="bi bi-download me-1"></i>Cortes JSON
+          </button>
+          <button type="button" id="compilado-modal-build-beelup" class="btn btn-warning btn-sm" ${puedeGenerarBeelup() ? '' : 'disabled'}>
+            <i class="bi bi-magic me-1"></i>Generar MP4 Beelup
+          </button>
+          <button type="button" id="compilado-modal-build" class="btn btn-warning btn-sm" ${clips.length ? '' : 'disabled'}>
+            <i class="bi bi-film me-1"></i>Generar WebM local
+          </button>
+        </div>
+        <div id="compilado-modal-status" class="small text-light-emphasis mt-2"></div>
+      </div>
+    `;
+
+    const exportBtn = document.getElementById('compilado-modal-export');
+    const buildBeelupBtn = document.getElementById('compilado-modal-build-beelup');
+    const buildBtn = document.getElementById('compilado-modal-build');
+    const fileInput = document.getElementById('compilado-modal-video');
+    const statusEl = document.getElementById('compilado-modal-status');
+    const nombreBase = `compilado-t5-${partido?.fecha || partidoId}`;
+    const actualizarClipsModal = () => {
+      opcionesCompilado = { atajadasMinimas: obtenerUmbralAtajadasCompilado('compilado-modal-atajadas-min') };
+      clips = construirClipsCompiladoDesdeEventos(reviewEventos, opcionesCompilado);
+      duracionTotal = clips.reduce((acc, clip) => acc + clip.duracion, 0);
+
+      const countEl = document.getElementById('compilado-modal-count');
+      const durationEl = document.getElementById('compilado-modal-duration');
+      const listEl = document.getElementById('compilado-modal-list');
+      if (countEl) countEl.textContent = String(clips.length);
+      if (durationEl) durationEl.textContent = formatearSegundosVideo(duracionTotal);
+      if (listEl) listEl.innerHTML = renderizarClipsCompiladoHtml(clips, reviewLink, opcionesCompilado);
+      if (exportBtn) exportBtn.disabled = clips.length === 0;
+      if (buildBtn) buildBtn.disabled = clips.length === 0;
+      if (buildBeelupBtn) buildBeelupBtn.disabled = !puedeGenerarBeelup();
+    };
+
+    document.getElementById('compilado-modal-atajadas-min')?.addEventListener('change', actualizarClipsModal);
+
+    exportBtn?.addEventListener('click', () => {
+      descargarJsonCompilado(clips, nombreBase, reviewLink, opcionesCompilado);
+    });
+
+    buildBeelupBtn?.addEventListener('click', async () => {
+      if (buildBeelupBtn) buildBeelupBtn.disabled = true;
+      try {
+        await generarMp4CompiladoDesdeBeelup(beelupLink, clips, statusEl, nombreBase);
+      } finally {
+        if (buildBeelupBtn) buildBeelupBtn.disabled = !puedeGenerarBeelup();
+      }
+    });
+
+    buildBtn?.addEventListener('click', async () => {
+      if (buildBtn) buildBtn.disabled = true;
+      try {
+        await generarVideoCompiladoDesdeArchivo(fileInput?.files?.[0] || null, clips, statusEl, nombreBase);
+      } finally {
+        if (buildBtn) buildBtn.disabled = clips.length === 0;
+      }
+    });
+  };
+
   // Popup de goles del partido
   window.mostrarGolesPartido = function(partidoId) {
     const partido = todosLosPartidos.find(p => p.id === partidoId);
     if (!partido) return;
 
     const goles = partido.goles || [];
-    const youtubeLink = partido.youtube_link || null;
+    const youtubeLink = obtenerLinkYouTubeReview(partido.youtube_link) || null;
 
     // Calcular marcador
     let golesEq1 = 0, golesEq2 = 0;
@@ -12483,10 +16983,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (!verificarPermisosAdmin('eliminar un partido')) {
         return;
     }
-    
+
     // Confirmación antes de eliminar
     const confirmacion = confirm('⚠️ ¿Estás seguro de que quieres eliminar este partido?\n\nEsta acción eliminará:\n• Los datos del partido\n• Todos los goles registrados\n• Todas las estadísticas de jugadores\n• Esta acción NO se puede deshacer');
-    
+
     if (!confirmacion) {
       return;
     }
@@ -12530,10 +17030,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Éxito
       showToast('🗑️ Partido eliminado exitosamente', 'success');
-      
+
       // Recargar el historial para reflejar los cambios
       cargarHistorialPartidos();
-      
+
       // Recargar estadísticas para actualizar los totales
       await cargarEstadisticas();
 
@@ -12650,7 +17150,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       document.getElementById('editar-fecha').value = partido.fecha;
       document.getElementById('editar-cancha').value = partido.cancha || '';
       document.getElementById('editar-temporada').value = partido.temporada_id || '';
-      document.getElementById('editar-youtube-link').value = partido.youtube_link || '';
+      document.getElementById('editar-youtube-link').value = obtenerLinkYouTubeReview(partido.youtube_link) || '';
 
       // Separar jugadores por equipo
       const jugadoresEquipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
@@ -12995,33 +17495,33 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     }
   }
 
-  // Función para editar solo el link de YouTube de un partido
+  // Funcion para editar solo el link de review de un partido
   window.editarYouTubeLink = async function(partidoId, linkActual = '') {
     // Verificar permisos de administrador
-    if (!verificarPermisosAdmin('editar el link de YouTube')) {
+    if (!verificarPermisosAdmin('editar el link de review')) {
         return;
     }
 
     try {
-      console.log('📹 Editando link de YouTube para partido:', partidoId);
-      
+      console.log('📹 Editando link de review para partido:', partidoId);
+
       // Pre-llenar el modal con el link actual
-      document.getElementById('youtube-link-editar').value = linkActual;
+      document.getElementById('youtube-link-editar').value = obtenerLinkYouTubeReview(linkActual) || '';
 
       // Almacenar el ID del partido que se está editando
       window.partidoYouTubeEditandoId = partidoId;
 
-      // Abrir el modal específico de YouTube
+      // Abrir el modal especifico de review
       const modal = new bootstrap.Modal(document.getElementById('editarYouTubeModal'));
       modal.show();
 
     } catch (error) {
-      console.error('Error al abrir modal de edición de YouTube:', error);
-      showToast('Error inesperado al abrir el editor de YouTube', 'error');
+      console.error('Error al abrir modal de edicion de review:', error);
+      showToast('Error inesperado al abrir el editor de review', 'error');
     }
   };
 
-  // Event listener para guardar cambios del link de YouTube
+  // Event listener para guardar cambios del link de review
   document.getElementById('btn-guardar-youtube')?.addEventListener('click', async function() {
     if (!window.partidoYouTubeEditandoId) {
       showToast('Error: No hay partido seleccionado para editar', 'error');
@@ -13029,7 +17529,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     }
 
     try {
-      const youtube_link = document.getElementById('youtube-link-editar').value.trim() || null;
+      const youtubeLinkInput = document.getElementById('youtube-link-editar').value.trim();
+      const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
+
+      if (youtubeLinkInput && !youtube_link) {
+        showToast('El link de review para Historial debe ser de YouTube.', 'warning');
+        return;
+      }
 
       // Mostrar loading
       const btn = document.getElementById('btn-guardar-youtube');
@@ -13037,24 +17543,24 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       btn.disabled = true;
       btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Guardando...';
 
-      // Actualizar solo el link de YouTube en la base de datos
+      // Actualizar solo el link de review en la base de datos
       const { error } = await supabase
         .from('partidos')
         .update({ youtube_link: youtube_link })
         .eq('id', window.partidoYouTubeEditandoId);
 
       if (error) {
-        console.error('Error al actualizar link de YouTube:', error);
+        console.error('Error al actualizar link de review:', error);
         throw new Error(`Error al actualizar el link: ${error.message}`);
       }
 
       // Éxito
       if (youtube_link) {
-        showToast('📹 Link de YouTube actualizado exitosamente', 'success');
+        showToast('📹 Link de review actualizado exitosamente', 'success');
       } else {
-        showToast('🗑️ Link de YouTube eliminado exitosamente', 'success');
+        showToast('🗑️ Link de review eliminado exitosamente', 'success');
       }
-      
+
       // Cerrar modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('editarYouTubeModal'));
       modal.hide();
@@ -13066,13 +17572,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       cargarHistorialPartidos();
 
     } catch (error) {
-      console.error('Error al guardar link de YouTube:', error);
+      console.error('Error al guardar link de review:', error);
       showToast(`Error al guardar el link: ${error.message}`, 'error');
     } finally {
       // Restaurar botón
       const btn = document.getElementById('btn-guardar-youtube');
       btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-youtube me-2"></i>Guardar Link';
+      btn.innerHTML = '<i class="bi bi-camera-video me-2"></i>Guardar Link';
     }
   });
 
@@ -13087,10 +17593,16 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const fecha = document.getElementById('editar-fecha').value;
       const cancha = document.getElementById('editar-cancha').value.trim();
       const temporada_id = document.getElementById('editar-temporada').value || null;
-      const youtube_link = document.getElementById('editar-youtube-link').value.trim() || null;
+      const youtubeLinkInput = document.getElementById('editar-youtube-link').value.trim();
+      const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
 
       if (!fecha) {
         showToast('La fecha es obligatoria', 'warning');
+        return;
+      }
+
+      if (youtubeLinkInput && !youtube_link) {
+        showToast('El link de review para Historial debe ser de YouTube.', 'warning');
         return;
       }
 
@@ -13124,7 +17636,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Éxito
       showToast('✅ Partido actualizado exitosamente', 'success');
-      
+
       // Cerrar modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('editarPartidoModal'));
       modal.hide();
@@ -13148,17 +17660,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
   // --- Inicialización de la app ---
   console.log('🚀 Inicializando aplicación...');
-  
+
   // Verificar autenticación primero
   verificarAutenticacion();
-  
+
   // Actualizar UI según permisos inmediatamente
   actualizarUISegunPermisos();
-  
+
   // Cargar datos iniciales
   const cargaInicialJugadores = cargarTodosLosJugadores();
   inicializarPosiciones();
   configurarFiltroPartidos();
+  initReviewSandbox();
+  initializeSearchableSelects(document);
 
   // Cargar temporadas primero, luego estadísticas e historial (en secuencia)
   Promise.all([cargaInicialJugadores, cargarTemporadas()]).then(async () => {
@@ -13297,22 +17811,22 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   if (playerForm) {
     playerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const nombre = document.getElementById('nombre').value.trim();
       const posicionPrimaria = document.getElementById('posicion-primaria').value;
       const posicionSecundaria = document.getElementById('posicion-secundaria').value;
       const pulmon = document.getElementById('pulmon').value;
-      
+
       if (!nombre) {
         showToast('El nombre del jugador es obligatorio', 'error');
         return;
       }
-      
+
       if (!posicionPrimaria) {
         showToast('La posición primaria es obligatoria', 'error');
         return;
       }
-      
+
       try {
         if (jugadorEditando) {
           // Modo edición
@@ -13323,15 +17837,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon);
           showToast(`${nombre} ha sido agregado exitosamente`, 'success');
         }
-        
+
         // Cerrar modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('playerModal'));
         modal.hide();
-        
+
         // Recargar datos
         cargarEstadisticas();
         cargarTodosLosJugadores();
-        
+
       } catch (error) {
         console.error('Error al procesar jugador:', error);
         showToast('Error al procesar el jugador: ' + error.message, 'error');
@@ -13409,7 +17923,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     empates: 0,
     partidosGrupos: 0, // para fase de grupos (necesita 3 partidos)
     victoriasGrupos: 0, // victorias específicas en fase de grupos
-    empatesGrupos: 0, // empates específicos en fase de grupos  
+    empatesGrupos: 0, // empates específicos en fase de grupos
     derrotasGrupos: 0, // derrotas específicas en fase de grupos
     bonusCount: 0, // cantidad de bonus: 0, 1 (2V+1E) o 2 (3V)
     eliminado: false,
@@ -13424,7 +17938,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
       return { badge: 'bg-success', text: `👑 Campeón${bonus}`, descripcion: 'Ganó el mundial' };
     }
-    
+
     switch (jugador.fase) {
       case 'grupos': {
         const record = `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`;
@@ -13575,7 +18089,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const loadOverridesFromDatabase = async () => {
     try {
       console.log('🔄 Cargando overrides de moneda desde la base de datos...');
-      
+
       const { data: overrides, error } = await supabase
         .from('mundialito_moneda_overrides')
         .select('*')
@@ -13604,7 +18118,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       console.log(`✅ Cargados ${overrides.length} overrides desde la base de datos`);
       console.log('📋 Overrides exactos:', Object.keys(window.mundialitoMonedaOverridesExact).length);
       console.log('📋 Overrides jugador-fase:', Object.keys(window.mundialitoMonedaOverridesJugadorFase).length);
-      
+
     } catch (error) {
       console.error('Error cargando overrides desde BD:', error);
     }
@@ -13616,15 +18130,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       console.log('🔄 Cargando campeones mundiales...');
       console.log('🔍 jugadoresMundial existe:', typeof jugadoresMundial !== 'undefined');
       console.log('🔍 jugadoresMundial size:', typeof jugadoresMundial !== 'undefined' ? jugadoresMundial.size : 'undefined');
-      
+
       // Limpiar cache anterior
       window.campeonesMundiales.clear();
-      
+
       // Buscar campeones en el mundialito actual
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
         console.log('🔍 Revisando jugadores del mundialito...');
         let campeonesEncontrados = 0;
-        
+
         jugadoresMundial.forEach(jugador => {
           console.log(`🔍 Jugador: ${jugador.nombre}, campeon: ${jugador.campeon}, fase: ${jugador.fase}`);
           if (jugador.campeon) {
@@ -13633,14 +18147,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             console.log(`🏆 Campeón detectado: ${jugador.nombre} (ID: ${jugador.id})`);
           }
         });
-        
+
         console.log(`🔍 Total campeones encontrados: ${campeonesEncontrados}`);
       } else {
         console.log('⚠️ jugadoresMundial no está disponible o está vacío');
       }
 
       console.log(`✅ Cargados ${window.campeonesMundiales.size} campeones mundiales`);
-      
+
     } catch (error) {
       console.error('Error cargando campeones mundiales:', error);
     }
@@ -13666,10 +18180,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     try {
       console.log('🔄 Renderizando último campeón...');
-      
+
       // Recargar campeones desde el mundialito actual
       await loadCampeonesMundiales();
-      
+
       if (window.campeonesMundiales.size === 0) {
         console.log('⚠️ No hay campeones, ocultando sección último campeón');
         container.innerHTML = '';
@@ -13717,7 +18231,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       console.log('🎨 Renderizando último campeón:', ultimoCampeon);
 
-      const fechaUltimo = ultimoCampeon.fechaCampeon ? 
+      const fechaUltimo = ultimoCampeon.fechaCampeon ?
         new Date(ultimoCampeon.fechaCampeon + 'T12:00:00').toLocaleDateString('es-ES', {
           year: 'numeric',
           month: 'long',
@@ -13734,8 +18248,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             <div class="card-body text-center p-4">
               <div class="mb-4">
                 ${imagenCampeon ? `
-                  <img src="${imagenCampeon}" alt="${ultimoCampeon.nombre} Campeón" 
-                       class="img-fluid mb-3" 
+                  <img src="${imagenCampeon}" alt="${ultimoCampeon.nombre} Campeón"
+                       class="img-fluid mb-3"
                        style="max-height: 400px; border-radius: 10px;">
                 ` : `
                   <i class="bi bi-trophy text-warning" style="font-size: 4rem;"></i>
@@ -13774,12 +18288,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     try {
       console.log('🔄 Renderizando campeones mundiales...');
-      
+
       // Recargar campeones desde el mundialito actual
       await loadCampeonesMundiales();
-      
+
       console.log('🔍 Campeones en cache:', window.campeonesMundiales.size);
-      
+
       if (window.campeonesMundiales.size === 0) {
         console.log('⚠️ No hay campeones en cache, ocultando sección');
         container.innerHTML = '';
@@ -13823,7 +18337,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Renderizar campeones centrados
       const html = campeonesInfo.map((campeon, index) => {
-        const fechaUltimo = campeon.fechaCampeon ? 
+        const fechaUltimo = campeon.fechaCampeon ?
           new Date(campeon.fechaCampeon + 'T12:00:00').toLocaleDateString('es-ES', {
             year: 'numeric',
             month: 'long',
@@ -13840,8 +18354,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               <div class="card-body text-center p-4">
                 ${imagenCampeon ? `
                   <div class="mb-3">
-                    <img src="${imagenCampeon}" alt="${campeon.nombre} Campeón" 
-                         class="img-fluid rounded-circle" 
+                    <img src="${imagenCampeon}" alt="${campeon.nombre} Campeón"
+                         class="img-fluid rounded-circle"
                          style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #ffc107;">
                   </div>
                 ` : `
@@ -13877,12 +18391,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Cargar overrides y campeones al inicializar
   loadOverridesFromDatabase();
   loadCampeonesMundiales();
-  
+
   // Función para cargar campeones automáticamente
   const cargarCampeonesAutomaticamente = async () => {
     try {
       console.log('🔄 Cargando campeones automáticamente...');
-      
+
       // Intentar cargar campeones desde el mundialito actual
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
         console.log('✅ Mundialito ya procesado, cargando campeones...');
@@ -13891,19 +18405,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         await renderizarCampeonesMundiales();
         return;
       }
-      
+
       // Si no hay mundialito procesado, intentar procesarlo automáticamente
       console.log('🔄 Mundialito no procesado, intentando procesar automáticamente...');
-      
+
       try {
         // Procesar mundialito automáticamente
         if (typeof window.procesarMundialito === 'function') {
           console.log('🔄 Procesando mundialito automáticamente...');
           await window.procesarMundialito();
-          
+
           // Esperar un poco para que se procesen los datos
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           // Después de procesar, cargar campeones
           console.log('🔄 Mundialito procesado, cargando campeones...');
           await loadCampeonesMundiales();
@@ -13916,7 +18430,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       } catch (error) {
         console.log('⚠️ Error procesando mundialito automáticamente:', error);
       }
-      
+
       // Si no se pudo procesar, ocultar sección
       console.log('🔄 No se pudo procesar mundialito, ocultando sección...');
       const container = document.getElementById('campeones-container');
@@ -13925,14 +18439,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       }
       toggleSeccionCampeones('ultimo-campeon-section', false);
       toggleSeccionCampeones('campeones-section', false);
-      
+
     } catch (error) {
       console.error('Error cargando campeones automáticamente:', error);
       toggleSeccionCampeones('ultimo-campeon-section', false);
       toggleSeccionCampeones('campeones-section', false);
     }
   };
-  
+
   // Cargar campeones después de que se carguen todos los datos
   setTimeout(async () => {
     await cargarCampeonesAutomaticamente();
@@ -13942,15 +18456,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const cargarMundialitoInvisible = async () => {
     try {
       console.log('🔄 Cargando mundialito invisiblemente...');
-      
+
       // Procesar mundialito sin mostrar interfaz
       if (typeof window.procesarMundialito === 'function') {
         await window.procesarMundialito();
         console.log('✅ Mundialito procesado invisiblemente');
-        
+
         // Esperar un poco para que se procesen los datos
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Después de procesar, cargar campeones
         await loadCampeonesMundiales();
         await renderizarUltimoCampeon();
@@ -13999,7 +18513,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       return false;
     }
   };
-  
+
   window.setMonedaOverrideJugadorFase = async (jugadorId, fase, pasa) => {
     try {
       // Guardar en base de datos
@@ -14023,12 +18537,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       // Actualizar cache local
       window.mundialitoMonedaOverridesJugadorFase[`${jugadorId}-${fase}`] = !!pasa;
       console.log(`✅ Override jugador-fase guardado en BD: ${jugadorId}-${fase} = ${pasa}`);
-      
+
     } catch (error) {
       console.error('Error en setMonedaOverrideJugadorFase:', error);
     }
   };
-  
+
   window.clearMonedaOverrides = async () => {
     try {
       // Limpiar de base de datos
@@ -14046,7 +18560,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       window.mundialitoMonedaOverridesExact = {};
       window.mundialitoMonedaOverridesJugadorFase = {};
       console.log('✅ Todos los overrides han sido limpiados de la BD');
-      
+
     } catch (error) {
       console.error('Error en clearMonedaOverrides:', error);
     }
@@ -14097,12 +18611,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const tirarMonedaDeterministica = (partidoId, jugadorId, fase) => {
     const keyExact = `${partidoId}-${jugadorId}-${fase}`;
     const keyJugadorFase = `${jugadorId}-${fase}`;
-    
+
     // Verificar overrides exactos primero
     if (keyExact in window.mundialitoMonedaOverridesExact) {
       return window.mundialitoMonedaOverridesExact[keyExact];
     }
-    
+
     // Verificar overrides por jugador-fase
     if (keyJugadorFase in window.mundialitoMonedaOverridesJugadorFase) {
       return window.mundialitoMonedaOverridesJugadorFase[keyJugadorFase];
@@ -14308,73 +18822,73 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Función para evaluar si pasa de fase de grupos
   const evaluarPaseGrupos = (jugador) => {
     const { victoriasGrupos, empatesGrupos, derrotasGrupos } = jugador;
-    
+
     // 3 victorias = 2 bonus (pasa directo sin moneda en 2 eliminatorias)
     if (victoriasGrupos === 3) {
       jugador.bonusCount = 2;
       return true;
     }
-    
+
     // 2 victorias + 1 empate = 1 bonus (pasa)
     if (victoriasGrupos === 2 && empatesGrupos === 1) {
       jugador.bonusCount = 1;
       return true;
     }
-    
+
     // 2 victorias + 1 derrota = pasa sin bonus
     if (victoriasGrupos === 2 && derrotasGrupos === 1) {
       jugador.bonusCount = 0;
       return true;
     }
-    
+
     // 1 victoria + 2 empates = pasa sin bonus
     if (victoriasGrupos === 1 && empatesGrupos === 2) {
       jugador.bonusCount = 0;
       return true;
     }
-    
+
     // 1 victoria + 1 empate + 1 derrota = tirar moneda para pasar
     if (victoriasGrupos === 1 && empatesGrupos === 1 && derrotasGrupos === 1) {
       // Usar último partido para generar seed determinística
       const partidoId = jugador.ultimoPartido?.id || 0;
       return tirarMonedaDeterministica(partidoId, jugador.id, 'grupos');
     }
-    
+
     // 1 victoria + 2 derrotas = afuera
     if (victoriasGrupos === 1 && derrotasGrupos === 2) {
       return false;
     }
-    
+
     // Cualquier otra combinación de empates/derrotas = afuera
     // Esto incluye: 0V, solo empates, 2+ derrotas, etc.
     return false;
   };
 
-  // Función para evaluar si pasa en fases eliminatorias  
+  // Función para evaluar si pasa en fases eliminatorias
   const evaluarPasePlayoffs = (jugador, resultado) => {
     // Si gana, pasa automáticamente sin consumir bonus
     if (resultado === 'victoria') {
       return true;
     }
-    
+
     // Si pierde, no pasa
     if (resultado === 'derrota') {
       return false;
     }
-    
+
     // Si empata y tiene bonus, consume 1 bonus y pasa automáticamente
     if (resultado === 'empate' && jugador.bonusCount > 0) {
       jugador.bonusCount--; // Consume 1 bonus
       return true;
     }
-    
+
     // Si empata sin bonus, tirar moneda
     if (resultado === 'empate') {
       // Usar último partido para generar seed determinística
       const partidoId = jugador.ultimoPartido?.id || 0;
       return tirarMonedaDeterministica(partidoId, jugador.id, jugador.fase);
     }
-    
+
     return false;
   };
 
@@ -14431,7 +18945,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       // Procesar resultado según la fase actual
       if (jugador.fase === 'grupos') {
         jugador.partidosGrupos++;
-        
+
         // Contar resultado específico de grupos
         if (resultado === 'victoria') {
           jugador.victoriasGrupos++;
@@ -14446,17 +18960,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
         // NUEVA REGLA: Eliminación inmediata con 2 derrotas
         if (jugador.derrotasGrupos >= 2) {
-      
+
           resetearAGrupos(jugador);
-          jugador.historialFases.push({ 
-            fase: 'eliminado_grupos', 
-            completada: false, 
+          jugador.historialFases.push({
+            fase: 'eliminado_grupos',
+            completada: false,
             fecha: partido.fecha,
             razon: '2 derrotas - Eliminación inmediata',
             metodo: 'automatico',
             partidoId: partido.id
           });
-          
+
           // Registrar cambio de fase
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -14468,24 +18982,24 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         // Evaluar si completó los 3 partidos de grupos
         else if (jugador.partidosGrupos >= 3) {
           const pasa = evaluarPaseGrupos(jugador);
-          
+
           if (pasa) {
             // Avanza a 8vos
             jugador.fase = '8vos';
-            
+
             // Determinar si fue por moneda
             const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
-            
-            jugador.historialFases.push({ 
-              fase: 'grupos', 
-              completada: true, 
+
+            jugador.historialFases.push({
+              fase: 'grupos',
+              completada: true,
               fecha: partido.fecha,
               record: `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`,
               bonus: jugador.bonusCount,
               metodo: fueMoneda ? 'moneda' : 'automatico',
               partidoId: partido.id
             });
-            
+
             // Registrar cambio de fase
             cambiosFase.push({
               jugador: jugador.nombre,
@@ -14496,17 +19010,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           } else {
             // No pasa, resetear a grupos
             const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
-            
+
             resetearAGrupos(jugador);
-            jugador.historialFases.push({ 
-              fase: 'eliminado_grupos', 
-              completada: false, 
+            jugador.historialFases.push({
+              fase: 'eliminado_grupos',
+              completada: false,
               fecha: partido.fecha,
               razon: 'No clasificó de grupos',
               metodo: fueMoneda ? 'moneda' : 'automatico',
               partidoId: partido.id
             });
-            
+
             // Registrar cambio de fase
             cambiosFase.push({
               jugador: jugador.nombre,
@@ -14519,7 +19033,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       } else {
         // Fases eliminatorias (8vos, 4tos, semis, final)
         const pasa = evaluarPasePlayoffs(jugador, resultado);
-        
+
         // Contar estadísticas generales
         if (resultado === 'victoria') {
           jugador.victorias++;
@@ -14528,11 +19042,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         } else if (resultado === 'derrota') {
           jugador.derrotas++;
         }
-        
+
         if (pasa) {
           // Avanza a la siguiente fase
           const faseAnterior = jugador.fase;
-          
+
           if (jugador.fase === '8vos') {
             jugador.fase = '4tos';
           } else if (jugador.fase === '4tos') {
@@ -14552,20 +19066,20 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               partidoId: partido.id
             });
           }
-          
+
           // Determinar si fue por moneda (empate sin bonus)
           const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
-          
-          jugador.historialFases.push({ 
-            fase: faseAnterior, 
-            completada: true, 
+
+          jugador.historialFases.push({
+            fase: faseAnterior,
+            completada: true,
             fecha: partido.fecha,
             resultado: resultado,
             bonus: jugador.bonusCount,
             metodo: fueMoneda ? 'moneda' : 'automatico',
             partidoId: partido.id
           });
-          
+
           // Registrar cambio de fase
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -14576,21 +19090,21 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         } else {
           // No pasa, vuelve a grupos
           const faseAnterior = jugador.fase;
-          
+
           // Determinar si fue por moneda (empate sin bonus)
           const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
-          
+
           resetearAGrupos(jugador);
-          jugador.historialFases.push({ 
-            fase: `eliminado_${faseAnterior}`, 
-            completada: false, 
+          jugador.historialFases.push({
+            fase: `eliminado_${faseAnterior}`,
+            completada: false,
             fecha: partido.fecha,
             resultado: resultado,
             razon: `Eliminado en ${faseAnterior}`,
             metodo: fueMoneda ? 'moneda' : 'automatico',
             partidoId: partido.id
           });
-          
+
           // Registrar cambio de fase
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -14612,7 +19126,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     try {
       const temporadaSelect = document.getElementById('mundialito-temporada');
       const temporadaSeleccionada = temporadaIdOverride ?? temporadaSelect?.value;
-      
+
       let query = supabase
         .from('partidos')
         .select(`*, jugador_partido(*, jugadores(id, nombre))`)
@@ -14639,12 +19153,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (container) {
         container.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-warning"></div><p class="text-light-emphasis mt-2">Procesando...</p></div>`;
       }
-      
+
       jugadoresMundial.clear();
       parejasMundial.clear();
       partidosJugadorParejas.clear();
       mundialPartidos = await cargarPartidosMundialito();
-      
+
       if (mundialPartidos.length === 0) {
         if (container) {
           container.innerHTML = `<div class="text-center py-4"><i class="bi bi-exclamation-triangle text-warning fs-2"></i><p class="text-light-emphasis mt-2">No se encontraron partidos</p></div>`;
@@ -14658,22 +19172,22 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         procesarPartidoParejasMundial(partido);
       });
       actualizarParejasCongeladasMundial();
-      
+
       mostrarFixtureMundialito();
       mostrarFixtureParejasMundialito();
       actualizarEstadisticasMundialito();
       actualizarEstadisticasParejasMundialito();
-      
+
       // Actualizar campeones mundiales después de procesar
       await loadCampeonesMundiales();
-      
+
       // Renderizar campeones en la página principal
       await renderizarUltimoCampeon();
       await renderizarCampeonesMundiales();
-      
+
       // Renderizar estadísticas (histograma) si la pestaña existe
       renderizarEstadisticasMundialito();
-      
+
     } catch (error) {
       console.error('❌ Error procesando mundialito:', error);
     }
@@ -14710,7 +19224,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     // Función para generar contenido del tooltip con historial
     const generarTooltipHistorial = (jugador) => {
       let tooltip = `<div class="fw-bold mb-2">🏆 Historial Mundial - ${jugador.nombre}</div>`;
-      
+
       // Estadísticas actuales
       tooltip += `<div class="mb-2">`;
       tooltip += `<strong>📊 Estado Actual:</strong><br>`;
@@ -14725,11 +19239,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (jugador.historialFases && jugador.historialFases.length > 0) {
         tooltip += `<div class="mb-2">`;
         tooltip += `<strong>📜 Historial de Fases:</strong><br>`;
-        
+
         jugador.historialFases.forEach((fase, index) => {
           const fechaCorregida = new Date(fase.fecha + 'T12:00:00');
           const fecha = fechaCorregida.toLocaleDateString('es-ES');
-          
+
           if (fase.completada) {
             if (fase.fase === 'grupos') {
               tooltip += `${index + 1}. ✅ Clasificó de Grupos (${fecha})`;
@@ -14782,9 +19296,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               const tooltipContent = generarTooltipHistorial(jugador);
               return `
                 <div class="col-md-4 col-lg-3">
-                  <div class="card bg-success bg-opacity-25 border-success mundialito-card" 
-                       data-bs-toggle="tooltip" 
-                       data-bs-placement="top" 
+                  <div class="card bg-success bg-opacity-25 border-success mundialito-card"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
@@ -14826,9 +19340,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               const tooltipContent = generarTooltipHistorial(jugador);
               return `
                 <div class="col-md-4 col-lg-3">
-                  <div class="card bg-${fase.color} bg-opacity-10 border-${fase.color} border-opacity-25 mundialito-card" 
-                       data-bs-toggle="tooltip" 
-                       data-bs-placement="top" 
+                  <div class="card bg-${fase.color} bg-opacity-10 border-${fase.color} border-opacity-25 mundialito-card"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
@@ -14849,7 +19363,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     });
 
     container.innerHTML = html || '<div class="col-12"><div class="text-center py-4"><p class="text-light-emphasis">No hay jugadores para mostrar</p></div></div>';
-    
+
     // Inicializar tooltips después de actualizar el contenido
     setTimeout(() => {
       const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -15221,7 +19735,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     parejasMundial.clear();
     partidosJugadorParejas.clear();
     mundialPartidos = [];
-    
+
     const container = document.getElementById('mundialito-fixture');
     if (container) {
       container.innerHTML = `<div class="text-center py-4"><p class="text-light-emphasis">Presiona "Procesar Mundial" para generar el fixture</p></div>`;
@@ -15357,30 +19871,30 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Función de test para verificar overrides de moneda
   window.testMonedaOverrides = () => {
     console.log('🧪 Iniciando test de overrides de moneda...');
-    
+
     // Test 1: Override exacto
     const partidoId = 1, jugadorId = 1, fase = '8vos';
     window.setMonedaOverrideExact(partidoId, jugadorId, fase, true);
     const resultado1 = tirarMonedaDeterministica(partidoId, jugadorId, fase);
     console.assert(resultado1 === true, 'Override exacto debería devolver true');
-    
+
     // Test 2: Override por jugador-fase
     const jugadorId2 = 2, fase2 = '4tos';
     window.setMonedaOverrideJugadorFase(jugadorId2, fase2, false);
     const resultado2 = tirarMonedaDeterministica(999, jugadorId2, fase2); // partidoId diferente
     console.assert(resultado2 === false, 'Override por jugador-fase debería devolver false');
-    
+
     // Test 3: Sin override (debería usar lógica determinística)
     const resultado3 = tirarMonedaDeterministica(999, 999, 'semis');
     console.log('Resultado sin override (determinístico):', resultado3);
-    
+
     // Test 4: Limpiar overrides
     window.clearMonedaOverrides();
     const resultado4 = tirarMonedaDeterministica(partidoId, jugadorId, fase);
     console.log('Resultado después de limpiar overrides:', resultado4);
-    
+
     console.log('✅ Test de overrides completado. Revisa la consola para ver los resultados.');
-    
+
     // Limpiar después del test
     window.clearMonedaOverrides();
   };

@@ -640,6 +640,359 @@
         .stats-sticky-player { left: 114px; }
       }
       
+      .review-sandbox-shell {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(420px, 1.2fr) minmax(360px, 0.8fr);
+      }
+
+      .review-player-panel,
+      .review-control-panel {
+        min-height: 0;
+      }
+
+      .review-player-frame {
+        aspect-ratio: 16 / 9;
+        background: rgba(2, 6, 23, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .review-player-frame iframe,
+      .review-player-frame video {
+        border: 0;
+        display: block;
+        height: 100%;
+        width: 100%;
+      }
+
+      .review-player-frame video {
+        background: #000;
+      }
+
+      .review-player-broadcast-overlay {
+        align-items: center;
+        display: flex;
+        gap: 0.35rem;
+        left: 0.55rem;
+        pointer-events: none;
+        position: absolute;
+        top: 0.55rem;
+        z-index: 5;
+      }
+
+      .review-scorebug {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.82);
+        border: 1px solid rgba(226, 232, 240, 0.14);
+        border-radius: 9px;
+        box-shadow: 0 6px 14px rgba(2, 6, 23, 0.26);
+        display: flex;
+        font-family: 'Inter', sans-serif;
+        font-weight: 900;
+        gap: 0.46rem;
+        letter-spacing: 0;
+        line-height: 1;
+        overflow: hidden;
+        padding: 0.26rem 0.58rem 0.26rem 0.36rem;
+        pointer-events: auto;
+        text-transform: uppercase;
+      }
+
+      .review-scorebug-time {
+        background: #f8fafc;
+        border-radius: 7px;
+        color: #020617;
+        font-size: 0.9rem;
+        min-width: 3.45rem;
+        padding: 0.36rem 0.48rem;
+        text-align: center;
+      }
+
+      .review-scorebug-team {
+        align-items: center;
+        background: transparent;
+        color: #f8fafc;
+        display: flex;
+        gap: 0.34rem;
+        font-size: 0.78rem;
+        padding: 0;
+      }
+
+      .review-scorebug-dot {
+        background: #e2e8f0;
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.24);
+        height: 0.45rem;
+        width: 0.45rem;
+      }
+
+      .review-scorebug-team-one .review-scorebug-dot { background: #60a5fa; }
+      .review-scorebug-team-two .review-scorebug-dot { background: #fb7185; }
+
+      .review-scorebug-goals {
+        background: #2dd4bf;
+        border-radius: 7px;
+        color: #022c22;
+        font-size: 1.08rem;
+        min-width: 2.05rem;
+        padding: 0.34rem 0.44rem;
+        text-align: center;
+      }
+
+      .review-scorebug-toggle,
+      .review-scorebug-show {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.82);
+        border: 1px solid rgba(226, 232, 240, 0.2);
+        border-radius: 999px;
+        color: #e2e8f0;
+        display: inline-flex;
+        font-size: 0.76rem;
+        font-weight: 800;
+        gap: 0.28rem;
+        line-height: 1;
+        padding: 0.38rem 0.56rem;
+        pointer-events: auto;
+      }
+
+      .review-scorebug-toggle:hover,
+      .review-scorebug-show:hover {
+        background: rgba(15, 23, 42, 0.96);
+        color: #fff;
+      }
+
+      .review-scorebug-show {
+        left: 0.65rem;
+        position: absolute;
+        top: 0.65rem;
+        z-index: 5;
+      }
+
+      .review-player-frame.scoreboard-hidden .review-player-broadcast-overlay {
+        display: none;
+      }
+
+      .review-player-frame.scoreboard-hidden .review-scorebug-show {
+        display: inline-flex !important;
+      }
+
+      .review-control-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .review-section {
+        background: rgba(15, 23, 42, 0.54);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 8px;
+        padding: 0.95rem;
+      }
+
+      .review-section-title {
+        align-items: center;
+        color: #f8fafc;
+        display: flex;
+        font-size: 0.86rem;
+        font-weight: 800;
+        gap: 0.45rem;
+        letter-spacing: 0;
+        margin: 0 0 0.75rem;
+      }
+
+      .review-team-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .review-team-box {
+        background: rgba(2, 6, 23, 0.28);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 8px;
+        min-height: 104px;
+        padding: 0.75rem;
+      }
+
+      .review-team-title {
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin-bottom: 0.55rem;
+      }
+
+      .review-player-row,
+      .review-event-row,
+      .review-stat-row {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: #e2e8f0;
+        display: flex;
+        gap: 0.55rem;
+        justify-content: space-between;
+        padding: 0.48rem 0.6rem;
+      }
+
+      .review-event-row[data-review-seek-seconds],
+      .review-stat-row[data-review-seek-seconds] {
+        cursor: pointer;
+      }
+
+      .review-event-row[data-review-seek-seconds]:hover,
+      .review-stat-row[data-review-seek-seconds]:hover {
+        border-color: rgba(250, 204, 21, 0.34);
+        background: rgba(250, 204, 21, 0.08);
+      }
+
+      .review-player-row + .review-player-row,
+      .review-event-row + .review-event-row,
+      .review-stat-row + .review-stat-row {
+        margin-top: 0.45rem;
+      }
+
+      .review-event-list {
+        max-height: 260px;
+        overflow: auto;
+      }
+
+      .review-clip-list {
+        display: grid;
+        gap: 0.5rem;
+        max-height: 320px;
+        overflow: auto;
+      }
+
+      .review-clip-row {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: #e2e8f0;
+        display: flex;
+        gap: 0.6rem;
+        justify-content: space-between;
+        padding: 0.58rem 0.65rem;
+      }
+
+      .review-clip-meta {
+        color: rgba(226, 232, 240, 0.72);
+        font-size: 0.78rem;
+      }
+
+      .review-score {
+        align-items: center;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.34), rgba(239, 68, 68, 0.28));
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 8px;
+        color: #fff;
+        display: inline-flex;
+        font-size: 1.2rem;
+        font-weight: 900;
+        justify-content: center;
+        min-width: 88px;
+        padding: 0.4rem 0.75rem;
+      }
+
+      .review-time-chip {
+        background: rgba(14, 165, 233, 0.14);
+        border: 1px solid rgba(125, 211, 252, 0.22);
+        border-radius: 999px;
+        color: #bae6fd;
+        display: inline-flex;
+        font-size: 0.75rem;
+        font-weight: 700;
+        line-height: 1;
+        padding: 0.3rem 0.45rem;
+        white-space: nowrap;
+      }
+
+      .review-empty {
+        color: rgba(226, 232, 240, 0.58);
+        font-size: 0.85rem;
+        padding: 0.35rem 0;
+      }
+
+      .searchable-wrapper {
+        position: relative;
+      }
+
+      .input-group > .searchable-wrapper {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: 1%;
+      }
+
+      .searchable-wrapper .searchable-native {
+        display: none !important;
+      }
+
+      .searchable-dropdown {
+        background: #020617;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-radius: 8px;
+        box-shadow: var(--shadow-soft);
+        display: none;
+        left: 0;
+        max-height: 220px;
+        overflow: auto;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 1080;
+      }
+
+      .searchable-wrapper.is-open .searchable-dropdown {
+        display: block;
+      }
+
+      .searchable-option {
+        color: #e2e8f0;
+        cursor: pointer;
+        font-size: 0.88rem;
+        padding: 0.48rem 0.65rem;
+      }
+
+      .searchable-option:hover,
+      .searchable-option.is-active {
+        background: rgba(102, 126, 234, 0.26);
+        color: #fff;
+      }
+
+      .searchable-option.is-empty {
+        color: rgba(226, 232, 240, 0.58);
+        cursor: default;
+      }
+
+      @media (max-width: 1100px) {
+        .review-sandbox-shell {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .review-player-broadcast-overlay {
+          transform: scale(0.82);
+          transform-origin: top left;
+        }
+
+        .review-scorebug-toggle span,
+        .review-scorebug-show span {
+          display: none;
+        }
+
+        .review-team-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .review-section .row > [class*="col-"] {
+          margin-bottom: 0.5rem;
+        }
+      }
+
       /* Botón flotante mejorado */
       .floating-btn {
         position: fixed;
@@ -1898,8 +2251,9 @@
         transition: all 0.3s ease;
       }
       
-      /* Botones de YouTube - siempre visibles */
-      .partido-card .btn-outline-danger[title*="YouTube"],
+      /* Botones de review - siempre visibles */
+      .partido-card .btn-outline-danger[title*="review"],
+      .partido-card .btn-outline-danger[title*="Review"],
       .partido-card .btn-outline-info {
         opacity: 1 !important;
         transform: translateX(0) !important;
@@ -2257,6 +2611,11 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial-content" type="button" role="tab" aria-controls="historial-content" aria-selected="false">
             <i class="bi bi-calendar-event me-2"></i>Historial de Partidos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="review-sandbox-tab" data-bs-toggle="tab" data-bs-target="#review-sandbox-content" type="button" role="tab" aria-controls="review-sandbox-content" aria-selected="false">
+            <i class="bi bi-camera-reels me-2"></i>REVIEW
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -2758,9 +3117,9 @@
             <!-- Link de YouTube para administradores -->
             <div class="row g-3 mb-4" data-admin-only>
               <div class="col-md-12">
-                <label class="form-label text-light">📹 Link de Review en YouTube (Opcional)</label>
+                <label class="form-label text-light">📹 Link de Review en YouTube</label>
                 <input type="url" id="youtube-link-partido" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
-                <div class="form-text">Solo visible para administradores. Agrega el enlace a la review del partido.</div>
+                <div class="form-text">Solo visible para administradores. Este enlace se usa en Historial para ver la review y los goles.</div>
               </div>
             </div>
 
@@ -2945,6 +3304,307 @@
     </main>
     </div>
     <!-- End Estadísticas Tab -->
+
+    <!-- Review Sandbox Tab -->
+    <div class="tab-pane fade" id="review-sandbox-content" role="tabpanel" aria-labelledby="review-sandbox-tab">
+      <main class="container-fluid py-4">
+        <section class="animate-fade-in-up">
+          <div class="review-sandbox-shell">
+            <div class="review-player-panel enhanced-card rounded-3 p-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+                <div>
+                  <h2 class="h4 text-white fw-bold mb-1">
+                    <i class="bi bi-camera-video me-2"></i>Sandbox de Review
+                  </h2>
+                  <p class="text-light-emphasis mb-0">Beelup, YouTube o link de review del partido.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" id="review-load-link" class="btn btn-primary btn-enhanced">
+                    <i class="bi bi-play-circle me-1"></i>Cargar
+                  </button>
+                  <button type="button" id="review-popup-link" class="btn btn-warning btn-enhanced" title="Abrir reproductor popup">
+                    <i class="bi bi-window-plus me-1"></i>Popup video
+                  </button>
+                  <button type="button" id="review-annotation-popup-link" class="btn btn-outline-warning btn-enhanced" title="Abrir datos popup">
+                    <i class="bi bi-ui-checks-grid me-1"></i>Popup datos
+                  </button>
+                  <button type="button" id="review-open-link" class="btn btn-outline-light" title="Abrir link externo">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="input-group mb-3">
+                <span class="input-group-text bg-dark border-secondary text-light"><i class="bi bi-link-45deg"></i></span>
+                <input type="url" id="review-link" class="form-control" placeholder="https://beelup.com/player.php?id=32154594">
+              </div>
+              <div id="review-popup-status" class="small text-light-emphasis mb-3">
+                Reproductor sin sincronizar. Si Min/Seg quedan vacios, se usa el tiempo sincronizado del reproductor.
+              </div>
+
+              <div class="review-player-frame">
+                <div id="review-player-scoreboard" class="review-player-broadcast-overlay" aria-live="polite">
+                  <div class="review-scorebug">
+                    <span id="review-player-score-time" class="review-scorebug-time">--:--</span>
+                    <span class="review-scorebug-team review-scorebug-team-one">
+                      <span class="review-scorebug-dot"></span>E1
+                    </span>
+                    <span id="review-player-score-team-one" class="review-scorebug-goals">0</span>
+                    <span id="review-player-score-team-two" class="review-scorebug-goals">0</span>
+                    <span class="review-scorebug-team review-scorebug-team-two">
+                      E2<span class="review-scorebug-dot"></span>
+                    </span>
+                  </div>
+                  <button type="button" id="review-player-score-hide" class="review-scorebug-toggle" title="Ocultar marcador" aria-label="Ocultar marcador">
+                    <i class="bi bi-eye-slash"></i><span>Ocultar</span>
+                  </button>
+                </div>
+                <button type="button" id="review-player-score-show" class="review-scorebug-show d-none" title="Mostrar marcador" aria-label="Mostrar marcador">
+                  <i class="bi bi-eye"></i><span>Marcador</span>
+                </button>
+                <iframe id="review-player-frame" title="Review player" src="about:blank" allow="fullscreen; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                <video id="review-player-video" class="d-none" controls playsinline></video>
+              </div>
+
+            </div>
+
+            <div class="review-control-panel enhanced-card rounded-3 p-3">
+              <div class="review-section">
+                <h3 class="review-section-title"><i class="bi bi-clipboard-data text-info"></i>Datos del partido</h3>
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Fecha</label>
+                    <input type="date" id="review-fecha" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Cancha</label>
+                    <input type="text" id="review-cancha" class="form-control form-control-sm" placeholder="Cancha">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Temporada</label>
+                    <select id="review-temporada" class="form-select form-select-sm">
+                      <option value="">Seleccionar temporada</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Resultado</label>
+                    <input type="text" id="review-resultado" class="form-control form-control-sm" placeholder="0-0">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Ganador</label>
+                    <select id="review-ganador" class="form-select form-select-sm">
+                      <option value="">Seleccionar</option>
+                      <option value="1">Equipo 1</option>
+                      <option value="2">Equipo 2</option>
+                      <option value="0">Empate</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <div id="review-marcador" class="review-score w-100">0 - 0</div>
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label text-light small">Inicio partido en video</label>
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text bg-dark border-secondary text-light">Min</span>
+                      <input type="number" id="review-inicio-minuto" class="form-control" min="0" max="999" placeholder="0">
+                      <span class="input-group-text bg-dark border-secondary text-light">Seg</span>
+                      <input type="number" id="review-inicio-segundo" class="form-control" min="0" max="59" placeholder="0">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-section">
+                <h3 class="review-section-title"><i class="bi bi-people text-success"></i>Equipos</h3>
+                <div class="input-group input-group-sm mb-3">
+                  <select id="review-jugador-select" class="form-select searchable-select">
+                    <option value="">Seleccionar jugador</option>
+                  </select>
+                  <button type="button" id="review-add-equipo1" class="btn btn-outline-primary">Equipo 1</button>
+                  <button type="button" id="review-add-equipo2" class="btn btn-outline-danger">Equipo 2</button>
+                </div>
+                <div class="review-team-grid">
+                  <div class="review-team-box">
+                    <div class="review-team-title text-primary">Equipo 1</div>
+                    <div id="review-equipo1-list"></div>
+                  </div>
+                  <div class="review-team-box">
+                    <div class="review-team-title text-danger">Equipo 2</div>
+                    <div id="review-equipo2-list"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-section">
+                <h3 class="review-section-title"><i class="bi bi-star-fill text-warning"></i>Reconocimientos</h3>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label class="form-label text-light small">MVP</label>
+                    <select id="review-mvp" class="form-select form-select-sm searchable-select">
+                      <option value="">Sin MVP</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label text-light small">ACE</label>
+                    <select id="review-ace" class="form-select form-select-sm searchable-select">
+                      <option value="">Sin ACE</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h3 class="review-section-title mb-0"><i class="bi bi-bullseye text-success"></i>Goles</h3>
+                  <span class="badge bg-secondary" id="review-event-count">0</span>
+                </div>
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Goleador</label>
+                    <select id="review-goleador" class="form-select form-select-sm searchable-select">
+                      <option value="">Goleador</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Asistencia</label>
+                    <select id="review-asistencia" class="form-select form-select-sm searchable-select">
+                      <option value="">Sin asistencia</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Cagada</label>
+                    <select id="review-cagada-gol" class="form-select form-select-sm searchable-select">
+                      <option value="">Sin cagada</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Min</label>
+                    <input type="number" id="review-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Seg</label>
+                    <input type="number" id="review-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check mt-3">
+                      <input class="form-check-input" type="checkbox" id="review-gol-contra">
+                      <label class="form-check-label text-light small" for="review-gol-contra">Gol en contra</label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <button type="button" id="review-add-gol" class="btn btn-success btn-sm w-100">
+                      <i class="bi bi-plus me-1"></i>Agregar gol
+                    </button>
+                  </div>
+                </div>
+                <div id="review-eventos-list" class="review-event-list"></div>
+              </div>
+
+              <div class="review-section">
+                <h3 class="review-section-title"><i class="bi bi-shield-check text-info"></i>Atajadas y cagadas</h3>
+                <div class="small text-light-emphasis mb-2">
+                  Cada carga queda como jugada individual; el total por jugador se agrupa al guardar el partido.
+                </div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-6">
+                    <label class="form-label text-light small">Atajadas</label>
+                    <select id="review-atajadas-jugador" class="form-select form-select-sm searchable-select">
+                      <option value="">Jugador</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Cant.</label>
+                    <input type="number" id="review-atajadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
+                  </div>
+                  <div class="col-md-4">
+                    <button type="button" id="review-add-atajadas" class="btn btn-outline-info btn-sm w-100">Agregar</button>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Cagadas</label>
+                    <select id="review-cagadas-jugador" class="form-select form-select-sm searchable-select">
+                      <option value="">Jugador</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Cant.</label>
+                    <input type="number" id="review-cagadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Min</label>
+                    <input type="number" id="review-cagadas-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Seg</label>
+                    <input type="number" id="review-cagadas-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
+                  </div>
+                  <div class="col-md-2">
+                    <button type="button" id="review-add-cagadas" class="btn btn-outline-danger btn-sm w-100">Agregar</button>
+                  </div>
+                </div>
+                <div class="row g-2 mt-2">
+                  <div class="col-md-6">
+                    <div id="review-atajadas-list"></div>
+                  </div>
+                  <div class="col-md-6">
+                    <div id="review-cagadas-list"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-section">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h3 class="review-section-title mb-0"><i class="bi bi-scissors text-warning"></i>Compilado</h3>
+                  <span class="badge bg-secondary" id="review-compilado-count">0</span>
+                </div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <div class="small text-light-emphasis">
+                    Goles: 10s antes y 5s despues. Cagadas: 5s antes y 5s despues.
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <label for="review-compilado-atajadas-min" class="form-label text-light small mb-0">Atajadas</label>
+                    <select id="review-compilado-atajadas-min" class="form-select form-select-sm" style="width: auto;">
+                      <option value="3">3 o mas</option>
+                      <option value="5">Solo 5</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="review-compilado-list" class="review-clip-list"></div>
+                <div class="border border-secondary border-opacity-25 rounded-3 p-2 mt-3">
+                  <label class="form-label text-light small mb-1">Compilado descargable</label>
+                  <input type="file" id="review-compilado-video" class="form-control form-control-sm mb-2" accept="video/*">
+                  <div class="d-flex flex-wrap gap-2">
+                    <button type="button" id="review-export-compilado" class="btn btn-outline-light btn-sm">
+                      <i class="bi bi-download me-1"></i>Cortes JSON
+                    </button>
+                    <button type="button" id="review-build-compilado-beelup" class="btn btn-warning btn-sm">
+                      <i class="bi bi-magic me-1"></i>Generar MP4 Beelup
+                    </button>
+                    <button type="button" id="review-build-compilado" class="btn btn-warning btn-sm">
+                      <i class="bi bi-film me-1"></i>Generar WebM local
+                    </button>
+                  </div>
+                  <div id="review-compilado-status" class="small text-light-emphasis mt-2"></div>
+                </div>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" id="review-export-analysis" class="btn btn-outline-light btn-enhanced">
+                  <i class="bi bi-filetype-json me-2"></i>Exportar analisis
+                </button>
+                <button type="button" id="review-import-analysis" class="btn btn-outline-info btn-enhanced">
+                  <i class="bi bi-upload me-2"></i>Importar analisis
+                </button>
+                <input type="file" id="review-import-analysis-file" class="d-none" accept="application/json,.json">
+                <button type="button" id="review-save-partido" class="btn btn-primary btn-lg btn-enhanced ms-auto">
+                  <i class="bi bi-save me-2"></i>Guardar partido revisado
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <!-- End Review Sandbox Tab -->
 
     <!-- Historial Tab -->
     <div class="tab-pane fade" id="historial-content" role="tabpanel" aria-labelledby="historial-tab">
@@ -4193,9 +4853,9 @@
               <!-- Link de YouTube para administradores -->
               <div class="row g-3 mb-4">
                 <div class="col-md-12">
-                  <label for="editar-youtube-link" class="form-label text-light">📹 Link de Review en YouTube (Opcional)</label>
+                  <label for="editar-youtube-link" class="form-label text-light">📹 Link de Review en YouTube</label>
                   <input type="url" id="editar-youtube-link" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
-                  <div class="form-text">Agrega el enlace a la review del partido en YouTube.</div>
+                  <div class="form-text">Agrega el enlace de YouTube usado por Historial y los goles.</div>
                 </div>
               </div>
 
@@ -4259,14 +4919,14 @@
       </div>
     </div>
 
-    <!-- Modal para Editar Link de YouTube -->
+    <!-- Modal para Editar Link de Review -->
     <div class="modal fade" id="editarYouTubeModal" tabindex="-1" aria-labelledby="editarYouTubeModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-md">
         <div class="modal-content enhanced-card border-0">
           <div class="modal-header border-bottom border-light-subtle">
             <h5 class="modal-title text-white" id="editarYouTubeModalLabel">
               <span class="me-2">📹</span> 
-              Editar Link de YouTube
+              Editar Link de Review
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -4342,6 +5002,19 @@
     </div>
 
     <!-- Tooltip para información del radar -->
+    <!-- Modal para Ver Compilado del Partido -->
+    <div class="modal fade" id="compiladoPartidoModal" tabindex="-1" aria-labelledby="compiladoPartidoModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content enhanced-card border-0">
+          <div class="modal-header border-bottom border-light-subtle">
+            <h5 class="modal-title text-white" id="compiladoPartidoModalLabel"></h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="compiladoPartidoModalBody"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="radar-info-tooltip" style="
       position: fixed;
       background: rgba(0, 0, 0, 0.9);
