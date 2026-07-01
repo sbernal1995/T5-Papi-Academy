@@ -672,6 +672,40 @@
         background: #000;
       }
 
+      .review-player-frame:fullscreen,
+      .review-player-frame:-webkit-full-screen {
+        aspect-ratio: auto;
+        background: #000;
+        border: 0;
+        border-radius: 0;
+        height: 100vh;
+        max-height: none;
+        width: 100vw;
+      }
+
+      .review-player-frame:fullscreen iframe,
+      .review-player-frame:fullscreen video,
+      .review-player-frame:-webkit-full-screen iframe,
+      .review-player-frame:-webkit-full-screen video {
+        height: 100%;
+        object-fit: contain;
+        width: 100%;
+      }
+
+      .review-player-frame:fullscreen .review-player-broadcast-overlay,
+      .review-player-frame:-webkit-full-screen .review-player-broadcast-overlay {
+        left: 1rem;
+        top: 1rem;
+        z-index: 20;
+      }
+
+      .review-player-frame:fullscreen .review-scorebug-show,
+      .review-player-frame:-webkit-full-screen .review-scorebug-show {
+        left: 1rem;
+        top: 1rem;
+        z-index: 20;
+      }
+
       .review-player-broadcast-overlay {
         align-items: center;
         display: flex;
@@ -3358,12 +3392,15 @@
                   <button type="button" id="review-player-score-hide" class="review-scorebug-toggle" title="Ocultar marcador" aria-label="Ocultar marcador">
                     <i class="bi bi-eye-slash"></i><span>Ocultar</span>
                   </button>
+                  <button type="button" id="review-player-fullscreen" class="review-scorebug-toggle" title="Pantalla completa con marcador" aria-label="Pantalla completa con marcador">
+                    <i class="bi bi-arrows-fullscreen"></i><span>Pantalla</span>
+                  </button>
                 </div>
                 <button type="button" id="review-player-score-show" class="review-scorebug-show d-none" title="Mostrar marcador" aria-label="Mostrar marcador">
                   <i class="bi bi-eye"></i><span>Marcador</span>
                 </button>
                 <iframe id="review-player-frame" title="Review player" src="about:blank" allow="fullscreen; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-                <video id="review-player-video" class="d-none" controls playsinline></video>
+                <video id="review-player-video" class="d-none" controls controlsList="nofullscreen" playsinline></video>
               </div>
 
             </div>

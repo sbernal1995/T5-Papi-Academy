@@ -7324,6 +7324,155 @@ const initApp = () => {
     }
   }
 
+  function obtenerOpcionesSearchable(select) {
+    return Array.from(select?.options || []).map(option => ({
+      value: option.value,
+      text: option.textContent.trim(),
+      disabled: option.disabled
+    }));
+  }
+
+  function sincronizarSearchableSelect(select) {
+    const input = select?.closest('.searchable-wrapper')?.querySelector('.searchable-input');
+    if (!select || !input) return;
+
+    const text = input.value.trim().toLowerCase();
+    const match = obtenerOpcionesSearchable(select).find(option =>
+      option.value && option.text.toLowerCase() === text
+    );
+    select.value = match ? match.value : (text ? select.value : '');
+  }
+
+  function renderizarSearchableDropdown(select) {
+    const wrapper = select?.closest('.searchable-wrapper');
+    const input = wrapper?.querySelector('.searchable-input');
+    const dropdown = wrapper?.querySelector('.searchable-dropdown');
+    if (!select || !wrapper || !input || !dropdown) return;
+
+    const query = input.value.trim().toLowerCase();
+    const filtered = obtenerOpcionesSearchable(select)
+      .filter(option => option.value && !option.disabled && (!query || option.text.toLowerCase().includes(query)))
+      .slice(0, 50);
+
+    if (!filtered.length) {
+      dropdown.innerHTML = '<div class="searchable-option is-empty">Sin resultados</div>';
+      wrapper.classList.add('is-open');
+      return;
+    }
+
+    dropdown.innerHTML = filtered.map((option, index) => `
+      <div class="searchable-option${index === 0 ? ' is-active' : ''}" data-value="${escaparAtributoHtml(option.value)}">
+        ${escaparHtmlPlano(option.text)}
+      </div>
+    `).join('');
+    wrapper.classList.add('is-open');
+  }
+
+  function elegirSearchableOption(select, value) {
+    const wrapper = select?.closest('.searchable-wrapper');
+    const input = wrapper?.querySelector('.searchable-input');
+    const option = Array.from(select?.options || []).find(item => item.value === value);
+    if (!select || !wrapper || !input || !option) return;
+
+    select.value = value;
+    input.value = option.textContent.trim();
+    wrapper.classList.remove('is-open');
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function actualizarSearchableSelect(select, force = false) {
+    const input = select?.closest('.searchable-wrapper')?.querySelector('.searchable-input');
+    if (!select || !input || (!force && document.activeElement === input)) return;
+
+    const option = Array.from(select.options).find(item => item.value === select.value);
+    input.value = option && option.value ? option.textContent.trim() : '';
+  }
+
+  function initializeSearchableSelects(root = document) {
+    const scope = root || document;
+    scope.querySelectorAll('select.searchable-select').forEach(select => {
+      if (select.dataset.searchableBound !== '1') {
+        select.dataset.searchableBound = '1';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'searchable-wrapper';
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.autocomplete = 'off';
+        input.className = `searchable-input ${select.classList.contains('form-select-sm') ? 'form-control form-control-sm' : 'form-control'}`;
+        input.placeholder = select.options[0]?.textContent?.trim() || 'Buscar';
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'searchable-dropdown';
+        wrapper.insertBefore(input, select);
+        wrapper.appendChild(dropdown);
+        select.classList.add('searchable-native');
+
+        input.addEventListener('focus', () => renderizarSearchableDropdown(select));
+        input.addEventListener('input', () => {
+          sincronizarSearchableSelect(select);
+          renderizarSearchableDropdown(select);
+        });
+        input.addEventListener('keydown', event => {
+          const opts = Array.from(dropdown.querySelectorAll('.searchable-option:not(.is-empty)'));
+          const active = dropdown.querySelector('.searchable-option.is-active');
+          const activeIndex = Math.max(0, opts.indexOf(active));
+
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!wrapper.classList.contains('is-open')) renderizarSearchableDropdown(select);
+            const next = event.key === 'ArrowDown'
+              ? Math.min(opts.length - 1, activeIndex + 1)
+              : Math.max(0, activeIndex - 1);
+            opts.forEach(option => option.classList.remove('is-active'));
+            opts[next]?.classList.add('is-active');
+            opts[next]?.scrollIntoView({ block: 'nearest' });
+          }
+
+          if (event.key === 'Enter') {
+            const option = dropdown.querySelector('.searchable-option.is-active:not(.is-empty)');
+            if (option) {
+              event.preventDefault();
+              elegirSearchableOption(select, option.dataset.value);
+            }
+          }
+
+          if (event.key === 'Escape') wrapper.classList.remove('is-open');
+        });
+        dropdown.addEventListener('mousedown', event => {
+          const option = event.target.closest('.searchable-option:not(.is-empty)');
+          if (!option) return;
+          event.preventDefault();
+          elegirSearchableOption(select, option.dataset.value);
+        });
+        select.addEventListener('change', () => actualizarSearchableSelect(select, true));
+      }
+
+      actualizarSearchableSelect(select);
+      if (select.closest('.searchable-wrapper')?.classList.contains('is-open')) {
+        renderizarSearchableDropdown(select);
+      }
+    });
+  }
+
+  function updateSearchableSelects(root = document) {
+    const scope = root || document;
+    scope.querySelectorAll('select.searchable-select').forEach(select => {
+      actualizarSearchableSelect(select, true);
+      if (select.closest('.searchable-wrapper')?.classList.contains('is-open')) {
+        renderizarSearchableDropdown(select);
+      }
+    });
+  }
+
+  document.addEventListener('mousedown', event => {
+    document.querySelectorAll('.searchable-wrapper.is-open').forEach(wrapper => {
+      if (!wrapper.contains(event.target)) wrapper.classList.remove('is-open');
+    });
+  });
+
   function poblarSelectoresDinamicos() {
     // Solo usar jugadores de los equipos armados
     const jugadoresDelPartido = [...equipo1, ...equipo2];
@@ -7605,6 +7754,10 @@ const initApp = () => {
     video.dataset.reviewControlsBound = '1';
     video.tabIndex = 0;
     video.style.transition = 'transform 120ms ease-out';
+    try {
+      video.setAttribute('controlsList', 'nofullscreen');
+      video.controlsList?.add('nofullscreen');
+    } catch (error) {}
     let pointerDentro = false;
     const esCampoEditable = element => {
       const tag = element?.tagName?.toLowerCase();
@@ -7652,6 +7805,93 @@ const initApp = () => {
       const delta = event.deltaY < 0 ? 0.12 : -0.12;
       aplicarZoomReproductorReview(video, (Number(video.dataset.reviewZoom) || 1) + delta, event);
     }, { passive: false });
+  }
+
+  function obtenerElementoFullscreenReview(doc = document) {
+    return doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement || null;
+  }
+
+  function obtenerFrameFullscreenReview() {
+    return document.querySelector('#review-sandbox-content .review-player-frame');
+  }
+
+  function solicitarFullscreenReview(element) {
+    if (!element) return Promise.reject(new Error('No hay reproductor para pantalla completa.'));
+    const request = element.requestFullscreen || element.webkitRequestFullscreen || element.msRequestFullscreen;
+    if (!request) return Promise.reject(new Error('Este navegador no soporta pantalla completa.'));
+    return Promise.resolve(request.call(element));
+  }
+
+  function salirFullscreenReview(doc = document) {
+    const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+    if (!exit) return Promise.resolve();
+    return Promise.resolve(exit.call(doc));
+  }
+
+  function actualizarBotonFullscreenReview() {
+    const frame = obtenerFrameFullscreenReview();
+    const button = document.getElementById('review-player-fullscreen');
+    const icon = button?.querySelector('i');
+    const label = button?.querySelector('span');
+    const activo = !!frame && obtenerElementoFullscreenReview() === frame;
+
+    frame?.classList.toggle('is-review-fullscreen', activo);
+    if (button) {
+      button.setAttribute('aria-pressed', activo ? 'true' : 'false');
+      button.setAttribute('title', activo ? 'Salir de pantalla completa' : 'Pantalla completa con marcador');
+      button.setAttribute('aria-label', activo ? 'Salir de pantalla completa' : 'Pantalla completa con marcador');
+    }
+    if (icon) icon.className = activo ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+    if (label) label.textContent = activo ? 'Salir' : 'Pantalla';
+  }
+
+  function redirigirFullscreenVideoReview() {
+    const frame = obtenerFrameFullscreenReview();
+    const video = document.getElementById('review-player-video');
+    const fullscreenElement = obtenerElementoFullscreenReview();
+    if (!frame || !video || fullscreenElement !== video || frame.dataset.reviewFullscreenRedirecting === '1') return false;
+
+    frame.dataset.reviewFullscreenRedirecting = '1';
+    const estabaReproduciendo = !video.paused;
+    salirFullscreenReview()
+      .then(() => solicitarFullscreenReview(frame))
+      .catch(() => {})
+      .finally(() => {
+        delete frame.dataset.reviewFullscreenRedirecting;
+        actualizarBotonFullscreenReview();
+        if (estabaReproduciendo) video.play().catch(() => {});
+      });
+    return true;
+  }
+
+  async function alternarFullscreenReview() {
+    const frame = obtenerFrameFullscreenReview();
+    if (!frame) return;
+
+    try {
+      if (obtenerElementoFullscreenReview() === frame) {
+        await salirFullscreenReview();
+      } else {
+        await solicitarFullscreenReview(frame);
+      }
+    } catch (error) {
+      showToast('El navegador no permitio activar pantalla completa desde este reproductor.', 'warning');
+    } finally {
+      actualizarBotonFullscreenReview();
+    }
+  }
+
+  function inicializarFullscreenReview() {
+    if (document.body.dataset.reviewFullscreenBound === '1') return;
+    document.body.dataset.reviewFullscreenBound = '1';
+
+    document.getElementById('review-player-fullscreen')?.addEventListener('click', alternarFullscreenReview);
+    ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(eventName => {
+      document.addEventListener(eventName, () => {
+        if (!redirigirFullscreenVideoReview()) actualizarBotonFullscreenReview();
+      });
+    });
+    actualizarBotonFullscreenReview();
   }
 
   function actualizarEstadoPopupReview() {
@@ -7979,6 +8219,26 @@ const initApp = () => {
       overflow: hidden;
       position: relative;
     }
+    main:fullscreen,
+    main:-webkit-full-screen {
+      background: #000;
+      height: 100vh;
+      width: 100vw;
+    }
+    main:fullscreen video,
+    main:-webkit-full-screen video {
+      height: 100%;
+      object-fit: contain;
+      width: 100%;
+    }
+    main:fullscreen .popup-scorebug-wrap,
+    main:-webkit-full-screen .popup-scorebug-wrap,
+    main:fullscreen .popup-scorebug-show,
+    main:-webkit-full-screen .popup-scorebug-show {
+      left: 16px;
+      top: 16px;
+      z-index: 20;
+    }
     .brand {
       font-weight: 700;
       letter-spacing: 0;
@@ -8052,6 +8312,7 @@ const initApp = () => {
       text-align: center;
     }
     .popup-scorebug-hide,
+    .popup-scorebug-fullscreen,
     .popup-scorebug-show {
       background: rgba(2, 6, 23, 0.82);
       border-radius: 999px;
@@ -8087,9 +8348,10 @@ const initApp = () => {
         <span class="popup-scorebug-team popup-scorebug-team-two">E2<span class="popup-scorebug-dot"></span></span>
       </div>
       <button type="button" id="popup-scorebug-hide" class="popup-scorebug-hide">Ocultar</button>
+      <button type="button" id="popup-fullscreen" class="popup-scorebug-fullscreen">Pantalla</button>
     </div>
     <button type="button" id="popup-scorebug-show" class="popup-scorebug-show">Marcador</button>
-    <video id="video" controls autoplay playsinline></video>
+    <video id="video" controls controlsList="nofullscreen" autoplay playsinline></video>
   </main>
   <footer>
     <span>El tiempo de este reproductor se sincroniza con el sandbox.</span>
@@ -8110,6 +8372,11 @@ const initApp = () => {
     const channel = 'BroadcastChannel' in window ? new BroadcastChannel(REVIEW_POPUP_CHANNEL) : null;
     let zoom = 1;
     let scorebugHidden = false;
+
+    try {
+      video.setAttribute('controlsList', 'nofullscreen');
+      video.controlsList && video.controlsList.add('nofullscreen');
+    } catch (error) {}
 
     function formatTime(value) {
       const total = Math.max(0, Math.round(Number(value) || 0));
@@ -8177,6 +8444,54 @@ const initApp = () => {
       scorebugTimeEl.textContent = scorebug.tiempo || '--:--';
       scorebugTeamOneEl.textContent = Number.isFinite(Number(scorebug.equipo1)) ? String(scorebug.equipo1) : '0';
       scorebugTeamTwoEl.textContent = Number.isFinite(Number(scorebug.equipo2)) ? String(scorebug.equipo2) : '0';
+    }
+
+    function getFullscreenElement() {
+      return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+    }
+
+    function requestFullscreenElement(element) {
+      const request = element && (element.requestFullscreen || element.webkitRequestFullscreen || element.msRequestFullscreen);
+      if (!request) return Promise.reject(new Error('fullscreen unavailable'));
+      return Promise.resolve(request.call(element));
+    }
+
+    function exitFullscreenDocument() {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+      if (!exit) return Promise.resolve();
+      return Promise.resolve(exit.call(document));
+    }
+
+    function updateFullscreenButton() {
+      const button = document.getElementById('popup-fullscreen');
+      const active = getFullscreenElement() === mainEl;
+      if (button) button.textContent = active ? 'Salir' : 'Pantalla';
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (getFullscreenElement() === mainEl) {
+          await exitFullscreenDocument();
+        } else {
+          await requestFullscreenElement(mainEl);
+        }
+      } catch (error) {}
+      updateFullscreenButton();
+    }
+
+    function redirectVideoFullscreen() {
+      if (getFullscreenElement() !== video || !mainEl || mainEl.dataset.fullscreenRedirecting === '1') return false;
+      mainEl.dataset.fullscreenRedirecting = '1';
+      const wasPlaying = !video.paused;
+      exitFullscreenDocument()
+        .then(function() { return requestFullscreenElement(mainEl); })
+        .catch(function() {})
+        .finally(function() {
+          delete mainEl.dataset.fullscreenRedirecting;
+          updateFullscreenButton();
+          if (wasPlaying) video.play().catch(function() {});
+        });
+      return true;
     }
 
     function bindPlayerControls() {
@@ -8252,6 +8567,12 @@ const initApp = () => {
       document.getElementById('send-now').addEventListener('click', () => send('time'));
       document.getElementById('popup-scorebug-hide').addEventListener('click', () => setScorebugHidden(true));
       document.getElementById('popup-scorebug-show').addEventListener('click', () => setScorebugHidden(false));
+      document.getElementById('popup-fullscreen').addEventListener('click', toggleFullscreen);
+      ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(function(eventName) {
+        document.addEventListener(eventName, function() {
+          if (!redirectVideoFullscreen()) updateFullscreenButton();
+        });
+      });
       window.addEventListener('message', event => receiveCommand(event.data));
       channel && channel.addEventListener('message', event => receiveCommand(event.data));
       window.addEventListener('beforeunload', () => send('closed'));
@@ -11308,6 +11629,7 @@ const initApp = () => {
     document.body.dataset.reviewSandboxBound = '1';
     inicializarCanalesPopupReview();
     inicializarScorebugReview();
+    inicializarFullscreenReview();
 
     document.getElementById('review-load-link')?.addEventListener('click', cargarLinkReviewSandbox);
     document.getElementById('review-popup-link')?.addEventListener('click', abrirPopupReviewSandbox);
