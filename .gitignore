@@ -2,6 +2,7 @@ node_modules/
 .env
 .env.*
 public/dist/ 
+downloads/
 /.venv
 /futbol-sim/.venv
 tmpclaude-0693-cwd

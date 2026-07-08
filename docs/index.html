@@ -3115,14 +3115,14 @@
             <div class="row g-3 mb-4">
               <div class="col-md-6">
                 <label class="form-label text-light">🏆 MVP del Partido</label>
-                <select id="mvp-partido" class="form-select">
+                <select id="mvp-partido" class="form-select searchable-select">
                   <option value="">Seleccionar MVP</option>
                 </select>
                 <div class="form-text">Jugador más valioso del encuentro</div>
               </div>
               <div class="col-md-6">
                 <label class="form-label text-light">⭐ ACE del Partido</label>
-                <select id="ace-partido" class="form-select">
+                <select id="ace-partido" class="form-select searchable-select">
                   <option value="">Seleccionar ACE</option>
                 </select>
                 <div class="form-text">Mejor jugador del equipo perdedor</div>
@@ -3141,7 +3141,7 @@
                   <div id="atajadas-container">
                     <div class="atajadas-row row g-2 mb-2">
                       <div class="col-7">
-                        <select class="form-select form-select-sm atajadas-jugador">
+                        <select class="form-select form-select-sm atajadas-jugador searchable-select">
                           <option value="">Seleccionar jugador</option>
                         </select>
                       </div>
@@ -3172,7 +3172,7 @@
                   <div id="cagadas-container">
                     <div class="cagadas-row row g-2 mb-2">
                       <div class="col-7">
-                        <select class="form-select form-select-sm cagadas-jugador">
+                        <select class="form-select form-select-sm cagadas-jugador searchable-select">
                           <option value="">Seleccionar jugador</option>
                         </select>
                       </div>
@@ -3559,10 +3559,23 @@
                 <div id="review-compilado-list" class="review-clip-list"></div>
                 <div class="border border-secondary border-opacity-25 rounded-3 p-2 mt-3">
                   <label class="form-label text-light small mb-1">Compilado descargable</label>
+                  <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+                    <div>
+                      <label for="review-cover-equipo1" class="form-label text-light small mb-1">Siglas E1</label>
+                      <input type="text" id="review-cover-equipo1" class="form-control form-control-sm text-uppercase" maxlength="3" value="E1" placeholder="MTX" style="width: 76px;">
+                    </div>
+                    <div>
+                      <label for="review-cover-equipo2" class="form-label text-light small mb-1">Siglas E2</label>
+                      <input type="text" id="review-cover-equipo2" class="form-control form-control-sm text-uppercase" maxlength="3" value="E2" placeholder="FAC" style="width: 76px;">
+                    </div>
+                  </div>
                   <input type="file" id="review-compilado-video" class="form-control form-control-sm mb-2" accept="video/*">
                   <div class="d-flex flex-wrap gap-2">
                     <button type="button" id="review-export-compilado" class="btn btn-outline-light btn-sm">
                       <i class="bi bi-download me-1"></i>Cortes JSON
+                    </button>
+                    <button type="button" id="review-download-portada" class="btn btn-outline-info btn-sm">
+                      <i class="bi bi-image me-1"></i>Portada PNG
                     </button>
                     <button type="button" id="review-build-compilado-beelup" class="btn btn-warning btn-sm">
                       <i class="bi bi-magic me-1"></i>Generar MP4 Beelup
@@ -4345,7 +4358,6 @@
     <!-- VISTA DE PERFIL DE JUGADOR (oculta por defecto) -->
     <!-- ============================================= -->
     <div id="vista-perfil-jugador" class="container-fluid py-4 d-none">
-
       <!-- Header del perfil -->
       <div class="row mb-4">
         <div class="col-12">
@@ -4363,40 +4375,28 @@
 
       <div id="fut-hero-container"></div>
 
-      <!-- Info principal -->
-      <div id="perfil-info-principal-legacy" class="row mb-4">
-        <!-- Card de avatar y posición -->
-        <div class="col-md-3 mb-3 mb-md-0 d-none">
-          <div class="card bg-dark border-secondary h-100">
-            <div class="card-body text-center py-4">
-              <div class="display-1 mb-3" id="perfil-avatar">🏃‍♂️</div>
-              <h4 class="text-white mb-2" id="perfil-nombre">Jugador</h4>
-              <div id="perfil-posiciones" class="mb-3"></div>
-              <div class="badge bg-info fs-6" id="perfil-pulmon">
-                <i class="bi bi-heart-pulse me-1"></i>Pulmón: --
-              </div>
-            </div>
+      <!-- Layout OP.GG: Sidebar + Main Content -->
+      <div class="row g-4 mb-4">
+        <!-- Sidebar Izquierdo -->
+        <div class="col-lg-4 col-xl-3" id="perfil-sidebar-container">
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Cargando resumen...</p>
           </div>
         </div>
 
-        <!-- Stats principales -->
-        <div class="col-12">
-          <div class="row g-3" id="perfil-stats-principales">
-            <!-- Se llena dinámicamente con cards de stats -->
-            <div class="col-12 text-center py-5">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-              </div>
-              <p class="text-muted mt-2">Cargando estadísticas...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- Contenido Principal Derecho -->
+        <div class="col-lg-8 col-xl-9">
 
       <!-- Tabs del perfil -->
       <ul class="nav nav-tabs nav-fill" id="perfil-tabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-perfil-videos" data-bs-toggle="tab" data-bs-target="#perfil-videos" type="button" role="tab">
+          <button class="nav-link active" id="tab-perfil-partidos" data-bs-toggle="tab" data-bs-target="#perfil-partidos" type="button" role="tab">
+            <i class="bi bi-clock-history me-1"></i>Partidos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-videos" data-bs-toggle="tab" data-bs-target="#perfil-videos" type="button" role="tab">
             <i class="bi bi-play-circle me-1"></i>Mis Goles
           </button>
         </li>
@@ -4428,8 +4428,18 @@
       </ul>
 
       <div class="tab-content mt-4" id="perfil-tab-content">
+        <!-- Tab Partidos (OP.GG Style) -->
+        <div class="tab-pane fade show active" id="perfil-partidos" role="tabpanel">
+          <div id="perfil-partidos-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-clock-history display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus partidos recientes</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Tab Videos -->
-        <div class="tab-pane fade show active" id="perfil-videos" role="tabpanel">
+        <div class="tab-pane fade" id="perfil-videos" role="tabpanel">
           <div class="row g-3" id="perfil-videos-container">
             <div class="col-12 text-center py-5">
               <i class="bi bi-camera-video display-4 text-muted"></i>
@@ -4488,6 +4498,9 @@
           </div>
         </div>
       </div>
+      
+      </div> <!-- Cierre col-lg-8 -->
+      </div> <!-- Cierre row -->
 
     </div>
     <!-- End Vista Perfil Jugador -->
@@ -4923,7 +4936,7 @@
               
               <div class="d-flex gap-2">
                 <button type="button" id="btn-guardar-youtube" class="btn btn-danger btn-enhanced flex-fill">
-                  <i class="bi bi-youtube me-2"></i>
+                  <i class="bi bi-camera-video me-2"></i>
                   Guardar Link
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -5028,6 +5041,7 @@
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
     <script type="module" src="./app.js"></script>
+    <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
     <!-- Funcionalidad de Paternidades -->
     <script>
     // ===============================

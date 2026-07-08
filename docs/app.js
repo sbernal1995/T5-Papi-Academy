@@ -46,12 +46,12 @@ async function verificarAutenticacion() {
     const { data: { user } } = await supabase.auth.getUser();
     usuarioActual = user;
     esAdmin = !!user; // Si hay usuario, es admin
-
+    
     console.log('👤 Estado de autenticación:', { user: usuarioActual, esAdmin });
-
+    
     // Actualizar UI según estado
     actualizarUISegunPermisos();
-
+    
     return esAdmin;
   } catch (error) {
     console.error('Error al verificar autenticación:', error);
@@ -66,32 +66,32 @@ async function verificarAutenticacion() {
 async function iniciarSesion() {
   const email = document.getElementById('email-login').value;
   const password = document.getElementById('password-login').value;
-
+  
   if (!email || !password) {
     showToast('Por favor ingresa email y contraseña', 'error');
     return;
   }
-
+  
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password
     });
-
+    
     if (error) throw error;
-
+    
     usuarioActual = data.user;
     esAdmin = true;
-
+    
     showToast('✅ Sesión iniciada correctamente', 'success');
-
+    
     // Cerrar modal de login
     const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
     modal.hide();
-
+    
     // Actualizar UI
     actualizarUISegunPermisos();
-
+    
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     showToast(`Error: ${error.message}`, 'error');
@@ -103,13 +103,13 @@ async function cerrarSesion() {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-
+    
     usuarioActual = null;
     esAdmin = false;
-
+    
     showToast('👋 Sesión cerrada', 'info');
     actualizarUISegunPermisos();
-
+    
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
     showToast(`Error: ${error.message}`, 'error');
@@ -121,17 +121,17 @@ function actualizarUISegunPermisos() {
   const elementosAdminSolo = document.querySelectorAll('[data-admin-only]');
   const botonesEdicion = Array.from(document.querySelectorAll('.btn-editar, .btn-eliminar, .btn-agregar, .btn-outline-warning, .btn-outline-danger'))
     .filter(btn => !(btn.closest('#review-sandbox-content') && !btn.hasAttribute('data-admin-only')));
-
+  
   // Elementos de escritorio
   const botonLogin = document.getElementById('btn-login');
   const botonLogout = document.getElementById('btn-logout');
   const estadoUsuario = document.getElementById('estado-usuario');
-
+  
   // Elementos móviles
   const botonLoginMobile = document.getElementById('btn-login-mobile');
   const botonLogoutMobile = document.getElementById('btn-logout-mobile');
   const estadoUsuarioMobile = document.getElementById('estado-usuario-mobile');
-
+  
   if (esAdmin) {
     // Usuario con permisos - mostrar elementos de edición
     elementosAdminSolo.forEach(el => el.style.display = '');
@@ -140,7 +140,7 @@ function actualizarUISegunPermisos() {
       btn.style.opacity = '1';
       btn.title = '';
     });
-
+    
     // Escritorio
     if (botonLogin) botonLogin.style.display = 'none';
     if (botonLogout) botonLogout.style.display = '';
@@ -150,7 +150,7 @@ function actualizarUISegunPermisos() {
         <span class="text-success small">Admin: ${usuarioActual?.email || 'Usuario'}</span>
       `;
     }
-
+    
     // Móvil
     if (botonLoginMobile) botonLoginMobile.style.display = 'none';
     if (botonLogoutMobile) botonLogoutMobile.style.display = '';
@@ -168,7 +168,7 @@ function actualizarUISegunPermisos() {
       btn.style.opacity = '0.3';
       btn.title = 'Requiere permisos de administrador';
     });
-
+    
     // Escritorio
     if (botonLogin) botonLogin.style.display = '';
     if (botonLogout) botonLogout.style.display = 'none';
@@ -178,7 +178,7 @@ function actualizarUISegunPermisos() {
         <span class="text-warning small">Solo lectura</span>
       `;
     }
-
+    
     // Móvil
     if (botonLoginMobile) botonLoginMobile.style.display = '';
     if (botonLogoutMobile) botonLogoutMobile.style.display = 'none';
@@ -195,11 +195,11 @@ function actualizarUISegunPermisos() {
 function verificarPermisosAdmin(operacion = 'esta operación') {
   if (!esAdmin) {
     showToast(`❌ Se requieren permisos de administrador para ${operacion}`, 'error');
-
+    
     // Mostrar modal de login
     const modal = new bootstrap.Modal(document.getElementById('loginModal'));
     modal.show();
-
+    
     return false;
   }
   return true;
@@ -208,7 +208,7 @@ function verificarPermisosAdmin(operacion = 'esta operación') {
 // Escuchar cambios en el estado de autenticación
 supabase.auth.onAuthStateChange((event, session) => {
   console.log('🔄 Cambio en autenticación:', event, session);
-
+  
   if (event === 'SIGNED_IN') {
     usuarioActual = session.user;
     esAdmin = true;
@@ -2420,7 +2420,8 @@ async function cargarPerfilJugador(jugadorId) {
   console.log('🔍 Temporada seleccionada para perfil:', temporadaPerfilSeleccionada);
 
   // Mostrar loading en stats principales
-  document.getElementById('perfil-stats-principales').innerHTML = `
+  const statsLoading = document.getElementById('perfil-stats-principales');
+  if (statsLoading) statsLoading.innerHTML = `
     <div class="col-12 text-center py-4">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Cargando...</span>
@@ -2428,6 +2429,26 @@ async function cargarPerfilJugador(jugadorId) {
       <p class="text-muted mt-2">Cargando estadísticas...</p>
     </div>
   `;
+  const sidebarLoading = document.getElementById('perfil-sidebar-container');
+  if (sidebarLoading) {
+    sidebarLoading.innerHTML = `
+      <div class="card bg-dark border-secondary">
+        <div class="card-body text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="text-muted mt-2 mb-0">Cargando resumen...</p>
+        </div>
+      </div>
+    `;
+  }
+  const partidosLoading = document.getElementById('perfil-partidos-container');
+  if (partidosLoading) {
+    partidosLoading.innerHTML = `
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted mt-2 mb-0">Cargando partidos...</p>
+      </div>
+    `;
+  }
 
   try {
     // Cargar datos del jugador
@@ -2453,7 +2474,34 @@ async function cargarPerfilJugador(jugadorId) {
         partido_id,
         partidos (
           id, fecha, cancha, youtube_link, equipo_ganador, temporada_id,
-          temporadas (nombre)
+          temporadas (nombre),
+          jugador_partido (
+            jugador_id,
+            equipo,
+            goles,
+            asistencias,
+            atajadas,
+            cagadas,
+            mvp,
+            ace,
+            puntos,
+            jugadores (
+              id,
+              nombre,
+              jugador_posicion (
+                es_primaria,
+                posicion (id, nombre)
+              )
+            )
+          ),
+          goles (
+            id,
+            goleador_id,
+            asistidor_id,
+            equipo,
+            minuto,
+            es_gol_en_contra
+          )
         )
       `)
       .eq('jugador_id', jugadorId);
@@ -2538,11 +2586,12 @@ async function cargarPerfilJugador(jugadorId) {
 
     // Renderizar el perfil
     renderizarPerfilBasico();
-    renderizarStatsMainPerfil();
+    renderizarSidebarPerfil();
+    renderizarPartidosRecientesPerfil();
     renderizarVideosGoles();
     renderizarVideosAsistencias();
     renderizarVideosCagadas();
-    renderizarEstadisticasDetalladas();
+    renderizarEstadisticasDetalladas(); // Keeps the original stats table working
 
     // Las sinergias y rivalidades se cargan bajo demanda cuando se hace click en el tab
 
@@ -3007,11 +3056,249 @@ function renderizarVideosCagadas() {
       return `<p class="mb-0 small text-light-emphasis">⚽ Gol convertido por: ${goleadorNombre}</p>`;
     }
   });
+}// --- FUNCIONES NUEVAS ESTILO OP.GG ---
+
+function calcularCompanerosYRivalesPerfil() {
+  const jugadorId = datosPerfilJugador.jugador.id;
+  const participaciones = datosPerfilJugador.participaciones || [];
+  
+  const compasMap = new Map();
+  const rivalesMap = new Map();
+
+  participaciones.forEach(part => {
+    if (!part.partidos || !part.partidos.jugador_partido) return;
+    
+    const equipoDelJugador = part.equipo;
+    
+    part.partidos.jugador_partido.forEach(jp => {
+      if (jp.jugador_id === jugadorId) return; // Saltarse a sí mismo
+      
+      const esCompa = jp.equipo === equipoDelJugador;
+      const mapObj = esCompa ? compasMap : rivalesMap;
+      
+      const actual = mapObj.get(jp.jugador_id) || {
+        id: jp.jugador_id,
+        nombre: jp.jugadores?.nombre || 'Desconocido',
+        partidos: 0,
+        victorias: 0,
+        derrotas: 0
+      };
+      
+      actual.partidos++;
+      
+      if (part.partidos.equipo_ganador === equipoDelJugador) {
+        actual.victorias++;
+      } else if (part.partidos.equipo_ganador && part.partidos.equipo_ganador !== 0) {
+        actual.derrotas++;
+      }
+      
+      mapObj.set(jp.jugador_id, actual);
+    });
+  });
+
+  const compasArray = Array.from(compasMap.values()).sort((a, b) => b.partidos - a.partidos).slice(0, 5);
+  const rivalesArray = Array.from(rivalesMap.values()).sort((a, b) => b.partidos - a.partidos).slice(0, 5);
+
+  return { compas: compasArray, rivales: rivalesArray };
 }
 
-/**
- * Renderiza las estadísticas detalladas
- */
+function renderizarSidebarPerfil() {
+  const container = document.getElementById('perfil-sidebar-container');
+  if (!container) return;
+
+  const resumenFut = datosPerfilJugador.resumenPerfil || obtenerResumenPerfilJugador(datosPerfilJugador);
+  const winrate = parseFloat(resumenFut.winrate) || 0;
+  const winrateColor = winrate >= 50 ? 'var(--fut-green)' : 'var(--fut-red)';
+  
+  const { compas, rivales } = calcularCompanerosYRivalesPerfil();
+
+  const renderRow = (item) => {
+    const wr = item.partidos > 0 ? Math.round((item.victorias / item.partidos) * 100) : 0;
+    const wrColor = wr >= 50 ? 'text-success' : 'text-danger';
+    return `
+      <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-dark">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:24px; height:24px; font-size:10px; flex-shrink:0;">
+            ${item.nombre.charAt(0).toUpperCase()}
+          </div>
+          <span class="text-white text-truncate" style="max-width: 80px; font-size: 13px;">${item.nombre}</span>
+        </div>
+        <div class="text-end" style="font-size: 12px;">
+          <div class="text-light-emphasis">${item.partidos} PJ</div>
+          <div class="${wrColor} fw-bold">${wr}% Win</div>
+        </div>
+      </div>
+    `;
+  };
+
+  container.innerHTML = `
+    <div class="card bg-dark border-secondary mb-3">
+      <div class="card-body">
+        <h6 class="text-white fw-bold border-bottom border-secondary pb-2 mb-3">Estadísticas Ranked</h6>
+        <div class="d-flex align-items-center gap-3">
+          <div class="position-relative d-flex align-items-center justify-content-center" style="width: 70px; height: 70px; border-radius: 50%; background: conic-gradient(${winrateColor} ${winrate}%, #2c3034 0);">
+            <div class="bg-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; position: absolute;">
+              <span class="text-white fw-bold small">${winrate}%</span>
+            </div>
+          </div>
+          <div>
+            <div class="text-light-emphasis small mb-1">${resumenFut.pj} Partidos Jugados</div>
+            <div class="text-white small mb-1">
+              <span class="text-success">${resumenFut.pg}V</span> - 
+              <span class="text-warning">${resumenFut.pe}E</span> - 
+              <span class="text-danger">${resumenFut.pp}D</span>
+            </div>
+            <div class="text-info small fw-bold mt-1">Puntos: ${resumenFut.pts}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-dark border-secondary mb-3">
+      <div class="card-body pb-1">
+        <h6 class="text-white fw-bold border-bottom border-secondary pb-2 mb-3">Compañeros Frecuentes</h6>
+        ${compas.length > 0 ? compas.map(renderRow).join('') : '<p class="text-muted small text-center">No hay datos</p>'}
+      </div>
+    </div>
+
+    <div class="card bg-dark border-secondary">
+      <div class="card-body pb-1">
+        <h6 class="text-white fw-bold border-bottom border-secondary pb-2 mb-3">Rivales Frecuentes</h6>
+        ${rivales.length > 0 ? rivales.map(renderRow).join('') : '<p class="text-muted small text-center">No hay datos</p>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderizarPartidosRecientesPerfil() {
+  const container = document.getElementById('perfil-partidos-container');
+  if (!container) return;
+
+  const jugadorId = datosPerfilJugador.jugador.id;
+  const participaciones = [...(datosPerfilJugador.participaciones || [])].sort((a, b) => {
+    return new Date(b.partidos?.fecha || 0) - new Date(a.partidos?.fecha || 0);
+  });
+
+  if (participaciones.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-5">
+        <i class="bi bi-clock-history display-4 text-muted mb-3"></i>
+        <h5 class="text-muted">No hay partidos recientes</h5>
+      </div>
+    `;
+    return;
+  }
+
+  const calcularSkillPartido = ({ goles = 0, asistencias = 0, mvp = 0, ace = 0, cagadas = 0, puntos = 0, atajadas = 0 } = {}) => {
+    const rendAtaque = (goles * 5) + (mvp * 7) + (ace * 6) + (asistencias * 4) - (cagadas * 5) + (puntos * 2);
+    const rendArquero = atajadas * 0.4;
+    return rendAtaque + rendArquero;
+  };
+
+  let html = '<div class="d-flex flex-column gap-2">';
+
+  participaciones.forEach(part => {
+    if (!part.partidos) return;
+    const partido = part.partidos;
+    const jps = partido.jugador_partido || [];
+    
+    const myJp = jps.find(jp => jp.jugador_id === jugadorId);
+    if (!myJp) return;
+
+    const esVictoria = partido.equipo_ganador === myJp.equipo;
+    const esEmpate = !partido.equipo_ganador || (partido.equipo_ganador !== 1 && partido.equipo_ganador !== 2);
+    const esDerrota = !esVictoria && !esEmpate;
+
+    let resultadoClass = 'border-secondary';
+    let resultadoText = 'EMPATE';
+    let labelColor = 'text-warning';
+    let bgGradient = 'linear-gradient(90deg, rgba(108,117,125,0.1) 0%, rgba(33,37,41,0.5) 100%)';
+
+    if (esVictoria) {
+      resultadoClass = 'border-success';
+      resultadoText = 'VICTORIA';
+      labelColor = 'text-success';
+      bgGradient = 'linear-gradient(90deg, rgba(40,167,69,0.15) 0%, rgba(33,37,41,0.5) 100%)';
+    } else if (esDerrota) {
+      resultadoClass = 'border-danger';
+      resultadoText = 'DERROTA';
+      labelColor = 'text-danger';
+      bgGradient = 'linear-gradient(90deg, rgba(220,53,69,0.15) 0%, rgba(33,37,41,0.5) 100%)';
+    }
+
+    const golesPartido = partido.goles || [];
+    const misGoles = golesPartido.filter(g => g.goleador_id === jugadorId && g.equipo === myJp.equipo).length;
+    const misAsists = golesPartido.filter(g => g.asistidor_id === jugadorId && g.equipo === myJp.equipo).length;
+    
+    const skill = calcularSkillPartido({
+      goles: misGoles,
+      asistencias: misAsists,
+      mvp: myJp.mvp ? 1 : 0,
+      ace: myJp.ace ? 1 : 0,
+      cagadas: myJp.cagadas || 0,
+      puntos: myJp.puntos || 0,
+      atajadas: myJp.atajadas || 0
+    });
+
+    const fechaFormat = new Date(partido.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    const temporadaNombre = partido.temporadas?.nombre || 'Amistoso';
+
+    const miEquipo = jps.filter(jp => jp.equipo === myJp.equipo);
+    const rivalEquipo = jps.filter(jp => jp.equipo !== myJp.equipo);
+
+    const renderJugadorRow = (jp) => {
+      const nombre = jp.jugadores?.nombre || 'Jugador';
+      const esYo = jp.jugador_id === jugadorId;
+      const fweight = esYo ? 'fw-bold text-white' : 'text-light-emphasis';
+      return `<div class="text-truncate ${fweight}" style="font-size: 11px; max-width: 90px;" title="${nombre}">${nombre}</div>`;
+    };
+
+    html += `
+      <div class="card bg-dark border-0 border-start border-4 ${resultadoClass} mb-2 shadow-sm" style="background: ${bgGradient} !important;">
+        <div class="card-body p-3 d-flex flex-wrap align-items-center gap-3">
+          
+          <div style="min-width: 85px;">
+            <div class="${labelColor} fw-bold" style="font-size: 13px;">${resultadoText}</div>
+            <div class="text-light-emphasis" style="font-size: 12px;">${fechaFormat}</div>
+            <div class="text-muted" style="font-size: 11px; margin-top: 2px;">${temporadaNombre}</div>
+          </div>
+
+          <div class="text-center" style="min-width: 90px;">
+            <div class="d-flex justify-content-center align-items-center gap-1 mb-1">
+              <span class="fs-5 text-white fw-bold">${misGoles} <span class="text-muted fw-normal" style="font-size:11px;">G</span></span>
+              <span class="text-muted mx-1">/</span>
+              <span class="fs-5 text-white fw-bold">${misAsists} <span class="text-muted fw-normal" style="font-size:11px;">A</span></span>
+            </div>
+            <div class="d-flex justify-content-center gap-1">
+              ${myJp.mvp ? '<span class="badge bg-warning text-dark px-1 py-0" style="font-size: 10px;">👑 MVP</span>' : ''}
+              ${myJp.ace ? '<span class="badge bg-secondary px-1 py-0" style="font-size: 10px;">⭐ ACE</span>' : ''}
+              ${!myJp.mvp && !myJp.ace ? '<span style="height: 15px; display: inline-block;"></span>' : ''}
+            </div>
+          </div>
+
+          <div class="text-center px-3 border-start border-end border-secondary" style="min-width: 95px;">
+            <div class="text-light-emphasis mb-1" style="font-size: 11px;">Rendimiento</div>
+            <div class="fs-4 ${skill >= 0 ? 'text-info' : 'text-danger'} fw-bold" style="line-height: 1;">${skill.toFixed(1)}</div>
+          </div>
+
+          <div class="d-flex flex-grow-1 justify-content-center gap-4 d-none d-md-flex">
+            <div>
+              ${miEquipo.map(renderJugadorRow).join('')}
+            </div>
+            <div>
+              ${rivalEquipo.map(renderJugadorRow).join('')}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
 function renderizarEstadisticasDetalladas() {
   const containerFut = document.getElementById('perfil-estadisticas-container');
   if (!containerFut) return;
@@ -4373,7 +4660,7 @@ function showToast(message, type = 'success') {
     warning: 'bi-exclamation-triangle-fill',
     info: 'bi-info-circle-fill'
   };
-
+  
   const colorMap = {
     success: 'text-bg-success',
     error: 'text-bg-danger',
@@ -4387,7 +4674,7 @@ function showToast(message, type = 'success') {
   toast.setAttribute('role', 'alert');
   toast.setAttribute('aria-live', 'assertive');
   toast.setAttribute('aria-atomic', 'true');
-
+  
   toast.innerHTML = `
     <div class="d-flex">
       <div class="toast-body d-flex align-items-center">
@@ -4397,16 +4684,16 @@ function showToast(message, type = 'success') {
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
     </div>
   `;
-
+  
   toastContainer.appendChild(toast);
-
+  
   // Inicializar y mostrar el toast de Bootstrap
   const bsToast = new bootstrap.Toast(toast, {
     autohide: true,
     delay: 4000
   });
   bsToast.show();
-
+  
   // Limpiar el DOM después de que se oculte
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
@@ -4443,7 +4730,7 @@ const initApp = () => {
 
   // Nota: Las variables del perfil de jugador (vistaActual, jugadorPerfilActual, etc.)
   // están definidas globalmente al inicio del archivo
-
+  
   // Hacer los equipos disponibles globalmente para el tooltip y algoritmo genético
   window.equipo1 = equipo1;
   window.equipo2 = equipo2;
@@ -4463,7 +4750,7 @@ const initApp = () => {
     cagadas: []
   };
   let jugadorEditando = null; // Para saber si estamos editando o agregando
-
+  
   // Estado de ordenamiento
   let currentSortField = 'total_puntos';
   let currentSortOrder = 'desc'; // 'asc' o 'desc'
@@ -4707,7 +4994,7 @@ const initApp = () => {
   function sortData(data, field, order) {
     return [...data].sort((a, b) => {
       let aVal, bVal;
-
+      
       if (field === 'nombre') {
         aVal = a.jugadores?.nombre || '';
         bVal = b.jugadores?.nombre || '';
@@ -4725,10 +5012,10 @@ const initApp = () => {
           const atajadasPP = (jugador.atajadas || 0) / pj;
           return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.4);
         };
-
+        
         aVal = calcularSkill(a);
         bVal = calcularSkill(b);
-
+        
         return order === 'asc' ? aVal - bVal : bVal - aVal;
       } else if (field === 'goles_favor_equipo' || field === 'goles_recibidos_equipo') {
         aVal = calcularPromedioPorPartido(a, field);
@@ -4738,11 +5025,11 @@ const initApp = () => {
       } else {
         aVal = a[field] || 0;
         bVal = b[field] || 0;
-
+        
         // Convertir a número si es necesario
         if (typeof aVal === 'string') aVal = parseFloat(aVal) || 0;
         if (typeof bVal === 'string') bVal = parseFloat(bVal) || 0;
-
+        
         return order === 'asc' ? aVal - bVal : bVal - aVal;
       }
     });
@@ -4753,17 +5040,17 @@ const initApp = () => {
     document.querySelectorAll('.sortable').forEach(th => {
       th.classList.remove('active', 'asc', 'desc');
     });
-
+    
     // Remover highlight de todas las columnas
     document.querySelectorAll('.column-highlight').forEach(cell => {
       cell.classList.remove('column-highlight');
     });
-
+    
     // Agregar clase activa al campo actual
     const activeHeader = document.querySelector(`[data-sort="${currentSortField}"]`);
     if (activeHeader) {
       activeHeader.classList.add('active', currentSortOrder);
-
+      
       // Agregar highlight a toda la columna
       const columnIndex = Array.from(activeHeader.parentNode.children).indexOf(activeHeader);
       highlightColumn(columnIndex);
@@ -4773,13 +5060,13 @@ const initApp = () => {
   function highlightColumn(columnIndex) {
     const table = document.querySelector('.table');
     if (!table) return;
-
+    
     // Highlight header
     const headerCell = table.querySelector(`thead tr th:nth-child(${columnIndex + 1})`);
     if (headerCell) {
       headerCell.classList.add('column-highlight');
     }
-
+    
     // Highlight todas las celdas de la columna
     const bodyCells = table.querySelectorAll(`tbody tr td:nth-child(${columnIndex + 1})`);
     bodyCells.forEach(cell => {
@@ -4796,20 +5083,20 @@ const initApp = () => {
       currentSortField = field;
       currentSortOrder = field === 'nombre' ? 'asc' : 'desc';
     }
-
+    
     await renderizarTablaOrdenada();
   }
 
   async function renderizarTablaOrdenada() {
     if (datosJugadores.length === 0) return;
-
+    
     await aplicarFiltros();
   }
 
   // --- Lógica de carga de datos ---
   async function cargarTodosLosJugadores() {
     const { data, error } = await supabase.from('jugadores').select(`
-      id,
+      id, 
       nombre,
       pulmon,
       jugador_posicion (
@@ -4853,9 +5140,9 @@ const initApp = () => {
     const selectorMobile = document.getElementById('selector-temporada-mobile');
     const selectorPartido = document.getElementById('temporada-partido');
     const selectorResumenTemporada = document.getElementById('temporadas-resumen-selector');
-
+    
     const selectors = [selector, selectorMobile, selectorPartido, selectorResumenTemporada].filter(s => s);
-
+    
     selectors.forEach(sel => {
       // Limpiar opciones existentes
       if (sel.id === 'temporada-partido' || sel.id === 'temporadas-resumen-selector') {
@@ -4865,7 +5152,7 @@ const initApp = () => {
         // Para los selectores de filtro, usar "Todas las temporadas"
         sel.innerHTML = '<option value="">Todas las temporadas</option>';
       }
-
+      
       // Agregar opciones dinámicamente
       todasLasTemporadas.forEach(temporada => {
         const option = `<option value="${temporada.id}">${temporada.nombre}</option>`;
@@ -4887,7 +5174,7 @@ const initApp = () => {
       if (sel.id !== 'temporada-partido' && sel.id !== 'temporadas-resumen-selector') {
         sel.addEventListener('change', async (e) => {
           temporadaSeleccionada = e.target.value || null;
-
+          
           // Sincronizar solo los selectores de filtro
           const selectoresFiltro = [selector, selectorMobile].filter(s => s);
           selectoresFiltro.forEach(otherSel => {
@@ -4895,7 +5182,7 @@ const initApp = () => {
               otherSel.value = e.target.value;
             }
           });
-
+          
           // Cargar estadísticas, historial y actualizar gráficos del armador
           await cargarEstadisticas();
           cargarHistorialPartidos();
@@ -4914,13 +5201,13 @@ const initApp = () => {
   function configurarFiltroPartidos() {
     const filtroInput = document.getElementById('filtro-partidos');
     if (!filtroInput) return;
-
+    
     // Event listener para cambio en el filtro
     filtroInput.addEventListener('input', async (e) => {
       filtroPartidosMinimos = parseInt(e.target.value) || 0;
       await aplicarFiltros();
     });
-
+    
     // Event listener para Enter
     filtroInput.addEventListener('keypress', async (e) => {
       if (e.key === 'Enter') {
@@ -4932,12 +5219,12 @@ const initApp = () => {
 
   async function aplicarFiltros() {
     if (datosJugadores.length === 0) return;
-
+    
     // Filtrar por partidos mínimos
-    const datosFiltrados = datosJugadores.filter(jugador =>
+    const datosFiltrados = datosJugadores.filter(jugador => 
       (jugador.pj || 0) >= filtroPartidosMinimos
     );
-
+    
     // Aplicar ordenamiento a los datos filtrados
     const sortedData = sortData(datosFiltrados, currentSortField, currentSortOrder);
     await renderizarTablaConDatos(sortedData);
@@ -4951,32 +5238,32 @@ const initApp = () => {
       return [];
     }
     todasLasPosiciones = data || [];
-
+    
     // Configurar mapeos dinámicos
     iconosPosiciones = {};
     nombresPosiciones = {};
     posicionesIds = {};
-
+    
     data.forEach(pos => {
       const iconos = {
         'Arquero': '🥅',
-        'Defensor': '🛡️',
+        'Defensor': '🛡️', 
         'Mediocampo': '⚡',
         'Atacante': '⚽'
       };
-
+      
       const abrev = {
         'Arquero': 'ARQ',
         'Defensor': 'DEF',
-        'Mediocampo': 'MED',
+        'Mediocampo': 'MED', 
         'Atacante': 'ATA'
       };
-
+      
       iconosPosiciones[pos.id] = iconos[pos.nombre] || '❓';
       nombresPosiciones[pos.id] = abrev[pos.nombre] || pos.nombre.substr(0, 3).toUpperCase();
       posicionesIds[pos.nombre] = pos.id;
     });
-
+    
     return todasLasPosiciones;
   }
 
@@ -4988,19 +5275,19 @@ const initApp = () => {
   function cargarOpcionesPosiciones() {
     const selectPrimaria = document.getElementById('posicion-primaria');
     const selectSecundaria = document.getElementById('posicion-secundaria');
-
+    
     if (!selectPrimaria || !selectSecundaria) return;
-
+    
     // Limpiar opciones existentes (excepto la primera)
     selectPrimaria.innerHTML = '<option value="">Seleccionar posición</option>';
     selectSecundaria.innerHTML = '<option value="">Seleccionar posición (opcional)</option>';
-
+    
     // Agregar opciones dinámicamente
     todasLasPosiciones.forEach(pos => {
       const icono = iconosPosiciones[pos.id] || '❓';
       const nombre = nombresPosiciones[pos.id] || pos.nombre;
       const option = `<option value="${pos.id}">${icono} ${pos.nombre} (${nombre})</option>`;
-
+      
       selectPrimaria.innerHTML += option;
       selectSecundaria.innerHTML += option;
     });
@@ -5009,15 +5296,15 @@ const initApp = () => {
   // Función para abrir modal en modo agregar
   window.abrirModalAgregar = () => {
     jugadorEditando = null;
-
+    
     // Cambiar textos del modal
     document.getElementById('modal-title-text').textContent = 'Agregar Nuevo Jugador';
     document.getElementById('submit-text').textContent = 'Agregar Jugador';
     document.getElementById('submit-icon').className = 'bi bi-plus me-2';
-
+    
     // Limpiar formulario
     document.getElementById('player-form').reset();
-
+    
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
     modal.show();
@@ -5030,28 +5317,28 @@ const initApp = () => {
       showToast('Jugador no encontrado', 'error');
       return;
     }
-
+    
     jugadorEditando = jugador;
-
+    
     // Cambiar textos del modal
     document.getElementById('modal-title-text').textContent = 'Editar Jugador';
     document.getElementById('submit-text').textContent = 'Guardar Cambios';
     document.getElementById('submit-icon').className = 'bi bi-check-lg me-2';
-
+    
     // Pre-llenar formulario
     document.getElementById('nombre').value = jugador.nombre;
-
+    
     // Pre-seleccionar posiciones
     const posiciones = jugador.jugador_posicion || [];
     const primaria = posiciones.find(p => p.es_primaria);
     const secundaria = posiciones.find(p => !p.es_primaria);
-
+    
     document.getElementById('posicion-primaria').value = primaria ? primaria.posicion_id : '';
     document.getElementById('posicion-secundaria').value = secundaria ? secundaria.posicion_id : '';
-
+    
     // Pre-llenar pulmón
     document.getElementById('pulmon').value = jugador.pulmon || '';
-
+    
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
     modal.show();
@@ -5060,7 +5347,7 @@ const initApp = () => {
   // Función para eliminar jugador
   window.eliminarJugador = async (jugadorId, nombreJugador) => {
     const confirmacion = confirm(`¿Estás seguro de que quieres eliminar a "${nombreJugador}"?\n\nEsta acción no se puede deshacer y eliminará todas las estadísticas del jugador.`);
-
+    
     if (!confirmacion) {
       return;
     }
@@ -5079,7 +5366,7 @@ const initApp = () => {
       showToast(`${nombreJugador} ha sido eliminado exitosamente`, 'success');
       cargarEstadisticas();
       cargarTodosLosJugadores();
-
+      
       // Remover del armado de equipos si estaba agregado
       equipo1 = equipo1.filter(j => j.id !== jugadorId);
       equipo2 = equipo2.filter(j => j.id !== jugadorId);
@@ -5104,10 +5391,10 @@ const initApp = () => {
       if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
         return '<span class="small text-muted">Sin pos.</span>';
       }
-
+      
       const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
       const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
-
+      
       let html = '';
       if (primaria) {
         const icono = iconosPosiciones[primaria.posicion_id] || '❓';
@@ -5117,24 +5404,24 @@ const initApp = () => {
         const icono = iconosPosiciones[secundaria.posicion_id] || '❓';
         html += `<span class="badge bg-secondary badge-sm">${icono}</span>`;
       }
-
+      
       return html;
     };
 
     // Función para analizar rachas del equipo
     const analizarRachasEquipo = async (equipo) => {
       if (equipo.length === 0) return { victorias: [], derrotas: [] };
-
+      
       // Obtener estadísticas de todos los jugadores para poder calcular rachas
       const estadisticasActuales = window.datosJugadores || [];
       if (estadisticasActuales.length === 0) return { victorias: [], derrotas: [] };
-
+      
       // Calcular rachas usando la función existente
       const rachas = await calcularRachasJugadores(estadisticasActuales);
-
+      
       const jugadoresEnRachaVictoria = [];
       const jugadoresEnRachaDerrota = [];
-
+      
       equipo.forEach(jugador => {
         const racha = rachas[jugador.id];
         if (racha && racha.cantidad >= 2) {
@@ -5151,7 +5438,7 @@ const initApp = () => {
           }
         }
       });
-
+      
       return {
         victorias: jugadoresEnRachaVictoria,
         derrotas: jugadoresEnRachaDerrota
@@ -5161,7 +5448,7 @@ const initApp = () => {
     // Función para crear warnings de rachas
     const crearWarningsRachas = (rachas) => {
       let html = '';
-
+      
       // Warning para rachas de victoria
       if (rachas.victorias.length > 0) {
         html += '<div class="alert alert-success alert-sm mb-1 py-2 px-3" style="font-size: 0.8rem; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.1);">';
@@ -5176,7 +5463,7 @@ const initApp = () => {
         }
         html += '</div>';
       }
-
+      
       // Warning para rachas de derrota
       if (rachas.derrotas.length > 0) {
         html += '<div class="alert alert-info alert-sm mb-1 py-2 px-3" style="font-size: 0.8rem; border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1);">';
@@ -5191,25 +5478,25 @@ const initApp = () => {
         }
         html += '</div>';
       }
-
+      
       return html;
     };
 
     const contarPosiciones = (equipo) => {
       const conteoPrimarias = {};
       const conteoSecundarias = {};
-
+      
       // Inicializar conteo con todas las posiciones conocidas
       todasLasPosiciones.forEach(pos => {
         conteoPrimarias[pos.id] = 0;
         conteoSecundarias[pos.id] = 0;
       });
-
+      
       equipo.forEach(jugador => {
         if (jugador.jugador_posicion && jugador.jugador_posicion.length > 0) {
           const primaria = jugador.jugador_posicion.find(jp => jp.es_primaria);
           const secundaria = jugador.jugador_posicion.find(jp => !jp.es_primaria);
-
+          
           if (primaria) {
             conteoPrimarias[primaria.posicion_id] = (conteoPrimarias[primaria.posicion_id] || 0) + 1;
           }
@@ -5218,14 +5505,14 @@ const initApp = () => {
           }
         }
       });
-
+      
       return { primarias: conteoPrimarias, secundarias: conteoSecundarias };
     };
 
     const mostrarDistribucion = (conteos) => {
       const { primarias, secundarias } = conteos;
       let html = '<div class="mt-2 pt-2 border-top border-secondary">';
-
+      
       // Verificar posiciones faltantes (solo si no tienen ni primaria ni secundaria)
       const posicionesFaltantes = [];
       todasLasPosiciones.forEach(pos => {
@@ -5233,32 +5520,32 @@ const initApp = () => {
           posicionesFaltantes.push(pos);
         }
       });
-
+      
       // Verificar posiciones con "muchos" jugadores
       const posicionesMuchos = [];
       const limites = {
         // Arquero: máximo 1 (2+ es mucho)
-        // Defensor: máximo 2 (3+ es mucho)
+        // Defensor: máximo 2 (3+ es mucho) 
         // Mediocampo: máximo 2 (3+ es mucho)
         // Atacante: máximo 2 (3+ es mucho)
       };
-
+      
       todasLasPosiciones.forEach(pos => {
         const cantidad = primarias[pos.id];
         let esmucho = false;
-
+        
         // Determinar si es "mucho" según la posición
         if (pos.nombre === 'Arquero' && cantidad >= 2) {
           esmucho = true;
         } else if (['Defensor', 'Mediocampo', 'Atacante'].includes(pos.nombre) && cantidad >= 3) {
           esmucho = true;
         }
-
+        
         if (esmucho) {
           posicionesMuchos.push({ posicion: pos, cantidad });
         }
       });
-
+      
       // Mostrar warning si faltan posiciones
       if (posicionesFaltantes.length > 0) {
         html += '<div class="alert alert-warning alert-sm mb-2 py-1 px-2" style="font-size: 0.75rem;">';
@@ -5271,7 +5558,7 @@ const initApp = () => {
         });
         html += '</div>';
       }
-
+      
       // Mostrar warning si hay "muchos" de alguna posición
       if (posicionesMuchos.length > 0) {
         html += '<div class="alert alert-danger alert-sm mb-2 py-1 px-2" style="font-size: 0.75rem;">';
@@ -5284,18 +5571,18 @@ const initApp = () => {
         });
         html += '</div>';
       }
-
+      
       html += '<small class="text-muted d-block mb-2">Distribución:</small>';
-
+      
       // Ordenar posiciones por nombre lógico: Arquero, Defensor, Mediocampo, Atacante
       const posicionesOrdenadas = [...todasLasPosiciones].sort((a, b) => {
         const orden = ['Arquero', 'Defensor', 'Mediocampo', 'Atacante'];
         return orden.indexOf(a.nombre) - orden.indexOf(b.nombre);
       });
-
+      
       // Crear contenedor de distribución con diseño más ordenado
       html += '<div class="distribucion-container p-2 rounded" style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05);">';
-
+      
       // Mostrar posiciones primarias en orden
       html += '<div class="d-flex flex-wrap align-items-center mb-2">';
       html += '<small class="text-muted me-2" style="min-width: 60px;">Primaria:</small>';
@@ -5312,7 +5599,7 @@ const initApp = () => {
         }
       });
       html += '</div>';
-
+      
       // Mostrar posiciones secundarias si existen
       const haySecundarias = Object.values(secundarias).some(cantidad => cantidad > 0);
       if (haySecundarias) {
@@ -5332,7 +5619,7 @@ const initApp = () => {
         });
         html += '</div>';
       }
-
+      
       html += '</div>';
       return html;
     };
@@ -5340,30 +5627,30 @@ const initApp = () => {
     const renderEquipo = async (equipo, containerId, colorClass) => {
       const container = document.getElementById(containerId);
       const conteos = contarPosiciones(equipo);
-
+      
       container.innerHTML = ''; // Limpiar siempre antes de renderizar
 
       if (equipo.length === 0) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'text-center text-light-emphasis py-4 d-flex flex-column align-items-center justify-content-center h-100';
         emptyDiv.dataset.equipoDestino = containerId.includes('1') ? 'equipo1' : 'equipo2';
-
+        
         // Configurar como zona de drop
         emptyDiv.addEventListener('dragover', handleDragOver);
         emptyDiv.addEventListener('drop', handleDrop);
-
+        
         emptyDiv.innerHTML = `
           <i class="bi bi-people fs-1 text-secondary mb-3"></i>
           <p class="fw-medium mt-2 mb-1">Aún no hay jugadores.</p>
           <p class="small text-muted">Usa el campo de arriba para arrastra jugadores aquí.</p>
         `;
-
+        
         container.appendChild(emptyDiv);
       } else {
         // Lista de jugadores
         const jugadoresDiv = document.createElement('div');
         jugadoresDiv.className = 'mb-3';
-
+        
         equipo.forEach((jugador, index) => {
           const playerEl = document.createElement('div');
           playerEl.className = `player-item d-flex justify-content-between align-items-center p-2 mb-2 rounded`;
@@ -5371,11 +5658,11 @@ const initApp = () => {
           playerEl.dataset.jugadorId = jugador.id;
           playerEl.dataset.equipoOrigen = containerId.includes('1') ? 'equipo1' : 'equipo2';
           playerEl.dataset.index = index;
-
+          
           // Agregar eventos de drag
           playerEl.addEventListener('dragstart', handleDragStart);
           playerEl.addEventListener('dragend', handleDragEnd);
-
+          
           playerEl.innerHTML = `
             <div class="d-flex align-items-center">
               <i class="bi bi-grip-vertical text-muted me-2" style="cursor: grab;"></i>
@@ -5388,14 +5675,14 @@ const initApp = () => {
           `;
           jugadoresDiv.appendChild(playerEl);
         });
-
+        
         // Configurar zona de drop
         jugadoresDiv.addEventListener('dragover', handleDragOver);
         jugadoresDiv.addEventListener('drop', handleDrop);
         jugadoresDiv.dataset.equipoDestino = containerId.includes('1') ? 'equipo1' : 'equipo2';
-
+        
         container.appendChild(jugadoresDiv);
-
+        
         // Analizar y mostrar warnings de rachas (MOVIDO HACIA ARRIBA)
         const rachasEquipo = await analizarRachasEquipo(equipo);
         if (rachasEquipo.victorias.length > 0 || rachasEquipo.derrotas.length > 0) {
@@ -5404,7 +5691,7 @@ const initApp = () => {
           rachasEl.innerHTML = crearWarningsRachas(rachasEquipo);
           container.appendChild(rachasEl);
         }
-
+        
         // Distribución de posiciones
         const distribucionEl = document.createElement('div');
         distribucionEl.innerHTML = mostrarDistribucion(conteos);
@@ -5415,17 +5702,17 @@ const initApp = () => {
     // Renderizar equipos de forma asíncrona para incluir análisis de rachas
     await renderEquipo(equipo1, 'equipo1-jugadores', 'primary');
     await renderEquipo(equipo2, 'equipo2-jugadores', 'danger');
-
+    
     // Renderizar gráficos fuera de las cards
     renderizarGraficos();
-
+    
       // Actualizar todos los selectores de jugadores en "Información del Encuentro"
       poblarSelectoresJugadores();
-
+      
       // Renderizar tabla de goles
       renderizarTablaGoles();
       renderizarReviewSandbox();
-
+      
       // Restaurar posición del scroll después del renderizado
       setTimeout(() => {
         window.scrollTo(0, scrollTop);
@@ -5437,12 +5724,12 @@ const initApp = () => {
     const analisisContainer = document.getElementById('analisis-equipos');
     const radarEquipo1Container = document.getElementById('radar-equipo1-container');
     const radarEquipo2Container = document.getElementById('radar-equipo2-container');
-
+    
     if (!analisisContainer) return;
-
+    
     // Solo mostrar gráficos si hay jugadores en al menos un equipo
     const hayJugadores = equipo1.length > 0 || equipo2.length > 0;
-
+    
     if (!hayJugadores) {
       // Destruir gráficos existentes antes de ocultar
       ['chart-winrate', 'chart-goles', 'chart-atajadas', 'chart-radar-equipo1', 'chart-radar-equipo2'].forEach(chartId => {
@@ -5451,21 +5738,21 @@ const initApp = () => {
           delete chartInstances[chartId];
         }
       });
-
+      
       analisisContainer.style.display = 'none';
-
+      
       // Ocultar también la sección de análisis comparativo
       const analisisComparativoContainer = document.getElementById('analisis-comparativo');
       if (analisisComparativoContainer) analisisComparativoContainer.style.display = 'none';
-
+      
       if (radarEquipo1Container) radarEquipo1Container.style.display = 'none';
       if (radarEquipo2Container) radarEquipo2Container.style.display = 'none';
       return;
     }
-
+    
     // Mostrar la sección de análisis central
     analisisContainer.style.display = 'block';
-
+    
     // Manejar gráficos de radar individuales
     if (equipo1.length > 0 && radarEquipo1Container) {
       radarEquipo1Container.style.display = 'block';
@@ -5479,7 +5766,7 @@ const initApp = () => {
       const rendimientoEquipo1 = document.getElementById('rendimiento-equipo1');
       if (rendimientoEquipo1) rendimientoEquipo1.style.display = 'none';
     }
-
+    
     if (equipo2.length > 0 && radarEquipo2Container) {
       radarEquipo2Container.style.display = 'block';
     } else if (radarEquipo2Container) {
@@ -5492,15 +5779,15 @@ const initApp = () => {
       const rendimientoEquipo2 = document.getElementById('rendimiento-equipo2');
       if (rendimientoEquipo2) rendimientoEquipo2.style.display = 'none';
     }
-
+    
     // Crear los gráficos después de que el HTML esté visible
     setTimeout(() => {
       // Gráficos separados con escalas independientes
       crearGraficosSeparados();
-
+      
       // Análisis comparativo central
       crearAnalisisComparativo();
-
+      
       // Gráficos de radar individuales
       if (equipo1.length > 0) {
         crearGraficoRadar('chart-radar-equipo1', equipo1);
@@ -5522,11 +5809,11 @@ const initApp = () => {
       equipoOrigen: e.target.dataset.equipoOrigen,
       index: parseInt(e.target.dataset.index)
     };
-
+    
     // Agregar clase visual durante el arrastre
     e.target.style.opacity = '0.5';
     e.target.style.cursor = 'grabbing';
-
+    
     // Agregar efecto visual a las zonas de drop
     const dropZones = document.querySelectorAll('[data-equipo-destino]');
     dropZones.forEach(zone => {
@@ -5541,14 +5828,14 @@ const initApp = () => {
     // Restaurar estilo original
     e.target.style.opacity = '';
     e.target.style.cursor = 'grab';
-
+    
     // Quitar efectos visuales de las zonas de drop
     const dropZones = document.querySelectorAll('[data-equipo-destino]');
     dropZones.forEach(zone => {
       zone.style.border = '';
       zone.style.backgroundColor = '';
     });
-
+    
     jugadorArrastrado = null;
   }
 
@@ -5559,47 +5846,47 @@ const initApp = () => {
 
   function handleDrop(e) {
     e.preventDefault();
-
+    
     if (!jugadorArrastrado) return;
-
+    
     const equipoDestino = e.currentTarget.dataset.equipoDestino;
     const equipoOrigen = jugadorArrastrado.equipoOrigen;
-
+    
     // No hacer nada si se suelta en el mismo equipo
     if (equipoOrigen === equipoDestino) return;
-
+    
     // Encontrar el jugador en el equipo origen
     const equipoOrigenArray = equipoOrigen === 'equipo1' ? equipo1 : equipo2;
     const equipoDestinoArray = equipoDestino === 'equipo1' ? equipo1 : equipo2;
-
+    
     const jugador = equipoOrigenArray.find(j => j.id === jugadorArrastrado.id);
-
+    
     if (!jugador) return;
-
+    
     // Verificar si el jugador ya está en el equipo destino (no debería pasar, pero por seguridad)
     const yaEstaEnDestino = equipoDestinoArray.find(j => j.id === jugador.id);
     if (yaEstaEnDestino) {
       showToast(`${jugador.nombre} ya está en este equipo`, 'warning');
       return;
     }
-
+    
     // Remover del equipo origen
     const indexOrigen = equipoOrigenArray.findIndex(j => j.id === jugador.id);
     if (indexOrigen !== -1) {
       equipoOrigenArray.splice(indexOrigen, 1);
     }
-
+    
     // Agregar al equipo destino
     equipoDestinoArray.push(jugador);
-
+    
     // Actualizar referencias globales
     window.equipo1 = equipo1;
     window.equipo2 = equipo2;
-
+    
     // Mostrar notificación
     const nombreEquipoDestino = equipoDestino === 'equipo1' ? 'Equipo 1' : 'Equipo 2';
     showToast(`${jugador.nombre} movido a ${nombreEquipoDestino}`, 'success');
-
+    
     // Re-renderizar equipos
     renderizarEquipos().catch(error => {
       console.error('Error al renderizar equipos:', error);
@@ -5622,19 +5909,19 @@ const initApp = () => {
     const chartId = 'chart-winrate';
     const ctx = document.getElementById(chartId);
     if (!ctx) return;
-
+    
     // Destruir gráfico existente si existe
     if (chartInstances[chartId]) {
       chartInstances[chartId].destroy();
     }
-
+    
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-
+    
     // Preparar datasets solo para equipos que tienen jugadores
     const datasets = [];
-
+    
     if (equipo1.length > 0) {
       datasets.push({
         label: `🔵 Equipo 1`,
@@ -5645,7 +5932,7 @@ const initApp = () => {
         barThickness: equipo2.length > 0 ? 45 : 55
       });
     }
-
+    
     if (equipo2.length > 0) {
       datasets.push({
         label: `🔴 Equipo 2`,
@@ -5656,7 +5943,7 @@ const initApp = () => {
         barThickness: equipo1.length > 0 ? 45 : 55
       });
     }
-
+    
     chartInstances[chartId] = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -5717,20 +6004,20 @@ const initApp = () => {
     const chartId = 'chart-goles';
     const ctx = document.getElementById(chartId);
     if (!ctx) return;
-
+    
     // Destruir gráfico existente si existe
     if (chartInstances[chartId]) {
       chartInstances[chartId].destroy();
     }
-
+    
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-
+    
     // Preparar datasets solo para equipos que tienen jugadores
     const datasets = [];
     const maxGoles = Math.max(statsEquipo1.golesPorPartido, statsEquipo2.golesPorPartido);
-
+    
     if (equipo1.length > 0) {
       datasets.push({
         label: `🔵 Equipo 1`,
@@ -5741,7 +6028,7 @@ const initApp = () => {
         barThickness: equipo2.length > 0 ? 45 : 55
       });
     }
-
+    
     if (equipo2.length > 0) {
       datasets.push({
         label: `🔴 Equipo 2`,
@@ -5815,15 +6102,15 @@ const initApp = () => {
     if (chartInstances[chartId]) {
       chartInstances[chartId].destroy();
     }
-
+    
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-
+    
     // Preparar datasets solo para equipos que tienen jugadores
     const datasets = [];
     const maxAtajadas = Math.max(statsEquipo1.atajadasPorPartido, statsEquipo2.atajadasPorPartido);
-
+    
     if (equipo1.length > 0) {
       datasets.push({
         label: `🔵 Equipo 1`,
@@ -5834,7 +6121,7 @@ const initApp = () => {
         barThickness: equipo2.length > 0 ? 45 : 55
       });
     }
-
+    
     if (equipo2.length > 0) {
       datasets.push({
         label: `🔴 Equipo 2`,
@@ -5845,7 +6132,7 @@ const initApp = () => {
         barThickness: equipo1.length > 0 ? 45 : 55
       });
     }
-
+      
       chartInstances[chartId] = new Chart(ctx, {
       type: 'bar',
         data: {
@@ -5903,9 +6190,9 @@ const initApp = () => {
     // Solo mostrar análisis si ambos equipos tienen jugadores
     const analisisContainer = document.getElementById('analisis-comparativo');
     const puntosContainer = document.getElementById('puntos-comparativos');
-
+    
     if (!analisisContainer || !puntosContainer) return;
-
+    
     if (equipo1.length === 0 || equipo2.length === 0) {
       analisisContainer.style.display = 'none';
       return;
@@ -5913,20 +6200,20 @@ const initApp = () => {
 
     // Mostrar la sección
     analisisContainer.style.display = 'block';
-
+    
     // Calcular estadísticas de ambos equipos
     const statsEquipo1 = calcularEstadisticasEquipo(equipo1);
     const statsEquipo2 = calcularEstadisticasEquipo(equipo2);
-
+    
     // Calcular diferencias
     const difWinrate = statsEquipo1.winrate - statsEquipo2.winrate;
     const difGoles = statsEquipo1.golesPorPartido - statsEquipo2.golesPorPartido;
     const difAtajadas = statsEquipo1.atajadasPorPartido - statsEquipo2.atajadasPorPartido;
     const difCagadas = statsEquipo1.cagadasPorPartido - statsEquipo2.cagadasPorPartido;
-
+    
     // Generar puntos de análisis
     const puntos = [];
-
+    
     // Análisis de Winrate
     if (Math.abs(difWinrate) > 5) { // Diferencia significativa
       if (difWinrate > 15) {
@@ -5971,7 +6258,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.winrate.toFixed(1)}% | Equipo 2: ${statsEquipo2.winrate.toFixed(1)}%`
       });
     }
-
+    
     // Análisis de Goles
     if (Math.abs(difGoles) > 0.3) { // Diferencia significativa
       if (difGoles > 0.8) {
@@ -6016,7 +6303,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.golesPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.golesPorPartido.toFixed(2)} goles/partido`
       });
     }
-
+    
     // Análisis de Atajadas
     if (Math.abs(difAtajadas) > 0.5) { // Diferencia significativa
       if (difAtajadas > 1.0) {
@@ -6061,7 +6348,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.atajadasPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.atajadasPorPartido.toFixed(2)} atajadas/partido`
       });
     }
-
+    
     // Análisis de Cagadas (menos es mejor)
     if (Math.abs(difCagadas) > 0.3) { // Diferencia significativa
       if (difCagadas > 0) {
@@ -6108,7 +6395,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.cagadasPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.cagadasPorPartido.toFixed(2)} cagadas/partido`
       });
     }
-
+    
     // Análisis de Rendimiento
     const difRendimiento = statsEquipo1.rendimientoTotal - statsEquipo2.rendimientoTotal;
     if (Math.abs(difRendimiento) > 15) { // Diferencia significativa
@@ -6154,7 +6441,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.rendimientoTotal.toFixed(1)} | Equipo 2: ${statsEquipo2.rendimientoTotal.toFixed(1)} puntos`
       });
     }
-
+    
     // Análisis de Pulmón
     const difPulmon = statsEquipo1.pulmonPromedio - statsEquipo2.pulmonPromedio;
     if (Math.abs(difPulmon) > 0.8) { // Diferencia significativa
@@ -6200,7 +6487,7 @@ const initApp = () => {
         stats: `Equipo 1: ${statsEquipo1.pulmonPromedio.toFixed(1)} | Equipo 2: ${statsEquipo2.pulmonPromedio.toFixed(1)} pulmón`
       });
     }
-
+    
     // Generar HTML
     puntosContainer.innerHTML = puntos.map(punto => `
       <div class="analysis-point ${punto.tipo}">
@@ -6440,10 +6727,10 @@ const initApp = () => {
     let rendimientoTotal = 0;
     let rendimientoAtaqueTotal = 0;
     let rendimientoArqueroTotal = 0;
-
+    
     equipo.forEach(jugador => {
       const pj = jugador.pj || 1;
-
+      
       // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
       const golesPP = (jugador.goles || 0) / pj;
       const mvpPP = (jugador.mvp_count || 0) / pj;
@@ -6451,21 +6738,21 @@ const initApp = () => {
       const asistPP = (jugador.asistencias || 0) / pj;
       const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
       const puntosPP = (jugador.total_puntos || 0) / pj;
-
+      
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-
+      
       // Rendimiento Arquero: atajadas por partido * 0.66
       const atajadasPP = (jugador.atajadas || 0) / pj;
       const rendArquero = atajadasPP * 0.4;
-
+      
       rendimientoAtaqueTotal += rendAtaque;
       rendimientoArqueroTotal += rendArquero;
     });
-
+    
     rendimientoTotal = rendimientoAtaqueTotal + rendimientoArqueroTotal;
-
+    
     const colorClass = equipoNum === 1 ? 'primary' : 'danger';
-
+    
     container.innerHTML = `
       <div class="fw-bold text-${colorClass} mb-2 small">
         📈 Rendimiento Total Equipo ${equipoNum}
@@ -6496,7 +6783,7 @@ const initApp = () => {
         </div>
       </div>
     `;
-
+    
     container.style.display = 'block';
   }
 
@@ -6514,9 +6801,9 @@ const initApp = () => {
 
     // Función para obtener estadísticas por temporada (igual que en radar)
     const obtenerEstadisticasPorTemporada = (jugador) => {
-      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
+      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
                                    document.getElementById('selector-temporada-mobile')?.value || '';
-
+      
       // Si no hay temporada seleccionada, usar estadísticas globales
       if (!temporadaSeleccionada || temporadaSeleccionada === '') {
         return {
@@ -6531,12 +6818,12 @@ const initApp = () => {
           total_puntos: jugador.total_puntos || 0
         };
       }
-
+      
       // Buscar las estadísticas del jugador para la temporada seleccionada
-      const estadisticasTemporada = window.datosJugadores?.find(dj =>
+      const estadisticasTemporada = window.datosJugadores?.find(dj => 
         dj.jugadores?.id === jugador.id || dj.id === jugador.id
       );
-
+      
       if (estadisticasTemporada) {
         return {
           pj: estadisticasTemporada.pj || 0,
@@ -6571,7 +6858,7 @@ const initApp = () => {
     let totalCagadas = 0;
     let totalPartidos = 0;
     let jugadoresConDatos = 0;
-
+    
     // Nuevas métricas
     let rendimientoTotalEquipo = 0;
     let totalPulmon = 0;
@@ -6580,7 +6867,7 @@ const initApp = () => {
     equipo.forEach(jugador => {
       // Usar estadísticas filtradas por temporada
       const stats = obtenerEstadisticasPorTemporada(jugador);
-
+      
       if (stats.winrate !== null && stats.winrate !== undefined) {
         totalWinrate += stats.winrate;
         jugadoresConDatos++;
@@ -6597,7 +6884,7 @@ const initApp = () => {
       if (stats.pj !== null && stats.pj !== undefined) {
         totalPartidos += stats.pj;
       }
-
+      
       // Calcular rendimiento de cada jugador usando stats de temporada
       const pj = stats.pj || 1;
       const golesPP = stats.goles / pj;
@@ -6607,12 +6894,12 @@ const initApp = () => {
       const cagadasPP = stats.cagadas_en_gol / pj;
       const puntosPP = stats.total_puntos / pj;
       const atajadasPP = stats.atajadas / pj;
-
+      
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       const rendArquero = atajadasPP * 0.66;
-
+      
       rendimientoTotalEquipo += rendAtaque + rendArquero;
-
+      
       // Pulmón - revisar en múltiples ubicaciones posibles (usar datos originales del jugador)
       let pulmonJugador = null;
       if (jugador.pulmon !== null && jugador.pulmon !== undefined) {
@@ -6620,7 +6907,7 @@ const initApp = () => {
       } else if (jugador.jugadores?.pulmon !== null && jugador.jugadores?.pulmon !== undefined) {
         pulmonJugador = jugador.jugadores.pulmon;
       }
-
+      
       if (pulmonJugador !== null) {
         totalPulmon += pulmonJugador;
         jugadoresConPulmon++;
@@ -6645,7 +6932,7 @@ const initApp = () => {
 
   function crearGraficoRadar(chartId, equipo) {
     console.log('🕷️ Creando gráfico radar:', chartId, 'con equipo:', equipo);
-
+    
     const ctx = document.getElementById(chartId);
     if (!ctx) {
       console.error('❌ No se encontró el canvas:', chartId);
@@ -6662,11 +6949,11 @@ const initApp = () => {
 
     // NUEVA FUNCIÓN: Obtener estadísticas filtradas por temporada
     const obtenerEstadisticasPorTemporada = (jugador) => {
-      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
+      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
                                    document.getElementById('selector-temporada-mobile')?.value || '';
-
+      
       console.log('🏆 Obteniendo estadísticas para temporada:', temporadaSeleccionada, 'jugador:', jugador.nombre);
-
+      
       // Si no hay temporada seleccionada, usar estadísticas globales
       if (!temporadaSeleccionada || temporadaSeleccionada === '') {
         console.log('📊 Usando estadísticas globales para', jugador.nombre);
@@ -6682,12 +6969,12 @@ const initApp = () => {
           total_puntos: jugador.total_puntos || 0
         };
       }
-
+      
       // Buscar las estadísticas del jugador para la temporada seleccionada
-      const estadisticasTemporada = window.datosJugadores?.find(dj =>
+      const estadisticasTemporada = window.datosJugadores?.find(dj => 
         dj.jugadores?.id === jugador.id || dj.id === jugador.id
       );
-
+      
       if (estadisticasTemporada) {
         console.log('📈 Estadísticas de temporada encontradas para', jugador.nombre, ':', estadisticasTemporada);
         return {
@@ -6738,23 +7025,23 @@ const initApp = () => {
     });
 
         // NUEVA LÓGICA COMPLEJA: Separar jugadores principales vs contribuyentes
-
+    
     // Arqueros: Solo los que pueden jugar de arquero (por posición)
-    const arqueros = jugadoresConMinPartidos.filter(j => puedeJugarEn(j, 'Arquero'));
-
+    const arqueros = jugadoresConMinPartidos.filter(j => puedeJugarEn(j, 'Arquero')); 
+    
     // DEFENSOR COMPLEJO: Principales (primarios) + Secundarios (65% contribución)
     const defensoresPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Defensor');
-    const defensoresSecundarios = jugadoresConMinPartidos.filter(j =>
+    const defensoresSecundarios = jugadoresConMinPartidos.filter(j => 
       obtenerPosicionPrimaria(j) !== 'Defensor' && puedeJugarEn(j, 'Defensor')
-    );
-
+    ); 
+    
     // MEDIOCAMPO COMPLEJO: Principales (primarios) + Secundarios (65% contribución)
     const mediocampistasPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Mediocampo');
-    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j =>
+    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j => 
       obtenerPosicionPrimaria(j) !== 'Mediocampo' && puedeJugarEn(j, 'Mediocampo')
     );
-
-    // ATAQUE COMPLEJO: Principales (atacantes main) + Todos los que contribuyen ofensivamente
+    
+    // ATAQUE COMPLEJO: Principales (atacantes main) + Todos los que contribuyen ofensivamente  
     const atacantesPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Atacante');
     const contribuyentesOfensivos = jugadoresConMinPartidos.filter(j => {
       const stats = obtenerEstadisticasPorTemporada(j);
@@ -6762,11 +7049,11 @@ const initApp = () => {
       const tieneAsistencias = stats.asistencias > 0;
       return tieneGoles || tieneAsistencias; // Cualquiera que contribuya ofensivamente
     });
-
+    
     // Variables globales para ataque ponderado
     const atacantesPrincipalesCompleto = [
       ...atacantesPrincipales,
-      ...mediocampistasPrincipales,
+      ...mediocampistasPrincipales, 
       ...mediocampistasSecundarios
     ].filter(jugador => {
       const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6774,7 +7061,7 @@ const initApp = () => {
       const tieneAsistencias = stats.asistencias > 0;
       return tieneGoles || tieneAsistencias; // Solo los que contribuyen ofensivamente
     });
-
+    
     const contribuyentesResto = contribuyentesOfensivos.filter(jugador => {
       const posicionPrimaria = obtenerPosicionPrimaria(jugador);
       const puedeJugarMedio = puedeJugarEn(jugador, 'Mediocampo');
@@ -6821,11 +7108,11 @@ const initApp = () => {
     function calcularPuntuacionCompleja() {
       const resultados = {
         arquero: 0,
-        defensor: 0,
+        defensor: 0, 
         mediocampo: 0,
         ataque: 0
       };
-
+      
       // === ARQUERO PONDERADO (80% mejor arquero, 20% resto) ===
       if (arqueros.length > 0) {
         // Calcular puntuación de cada arquero usando estadísticas de temporada
@@ -6839,29 +7126,29 @@ const initApp = () => {
             puntuacion: winrate * 0.4 + atajadasPorPartido * 25
           };
         });
-
+        
         // Ordenar por puntuación descendente
         puntuacionesArqueros.sort((a, b) => b.puntuacion - a.puntuacion);
-
+        
         if (arqueros.length === 1) {
           // Si solo hay un arquero, usar su puntuación completa
           resultados.arquero = puntuacionesArqueros[0].puntuacion;
         } else {
           // El mejor arquero tiene 80% de peso
           const mejorArquero = puntuacionesArqueros[0].puntuacion;
-
+          
           // El resto tiene 20% de peso promediado
           const restoPuntuacion = puntuacionesArqueros.slice(1)
             .reduce((sum, a) => sum + a.puntuacion, 0) / (arqueros.length - 1);
-
+          
           resultados.arquero = mejorArquero * 0.8 + restoPuntuacion * 0.2;
         }
       }
-
+      
       // === DEFENSOR COMPLEJO (con penalización por cagadas) ===
       let puntuacionDefensor = 0;
       let contadorDefensor = 0;
-
+      
       // Principales (100% contribución)
       defensoresPrincipales.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6872,7 +7159,7 @@ const initApp = () => {
         puntuacionDefensor += puntuacion;
         contadorDefensor += 1;
       });
-
+      
       // Secundarios (65% contribución)
       defensoresSecundarios.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6883,15 +7170,15 @@ const initApp = () => {
         puntuacionDefensor += puntuacion * 0.65; // 65% de contribución
         contadorDefensor += 0.65; // También el denominador se ajusta
       });
-
+      
       if (contadorDefensor > 0) {
         resultados.defensor = Math.max(0, puntuacionDefensor / contadorDefensor);
       }
-
+      
       // === MEDIOCAMPO COMPLEJO ===
       let puntuacionMediocampo = 0;
       let contadorMediocampo = 0;
-
+      
       // Principales (100% contribución)
       mediocampistasPrincipales.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6903,7 +7190,7 @@ const initApp = () => {
         puntuacionMediocampo += puntuacion;
         contadorMediocampo += 1;
       });
-
+      
       // Secundarios (65% contribución)
       mediocampistasSecundarios.forEach(jugador => {
         const stats = obtenerEstadisticasPorTemporada(jugador);
@@ -6915,13 +7202,13 @@ const initApp = () => {
         puntuacionMediocampo += puntuacion * 0.65; // 65% de contribución
         contadorMediocampo += 0.65; // También el denominador se ajusta
       });
-
+      
       if (contadorMediocampo > 0) {
         resultados.mediocampo = puntuacionMediocampo / contadorMediocampo;
       }
-
+      
       // === ATAQUE PONDERADO (80% principales, 20% resto) ===
-
+      
       // Calcular puntuación promedio de principales
       let puntuacionPrincipales = 0;
       if (atacantesPrincipalesCompleto.length > 0) {
@@ -6935,7 +7222,7 @@ const initApp = () => {
         });
         puntuacionPrincipales = puntuacionPrincipales / atacantesPrincipalesCompleto.length;
       }
-
+      
       // Calcular puntuación promedio de contribuyentes
       let puntuacionContribuyentes = 0;
       if (contribuyentesResto.length > 0) {
@@ -6948,7 +7235,7 @@ const initApp = () => {
         });
         puntuacionContribuyentes = puntuacionContribuyentes / contribuyentesResto.length;
       }
-
+      
       // Aplicar ponderación 80/20
       if (atacantesPrincipalesCompleto.length > 0 && contribuyentesResto.length > 0) {
         resultados.ataque = puntuacionPrincipales * 0.8 + puntuacionContribuyentes * 0.2;
@@ -6959,7 +7246,7 @@ const initApp = () => {
         // Solo contribuyentes (caso raro)
         resultados.ataque = puntuacionContribuyentes;
       }
-
+      
       return resultados;
     }
 
@@ -7006,9 +7293,9 @@ const initApp = () => {
       Math.min((scoreAtacante / maximos.atacante) * 100, 100)
     ];
 
-    console.log('📈 Datos normalizados del gráfico:', {
-      labels,
-      data,
+    console.log('📈 Datos normalizados del gráfico:', { 
+      labels, 
+      data, 
       maximos,
       porcentajes: {
         arquero: `${data[0].toFixed(1)}%`,
@@ -7058,7 +7345,7 @@ const initApp = () => {
                 label: function(context) {
                   const posicion = context.label;
                   let info = '';
-
+                  
                   if (posicion === 'Arquero') {
                     info = `${arqueros.length} jugador(es)`;
                   } else if (posicion === 'Defensor') {
@@ -7068,7 +7355,7 @@ const initApp = () => {
                   } else if (posicion === 'Atacante') {
                     info = `${atacantesPrincipalesCompleto.length} principales 80% + ${contribuyentesResto.length} resto 20%`;
                   }
-
+                  
                   return [`${posicion}: ${context.parsed.r.toFixed(1)}`, info];
                 }
               }
@@ -7098,14 +7385,14 @@ const initApp = () => {
     });
 
       console.log('✅ Gráfico radar creado exitosamente:', chartId);
-
+      
     } catch (error) {
       console.error('❌ Error creando gráfico radar:', error);
     }
   }
 
 
-
+  
   // Función para renderizar la tabla de goles (usando el HTML existente)
   function renderizarTablaGoles() {
     const tablaGoles = document.getElementById('tabla-goles');
@@ -7125,18 +7412,18 @@ const initApp = () => {
 
     tablaGoles.innerHTML = eventos.map((evento, index) => {
       const goleador = todosLosJugadores.find(j => j.id == evento.goleador_id)?.nombre || 'N/A';
-      const asistencia = evento.asistencia_id === 'nadie' || !evento.asistencia_id ? 'Sin asistencia' :
+      const asistencia = evento.asistencia_id === 'nadie' || !evento.asistencia_id ? 'Sin asistencia' : 
                         (todosLosJugadores.find(j => j.id == evento.asistencia_id)?.nombre || 'N/A');
       const cagada = evento.cagada_id === 'nadie' || !evento.cagada_id ? 'Sin cagada' :
                      (todosLosJugadores.find(j => j.id == evento.cagada_id)?.nombre || 'N/A');
-
+      
       // Determinar si es gol en contra (usar la marca explícita si está disponible)
       const jugadoresDelPartido = [...equipo1, ...equipo2];
       const goleadorObj = jugadoresDelPartido.find(j => j.id == evento.goleador_id);
-      const esEnContra = evento.es_en_contra !== undefined ?
+      const esEnContra = evento.es_en_contra !== undefined ? 
         evento.es_en_contra : // Usar la marca explícita si está disponible
         (goleadorObj && evento.equipo !== (equipo1.find(j => j.id == evento.goleador_id) ? 1 : 2)); // Fallback al cálculo anterior
-
+      
       return `
         <tr>
           <td><span class="fw-bold">${goleador}</span></td>
@@ -7168,17 +7455,181 @@ const initApp = () => {
         </tr>
       `;
     }).join('');
-
+    
     // Actualizar marcador visual después de renderizar la tabla
     actualizarMarcadorAutomatico();
   }
 
 
   // Función para poblar todos los selectores de jugadores en "Información del Encuentro"
+  function obtenerOpcionesSelectBuscable(select) {
+    return Array.from(select.options).map(option => ({
+      value: option.value,
+      text: option.textContent.trim(),
+      disabled: option.disabled
+    }));
+  }
+
+  function sincronizarValorSelectBuscable(select) {
+    const wrapper = select.closest('.searchable-wrapper');
+    const input = wrapper?.querySelector('.searchable-input');
+    if (!input) return;
+
+    const texto = input.value.trim().toLowerCase();
+    const match = obtenerOpcionesSelectBuscable(select).find(option =>
+      option.value && option.text.toLowerCase() === texto
+    );
+
+    if (match) {
+      select.value = match.value;
+    } else if (!texto) {
+      select.value = '';
+    }
+  }
+
+  function renderizarOpcionesSelectBuscable(select) {
+    const wrapper = select.closest('.searchable-wrapper');
+    const input = wrapper?.querySelector('.searchable-input');
+    const dropdown = wrapper?.querySelector('.searchable-dropdown');
+    if (!wrapper || !input || !dropdown) return;
+
+    const query = input.value.trim().toLowerCase();
+    const opciones = obtenerOpcionesSelectBuscable(select)
+      .filter(option => option.value && !option.disabled)
+      .filter(option => !query || option.text.toLowerCase().includes(query))
+      .slice(0, 50);
+
+    if (!opciones.length) {
+      dropdown.innerHTML = '<div class="searchable-option is-empty">Sin resultados</div>';
+      wrapper.classList.add('is-open');
+      return;
+    }
+
+    dropdown.innerHTML = opciones.map((option, index) => `
+      <div class="searchable-option${index === 0 ? ' is-active' : ''}" data-value="${escaparAtributoHtml(option.value)}">
+        ${escaparHtmlPlano(option.text)}
+      </div>
+    `).join('');
+    wrapper.classList.add('is-open');
+  }
+
+  function seleccionarOpcionBuscable(select, value) {
+    const wrapper = select.closest('.searchable-wrapper');
+    const input = wrapper?.querySelector('.searchable-input');
+    const option = Array.from(select.options).find(item => item.value === value);
+    if (!option || !input) return;
+
+    select.value = value;
+    input.value = option.textContent.trim();
+    wrapper.classList.remove('is-open');
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function actualizarInputSelectBuscable(select, { force = false } = {}) {
+    const wrapper = select.closest('.searchable-wrapper');
+    const input = wrapper?.querySelector('.searchable-input');
+    if (!input) return;
+    if (!force && document.activeElement === input) return;
+
+    const option = Array.from(select.options).find(item => item.value === select.value);
+    input.value = option && option.value ? option.textContent.trim() : '';
+  }
+
+  function inicializarSelectBuscable(select) {
+    if (!select || select.dataset.searchableBound === '1') return;
+
+    select.dataset.searchableBound = '1';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'searchable-wrapper';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.autocomplete = 'off';
+    input.className = `searchable-input ${select.classList.contains('form-select-sm') ? 'form-control form-control-sm' : select.classList.contains('form-select-lg') ? 'form-control form-control-lg' : 'form-control'}`;
+    input.placeholder = select.options[0]?.textContent?.trim() || 'Buscar';
+    input.setAttribute('aria-label', input.placeholder);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'searchable-dropdown';
+    wrapper.insertBefore(input, select);
+    wrapper.appendChild(dropdown);
+    select.classList.add('searchable-native');
+    actualizarInputSelectBuscable(select, { force: true });
+
+    input.addEventListener('focus', () => renderizarOpcionesSelectBuscable(select));
+    input.addEventListener('input', () => {
+      sincronizarValorSelectBuscable(select);
+      renderizarOpcionesSelectBuscable(select);
+    });
+    input.addEventListener('keydown', event => {
+      const opciones = Array.from(dropdown.querySelectorAll('.searchable-option:not(.is-empty)'));
+      const activo = dropdown.querySelector('.searchable-option.is-active');
+      const indexActivo = Math.max(0, opciones.indexOf(activo));
+
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (!wrapper.classList.contains('is-open')) renderizarOpcionesSelectBuscable(select);
+        const siguienteIndex = event.key === 'ArrowDown'
+          ? Math.min(opciones.length - 1, indexActivo + 1)
+          : Math.max(0, indexActivo - 1);
+        opciones.forEach(option => option.classList.remove('is-active'));
+        opciones[siguienteIndex]?.classList.add('is-active');
+        opciones[siguienteIndex]?.scrollIntoView({ block: 'nearest' });
+      }
+
+      if (event.key === 'Enter') {
+        const option = dropdown.querySelector('.searchable-option.is-active:not(.is-empty)');
+        if (option) {
+          event.preventDefault();
+          seleccionarOpcionBuscable(select, option.dataset.value);
+        }
+      }
+
+      if (event.key === 'Escape') {
+        wrapper.classList.remove('is-open');
+      }
+    });
+    dropdown.addEventListener('mousedown', event => {
+      const option = event.target.closest('.searchable-option:not(.is-empty)');
+      if (!option) return;
+      event.preventDefault();
+      seleccionarOpcionBuscable(select, option.dataset.value);
+    });
+    select.addEventListener('change', () => actualizarInputSelectBuscable(select, { force: true }));
+  }
+
+  function initializeSearchableSelects(root = document) {
+    root.querySelectorAll('select.searchable-select').forEach(inicializarSelectBuscable);
+    updateSearchableSelects(root);
+  }
+
+  function updateSearchableSelects(root = document) {
+    root.querySelectorAll('select.searchable-select').forEach(select => {
+      if (select.dataset.searchableBound !== '1') {
+        inicializarSelectBuscable(select);
+      } else {
+        actualizarInputSelectBuscable(select);
+        const wrapper = select.closest('.searchable-wrapper');
+        if (wrapper?.classList.contains('is-open')) renderizarOpcionesSelectBuscable(select);
+      }
+    });
+  }
+
+  document.addEventListener('mousedown', event => {
+    document.querySelectorAll('.searchable-wrapper.is-open').forEach(wrapper => {
+      if (!wrapper.contains(event.target)) wrapper.classList.remove('is-open');
+    });
+  });
+
+  window.initializeSearchableSelects = initializeSearchableSelects;
+  window.updateSearchableSelects = updateSearchableSelects;
+
   function poblarSelectoresJugadores() {
     // Solo usar jugadores de los equipos armados
     const jugadoresDelPartido = [...equipo1, ...equipo2];
-
+    
     // Lista de todos los selectores de jugadores
     const selectores = [
       { id: 'goleador', placeholder: 'Seleccionar goleador' },
@@ -7190,7 +7641,7 @@ const initApp = () => {
 
     if (jugadoresDelPartido.length === 0) {
       console.log('No hay jugadores en los equipos armados, limpiando selectores');
-
+      
       // Limpiar todos los selectores si no hay jugadores
       selectores.forEach(({ id, placeholder, extraOption }) => {
         const selector = document.getElementById(id);
@@ -7201,18 +7652,19 @@ const initApp = () => {
           }
         }
       });
-
+      
       // Limpiar también selectores dinámicos
       const selectoresAtajadas = document.querySelectorAll('.atajadas-jugador');
       selectoresAtajadas.forEach(selector => {
         selector.innerHTML = '<option value="">Seleccionar jugador</option>';
       });
-
+      
       const selectoresCagadas = document.querySelectorAll('.cagadas-jugador');
       selectoresCagadas.forEach(selector => {
         selector.innerHTML = '<option value="">Seleccionar jugador</option>';
       });
-
+      updateSearchableSelects(document);
+      
       return;
     }
 
@@ -7223,7 +7675,7 @@ const initApp = () => {
         if (extraOption) {
           selector.innerHTML += extraOption;
         }
-
+        
         jugadoresDelPartido.forEach(jugador => {
           const option = `<option value="${jugador.id}">${jugador.nombre}</option>`;
           selector.innerHTML += option;
@@ -7233,15 +7685,15 @@ const initApp = () => {
 
     // Poblar también los selectores dinámicos de atajadas y cagadas
     poblarSelectoresDinamicos();
-
+    
     // Ocultar campo de equipo del gol ya que se detecta automáticamente
     ocultarCampoEquipoGol();
-
+    
     // Inicializar selectores buscables solo la primera vez, luego solo actualizar
     const wrappers = document.querySelectorAll('.searchable-wrapper');
-    if (wrappers.length === 0) {
+    if (wrappers.length === 0 && typeof initializeSearchableSelects === 'function') {
       initializeSearchableSelects();
-    } else {
+    } else if (wrappers.length > 0 && typeof updateSearchableSelects === 'function') {
       updateSearchableSelects();
     }
   }
@@ -7249,7 +7701,7 @@ const initApp = () => {
   function poblarSelectoresDinamicos() {
     // Solo usar jugadores de los equipos armados
     const jugadoresDelPartido = [...equipo1, ...equipo2];
-
+    
     if (jugadoresDelPartido.length === 0) return;
 
     // Atajadas
@@ -7257,7 +7709,7 @@ const initApp = () => {
     selectoresAtajadas.forEach(selector => {
       const valorActual = selector.value;
       selector.innerHTML = '<option value="">Seleccionar jugador</option>';
-
+      
       jugadoresDelPartido.forEach(jugador => {
         const option = document.createElement('option');
         option.value = jugador.id;
@@ -7274,7 +7726,7 @@ const initApp = () => {
     selectoresCagadas.forEach(selector => {
       const valorActual = selector.value;
       selector.innerHTML = '<option value="">Seleccionar jugador</option>';
-
+      
       jugadoresDelPartido.forEach(jugador => {
         const option = document.createElement('option');
         option.value = jugador.id;
@@ -7285,7 +7737,7 @@ const initApp = () => {
         selector.appendChild(option);
       });
     });
-
+    
     // Ocultar campo de equipo del gol ya que se detecta automáticamente
     ocultarCampoEquipoGol();
     updateSearchableSelects(document);
@@ -9566,6 +10018,7 @@ const initApp = () => {
         reviewSegundos: evento.review_segundos,
         metadata: completarMetadataNombresCompilado({
           ...(evento.metadata || {}),
+          equipo: evento.equipo ?? evento.metadata?.equipo,
           ...marcador
         }, evento.jugador_id, jugadorNombre),
         sourceKey: evento.id,
@@ -10000,16 +10453,703 @@ const initApp = () => {
     ctx.fillText(recortarTextoCanvas(ctx, texto, maxWidth), x, y);
   }
 
-  function convertirCanvasAPngBytes(canvas) {
+  function dibujarTextoCentradoTruncadoCanvas(ctx, texto, cx, y, maxWidth) {
+    const valor = recortarTextoCanvas(ctx, texto, maxWidth);
+    ctx.fillText(valor, cx - (ctx.measureText(valor).width / 2), y);
+  }
+
+  function colorHexARgbaPortada(color, alpha = 1) {
+    const match = String(color || '').trim().match(/^#?([0-9a-f]{6})$/i);
+    if (!match) return `rgba(15, 23, 42, ${alpha})`;
+    const hex = match[1];
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function convertirCanvasABlob(canvas, mimeType = 'image/png') {
     return new Promise((resolve, reject) => {
-      canvas.toBlob(async blob => {
+      canvas.toBlob(blob => {
         if (!blob) {
-          reject(new Error('No se pudo crear el overlay PNG.'));
+          reject(new Error('No se pudo crear la imagen PNG.'));
           return;
         }
-        resolve(new Uint8Array(await blob.arrayBuffer()));
-      }, 'image/png');
+        resolve(blob);
+      }, mimeType);
     });
+  }
+
+  async function convertirCanvasAPngBytes(canvas) {
+    const blob = await convertirCanvasABlob(canvas, 'image/png');
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  function obtenerNombreJugadorPortada(jugador) {
+    return jugador?.nombre ||
+      jugador?.jugadores?.nombre ||
+      jugador?.jugador_nombre ||
+      jugador?.jugadorNombre ||
+      'Jugador';
+  }
+
+  function formatearFechaPortadaCompilado(fecha) {
+    if (!fecha) return '';
+    const date = new Date(`${fecha}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return String(fecha);
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function parsearMarcadorPortada(marcador) {
+    if (typeof marcador === 'string') {
+      const match = marcador.match(/(\d+)\s*[-:]\s*(\d+)/);
+      if (match) {
+        return { equipo1: Number(match[1]) || 0, equipo2: Number(match[2]) || 0 };
+      }
+    }
+
+    return {
+      equipo1: Number(marcador?.equipo1 ?? marcador?.local ?? marcador?.scoreLocal) || 0,
+      equipo2: Number(marcador?.equipo2 ?? marcador?.visitante ?? marcador?.scoreVisitante) || 0
+    };
+  }
+
+  function normalizarSiglasEquipoPortada(valor, fallback) {
+    const siglas = String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase()
+      .slice(0, 3);
+    return siglas || fallback;
+  }
+
+  function resolverEquipoGanadorPortada(datos = {}, marcador = null) {
+    const valorDirecto = datos.equipoGanador ?? datos.equipo_ganador ?? datos.ganador;
+    if (valorDirecto !== null && valorDirecto !== undefined && String(valorDirecto).trim() !== '') {
+      const directo = Number(valorDirecto);
+      if (directo === 1 || directo === 2) return directo;
+      if (directo === 0) return 0;
+    }
+
+    const score = marcador || parsearMarcadorPortada(datos.marcador || datos.score);
+    if (score.equipo1 > score.equipo2) return 1;
+    if (score.equipo2 > score.equipo1) return 2;
+    return 0;
+  }
+
+  function obtenerEquipoClipPortada(clip) {
+    const equipo = Number(clip?.metadata?.equipo ?? clip?.equipo ?? clip?.team);
+    return equipo === 1 || equipo === 2 ? equipo : 0;
+  }
+
+  function esGolValidoPortada(clip) {
+    return clip?.tipo === 'gol' && !clip?.metadata?.es_gol_en_contra && !clip?.es_gol_en_contra && !clip?.esGolEnContra;
+  }
+
+  function seleccionarClipFondoPortada(clips = [], datosPortada = {}) {
+    const lista = Array.isArray(clips) ? clips : [];
+    const marcador = parsearMarcadorPortada(datosPortada.marcador || datosPortada.score);
+    const ganador = resolverEquipoGanadorPortada(datosPortada, marcador);
+    const goles = lista.filter(esGolValidoPortada);
+
+    if (ganador === 1 || ganador === 2) {
+      const golGanador = goles.find(clip => obtenerEquipoClipPortada(clip) === ganador);
+      if (golGanador) return golGanador;
+    }
+
+    return goles[0] || lista[0] || null;
+  }
+
+  function obtenerSegundoFramePortada(clip) {
+    if (!clip) return 0;
+
+    const exacto = Number(clip.reviewSegundos ?? clip.review_segundos ?? clip.metadata?.review_segundos);
+    if (Number.isFinite(exacto)) {
+      const fin = Number(clip.fin ?? clip.fin_segundos ?? clip.metadata?.compilado?.fin_segundos);
+      const candidato = Math.max(0, exacto + 1.2);
+      return Number.isFinite(fin) ? Math.min(candidato, Math.max(exacto, fin - 0.25)) : candidato;
+    }
+
+    const inicio = Number(clip.inicio ?? clip.inicio_segundos ?? clip.metadata?.compilado?.inicio_segundos);
+    if (Number.isFinite(inicio)) {
+      const duracion = Number(clip.duracion ?? clip.duracion_segundos);
+      return Math.max(0, inicio + (Number.isFinite(duracion) ? duracion * 0.7 : 0));
+    }
+
+    return 0;
+  }
+
+  function obtenerIdJugadorPortada(jugador) {
+    return jugador?.id ?? jugador?.jugador_id ?? jugador?.jugadorId ?? null;
+  }
+
+  function obtenerCapitanFallbackPortada(jugadores = []) {
+    const primero = (Array.isArray(jugadores) ? jugadores : []).find(Boolean);
+    return primero ? [obtenerNombreJugadorPortada(primero)] : ['Sin goles'];
+  }
+
+  function calcularCapitanesPortada(clips = [], equipo1Jugadores = [], equipo2Jugadores = []) {
+    const equipoPorJugador = new Map();
+    [equipo1Jugadores, equipo2Jugadores].forEach((jugadores, index) => {
+      (Array.isArray(jugadores) ? jugadores : []).forEach(jugador => {
+        const id = obtenerIdJugadorPortada(jugador);
+        if (id) equipoPorJugador.set(String(id), index + 1);
+      });
+    });
+
+    const conteos = {
+      1: new Map(),
+      2: new Map()
+    };
+
+    (Array.isArray(clips) ? clips : []).forEach(clip => {
+      if (!esGolValidoPortada(clip)) return;
+
+      const jugadorId = clip.jugadorId ?? clip.jugador_id ?? clip.metadata?.jugador_id ?? clip.metadata?.goleador_id;
+      const equipo = obtenerEquipoClipPortada(clip) || Number(equipoPorJugador.get(String(jugadorId)));
+      if (equipo !== 1 && equipo !== 2) return;
+
+      const nombre = clip.jugadorNombre || clip.jugador_nombre || clip.metadata?.jugador_nombre || clip.metadata?.goleador_nombre || 'Jugador';
+      const key = String(jugadorId || nombre);
+      const actual = conteos[equipo].get(key) || { nombre, goles: 0 };
+      actual.goles += 1;
+      conteos[equipo].set(key, actual);
+    });
+
+    const resolver = (equipo, fallbackJugadores) => {
+      const goleadores = Array.from(conteos[equipo].values());
+      if (!goleadores.length) return obtenerCapitanFallbackPortada(fallbackJugadores);
+
+      const maxGoles = Math.max(...goleadores.map(item => item.goles));
+      const capitanes = goleadores
+        .filter(item => item.goles === maxGoles)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+        .map(item => item.nombre);
+
+      if (capitanes.length <= 2) return capitanes;
+      return [`${capitanes.slice(0, 2).join(' / ')} +${capitanes.length - 2}`];
+    };
+
+    return {
+      equipo1: resolver(1, equipo1Jugadores),
+      equipo2: resolver(2, equipo2Jugadores)
+    };
+  }
+
+  function normalizarEquipoPortada(jugadores = [], fallback, color, iniciales, tipo = 'circle') {
+    const nombres = (Array.isArray(jugadores) ? jugadores : [])
+      .map(obtenerNombreJugadorPortada)
+      .filter(Boolean);
+
+    return {
+      nombre: normalizarSiglasEquipoPortada(fallback, iniciales),
+      iniciales: normalizarSiglasEquipoPortada(iniciales, fallback),
+      color,
+      tipo,
+      jugadores: nombres.slice(0, 5),
+      capitanes: []
+    };
+  }
+
+  function normalizarDatosPortadaCompilado(datos = {}) {
+    const clips = Array.isArray(datos.clips) ? datos.clips : [];
+    const marcador = parsearMarcadorPortada(datos.marcador || datos.score);
+    const equipoGanador = resolverEquipoGanadorPortada(datos, marcador);
+    const duracionTotal = Number.isFinite(Number(datos.duracionTotal))
+      ? Number(datos.duracionTotal)
+      : clips.reduce((acc, clip) => acc + (Number(clip?.duracion) || 0), 0);
+    const temporada = String(datos.temporada || '').trim();
+    const cancha = String(datos.cancha || '').trim();
+    const fecha = formatearFechaPortadaCompilado(datos.fecha);
+    const meta = [fecha, cancha].filter(Boolean).join(' / ');
+    const equipo1Siglas = normalizarSiglasEquipoPortada(datos.equipo1Siglas || datos.equipo1Nombre, 'E1');
+    const equipo2Siglas = normalizarSiglasEquipoPortada(datos.equipo2Siglas || datos.equipo2Nombre, 'E2');
+    const capitanes = calcularCapitanesPortada(clips, datos.equipo1, datos.equipo2);
+    const equipo1 = normalizarEquipoPortada(datos.equipo1, equipo1Siglas, '#2563eb', equipo1Siglas, 'shield');
+    const equipo2 = normalizarEquipoPortada(datos.equipo2, equipo2Siglas, '#dc2626', equipo2Siglas, 'circle');
+    equipo1.capitanes = capitanes.equipo1;
+    equipo2.capitanes = capitanes.equipo2;
+
+    return {
+      titulo: String(datos.titulo || 'COMPILADO').toUpperCase(),
+      subtitulo: String(datos.subtitulo || 'T5 PAPI ACADEMY').toUpperCase(),
+      competencia: String(temporada || 'PAPI LEAGUE').toUpperCase(),
+      meta,
+      scoreLocal: marcador.equipo1,
+      scoreVisitante: marcador.equipo2,
+      equipoGanador,
+      duracion: formatearSegundosVideo(duracionTotal),
+      clipsTotal: clips.length,
+      equipo1,
+      equipo2
+    };
+  }
+
+  function dibujarPoligonoCompilado(ctx, puntos) {
+    ctx.beginPath();
+    puntos.forEach(([x, y], index) => {
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+  }
+
+  function dibujarParalelogramoCompilado(ctx, x, y, width, height, inclinacion = 24) {
+    dibujarPoligonoCompilado(ctx, [
+      [x + inclinacion, y],
+      [x + width, y],
+      [x + width - inclinacion, y + height],
+      [x, y + height]
+    ]);
+  }
+
+  function obtenerMedidasFuenteCanvas(ctx, texto, maxWidth, maxSize, minSize, fuente, peso = 900, estilo = '') {
+    let size = maxSize;
+    do {
+      ctx.font = `${estilo ? `${estilo} ` : ''}${peso} ${size}px ${fuente}`;
+      if (ctx.measureText(texto).width <= maxWidth || size <= minSize) return size;
+      size -= 4;
+    } while (size >= minSize);
+    return minSize;
+  }
+
+  function dibujarImagenCubriendoCanvas(ctx, image, x, y, width, height) {
+    const imageWidth = image?.videoWidth || image?.naturalWidth || image?.width || 0;
+    const imageHeight = image?.videoHeight || image?.naturalHeight || image?.height || 0;
+    if (!imageWidth || !imageHeight) return false;
+
+    const scale = Math.max(width / imageWidth, height / imageHeight);
+    const drawWidth = imageWidth * scale;
+    const drawHeight = imageHeight * scale;
+    const drawX = x + (width - drawWidth) / 2;
+    const drawY = y + (height - drawHeight) / 2;
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    return true;
+  }
+
+  function dibujarFondoFallbackPortada(ctx) {
+    const gradiente = ctx.createLinearGradient(690, 0, 1920, 1080);
+    gradiente.addColorStop(0, '#0f2f23');
+    gradiente.addColorStop(0.52, '#14532d');
+    gradiente.addColorStop(1, '#07140f');
+    ctx.fillStyle = gradiente;
+    ctx.fillRect(620, 0, 1300, 1080);
+
+    ctx.save();
+    ctx.globalAlpha = 0.26;
+    ctx.strokeStyle = '#e5fff0';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(690, 910);
+    ctx.lineTo(1870, 1015);
+    ctx.moveTo(790, 120);
+    ctx.lineTo(1810, 90);
+    ctx.moveTo(1240, 80);
+    ctx.lineTo(1110, 1030);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(1380, 520, 185, 112, -0.08, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.34;
+    for (let i = 0; i < 12; i += 1) {
+      const x = 785 + (i % 4) * 210 + (i > 5 ? 70 : 0);
+      const y = 285 + Math.floor(i / 4) * 160;
+      ctx.fillStyle = i % 2 === 0 ? '#f8fafc' : '#16a34a';
+      ctx.beginPath();
+      ctx.arc(x, y, 19, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(x - 12, y + 18, 24, 46);
+    }
+    ctx.restore();
+
+    const sombra = ctx.createLinearGradient(620, 0, 1920, 0);
+    sombra.addColorStop(0, 'rgba(2, 6, 23, 0.12)');
+    sombra.addColorStop(0.72, 'rgba(2, 6, 23, 0)');
+    sombra.addColorStop(1, 'rgba(2, 6, 23, 0.4)');
+    ctx.fillStyle = sombra;
+    ctx.fillRect(620, 0, 1300, 1080);
+  }
+
+  function dibujarInsigniaEquipoPortada(ctx, equipo, cx, cy, size, fuente) {
+    ctx.save();
+    const trazarBase = (escala = 1) => {
+      const s = size * escala;
+      if (equipo.tipo === 'shield') {
+        dibujarPoligonoCompilado(ctx, [
+          [cx, cy - s * 0.54],
+          [cx + s * 0.46, cy - s * 0.32],
+          [cx + s * 0.4, cy + s * 0.27],
+          [cx, cy + s * 0.56],
+          [cx - s * 0.4, cy + s * 0.27],
+          [cx - s * 0.46, cy - s * 0.32]
+        ]);
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx, cy, s * 0.5, 0, Math.PI * 2);
+      }
+    };
+
+    ctx.shadowColor = 'rgba(15, 23, 42, 0.26)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 7;
+    ctx.fillStyle = equipo.color;
+    trazarBase(1.08);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.22)';
+    ctx.lineWidth = 6;
+    trazarBase(0.94);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.48;
+    ctx.strokeStyle = equipo.color;
+    ctx.lineWidth = 4;
+    trazarBase(0.94);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = equipo.color;
+    if (equipo.tipo === 'shield') {
+      dibujarPoligonoCompilado(ctx, [
+        [cx - size * 0.34, cy - size * 0.26],
+        [cx + size * 0.34, cy - size * 0.26],
+        [cx + size * 0.28, cy + size * 0.18],
+        [cx, cy + size * 0.4],
+        [cx - size * 0.28, cy + size * 0.18]
+      ]);
+      ctx.globalAlpha = 0.12;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      dibujarParalelogramoCompilado(ctx, cx - size * 0.31, cy - size * 0.39, size * 0.18, size * 0.78, 10);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.39, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 ${Math.round(size * 0.26)}px ${fuente}`;
+    ctx.fillStyle = equipo.tipo === 'shield' ? '#0f172a' : '#ffffff';
+    ctx.fillText(equipo.iniciales, cx, cy + 2);
+    ctx.restore();
+  }
+
+  function dibujarCapitanesPortada(ctx, equipo, cx, y, maxWidth, fuente) {
+    const texto = (equipo.capitanes?.length ? equipo.capitanes.join(' / ') : 'Sin goles').toUpperCase();
+    const fontSize = obtenerMedidasFuenteCanvas(ctx, texto, maxWidth - 30, 32, 24, fuente, 900);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 ${fontSize}px ${fuente}`;
+    const textoVisible = recortarTextoCanvas(ctx, texto, maxWidth - 30);
+    const textWidth = ctx.measureText(textoVisible).width;
+    const pillWidth = Math.min(maxWidth, textWidth + 38);
+    const pillHeight = fontSize + 20;
+    const pillX = cx - (pillWidth / 2);
+    const pillY = y - (pillHeight / 2);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(15, 23, 42, 0.12)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = '#ffffff';
+    dibujarRectRedondeadoCompilado(ctx, pillX, pillY, pillWidth, pillHeight, 11);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = colorHexARgbaPortada(equipo.color, 0.38);
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = equipo.color;
+    ctx.fillText(textoVisible, cx - (textWidth / 2), y + 1);
+    ctx.restore();
+  }
+
+  async function capturarFrameVideoCompilado(file, segundos = 0) {
+    if (!file || !String(file.type || '').startsWith('video/')) return null;
+
+    const video = document.createElement('video');
+    const sourceUrl = URL.createObjectURL(file);
+    video.src = sourceUrl;
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.style.position = 'fixed';
+    video.style.left = '-10000px';
+    video.style.top = '0';
+    video.style.width = '320px';
+    video.style.height = '180px';
+    video.style.opacity = '0.01';
+    document.body.appendChild(video);
+
+    try {
+      await esperarEventoUnaVez(video, 'loadedmetadata', 20000);
+      const duracion = Number(video.duration);
+      const destino = Math.max(0, Math.min(Number(segundos) || 0, Number.isFinite(duracion) ? Math.max(0, duracion - 0.25) : Number(segundos) || 0));
+      if (destino > 0.05) {
+        await irATiempoVideo(video, destino);
+      } else if (video.readyState < 2) {
+        await esperarEventoUnaVez(video, 'loadeddata', 15000);
+      }
+
+      const width = video.videoWidth || 1920;
+      const height = video.videoHeight || 1080;
+      const frame = document.createElement('canvas');
+      frame.width = width;
+      frame.height = height;
+      const frameCtx = frame.getContext('2d');
+      if (!frameCtx) return null;
+      frameCtx.drawImage(video, 0, 0, width, height);
+      return frame;
+    } catch (error) {
+      console.warn('No se pudo capturar frame para la portada del compilado:', error);
+      return null;
+    } finally {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.remove();
+      URL.revokeObjectURL(sourceUrl);
+    }
+  }
+
+  async function crearPortadaCompiladoCanvas(datosPortada = {}, frame = null) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1920;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No se pudo preparar el canvas de portada.');
+
+    try {
+      await document.fonts?.load('900 132px Inter');
+      await document.fonts?.load('800 44px Inter');
+      await document.fonts?.load('700 26px Inter');
+    } catch (error) {
+      // Si la fuente no esta disponible, el canvas usa el fallback del sistema.
+    }
+
+    const fuente = 'Inter, "Arial Black", "Segoe UI", Arial, sans-serif';
+    const datos = normalizarDatosPortadaCompilado(datosPortada);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const ancho = canvas.width;
+    const alto = canvas.height;
+    const panel = {
+      topRight: 858,
+      bottomRight: 684,
+      safeLeft: 76,
+      scoreCenterX: 372
+    };
+    const media = {
+      topLeft: 790,
+      bottomLeft: 662,
+      drawX: 590,
+      drawWidth: 1330
+    };
+
+    ctx.save();
+    dibujarPoligonoCompilado(ctx, [[media.topLeft, 0], [ancho, 0], [ancho, alto], [media.bottomLeft, alto]]);
+    ctx.clip();
+    if (frame) ctx.filter = 'contrast(1.08) saturate(1.08)';
+    if (!dibujarImagenCubriendoCanvas(ctx, frame, media.drawX, 0, media.drawWidth, alto)) {
+      ctx.filter = 'none';
+      dibujarFondoFallbackPortada(ctx);
+    }
+
+    ctx.filter = 'none';
+    const mediaVignette = ctx.createLinearGradient(media.bottomLeft, 0, ancho, alto);
+    mediaVignette.addColorStop(0, 'rgba(2, 6, 23, 0.14)');
+    mediaVignette.addColorStop(0.54, 'rgba(2, 6, 23, 0)');
+    mediaVignette.addColorStop(1, 'rgba(2, 6, 23, 0.38)');
+    ctx.fillStyle = mediaVignette;
+    ctx.fillRect(media.drawX, 0, media.drawWidth, alto);
+
+    const bottomMediaFade = ctx.createLinearGradient(0, 710, 0, alto);
+    bottomMediaFade.addColorStop(0, 'rgba(2, 6, 23, 0)');
+    bottomMediaFade.addColorStop(0.64, 'rgba(2, 6, 23, 0.18)');
+    bottomMediaFade.addColorStop(1, 'rgba(2, 6, 23, 0.62)');
+    ctx.fillStyle = bottomMediaFade;
+    ctx.fillRect(media.drawX, 710, media.drawWidth, alto - 710);
+
+    const edgeFade = ctx.createLinearGradient(media.bottomLeft, 0, media.topLeft + 120, 0);
+    edgeFade.addColorStop(0, 'rgba(2, 6, 23, 0.18)');
+    edgeFade.addColorStop(1, 'rgba(2, 6, 23, 0)');
+    ctx.fillStyle = edgeFade;
+    ctx.fillRect(media.bottomLeft, 0, 260, alto);
+    ctx.restore();
+
+    ctx.fillStyle = '#ffffff';
+    dibujarPoligonoCompilado(ctx, [[0, 0], [panel.topRight, 0], [panel.bottomRight, alto], [0, alto]]);
+    ctx.fill();
+
+    ctx.save();
+    dibujarPoligonoCompilado(ctx, [[0, 0], [panel.topRight, 0], [panel.bottomRight, alto], [0, alto]]);
+    ctx.clip();
+    ctx.globalAlpha = 0.04;
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 4;
+    ctx.font = `900 318px ${fuente}`;
+    ctx.strokeText('T5', 18, 188);
+    ctx.strokeText('PAPI', -36, 618);
+    ctx.strokeText('GOL', -28, 1040);
+
+    ctx.globalAlpha = 0.12;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    for (let x = 82; x < 850; x += 94) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x - 176, alto);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.fillStyle = '#ff2d2d';
+    ctx.fillRect(0, 232, 360, 10);
+    ctx.fillRect(350, 232, 10, 58);
+    dibujarParalelogramoCompilado(ctx, 806, 28, 58, 134, 16);
+    ctx.fill();
+    dibujarParalelogramoCompilado(ctx, 402, 562, 292, 10, 8);
+    ctx.fill();
+    dibujarParalelogramoCompilado(ctx, 54, 746, 112, 10, 7);
+    ctx.fill();
+
+    ctx.save();
+    ctx.strokeStyle = '#ff2d2d';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(panel.topRight, 0);
+    ctx.lineTo(panel.bottomRight, alto);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `900 42px ${fuente}`;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('T5', 88, 92);
+    ctx.fillStyle = '#ff2d2d';
+    ctx.fillText('PAPI', 154, 92);
+    ctx.font = `800 17px ${fuente}`;
+    ctx.fillStyle = '#334155';
+    ctx.fillText('ACADEMY', 91, 122);
+
+    ctx.save();
+    ctx.fillStyle = '#b8892a';
+    ctx.fillRect(394, 56, 12, 38);
+    ctx.fillRect(384, 94, 32, 8);
+    ctx.beginPath();
+    ctx.arc(400, 50, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.font = `900 17px ${fuente}`;
+    ctx.fillStyle = '#0f172a';
+    dibujarTextoTruncadoCanvas(ctx, datos.competencia, 424, 84, 226);
+    ctx.font = `800 12px ${fuente}`;
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('TEMPORADA / COPA', 424, 104);
+
+    ctx.font = `800 22px ${fuente}`;
+    ctx.fillStyle = '#475569';
+    if (datos.meta) dibujarTextoTruncadoCanvas(ctx, datos.meta, 88, 164, 520);
+
+    dibujarInsigniaEquipoPortada(ctx, datos.equipo1, 145, 372, 150, fuente);
+    dibujarInsigniaEquipoPortada(ctx, datos.equipo2, 612, 372, 150, fuente);
+
+    const scoreText = `${datos.scoreLocal} - ${datos.scoreVisitante}`;
+    const scoreSize = obtenerMedidasFuenteCanvas(ctx, scoreText, 300, 132, 94, fuente, 900);
+    ctx.font = `900 ${scoreSize}px ${fuente}`;
+    ctx.fillStyle = '#030712';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(scoreText, panel.scoreCenterX, 374);
+
+    ctx.font = `900 26px ${fuente}`;
+    ctx.fillStyle = datos.equipo1.color;
+    ctx.fillText(datos.equipo1.nombre, 145, 486);
+    ctx.fillStyle = datos.equipo2.color;
+    ctx.fillText(datos.equipo2.nombre, 612, 486);
+    dibujarCapitanesPortada(ctx, datos.equipo1, 145, 536, 280, fuente);
+    dibujarCapitanesPortada(ctx, datos.equipo2, 612, 536, 230, fuente);
+
+    const titleSize = obtenerMedidasFuenteCanvas(ctx, datos.titulo, 608, 118, 82, fuente, 900, 'italic');
+    ctx.save();
+    ctx.translate(panel.safeLeft, 708);
+    ctx.transform(1, 0, -0.11, 1, 0, 0);
+    ctx.font = `italic 900 ${titleSize}px ${fuente}`;
+    ctx.fillStyle = '#ff2d2d';
+    ctx.fillText(datos.titulo, 0, 0);
+    ctx.restore();
+
+    ctx.fillStyle = '#030712';
+    dibujarParalelogramoCompilado(ctx, 0, 748, 672, 90, 28);
+    ctx.fill();
+    const subtituloSize = obtenerMedidasFuenteCanvas(ctx, datos.subtitulo, 548, 44, 34, fuente, 900);
+    ctx.font = `900 ${subtituloSize}px ${fuente}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(datos.subtitulo, 70, 808);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(2, 6, 23, 0.35)';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+    dibujarRectRedondeadoCompilado(ctx, 1768, 994, 120, 58, 10);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.font = `900 30px ${fuente}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(datos.duracion, 1828, 1024);
+    ctx.restore();
+
+    return canvas;
+  }
+
+  async function descargarPortadaCompilado(clips, nombreBase, opciones = {}) {
+    if (!clips.length) {
+      setEstadoCompilado(opciones.statusEl, 'No hay cortes elegibles para generar portada.', 'warning');
+      if (typeof showToast === 'function') showToast('No hay cortes elegibles para generar portada.', 'warning');
+      return;
+    }
+
+    try {
+      setEstadoCompilado(opciones.statusEl, 'Preparando portada PNG...', 'info');
+      const datosPortada = opciones.datosPortada || {};
+      const clipFondo = seleccionarClipFondoPortada(clips, datosPortada);
+      const segundoFrame = obtenerSegundoFramePortada(clipFondo);
+      const frame = await capturarFrameVideoCompilado(opciones.file || null, segundoFrame);
+      const canvas = await crearPortadaCompiladoCanvas({
+        ...datosPortada,
+        clips
+      }, frame);
+      const blob = await convertirCanvasABlob(canvas, 'image/png');
+      descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}-portada-youtube.png`);
+      const mensaje = frame
+        ? 'Portada PNG lista con frame de gol del equipo ganador.'
+        : 'Portada PNG lista. Para usar frame real, carga el video completo del review.';
+      setEstadoCompilado(opciones.statusEl, mensaje, frame ? 'success' : 'warning');
+      if (typeof showToast === 'function') showToast('Portada PNG descargada.', 'success');
+    } catch (error) {
+      console.error('Error generando portada del compilado:', error);
+      setEstadoCompilado(opciones.statusEl, `No se pudo generar la portada: ${obtenerMensajeError(error)}`, 'error');
+      if (typeof showToast === 'function') showToast(`No se pudo generar la portada: ${obtenerMensajeError(error)}`, 'error');
+    }
   }
 
   function obtenerSegundosPartidoOverlayClip(clip, segundosDesdeInicio = 0) {
@@ -10771,6 +11911,60 @@ const initApp = () => {
     };
   }
 
+  function obtenerSiglasPortadaDesdeInputs(prefix) {
+    return {
+      equipo1Siglas: normalizarSiglasEquipoPortada(document.getElementById(`${prefix}-equipo1`)?.value, 'E1'),
+      equipo2Siglas: normalizarSiglasEquipoPortada(document.getElementById(`${prefix}-equipo2`)?.value, 'E2')
+    };
+  }
+
+  function vincularInputsSiglasPortada(prefix) {
+    ['equipo1', 'equipo2'].forEach(equipoKey => {
+      const input = document.getElementById(`${prefix}-${equipoKey}`);
+      if (!input || input.dataset.siglasPortadaBound === '1') return;
+      input.dataset.siglasPortadaBound = '1';
+      input.addEventListener('input', () => {
+        input.value = normalizarSiglasEquipoPortada(input.value, '');
+      });
+    });
+  }
+
+  function obtenerDatosPortadaCompiladoSandbox(clips = []) {
+    const temporadaSelect = document.getElementById('review-temporada');
+    const temporadaTexto = temporadaSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
+    const marcador = calcularMarcadorEventos();
+
+    return {
+      clips,
+      ...obtenerSiglasPortadaDesdeInputs('review-cover'),
+      fecha: obtenerValorReviewInput('review-fecha') || new Date().toISOString().slice(0, 10),
+      cancha: obtenerValorReviewInput('review-cancha'),
+      temporada: temporadaTexto && temporadaTexto !== 'Seleccionar temporada' ? temporadaTexto : '',
+      marcador,
+      equipoGanador: marcador.equipo1 > marcador.equipo2 ? 1 : marcador.equipo2 > marcador.equipo1 ? 2 : 0,
+      equipo1,
+      equipo2
+    };
+  }
+
+  async function descargarPortadaCompiladoSandbox() {
+    const { clips, nombreBase } = obtenerDatosCompiladoSandbox();
+    const statusEl = document.getElementById('review-compilado-status');
+    const button = document.getElementById('review-download-portada');
+    const file = document.getElementById('review-compilado-video')?.files?.[0] || null;
+
+    if (button) button.disabled = true;
+    try {
+      await descargarPortadaCompilado(clips, nombreBase, {
+        file,
+        statusEl,
+        datosPortada: obtenerDatosPortadaCompiladoSandbox(clips)
+      });
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   function exportarCompiladoSandbox() {
     const { clips, reviewLink, nombreBase, opcionesCompilado } = obtenerDatosCompiladoSandbox();
     descargarJsonCompilado(clips, nombreBase, reviewLink, opcionesCompilado);
@@ -11251,6 +12445,8 @@ const initApp = () => {
       if (input) input.value = '';
     });
     document.getElementById('review-export-compilado')?.addEventListener('click', exportarCompiladoSandbox);
+    document.getElementById('review-download-portada')?.addEventListener('click', descargarPortadaCompiladoSandbox);
+    vincularInputsSiglasPortada('review-cover');
     document.getElementById('review-build-compilado-beelup')?.addEventListener('click', generarCompiladoSandboxBeelup);
     document.getElementById('review-build-compilado')?.addEventListener('click', generarCompiladoSandbox);
     document.getElementById('review-compilado-atajadas-min')?.addEventListener('change', renderizarCompiladoReviewSandbox);
@@ -11284,7 +12480,7 @@ const initApp = () => {
     const container = document.getElementById('atajadas-container');
     const nuevaFila = document.createElement('div');
     nuevaFila.className = 'atajadas-row row g-2 mb-2';
-
+    
     nuevaFila.innerHTML = `
       <div class="col-8">
         <select class="form-select form-select-sm atajadas-jugador searchable-select">
@@ -11300,7 +12496,7 @@ const initApp = () => {
         </button>
       </div>
     `;
-
+    
     container.appendChild(nuevaFila);
     poblarSelectoresDinamicos(); // Poblar el nuevo selector
   };
@@ -11316,7 +12512,7 @@ const initApp = () => {
     const container = document.getElementById('cagadas-container');
     const nuevaFila = document.createElement('div');
     nuevaFila.className = 'cagadas-row row g-2 mb-2';
-
+    
     nuevaFila.innerHTML = `
       <div class="col-8">
         <select class="form-select form-select-sm cagadas-jugador searchable-select">
@@ -11332,7 +12528,7 @@ const initApp = () => {
         </button>
       </div>
     `;
-
+    
     container.appendChild(nuevaFila);
     poblarSelectoresDinamicos(); // Poblar el nuevo selector
   };
@@ -11345,7 +12541,7 @@ const initApp = () => {
   };
 
   // --- Lógica de negocio ---
-
+  
   window.quitarJugador = (equipo, index) => {
       if (equipo === 'equipo1') {
           const jugadorRemovido = equipo1[index];
@@ -11383,14 +12579,14 @@ const initApp = () => {
   window.actualizarSelectACE = function() {
       const equipoGanadorSelect = document.getElementById('equipo-ganador');
       const aceSelect = document.getElementById('ace-partido');
-
+      
       if (!equipoGanadorSelect || !aceSelect) return;
-
+      
       const equipoGanador = equipoGanadorSelect.value;
-
+      
       // Limpiar selector de ACE
       aceSelect.innerHTML = '<option value="">Seleccionar ACE</option>';
-
+      
       // Si no hay equipo ganador seleccionado o es empate, mostrar todos los jugadores
       if (!equipoGanador || equipoGanador === '0') {
           const todosLosJugadores = [...equipo1, ...equipo2];
@@ -11402,7 +12598,7 @@ const initApp = () => {
           });
           return;
       }
-
+      
       // Determinar el equipo perdedor (ACE viene del equipo perdedor)
       let equipoPerdedor = [];
       if (equipoGanador === '1') {
@@ -11412,7 +12608,7 @@ const initApp = () => {
           // Equipo 2 ganó, ACE viene del equipo 1
           equipoPerdedor = equipo1;
       }
-
+      
       // Poblar selector con jugadores del equipo perdedor
       equipoPerdedor.forEach(jugador => {
           const option = document.createElement('option');
@@ -11426,42 +12622,42 @@ const initApp = () => {
     const inputId = equipo === 'equipo1' ? 'input-equipo1' : 'input-equipo2';
     const input = document.getElementById(inputId);
     const nombreJugador = input.value.trim();
-
+    
     if (!nombreJugador) {
       showToast('Por favor ingresa un nombre', 'warning');
       return;
     }
-
+    
     // Validar que el jugador exista en la base de datos
-    const jugadorExistente = todosLosJugadores.find(j =>
+    const jugadorExistente = todosLosJugadores.find(j => 
       j.nombre.toLowerCase() === nombreJugador.toLowerCase()
     );
-
+    
     if (!jugadorExistente) {
       showToast(`El jugador "${nombreJugador}" no existe en la base de datos. Agrégalo primero desde el botón "+" en la tabla de estadísticas.`, 'error');
       return;
     }
-
+    
     // Verificar si el jugador ya está en algún equipo
     const equipoActual = equipo === 'equipo1' ? equipo1 : equipo2;
     const equipoOpuesto = equipo === 'equipo1' ? equipo2 : equipo1;
-
+    
     const yaEstaEnEquipoActual = equipoActual.find(j => j.id === jugadorExistente.id);
     const yaEstaEnEquipoOpuesto = equipoOpuesto.find(j => j.id === jugadorExistente.id);
-
+    
     if (yaEstaEnEquipoActual) {
       showToast(`${jugadorExistente.nombre} ya está en este equipo`, 'warning');
       return;
     }
-
+    
     if (yaEstaEnEquipoOpuesto) {
       showToast(`${jugadorExistente.nombre} ya está en el equipo contrario`, 'warning');
       return;
     }
-
+    
     // Buscar las estadísticas del jugador en los datos cargados
     const estadisticasJugador = datosJugadores.find(j => j.jugadores.id === jugadorExistente.id);
-
+    
     // Crear objeto jugador con estadísticas
     const jugadorConEstadisticas = {
       ...jugadorExistente,
@@ -11480,7 +12676,7 @@ const initApp = () => {
       // Asegurar que pulmon siempre se mantenga del jugador original
       pulmon: jugadorExistente.pulmon
     };
-
+    
     // Agregar el jugador al equipo
     if (equipo === 'equipo1') {
       equipo1.push(jugadorConEstadisticas);
@@ -11491,7 +12687,7 @@ const initApp = () => {
       window.equipo2 = equipo2; // Actualizar referencia global
       showToast(`${jugadorExistente.nombre} agregado al Equipo 2`, 'success');
     }
-
+    
     input.value = ''; // Limpiar el input
     renderizarEquipos().catch(error => {
       console.error('Error al renderizar equipos:', error);
@@ -11518,7 +12714,7 @@ const initApp = () => {
       // Detectar automáticamente el equipo del goleador
       const jugadoresDelPartido = [...equipo1, ...equipo2];
       const goleador = jugadoresDelPartido.find(j => j.id === goleador_id);
-
+      
       if (!goleador) {
           showToast('Error: El goleador debe estar en uno de los equipos.', 'error');
           return;
@@ -11526,10 +12722,10 @@ const initApp = () => {
 
       // Determinar equipo del goleador (1 si está en equipo1, 2 si está en equipo2)
       const equipoGoleador = equipo1.find(j => j.id === goleador_id) ? 1 : 2;
-
+      
       // Si es gol en contra, el gol se asigna al equipo contrario
       const equipo = golEnContraChecked ? (equipoGoleador === 1 ? 2 : 1) : equipoGoleador;
-
+      
       // Asegurar que el asistidor no sea el mismo que el goleador
       let asistencia_final = null;
       if (asistencia_id && asistencia_id !== 'nadie' && asistencia_id !== goleador_id) {
@@ -11560,9 +12756,9 @@ const initApp = () => {
           es_en_contra: golEnContraChecked, // Agregar esta marca para claridad
           minuto: tiempoEnMinutos  // Guardamos el tiempo en minutos decimales
       });
-
+      
       const goleadorNombre = goleador.nombre;
-      const asistidorNombre = asistencia_final
+      const asistidorNombre = asistencia_final 
           ? jugadoresDelPartido.find(j => j.id === asistencia_final)?.nombre || 'N/A'
           : null;
       const cagadaNombre = cagada_final
@@ -11577,17 +12773,17 @@ const initApp = () => {
       const mensaje = detalles.length > 0
           ? `Gol agregado: ${goleadorNombre}${tipoGol} (${detalles.join(' | ')})`
           : `Gol agregado: ${goleadorNombre}${tipoGol}`;
-
+      
       showToast(mensaje, golEnContraChecked ? 'warning' : 'success');
       renderizarTablaGoles();
       actualizarMarcadorAutomatico();
       renderizarReviewSandbox();
-
+      
       // Resetear inputs (tanto selectores como inputs buscables)
       const goleadorElement = document.getElementById('goleador');
       const asistenciaElement = document.getElementById('asistencia');
       const cagadaElement = document.getElementById('cagada-gol');
-
+      
       if (goleadorElement) {
         if (goleadorElement.style.display === 'none') {
           // Es un input buscable
@@ -11598,7 +12794,7 @@ const initApp = () => {
           goleadorElement.selectedIndex = 0;
         }
       }
-
+      
       if (asistenciaElement) {
         if (asistenciaElement.style.display === 'none') {
           // Es un input buscable
@@ -11618,7 +12814,7 @@ const initApp = () => {
           cagadaElement.selectedIndex = 0;
         }
       }
-
+      
       // Resetear checkbox de gol en contra
       const golEnContraElement = document.getElementById('gol-en-contra');
       if (golEnContraElement) {
@@ -11901,7 +13097,7 @@ const initApp = () => {
       if (!verificarPermisosAdmin('guardar un partido')) {
           return false;
       }
-
+      
       const fecha = document.getElementById('fecha-partido').value;
       const cancha = document.getElementById('cancha-partido').value;
       const resultado = document.getElementById('resultado-final').value;
@@ -11950,7 +13146,7 @@ const initApp = () => {
           document.querySelectorAll('.atajadas-row').forEach(row => {
               const jugadorSelect = row.querySelector('.atajadas-jugador');
               const cantidadInput = row.querySelector('.atajadas-cantidad');
-
+              
               if (jugadorSelect && cantidadInput && jugadorSelect.value && cantidadInput.value) {
                   atajadas.push({
                       jugador_id: jugadorSelect.value,
@@ -11964,7 +13160,7 @@ const initApp = () => {
           document.querySelectorAll('.cagadas-row').forEach(row => {
               const jugadorSelect = row.querySelector('.cagadas-jugador');
               const cantidadInput = row.querySelector('.cagadas-cantidad');
-
+              
               if (jugadorSelect && cantidadInput && jugadorSelect.value && cantidadInput.value) {
                   cagadas.push({
                       jugador_id: jugadorSelect.value,
@@ -12002,7 +13198,7 @@ const initApp = () => {
 
           // Insertar jugadores del partido en la tabla jugador_partido
           const jugadoresPartidoData = [];
-
+          
           // Agregar jugadores del equipo 1
           equipo1.forEach(jugador => {
               jugadoresPartidoData.push({
@@ -12021,7 +13217,7 @@ const initApp = () => {
                   pulmon: jugador.pulmon || 0
               });
           });
-
+          
           // Agregar jugadores del equipo 2
           equipo2.forEach(jugador => {
               jugadoresPartidoData.push({
@@ -12048,13 +13244,13 @@ const initApp = () => {
 
           if (jugadoresError) {
               console.error('Error al insertar jugadores del partido:', jugadoresError);
-
+              
               // Verificar si es el error específico de la vista estadisticas_jugador
               if (jugadoresError.message && jugadoresError.message.includes('estadisticas_jugador')) {
                   console.warn('⚠️ Error de vista estadisticas_jugador detectado - Este error es conocido y será ignorado');
                   console.warn('💡 SOLUCIÓN: Elimina los triggers que intentan escribir en la vista estadisticas_jugador');
                   showToast('⚠️ Partido guardado con advertencias. Los triggers de estadísticas automáticas fallan (normal).', 'warning');
-
+                  
                   // Continuar con el resto del proceso sin lanzar error
                   console.log('🔄 Continuando con guardado de goles...');
               } else {
@@ -12070,9 +13266,9 @@ const initApp = () => {
               const golesData = eventos.map(evento => {
                   // Verificar que goleador y asistidor no sean la misma persona
                   let asistidor_id = null;
-                  if (evento.asistencia_id &&
-                      evento.asistencia_id !== 'nadie' &&
-                      evento.asistencia_id !== '' &&
+                  if (evento.asistencia_id && 
+                      evento.asistencia_id !== 'nadie' && 
+                      evento.asistencia_id !== '' && 
                       evento.asistencia_id !== evento.goleador_id) {
                       asistidor_id = evento.asistencia_id;
                   }
@@ -12087,8 +13283,8 @@ const initApp = () => {
                   // Determinar si es gol en contra
                   const equipoRealGoleador = equipo1.find(j => j.id === evento.goleador_id) ? 1 : 2;
                   const esGolEnContra = evento.es_en_contra || (evento.equipo !== equipoRealGoleador);
-
-                  return {
+                  
+                  const golData = {
                       partido_id: partido_id,
                       goleador_id: evento.goleador_id,
                       asistidor_id: asistidor_id,
@@ -12111,11 +13307,11 @@ const initApp = () => {
               // Contar goles normales vs en contra para logging
               const golesNormales = golesData.filter(g => !g.es_gol_en_contra);
               const golesEnContra = golesData.filter(g => g.es_gol_en_contra);
-
+              
               console.log(`📊 Total goles: ${golesData.length} | Normales: ${golesNormales.length} | En contra: ${golesEnContra.length}`);
-
+              
               if (golesEnContra.length > 0) {
-                  console.log('🔄 Goles en contra que se guardarán con flag especial:',
+                  console.log('🔄 Goles en contra que se guardarán con flag especial:', 
                       golesEnContra.map(g => {
                           const goleadorNombre = [...equipo1, ...equipo2].find(j => j.id === g.goleador_id)?.nombre || 'N/A';
                           return `${goleadorNombre} → Equipo ${g.equipo}`;
@@ -12141,7 +13337,7 @@ const initApp = () => {
 
               if (golesError) {
                   console.error('Error al insertar goles:', golesError);
-
+                  
                   // Verificar si es el error específico de la vista estadisticas_jugador
                   if (golesError.message && golesError.message.includes('estadisticas_jugador')) {
                       console.warn('⚠️ Error de vista estadisticas_jugador en goles detectado - Ignorando');
@@ -12152,7 +13348,7 @@ const initApp = () => {
               }
 
               console.log('✅ Todos los goles insertados en la DB:', golesData.length);
-
+              
               if (golesEnContra.length > 0) {
                   showToast(`🔄 ${golesEnContra.length} gol(es) en contra registrados (aparecen en historial)`, 'info');
               }
@@ -12169,7 +13365,7 @@ const initApp = () => {
 
                   if (atajadasError) {
                       console.error('Error al actualizar atajadas:', atajadasError);
-
+                      
                       // Verificar si es el error específico de la vista estadisticas_jugador
                       if (atajadasError.message && atajadasError.message.includes('estadisticas_jugador')) {
                           console.warn('⚠️ Error de vista estadisticas_jugador en atajadas detectado - Ignorando');
@@ -12193,7 +13389,7 @@ const initApp = () => {
 
                   if (cagadasError) {
                       console.error('Error al actualizar cagadas:', cagadasError);
-
+                      
                       // Verificar si es el error específico de la vista estadisticas_jugador
                       if (cagadasError.message && cagadasError.message.includes('estadisticas_jugador')) {
                           console.warn('⚠️ Error de vista estadisticas_jugador en cagadas detectado - Ignorando');
@@ -12215,7 +13411,7 @@ const initApp = () => {
 
           // Éxito!
           showToast('¡Partido guardado exitosamente! 🎉', 'success');
-
+          
           // Limpiar formulario
           document.getElementById('fecha-partido').value = '';
           document.getElementById('cancha-partido').value = '';
@@ -12227,11 +13423,11 @@ const initApp = () => {
           document.getElementById('mvp-partido').value = '';
           document.getElementById('ace-partido').value = '';
           document.getElementById('youtube-link-partido').value = '';
-
+          
           // Limpiar eventos
           eventos.length = 0;
           renderizarTablaGoles();
-
+          
           // Limpiar inputs buscables
           const inputGoleador = document.getElementById('goleador_input');
           const inputAsistencia = document.getElementById('asistencia_input');
@@ -12239,7 +13435,7 @@ const initApp = () => {
           if (inputGoleador) inputGoleador.value = '';
           if (inputAsistencia) inputAsistencia.value = '';
           if (inputCagada) inputCagada.value = '';
-
+          
           // Limpiar atajadas y cagadas extra (mantener solo una fila)
           document.querySelectorAll('.atajadas-row').forEach((row, index) => {
               if (index === 0) {
@@ -12249,7 +13445,7 @@ const initApp = () => {
                   row.remove();
               }
           });
-
+          
           document.querySelectorAll('.cagadas-row').forEach((row, index) => {
               if (index === 0) {
                   row.querySelector('.cagadas-jugador').value = '';
@@ -12261,10 +13457,12 @@ const initApp = () => {
 
           // Refrescar estadísticas
           await cargarEstadisticas();
+          return true;
 
       } catch (error) {
           console.error('Error completo al cargar partido:', error);
           showToast(`Error al guardar el partido: ${error.message}`, 'error');
+          return false;
       } finally {
           // Restaurar botón
           const btnCargar = document.getElementById('btn-cargar-partido');
@@ -12272,13 +13470,13 @@ const initApp = () => {
           btnCargar.innerHTML = '<i class="bi bi-save me-2"></i>Cargar Partido Completo';
       }
   }
-
+  
   async function cargarEstadisticas() {
     // Obtener temporada seleccionada desde los selectores
     const selectorTemporada = document.getElementById('selector-temporada');
     const selectorTemporadaMobile = document.getElementById('selector-temporada-mobile');
     const temporadaSeleccionada = selectorTemporada?.value || selectorTemporadaMobile?.value || '';
-
+    
     console.log('📊 Cargando estadísticas con temporada:', temporadaSeleccionada);
 
     // Determina a qué equipo se le suma un gol, con fallback para datos viejos.
@@ -12335,7 +13533,7 @@ const initApp = () => {
 
       return resultado;
     };
-
+    
     // PARCHE ESPECIAL PARA TEMPORADA 1: Usar vista_estadisticas_por_temporada
     if (temporadaSeleccionada && temporadaSeleccionada !== '') {
       // Verificar si es temporada 1 consultando el nombre de la temporada
@@ -12344,10 +13542,10 @@ const initApp = () => {
         .select('id, nombre')
         .eq('id', temporadaSeleccionada)
         .single();
-
+      
       if (temporadaInfo && (temporadaInfo.nombre.includes('Temporada 1') || temporadaInfo.id === '1' || temporadaInfo.id === 1)) {
         console.log('🏆 PARCHE TEMPORADA 1: Usando estadisticas_temporada');
-
+        
         try {
           // Primero obtener las estadísticas de la temporada
           const { data: statsData, error: statsError } = await supabase
@@ -12372,12 +13570,12 @@ const initApp = () => {
               bita_defeat
             `)
             .eq('temporada_id', temporadaSeleccionada);
-
+          
           if (statsError) {
             console.error('❌ Error al cargar estadisticas_temporada:', statsError);
             throw statsError;
           }
-
+          
           if (!statsData || statsData.length === 0) {
             console.log('⚠️ No se encontraron datos en estadisticas_temporada para temporada 1');
             throw new Error('Sin datos en estadisticas_temporada');
@@ -12409,7 +13607,7 @@ const initApp = () => {
           const golesEquipoPorJugador = partidosTempError
             ? {}
             : calcularGolesEquipoPorJugador(partidosTempData || []);
-
+          
           // Luego obtener la información de los jugadores por separado
           const jugadorIds = statsData.map(stat => stat.jugador_id);
           const { data: jugadoresData, error: jugadoresError } = await supabase
@@ -12428,12 +13626,12 @@ const initApp = () => {
               )
             `)
             .in('id', jugadorIds);
-
+          
           if (jugadoresError) {
             console.error('❌ Error al cargar jugadores:', jugadoresError);
             throw jugadoresError;
           }
-
+          
           // Combinar las estadísticas con la información de los jugadores
           const vistaData = statsData.map(stat => {
             const jugadorInfo = jugadoresData.find(j => j.id === stat.jugador_id);
@@ -12442,10 +13640,10 @@ const initApp = () => {
               jugadores: jugadorInfo
             };
                      }).filter(item => item.jugadores); // Filtrar solo los que tienen información de jugador
-
+          
           if (vistaData && vistaData.length > 0) {
             console.log('✅ Datos de temporada 1 cargados desde estadisticas_temporada:', vistaData.length, 'jugadores');
-
+            
             // Procesar datos de estadisticas_temporada para que sean compatibles
             const datosVista = vistaData.map(jugadorData => ({
               ...jugadorData,
@@ -12454,7 +13652,7 @@ const initApp = () => {
               rendimiento_ataque: null,
               rendimiento_arquero: null
             }));
-
+            
             // Transformar a formato compatible
             datosJugadores = datosVista.map((jugadorData) => {
               const golesEquipoJugador = golesEquipoPorJugador[jugadorData.jugador_id] || {
@@ -12483,9 +13681,9 @@ const initApp = () => {
                 rendimiento_ataque: jugadorData.rendimiento_ataque,
                 rendimiento_arquero: jugadorData.rendimiento_arquero
               };
-
+              
               const winrate = jugadorData.winrate || 0;
-
+              
               return {
                 ...stats,
                 winrate,
@@ -12493,10 +13691,10 @@ const initApp = () => {
                 nombre: jugadorData.jugadores.nombre
               };
             });
-
+            
             // Actualizar referencia global
             window.datosJugadores = datosJugadores;
-
+            
             // Renderizar tabla y salir de la función
             await renderizarTablaOrdenada();
             return;
@@ -12507,10 +13705,10 @@ const initApp = () => {
         }
       }
     }
-
+    
     // LÓGICA NORMAL: Calcular estadísticas directamente desde jugador_partido
     let data, error;
-
+    
     try {
       // Consulta para obtener todos los partidos de la temporada con sus goles
       let partidosQuery = supabase
@@ -12550,25 +13748,25 @@ const initApp = () => {
             es_gol_en_contra
           )
         `);
-
+      
       // Filtrar por temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         console.log('🏆 Aplicando filtro de temporada en estadísticas:', temporadaSeleccionada);
         partidosQuery = partidosQuery.eq('temporada_id', temporadaSeleccionada);
       }
-
+      
       const result = await partidosQuery;
-
+      
       console.log('📋 Resultado de consulta partidos con goles:', result);
       console.log('🔍 Partidos obtenidos:', result.data?.length || 0);
-
+      
       if (result.error) {
         throw result.error;
       }
-
+      
       // Procesar datos para calcular estadísticas por jugador
       const jugadoresStats = {};
-
+      
       result.data?.forEach(partido => {
         const jugadoresPartido = partido.jugador_partido || [];
 
@@ -12583,7 +13781,7 @@ const initApp = () => {
         // Procesar cada jugador que participó en este partido
         jugadoresPartido.forEach(jp => {
           const jugadorId = jp.jugador_id;
-
+          
           if (!jugadoresStats[jugadorId]) {
             jugadoresStats[jugadorId] = {
               jugador_id: jugadorId,
@@ -12610,12 +13808,12 @@ const initApp = () => {
               rendimiento_arquero: null
             };
           }
-
+          
           const stats = jugadoresStats[jugadorId];
-
+          
           // Incrementar partidos jugados
           stats.pj += 1;
-
+          
           // Determinar resultado del partido para este jugador
           const equipoGanador = partido.equipo_ganador;
           if (equipoGanador === jp.equipo) {
@@ -12637,7 +13835,7 @@ const initApp = () => {
             stats.goles_favor_equipo += golesEquipo2;
             stats.goles_recibidos_equipo += golesEquipo1;
           }
-
+          
           // Sumar estadísticas individuales (SIN goles y asistencias aún)
           stats.cagadas_en_gol += jp.cagadas || 0;
           stats.atajadas += jp.atajadas || 0;
@@ -12646,7 +13844,7 @@ const initApp = () => {
           stats.capitan_defeat += jp.capitan_defeat ? 1 : 0;
           stats.bita_defeat += jp.bita_defeat ? 1 : 0;
         });
-
+        
         // Procesar goles del partido para contar goles y asistencias (INCLUIR goles en contra por separado)
         partido.goles?.forEach(gol => {
           if (gol.es_gol_en_contra) {
@@ -12659,7 +13857,7 @@ const initApp = () => {
             if (gol.goleador_id && jugadoresStats[gol.goleador_id]) {
               jugadoresStats[gol.goleador_id].goles += 1;
             }
-
+            
             // Contar asistencia para el asistidor (solo en goles normales)
             if (gol.asistidor_id && jugadoresStats[gol.asistidor_id]) {
               jugadoresStats[gol.asistidor_id].asistencias += 1;
@@ -12667,25 +13865,25 @@ const initApp = () => {
           }
         });
       });
-
+      
       // Calcular winrate para cada jugador (empates valen 1 punto)
       Object.values(jugadoresStats).forEach(stats => {
         const puntosObtenidos = (stats.pg * 3) + (stats.pe * 1); // Victoria=3pts, Empate=1pt, Derrota=0pts
         const puntosTotalesDisputados = stats.pj * 3; // Puntos máximos posibles
         stats.winrate = puntosTotalesDisputados > 0 ? Math.round((puntosObtenidos / puntosTotalesDisputados) * 100) : 0;
       });
-
+      
       data = Object.values(jugadoresStats);
       error = null;
-
+      
       console.log('📈 Estadísticas calculadas:', data.length, 'jugadores');
-
+      
     } catch (err) {
       console.error('Error al calcular estadísticas:', err);
       error = err;
       data = null;
     }
-
+    
     if (error || !data || data.length === 0) {
       // Fallback: usar tabla jugadores directamente (para casos sin partidos)
       console.log('🔄 Usando tabla jugadores como fallback...');
@@ -12700,13 +13898,13 @@ const initApp = () => {
           )
         )
       `);
-
+      
       if (result.error) {
         console.error('Error al cargar estadísticas:', result.error);
         showToast('Error al cargar estadísticas', 'error');
         return;
       }
-
+      
       // Transformar datos para que sean compatibles con el formato esperado
       data = result.data.map(jugador => ({
         jugador_id: jugador.id,
@@ -12740,9 +13938,9 @@ const initApp = () => {
     }
     // Los datos ya vienen agrupados por jugador desde el cálculo anterior
     console.log('👥 Datos de jugadores procesados:', data);
-
+    
     datosJugadores = data.map((jugadorData) => {
-
+      
       // Función para crear badges de colores según el valor
       const createBadge = (value, type = 'default') => {
         const val = value ?? 0;
@@ -12769,10 +13967,10 @@ const initApp = () => {
         if (!jugadorPosiciones || jugadorPosiciones.length === 0) {
           return '<span class="text-muted small">Sin posición</span>';
         }
-
+        
         const primaria = jugadorPosiciones.find(jp => jp.es_primaria);
         const secundaria = jugadorPosiciones.find(jp => !jp.es_primaria);
-
+        
         let html = '';
         if (primaria) {
           const icono = iconosPosiciones[primaria.posicion_id] || '❓';
@@ -12784,10 +13982,10 @@ const initApp = () => {
           const nombre = nombresPosiciones[secundaria.posicion_id] || 'N/A';
           html += `<span class="badge bg-outline-secondary" title="Posición Secundaria">${icono} ${nombre}</span>`;
         }
-
+        
         return html || '<span class="text-muted small">Sin posición</span>';
       };
-
+      
       // Los datos ya vienen calculados, no necesitamos sumar
       const stats = {
         total_puntos: jugadorData.total_puntos || 0,
@@ -12809,10 +14007,10 @@ const initApp = () => {
         rendimiento_ataque: jugadorData.rendimiento_ataque,
         rendimiento_arquero: jugadorData.rendimiento_arquero
       };
-
+      
       // El winrate ya viene calculado
       const winrate = jugadorData.winrate || 0;
-
+      
       // Debug específico para Boska
       if (jugadorData.jugadores?.nombre.toLowerCase().includes('boska')) {
         console.log('🔍 DEBUG BOSKA (NUEVA LÓGICA):');
@@ -12820,7 +14018,7 @@ const initApp = () => {
         console.log('📈 Stats procesadas:', stats);
         console.log('🎯 PJ final:', stats.pj);
       }
-
+      
       // Retornar objeto con todos los datos necesarios
       return {
         ...stats,
@@ -12830,10 +14028,10 @@ const initApp = () => {
         nombre: jugadorData.jugadores.nombre
       };
     });
-
+    
     // Actualizar referencia global para el algoritmo genético
     window.datosJugadores = datosJugadores;
-
+    
     // Renderizar tabla ordenada
     await renderizarTablaOrdenada();
   }
@@ -12842,9 +14040,9 @@ const initApp = () => {
   async function calcularRachasMasLargas(data) {
     try {
       // Obtener temporada seleccionada para filtrar correctamente
-      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
+      const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
                                    document.getElementById('selector-temporada-mobile')?.value || '';
-
+      
       // Query base para obtener partidos con jugadores
       let query = supabase
         .from('partidos')
@@ -12863,53 +14061,53 @@ const initApp = () => {
           )
         `)
         .order('fecha', { ascending: false }); // Más recientes primero
-
+      
       // Filtrar por temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         query = query.eq('temporada_id', temporadaSeleccionada);
       }
-
+      
       const { data: partidos, error } = await query;
-
+      
       if (error || !partidos || partidos.length === 0) {
         return { mejorRachaVictorias: null, mejorRachaDerrota: null };
       }
-
+      
       const rachasHistoricas = {};
-
+      
       // Para cada jugador en los datos, calcular todas sus rachas históricas
       data.forEach(jugadorData => {
         const jugadorId = jugadorData.jugadores?.id;
         if (!jugadorId) return;
-
+        
         // Obtener partidos donde participó este jugador (ordenados por fecha asc para calcular rachas)
         const partidosJugador = partidos
-          .filter(partido =>
+          .filter(partido => 
             partido.jugador_partido?.some(jp => jp.jugador_id === jugadorId)
           )
           .reverse(); // Convertir a orden cronológico
-
+        
         if (partidosJugador.length === 0) {
-          rachasHistoricas[jugadorId] = {
-            mejorRachaVictorias: 0,
-            mejorRachaDerrota: 0,
-            nombre: jugadorData.jugadores.nombre
+          rachasHistoricas[jugadorId] = { 
+            mejorRachaVictorias: 0, 
+            mejorRachaDerrota: 0, 
+            nombre: jugadorData.jugadores.nombre 
           };
           return;
         }
-
+        
         let mejorRachaVictorias = 0;
         let mejorRachaDerrota = 0;
         let rachaActualVictorias = 0;
         let rachaActualDerrota = 0;
-
+        
         for (const partido of partidosJugador) {
           const jugadorEnPartido = partido.jugador_partido.find(jp => jp.jugador_id === jugadorId);
           if (!jugadorEnPartido) continue;
-
+          
           const equipoJugador = jugadorEnPartido.equipo;
           const equipoGanador = partido.equipo_ganador;
-
+          
           // Determinar resultado
           if (equipoGanador === equipoJugador) {
             // Victoria
@@ -12927,18 +14125,18 @@ const initApp = () => {
             rachaActualDerrota = 0;
           }
         }
-
+        
         rachasHistoricas[jugadorId] = {
           mejorRachaVictorias,
           mejorRachaDerrota,
           nombre: jugadorData.jugadores?.nombre || jugadorData.nombre || 'Jugador Desconocido'
         };
       });
-
+      
       // Encontrar jugador con la racha de victorias más larga
       let mejorRachaVictorias = null;
       let maxRachaVictorias = 0;
-
+      
       Object.keys(rachasHistoricas).forEach(jugadorId => {
         const racha = rachasHistoricas[jugadorId];
         if (racha.mejorRachaVictorias > maxRachaVictorias) {
@@ -12950,9 +14148,9 @@ const initApp = () => {
           console.log('🔥 Nueva mejor racha encontrada:', mejorRachaVictorias);
         }
       });
-
+      
       return { mejorRachaVictorias, mejorRachaDerrota: null };
-
+      
     } catch (error) {
       console.error('Error al calcular rachas más largas:', error);
       return { mejorRachaVictorias: null, mejorRachaDerrota: null };
@@ -12962,36 +14160,36 @@ const initApp = () => {
   async function renderizarDestacados(data) {
     const container = document.getElementById('destacados-container');
     if (!container || data.length === 0) return;
-
+    
     // Calcular los mejores en cada categoría
-    const mejorPuntos = data.reduce((max, jugador) =>
+    const mejorPuntos = data.reduce((max, jugador) => 
       (jugador.total_puntos || 0) > (max.total_puntos || 0) ? jugador : max
     );
-
-    const mejorGoles = data.reduce((max, jugador) =>
+    
+    const mejorGoles = data.reduce((max, jugador) => 
       (jugador.goles || 0) > (max.goles || 0) ? jugador : max
     );
-
-    const mejorAtajadas = data.reduce((max, jugador) =>
+    
+    const mejorAtajadas = data.reduce((max, jugador) => 
       (jugador.atajadas || 0) > (max.atajadas || 0) ? jugador : max
     );
-
-    const mejorAsistencias = data.reduce((max, jugador) =>
+    
+    const mejorAsistencias = data.reduce((max, jugador) => 
       (jugador.asistencias || 0) > (max.asistencias || 0) ? jugador : max
     );
-
+    
     // Mejor winrate (mínimo 10 partidos)
     const jugadoresConMinPartidos = data.filter(j => (j.pj || 0) >= 10);
-    const mejorWinrate = jugadoresConMinPartidos.length > 0
-      ? jugadoresConMinPartidos.reduce((max, jugador) =>
+    const mejorWinrate = jugadoresConMinPartidos.length > 0 
+      ? jugadoresConMinPartidos.reduce((max, jugador) => 
           (jugador.winrate || 0) > (max.winrate || 0) ? jugador : max
         )
       : null;
-
+    
     // Racha de victorias más larga
     const rachasMasLargas = await calcularRachasMasLargas(data);
     const mejorRachaVictorias = rachasMasLargas.mejorRachaVictorias;
-
+    
     const destacados = [
       {
         categoria: 'Más Puntos',
@@ -13043,7 +14241,7 @@ const initApp = () => {
         clase: 'racha-victorias'
       }
     ];
-
+    
     container.innerHTML = destacados.map(destacado => {
       if (!destacado.jugador) {
         return `
@@ -13058,7 +14256,7 @@ const initApp = () => {
           </div>
         `;
       }
-
+      
       return `
         <div class="col-lg col-md-6">
           <div class="destacado-card ${destacado.clase} rounded-3 p-3 text-center">
@@ -13076,33 +14274,33 @@ const initApp = () => {
   function renderizarMejoresPorPuesto(data) {
     const container = document.getElementById('mejores-puesto-container');
     if (!container || data.length === 0) return;
-
+    
     // Función para obtener la posición primaria de un jugador
     const obtenerPosicionPrimaria = (jugador) => {
       if (!jugador.jugadores?.jugador_posicion) return null;
       const primaria = jugador.jugadores.jugador_posicion.find(jp => jp.es_primaria);
       return primaria ? primaria.posicion.nombre : null;
     };
-
+    
     // Función para verificar si un jugador puede jugar en una posición (primaria o secundaria)
     const puedeJugarEn = (jugador, posicion) => {
       if (!jugador.jugadores?.jugador_posicion) return false;
       return jugador.jugadores.jugador_posicion.some(jp => jp.posicion.nombre === posicion);
     };
-
+    
     // Filtrar jugadores con un mínimo de partidos para estadísticas más significativas
     const jugadoresConMinPartidos = data.filter(j => (j.pj || 0) >= 5);
-
+    
     // NUEVA LÓGICA COMPLEJA: Separar jugadores principales vs contribuyentes (igual que el radar)
     const arqueros = jugadoresConMinPartidos.filter(j => puedeJugarEn(j, 'Arquero'));
     const defensores = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Defensor');
-
+    
     // MEDIOCAMPO: Principales + Secundarios (65% contribución)
     const mediocampistasPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Mediocampo');
-    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j =>
+    const mediocampistasSecundarios = jugadoresConMinPartidos.filter(j => 
       obtenerPosicionPrimaria(j) !== 'Mediocampo' && puedeJugarEn(j, 'Mediocampo')
     );
-
+    
     // ATAQUE: Principales + Contribuyentes ofensivos
     const atacantesPrincipales = jugadoresConMinPartidos.filter(j => obtenerPosicionPrimaria(j) === 'Atacante');
     const contribuyentesOfensivos = jugadoresConMinPartidos.filter(j => {
@@ -13110,7 +14308,7 @@ const initApp = () => {
       const tieneAsistencias = (j.asistencias || 0) > 0;
       return tieneGoles || tieneAsistencias;
     });
-
+    
     // FUNCIONES DE SCORE (mismas que el radar, ajustadas)
     const calcularScoreArquero = (jugador) => {
       const pj = jugador.pj || 1;
@@ -13118,14 +14316,14 @@ const initApp = () => {
       const atajadasPorPartido = (jugador.atajadas || 0) / pj;
       return winrate * 0.4 + atajadasPorPartido * 25; // Reducido como en radar
     };
-
+    
     const calcularScoreDefensor = (jugador) => {
       const pj = jugador.pj || 1;
       const winrate = jugador.winrate || 0;
       const cagadasPorPartido = (jugador.cagadas_en_gol || 0) / pj;
       return Math.max(winrate - (cagadasPorPartido * 10), 0);
     };
-
+    
     // SCORE COMPLEJO PARA MEDIOCAMPO
     const calcularScoreMediocampo = (jugador, esPrincipal = true) => {
       const pj = jugador.pj || 1;
@@ -13135,14 +14333,14 @@ const initApp = () => {
       const scoreBase = (golesPorPartido + asistPorPartido) * 20 + winrate * 0.5;
       return esPrincipal ? scoreBase : scoreBase * 0.65; // 65% para secundarios
     };
-
+    
     // SCORE COMPLEJO PARA ATAQUE
     const calcularScoreAtaque = (jugador, esPrincipal = true) => {
       const pj = jugador.pj || 1;
       const golesPorPartido = (jugador.goles || 0) / pj;
       const asistPorPartido = (jugador.asistencias || 0) / pj;
       const winrate = jugador.winrate || 0;
-
+      
       if (esPrincipal) {
         // Main atacantes: formula completa
         return (golesPorPartido + asistPorPartido) * 40 + winrate * 1.0;
@@ -13151,24 +14349,24 @@ const initApp = () => {
         return (golesPorPartido + asistPorPartido) * 25;
       }
     };
-
+    
     // ENCONTRAR MEJORES CON LÓGICA COMPLEJA
-    const mejorArquero = arqueros.length > 0
-      ? arqueros.reduce((max, jugador) =>
+    const mejorArquero = arqueros.length > 0 
+      ? arqueros.reduce((max, jugador) => 
           calcularScoreArquero(jugador) > calcularScoreArquero(max) ? jugador : max
-        )
+        ) 
       : null;
-
+    
     const mejorDefensor = defensores.length > 0
-      ? defensores.reduce((max, jugador) =>
+      ? defensores.reduce((max, jugador) => 
           calcularScoreDefensor(jugador) > calcularScoreDefensor(max) ? jugador : max
         )
       : null;
-
+    
     // MEJOR MEDIOCAMPO (combinando principales y secundarios)
     let mejorMediocampista = null;
     let mejorScoreMediocampo = 0;
-
+    
     // Evaluar principales
     mediocampistasPrincipales.forEach(jugador => {
       const score = calcularScoreMediocampo(jugador, true);
@@ -13177,7 +14375,7 @@ const initApp = () => {
         mejorMediocampista = jugador;
       }
     });
-
+    
     // Evaluar secundarios
     mediocampistasSecundarios.forEach(jugador => {
       const score = calcularScoreMediocampo(jugador, false);
@@ -13186,11 +14384,11 @@ const initApp = () => {
         mejorMediocampista = jugador;
       }
     });
-
+    
     // MEJOR ATACANTE (combinando principales y contribuyentes)
     let mejorAtacante = null;
     let mejorScoreAtaque = 0;
-
+    
     // Evaluar principales
     atacantesPrincipales.forEach(jugador => {
       const score = calcularScoreAtaque(jugador, true);
@@ -13199,7 +14397,7 @@ const initApp = () => {
         mejorAtacante = jugador;
       }
     });
-
+    
     // Evaluar contribuyentes (no principales)
     contribuyentesOfensivos.forEach(jugador => {
       if (obtenerPosicionPrimaria(jugador) !== 'Atacante') {
@@ -13210,7 +14408,7 @@ const initApp = () => {
         }
       }
     });
-
+    
     const mejoresPorPuesto = [
       {
         posicion: 'Arquero',
@@ -13255,7 +14453,7 @@ const initApp = () => {
         ] : []
       }
     ];
-
+    
     container.innerHTML = mejoresPorPuesto.map(puesto => {
       if (!puesto.jugador) {
         return `
@@ -13271,7 +14469,7 @@ const initApp = () => {
           </div>
         `;
       }
-
+      
       return `
         <div class="col-lg-3 col-md-6">
           <div class="mejor-puesto-card ${puesto.clase} rounded-3 p-3 text-center">
@@ -13295,13 +14493,13 @@ const initApp = () => {
   // Función para calcular rachas actuales de jugadores
   async function calcularRachasJugadores(jugadoresData) {
     console.log('🔥 Calculando rachas de jugadores...');
-
+    
     const rachas = {};
-
+    
     // Obtener temporada seleccionada para filtrar correctamente
-    const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
+    const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
                                  document.getElementById('selector-temporada-mobile')?.value || '';
-
+    
     // PARCHE TEMPORADA 1: No calcular rachas para temporada 1
     if (temporadaSeleccionada && temporadaSeleccionada !== '') {
       const { data: temporadaInfo } = await supabase
@@ -13309,7 +14507,7 @@ const initApp = () => {
         .select('id, nombre')
         .eq('id', temporadaSeleccionada)
         .single();
-
+      
       if (temporadaInfo && (temporadaInfo.nombre.includes('Temporada 1') || temporadaInfo.id === '1' || temporadaInfo.id === 1)) {
         console.log('🏆 PARCHE TEMPORADA 1: Saltando cálculo de rachas (usa estadisticas_temporada, no partidos individuales)');
         // Devolver rachas vacías para todos los jugadores
@@ -13322,7 +14520,7 @@ const initApp = () => {
         return rachas;
       }
     }
-
+    
     try {
       // Query base para obtener partidos con jugadores
       let query = supabase
@@ -13338,53 +14536,53 @@ const initApp = () => {
           )
         `)
         .order('fecha', { ascending: false }); // Más recientes primero
-
+      
       // Filtrar por temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         query = query.eq('temporada_id', temporadaSeleccionada);
       }
-
+      
       const { data: partidos, error } = await query;
-
+      
       if (error) {
         console.error('Error al cargar partidos para rachas:', error);
         return {};
       }
-
+      
       if (!partidos || partidos.length === 0) {
         console.log('No hay partidos para calcular rachas');
         return {};
       }
-
+      
       console.log('📅 Partidos para calcular rachas:', partidos.length);
-
+      
       // Para cada jugador, calcular su racha actual
       jugadoresData.forEach(jugador => {
         const jugadorId = jugador.jugadores?.id;
         if (!jugadorId) return;
-
+        
         // Obtener partidos donde participó este jugador (ordenados por fecha desc)
-        const partidosJugador = partidos.filter(partido =>
+        const partidosJugador = partidos.filter(partido => 
           partido.jugador_partido?.some(jp => jp.jugador_id === jugadorId)
         );
-
+        
         if (partidosJugador.length === 0) {
           rachas[jugadorId] = { tipo: null, cantidad: 0 };
           return;
         }
-
+        
         // Calcular racha desde el partido más reciente hacia atrás
         let rachaActual = 0;
         let tipoRacha = null; // 'win' o 'defeat'
-
+        
         for (const partido of partidosJugador) {
           // Encontrar el equipo del jugador en este partido
           const jugadorEnPartido = partido.jugador_partido.find(jp => jp.jugador_id === jugadorId);
           if (!jugadorEnPartido) continue;
-
+          
           const equipoJugador = jugadorEnPartido.equipo;
           const equipoGanador = partido.equipo_ganador;
-
+          
           // Determinar si ganó, empató o perdió
           let resultado;
           if (equipoGanador === equipoJugador) {
@@ -13394,7 +14592,7 @@ const initApp = () => {
           } else {
             resultado = 'defeat';
           }
-
+          
           // Lógica de racha - Los empates NO cuentan para rachas
           if (rachaActual === 0) {
             // Primer partido, establecer tipo de racha
@@ -13410,7 +14608,7 @@ const initApp = () => {
             }
           } else {
             // Continuar racha existente
-            if ((tipoRacha === 'win' && resultado === 'win') ||
+            if ((tipoRacha === 'win' && resultado === 'win') || 
                 (tipoRacha === 'defeat' && resultado === 'defeat')) {
               rachaActual++;
             } else {
@@ -13419,17 +14617,17 @@ const initApp = () => {
             }
           }
         }
-
+        
         // Solo considerar rachas significativas (2 o más)
         rachas[jugadorId] = {
           tipo: rachaActual >= 2 ? tipoRacha : null,
           cantidad: rachaActual >= 2 ? rachaActual : 0
         };
       });
-
+      
       console.log('🔥❄️ Rachas calculadas:', rachas);
       return rachas;
-
+      
     } catch (error) {
       console.error('Error al calcular rachas:', error);
       return {};
@@ -13439,23 +14637,23 @@ const initApp = () => {
   async function renderizarTablaConDatos(data) {
     const tbody = document.getElementById('stats-table-body');
     tbody.innerHTML = '';
-
+    
     // Renderizar destacados primero (con datos filtrados)
     await renderizarDestacados(data);
-
+    
     // Renderizar mejores por puesto
     renderizarMejoresPorPuesto(data);
-
+    
     // Calcular rachas de todos los jugadores
     const rachas = await calcularRachasJugadores(data);
-
+    
     // Función para crear el icono de racha
     const crearIconoRacha = (jugadorId) => {
       const racha = rachas[jugadorId];
       if (!racha || !racha.tipo || racha.cantidad < 2) {
         return '';
       }
-
+      
       if (racha.tipo === 'win') {
         return `<span class="ms-2 badge bg-warning text-dark fw-bold" title="En racha de ${racha.cantidad} victorias">
                   🔥 ${racha.cantidad}
@@ -13467,7 +14665,7 @@ const initApp = () => {
       }
       return '';
     };
-
+    
     const obtenerNumeroEstadistica = (value) => {
       const numero = Number(value);
       return Number.isFinite(numero) ? numero : 0;
@@ -13532,10 +14730,10 @@ const initApp = () => {
       const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
       const puntosPP = (jugador.total_puntos || 0) / pj;
       const atajadasPP = (jugador.atajadas || 0) / pj;
-
+      
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
       const rendArquero = atajadasPP * 0.66;
-
+      
       return rendAtaque + rendArquero;
     };
 
@@ -13543,11 +14741,11 @@ const initApp = () => {
     const skills = data.map(j => calcularSkillIndividual(j));
     const minSkill = Math.min(...skills);
     const maxSkill = Math.max(...skills);
-
+    
     // Función para obtener color según skill
     const obtenerColorSkill = (skill) => {
       const normalizado = (skill - minSkill) / (maxSkill - minSkill || 1);
-
+      
       if (normalizado >= 0.8) return 'skill-excellent'; // Verde brillante
       if (normalizado >= 0.6) return 'skill-good';      // Verde
       if (normalizado >= 0.4) return 'skill-average';   // Amarillo
@@ -13559,13 +14757,13 @@ const initApp = () => {
       const tr = document.createElement('tr');
       const golesFavorEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_favor_equipo');
       const golesRecibidosEquipoPP = calcularPromedioPorPartido(jugadorData, 'goles_recibidos_equipo');
-
+      
       const posicion = index + 1;
       let positionClass = 'position-other';
       if (posicion === 1) positionClass = 'position-1';
       else if (posicion === 2) positionClass = 'position-2';
       else if (posicion === 3) positionClass = 'position-3';
-
+      
       const skillIndividual = calcularSkillIndividual(jugadorData);
       const colorSkill = obtenerColorSkill(skillIndividual);
 
@@ -13614,12 +14812,12 @@ const initApp = () => {
       `;
       tbody.appendChild(tr);
     });
-
+    
     // Aplicar highlight después de renderizar
     setTimeout(() => {
       updateSortIndicators();
     }, 10);
-
+    
     // Actualizar campeones después de renderizar la tabla
     setTimeout(async () => {
       if (typeof window.actualizarCampeonesEnEstadisticas === 'function') {
@@ -13700,18 +14898,18 @@ const initApp = () => {
     if (!verificarPermisosAdmin('agregar un jugador')) {
         return;
     }
-
+    
     // Insertar el jugador
     const jugadorObject = { nombre: nombre };
     if (pulmon !== null) {
       jugadorObject.pulmon = pulmon;
     }
-
+    
     const { data: jugadorData, error: jugadorError } = await supabase
       .from('jugadores')
       .insert([jugadorObject])
       .select();
-
+    
     if (jugadorError) {
       throw jugadorError;
     }
@@ -13726,18 +14924,18 @@ const initApp = () => {
     if (!verificarPermisosAdmin('editar un jugador')) {
         return;
     }
-
+    
     // Actualizar nombre del jugador
     const updateObject = { nombre: nombre };
     if (pulmon !== null) {
       updateObject.pulmon = pulmon;
     }
-
+    
     const { error: jugadorError } = await supabase
       .from('jugadores')
       .update(updateObject)
       .eq('id', jugadorId);
-
+    
     if (jugadorError) {
       throw jugadorError;
     }
@@ -13759,7 +14957,7 @@ const initApp = () => {
   // Función auxiliar para asignar posiciones a un jugador
   async function asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria) {
     const posicionesAInsertar = [];
-
+    
     // Posición principal
     posicionesAInsertar.push({
       jugador_id: jugadorId,
@@ -13786,11 +14984,11 @@ const initApp = () => {
   }
 
 
+  
 
+  
 
-
-
-
+  
 
 
 
@@ -13801,7 +14999,7 @@ const initApp = () => {
       console.error('❌ Container historial-partidos-container NO encontrado!');
       return;
     }
-
+    
     try {
       // Mostrar loading
       container.innerHTML = `
@@ -13812,17 +15010,17 @@ const initApp = () => {
           <p class="text-light-emphasis mt-2 mb-0">Buscando partidos...</p>
         </div>
       `;
-
+      
       // Obtener temporada seleccionada para filtrar
       const selectorTemporada = document.getElementById('selector-temporada');
       const selectorTemporadaMobile = document.getElementById('selector-temporada-mobile');
       const temporadaSeleccionada = selectorTemporada?.value || selectorTemporadaMobile?.value || '';
-
+      
       // Obtener cantidad de partidos a mostrar
       const cantidadElement = document.getElementById('cantidad-partidos');
       const valorCantidad = cantidadElement?.value || '5';
       const cantidad = (valorCantidad === 'all') ? null : (parseInt(valorCantidad) || 5);
-
+      
       // Construir consulta con filtro de temporada si está seleccionada
       let query = supabase
         .from('partidos')
@@ -13863,20 +15061,20 @@ const initApp = () => {
             es_gol_en_contra
           )
         `);
-
+      
       // Aplicar filtro de temporada si está seleccionada
       if (temporadaSeleccionada && temporadaSeleccionada !== '') {
         console.log('🏆 Aplicando filtro de temporada:', temporadaSeleccionada);
         query = query.eq('temporada_id', temporadaSeleccionada);
       }
-
+      
       // Aplicar orden y límite
       let ejecutar = query.order('fecha', { ascending: false });
       if (typeof cantidad === 'number' && cantidad > 0) {
         ejecutar = ejecutar.limit(cantidad);
       }
       const { data: partidos, error } = await ejecutar;
-
+      
       console.log('📊 Resultado consulta partidos:', { partidos, error });
 
       if (error) {
@@ -13886,7 +15084,7 @@ const initApp = () => {
       }
 
       console.log('✅ Consulta exitosa, partidos encontrados:', partidos?.length || 0);
-
+      
       if (!partidos || partidos.length === 0) {
         console.log('ℹ️ No hay partidos para mostrar');
         mostrarMensajeSinPartidos(container);
@@ -13909,7 +15107,7 @@ const initApp = () => {
           .from('jugadores')
           .select('id, nombre')
           .in('id', Array.from(jugadorIds));
-
+        
         if (jugadores) {
           jugadores.forEach(jugador => {
             jugadoresMap[jugador.id] = jugador;
@@ -13930,7 +15128,7 @@ const initApp = () => {
       });
 
       console.log('🎯 Mostrando partidos en la interfaz...');
-
+      
       // Guardar todos los partidos para el filtrado
       todosLosPartidos = partidos;
 
@@ -13947,7 +15145,7 @@ const initApp = () => {
           destacarPartidoEnHistorial(partidoIdPendiente);
         });
       }
-
+      
     } catch (error) {
       console.warn('Error al cargar historial (esperado en versión simplificada):', error);
       mostrarMensajeSinPartidos(container);
@@ -13976,16 +15174,16 @@ const initApp = () => {
       </div>
     `;
   }
-
+  
   // Función para crear partidos dummy para testing
   async function crearPartidosDummy() {
     try {
       console.log('🧪 Creando partidos de prueba...');
-
+      
       // Verificar si hay temporadas
       const { data: temporadas } = await supabase.from('temporadas').select('id').limit(1);
       let temporadaId = temporadas?.[0]?.id || null;
-
+      
       if (!temporadaId) {
         // Crear una temporada si no existe
         const { data: nuevaTemporada } = await supabase
@@ -13995,7 +15193,7 @@ const initApp = () => {
           .single();
         temporadaId = nuevaTemporada?.id;
       }
-
+      
       const partidosEjemplo = [
         {
           fecha: '2024-01-15',
@@ -14019,30 +15217,30 @@ const initApp = () => {
           temporada_id: temporadaId
         }
       ];
-
+      
       const { error } = await supabase
         .from('partidos')
         .insert(partidosEjemplo);
-
+        
       if (error) {
         console.error('Error al crear partidos dummy:', error);
         showToast('Error al crear partidos de prueba: ' + error.message, 'error');
         return;
       }
-
+      
       showToast('✅ Partidos de prueba creados exitosamente!', 'success');
-
+      
       // Recargar el historial
       setTimeout(() => {
         cargarHistorialPartidos();
       }, 500);
-
+      
     } catch (error) {
       console.error('Error creando partidos dummy:', error);
       showToast('Error inesperado al crear partidos de prueba', 'error');
     }
   }
-
+  
   // Hacer la función global
   window.crearPartidosDummy = crearPartidosDummy;
 
@@ -14054,7 +15252,7 @@ const initApp = () => {
       // Verificar si hay temporadas
       const { data: temporadas } = await supabase.from('temporadas').select('id').limit(1);
       let temporadaId = temporadas?.[0]?.id || null;
-
+      
       if (!temporadaId) {
         // Crear una temporada si no existe
         const { data: nuevaTemporada } = await supabase
@@ -14106,7 +15304,7 @@ const initApp = () => {
 
       // 3. Simular la función editarYouTubeLink (agregar link)
       const linkInicial = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-
+      
       console.log('📹 Simulando agregar link de YouTube...');
       const { error: errorAgregar } = await supabase
         .from('partidos')
@@ -14136,7 +15334,7 @@ const initApp = () => {
 
       // 5. Simular la edición del link (cambiar link)
       const nuevoLink = 'https://www.youtube.com/watch?v=abc123test';
-
+      
       console.log('✏️ Simulando edición del link...');
       const { error: errorEditar } = await supabase
         .from('partidos')
@@ -14233,7 +15431,7 @@ const initApp = () => {
     console.log('  esAdmin:', esAdmin);
     console.log('  usuarioActual:', usuarioActual);
     console.log('  Permisos de admin para test:', verificarPermisosAdmin('operación de test'));
-
+    
     if (esAdmin) {
       console.log('✅ Eres administrador - deberías ver todos los botones');
     } else {
@@ -14241,12 +15439,12 @@ const initApp = () => {
       console.log('💡 Para ser admin, inicia sesión primero');
     }
   };
-
+  
   console.log('🔍 Función de debug disponible: window.debugAdmin()');
 
   async function mostrarPartidosBasicos(container, partidos) {
     console.log('🎨 Mostrando partidos con detalles completos:', partidos);
-
+    
     const calcularSkillPartido = ({
       goles = 0,
       asistencias = 0,
@@ -14272,7 +15470,7 @@ const initApp = () => {
     };
 
     const esDefensor = (jugador) => obtenerPosicionPrimariaJugador(jugador) === 'Defensor';
-
+    
     const obtenerSkillEsperadoJugador = (jugadorId) => {
       try {
         const datos = window.datosJugadores || [];
@@ -14326,9 +15524,9 @@ const initApp = () => {
       if (!jugadorId) return null;
       return skillRankingMap.get(jugadorId) ?? null;
     };
-
+    
     let html = '<div class="row g-4">';
-
+    
     // Continuar con los partidos
     partidos.forEach((partido, index) => {
       // Arreglar problema de zona horaria - agregar tiempo para evitar offset
@@ -14339,22 +15537,22 @@ const initApp = () => {
         month: 'short',
         day: 'numeric'
       });
-
+      
       // Separar jugadores por equipo
       const equipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
       const equipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
-
+      
       // Calcular marcador desde los goles registrados
       let golesEquipo1 = 0;
       let golesEquipo2 = 0;
-
+      
       if (partido.goles && partido.goles.length > 0) {
         partido.goles.forEach(gol => {
           const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
           if (jugadorData) {
             // Determinar si es gol en contra comparando el equipo del gol con el equipo del jugador
             const esEnContra = gol.equipo !== jugadorData.equipo;
-
+            
             if (esEnContra) {
               // Gol en contra suma al equipo contrario
               if (jugadorData.equipo === 1) golesEquipo2++;
@@ -14367,12 +15565,12 @@ const initApp = () => {
           }
         });
       }
-
+      
       // Determinar ganador y color del card
       let equipoGanador = '';
       let colorCard = 'border-secondary';
       let iconoResultado = '🤝';
-
+      
       if (partido.equipo_ganador === 1) {
         equipoGanador = 'Equipo 1';
         colorCard = 'border-primary';
@@ -14385,11 +15583,11 @@ const initApp = () => {
         equipoGanador = 'Empate';
         iconoResultado = '🤝';
       }
-
+      
       // Obtener MVP y ACE
       const mvpData = partido.jugador_partido?.find(jp => jp.mvp);
       const aceData = partido.jugador_partido?.find(jp => jp.ace);
-
+      
       // Calcular estadísticas totales
       const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.cagadas || 0), 0) || 0;
       const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
@@ -14460,7 +15658,7 @@ const initApp = () => {
       const skillEquipo1 = skillEquipo(equipo1);
       const skillEquipo2 = skillEquipo(equipo2);
       const youtubeReviewLink = obtenerLinkYouTubeReview(partido.youtube_link);
-
+      
       html += `
         <div class="col-lg-6 col-md-12">
           <div class="glass-effect rounded-3 p-4 h-100 border-top border-3 ${colorCard} partido-card" data-partido-id="${partido.id}">
@@ -14509,7 +15707,7 @@ const initApp = () => {
                 ${equipoGanador !== 'Empate' ? `<div class="text-success small fw-bold">🏆 ${equipoGanador}</div>` : '<div class="text-warning small fw-bold">🤝 Empate</div>'}
               </div>
             </div>
-
+            
             <!-- Equipos -->
             <div class="row g-3 mb-3">
               <div class="col-6">
@@ -14532,7 +15730,7 @@ const initApp = () => {
                       const skillLabel = Number.isFinite(skill)
                         ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
                         : '';
-
+                      
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
@@ -14572,7 +15770,7 @@ const initApp = () => {
                       const skillLabel = Number.isFinite(skill)
                         ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
                         : '';
-
+                      
                       return `
                         <div class="mb-1 d-flex justify-content-between align-items-center">
                           <span>
@@ -14593,7 +15791,7 @@ const initApp = () => {
                 </div>
               </div>
             </div>
-
+            
             <!-- Reconocimientos y estadísticas -->
             <div class="row g-2 mb-3">
               ${mvpData ? `
@@ -14625,14 +15823,14 @@ const initApp = () => {
                 </div>
               ` : ''}
             </div>
-
+            
             <!-- Leyenda del Mundialito para este partido -->
             ${typeof generarLeyendaMundialito === 'function' ? generarLeyendaMundialito(partido) : ''}
           </div>
         </div>
       `;
     });
-
+    
     html += '</div>';
     container.innerHTML = html;
   }
@@ -14647,7 +15845,7 @@ const initApp = () => {
 
       // Simular el mundialito hasta este partido para obtener cambios
       const cambios = simularMundialitoHastaPartido(partido);
-
+      
       if (!cambios || cambios.length === 0) {
         return '';
       }
@@ -14661,12 +15859,12 @@ const initApp = () => {
 
       let leyendaHtml = '<div class="mt-3 pt-2 border-top border-secondary">';
       leyendaHtml += '<div class="small text-light-emphasis mb-2"><i class="bi bi-trophy me-1"></i><strong>Mundialito T5:</strong></div>';
-
+      
       if (clasificados.length > 0) {
         leyendaHtml += '<div class="d-flex flex-wrap gap-1 mb-1">';
         clasificados.forEach(c => {
           const icono = c.fase === 'campeon' ? '👑' : '✅';
-          const faseTexto = c.fase === 'campeon' ? 'Campeón' :
+          const faseTexto = c.fase === 'campeon' ? 'Campeón' : 
                            c.fase === 'final' ? 'Final' :
                            c.fase === 'semis' ? 'Semis' :
                            c.fase === '4tos' ? 'Cuartos' :
@@ -14769,7 +15967,7 @@ const initApp = () => {
       // Misma lógica que procesarPartidoMundial pero registrando cambios
       if (jugador.fase === 'grupos') {
         jugador.partidosGrupos++;
-
+        
         if (resultado === 'victoria') {
           jugador.victoriasGrupos++;
           jugador.victorias++;
@@ -14814,7 +16012,7 @@ const initApp = () => {
         }
       } else {
         const pasa = evaluarPasePlayoffs(jugador, resultado);
-
+        
         if (resultado === 'victoria') {
           jugador.victorias++;
         } else if (resultado === 'empate') {
@@ -14822,10 +16020,10 @@ const initApp = () => {
         } else if (resultado === 'derrota') {
           jugador.derrotas++;
         }
-
+        
         if (pasa) {
           const faseAnterior = jugador.fase;
-
+          
           if (jugador.fase === '8vos') {
             jugador.fase = '4tos';
           } else if (jugador.fase === '4tos') {
@@ -14836,7 +16034,7 @@ const initApp = () => {
             jugador.fase = 'campeon';
             jugador.campeon = true;
           }
-
+          
           const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -15907,10 +17105,10 @@ const initApp = () => {
     // Cambiar a la pestaña de ranking
     const rankingTab = document.getElementById('ranking-skill-tab');
     const rankingTabContent = document.getElementById('ranking-skill-content');
-
+    
     // Activar la pestaña
     rankingTab.click();
-
+    
     // Cargar el ranking
     cargarRankingSkill();
   };
@@ -15918,7 +17116,7 @@ const initApp = () => {
   // Función para cargar el ranking en la pestaña
   window.cargarRankingSkill = async function() {
     const container = document.getElementById('ranking-skill-container');
-
+    
     try {
       // Mostrar loading
       container.innerHTML = `
@@ -15929,7 +17127,7 @@ const initApp = () => {
           <p class="text-light-emphasis mt-2">Calculando posiciones...</p>
         </div>
       `;
-
+      
       // Obtener estadísticas actuales
       let estadisticas = window.datosJugadores || [];
       if (estadisticas.length === 0) {
@@ -15942,17 +17140,17 @@ const initApp = () => {
         `;
         return;
       }
-
+      
       // Aplicar filtro por cantidad mínima de partidos
       const filtroPartidos = parseInt(document.getElementById('filtro-partidos-ranking')?.value) || 0;
       if (filtroPartidos > 0) {
         estadisticas = estadisticas.filter(jugador => (jugador.pj || 0) >= filtroPartidos);
       }
-
+      
       // Función para calcular rendimiento individual
       const calcularRendimiento = (jugador) => {
         const pj = jugador.pj || 1;
-
+        
         // Rendimiento Ataque: (Goles P/P * 5) + (MVP P/P * 7) + (ACE P/P * 6) + (Asist P/P * 4) - (Cagadas P/P * 5) + (Puntos P/P * 2)
         const golesPP = (jugador.goles || 0) / pj;
         const mvpPP = (jugador.mvp_count || 0) / pj;
@@ -15961,13 +17159,13 @@ const initApp = () => {
         const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
         const puntosPP = (jugador.total_puntos || 0) / pj;
         const atajadasPP = (jugador.atajadas || 0) / pj;
-
+        
         const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
         const rendArquero = atajadasPP * 0.4;
-
+        
         return rendAtaque + rendArquero;
       };
-
+      
       // Crear ranking ordenado por skill individual
       const ranking = [...estadisticas]
         .sort((a, b) => calcularRendimiento(b) - calcularRendimiento(a))
@@ -15981,18 +17179,18 @@ const initApp = () => {
       const skills = ranking.map(j => j.rendimiento);
       const minSkill = Math.min(...skills);
       const maxSkill = Math.max(...skills);
-
+      
       // Función para obtener color según skill (igual que en tabla principal)
       const obtenerColorSkill = (skill) => {
         const normalizado = (skill - minSkill) / (maxSkill - minSkill || 1);
-
+        
         if (normalizado >= 0.8) return 'skill-excellent'; // Verde brillante
         if (normalizado >= 0.6) return 'skill-good';      // Verde
         if (normalizado >= 0.4) return 'skill-average';   // Amarillo
         if (normalizado >= 0.2) return 'skill-below';     // Naranja
         return 'skill-poor';                              // Rojo
       };
-
+      
       // Variables para ordenamiento del ranking
       let currentSortRanking = 'skill';
       let currentOrderRanking = 'desc';
@@ -16001,7 +17199,7 @@ const initApp = () => {
       const sortRanking = (rankings, field, order) => {
         return [...rankings].sort((a, b) => {
           let aVal, bVal;
-
+          
           if (field === 'nombre') {
             aVal = a.jugadores?.nombre || '';
             bVal = b.jugadores?.nombre || '';
@@ -16037,10 +17235,10 @@ const initApp = () => {
             aVal = a[field] || 0;
             bVal = b[field] || 0;
           }
-
+          
           if (typeof aVal === 'string') aVal = parseFloat(aVal) || 0;
           if (typeof bVal === 'string') bVal = parseFloat(bVal) || 0;
-
+          
           return order === 'asc' ? aVal - bVal : bVal - aVal;
         });
       };
@@ -16066,7 +17264,7 @@ const initApp = () => {
             </thead>
             <tbody id="ranking-tbody">
       `;
-
+      
       // Función para renderizar las filas del ranking
       const renderRankingRows = (rankings) => {
         let rowsHtml = '';
@@ -16074,7 +17272,7 @@ const initApp = () => {
           const positionClass = (index + 1) <= 3 ? `position-${index + 1}` : 'position-other';
           const golesAsistencias = (jugador.goles || 0) + (jugador.asistencias || 0);
           const colorSkill = obtenerColorSkill(jugador.rendimiento);
-
+          
           // Calcular rendimientos separados
           const pj = jugador.pj || 1;
           const golesPP = (jugador.goles || 0) / pj;
@@ -16084,10 +17282,10 @@ const initApp = () => {
           const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
-
+          
           const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
           const rendArquero = atajadasPP * 0.4;
-
+          
           const tooltipContent = `Cálculo detallado (por partido):
 ATAQUE:
 • Goles: ${golesPP.toFixed(2)} × 5 = ${(golesPP * 5).toFixed(1)}
@@ -16102,7 +17300,7 @@ ARQUERO:
 • Atajadas: ${atajadasPP.toFixed(2)} × 0.4 = ${rendArquero.toFixed(1)}
 
 TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
-
+          
           rowsHtml += `
             <tr class="ranking-row" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${tooltipContent}">
               <td class="text-center">
@@ -16134,12 +17332,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Renderizar filas iniciales
       html += renderRankingRows(ranking);
-
+      
       html += `
             </tbody>
           </table>
         </div>
-
+        
         <div class="mt-3">
           <div class="row g-3 text-center">
             <div class="col-md-3">
@@ -16161,9 +17359,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           </div>
         </div>
       `;
-
+      
       container.innerHTML = html;
-
+      
       // Activar tooltips después de cargar el contenido
       setTimeout(() => {
         const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -16190,13 +17388,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               currentSortRanking = sortField;
               currentOrderRanking = sortField === 'nombre' ? 'asc' : 'desc';
             }
-
+            
             // Reordenar y rerenderizar tabla
             const sortedRanking = sortRanking(ranking, currentSortRanking, currentOrderRanking);
             const tbody = container.querySelector('#ranking-tbody');
             if (tbody) {
               tbody.innerHTML = renderRankingRows(sortedRanking);
-
+              
               // Reactivar tooltips
               setTimeout(() => {
                 const newTooltips = tbody.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -16213,7 +17411,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           }
         }
       });
-
+      
     } catch (error) {
       console.error('Error al cargar ranking skill:', error);
       container.innerHTML = `
@@ -16546,6 +17744,39 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     };
   }
 
+  function calcularMarcadorPartidoPortada(partido) {
+    const marcador = { equipo1: 0, equipo2: 0 };
+    (partido?.goles || []).forEach(gol => {
+      let equipoGol = Number(gol.equipo);
+      if (equipoGol !== 1 && equipoGol !== 2) {
+        const jugadorPartido = partido?.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
+        equipoGol = Number(jugadorPartido?.equipo);
+      }
+
+      if (equipoGol === 1) marcador.equipo1 += 1;
+      if (equipoGol === 2) marcador.equipo2 += 1;
+    });
+    return marcador;
+  }
+
+  function obtenerDatosPortadaPartidoGuardado(partido, clips = []) {
+    const jugadores = partido?.jugador_partido || [];
+    const marcador = calcularMarcadorPartidoPortada(partido);
+    return {
+      clips,
+      fecha: partido?.fecha || new Date().toISOString().slice(0, 10),
+      cancha: partido?.cancha || '',
+      temporada: partido?.temporadas?.nombre || '',
+      marcador,
+      equipoGanador: resolverEquipoGanadorPortada({
+        equipoGanador: partido?.equipo_ganador,
+        marcador
+      }),
+      equipo1: jugadores.filter(jp => Number(jp.equipo) === 1),
+      equipo2: jugadores.filter(jp => Number(jp.equipo) === 2)
+    };
+  }
+
   window.mostrarCompiladoPartido = async function(partidoId) {
     const partido = todosLosPartidos.find(p => p.id === partidoId);
     const modalEl = document.getElementById('compiladoPartidoModal');
@@ -16622,10 +17853,23 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       </div>
       <div class="border border-secondary border-opacity-25 rounded-3 p-3 mt-3">
         <label class="form-label text-light small mb-1">Compilado descargable</label>
+        <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+          <div>
+            <label for="compilado-modal-cover-equipo1" class="form-label text-light small mb-1">Siglas E1</label>
+            <input type="text" id="compilado-modal-cover-equipo1" class="form-control form-control-sm text-uppercase" maxlength="3" value="E1" placeholder="MTX" style="width: 76px;">
+          </div>
+          <div>
+            <label for="compilado-modal-cover-equipo2" class="form-label text-light small mb-1">Siglas E2</label>
+            <input type="text" id="compilado-modal-cover-equipo2" class="form-control form-control-sm text-uppercase" maxlength="3" value="E2" placeholder="FAC" style="width: 76px;">
+          </div>
+        </div>
         <input type="file" id="compilado-modal-video" class="form-control form-control-sm mb-2" accept="video/*">
         <div class="d-flex flex-wrap gap-2">
           <button type="button" id="compilado-modal-export" class="btn btn-outline-light btn-sm" ${clips.length ? '' : 'disabled'}>
             <i class="bi bi-download me-1"></i>Cortes JSON
+          </button>
+          <button type="button" id="compilado-modal-cover" class="btn btn-outline-info btn-sm" ${clips.length ? '' : 'disabled'}>
+            <i class="bi bi-image me-1"></i>Portada PNG
           </button>
           <button type="button" id="compilado-modal-build-beelup" class="btn btn-warning btn-sm" ${puedeGenerarBeelup() ? '' : 'disabled'}>
             <i class="bi bi-magic me-1"></i>Generar MP4 Beelup
@@ -16639,11 +17883,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     `;
 
     const exportBtn = document.getElementById('compilado-modal-export');
+    const coverBtn = document.getElementById('compilado-modal-cover');
     const buildBeelupBtn = document.getElementById('compilado-modal-build-beelup');
     const buildBtn = document.getElementById('compilado-modal-build');
     const fileInput = document.getElementById('compilado-modal-video');
     const statusEl = document.getElementById('compilado-modal-status');
     const nombreBase = `compilado-t5-${partido?.fecha || partidoId}`;
+    vincularInputsSiglasPortada('compilado-modal-cover');
     const actualizarClipsModal = () => {
       opcionesCompilado = { atajadasMinimas: obtenerUmbralAtajadasCompilado('compilado-modal-atajadas-min') };
       clips = construirClipsCompiladoDesdeEventos(reviewEventos, opcionesCompilado);
@@ -16656,6 +17902,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (durationEl) durationEl.textContent = formatearSegundosVideo(duracionTotal);
       if (listEl) listEl.innerHTML = renderizarClipsCompiladoHtml(clips, reviewLink, opcionesCompilado);
       if (exportBtn) exportBtn.disabled = clips.length === 0;
+      if (coverBtn) coverBtn.disabled = clips.length === 0;
       if (buildBtn) buildBtn.disabled = clips.length === 0;
       if (buildBeelupBtn) buildBeelupBtn.disabled = !puedeGenerarBeelup();
     };
@@ -16664,6 +17911,22 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     exportBtn?.addEventListener('click', () => {
       descargarJsonCompilado(clips, nombreBase, reviewLink, opcionesCompilado);
+    });
+
+    coverBtn?.addEventListener('click', async () => {
+      if (coverBtn) coverBtn.disabled = true;
+      try {
+        await descargarPortadaCompilado(clips, nombreBase, {
+          file: fileInput?.files?.[0] || null,
+          statusEl,
+          datosPortada: {
+            ...obtenerDatosPortadaPartidoGuardado(partido, clips),
+            ...obtenerSiglasPortadaDesdeInputs('compilado-modal-cover')
+          }
+        });
+      } finally {
+        if (coverBtn) coverBtn.disabled = clips.length === 0;
+      }
     });
 
     buildBeelupBtn?.addEventListener('click', async () => {
@@ -16880,10 +18143,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (!verificarPermisosAdmin('eliminar un partido')) {
         return;
     }
-
+    
     // Confirmación antes de eliminar
     const confirmacion = confirm('⚠️ ¿Estás seguro de que quieres eliminar este partido?\n\nEsta acción eliminará:\n• Los datos del partido\n• Todos los goles registrados\n• Todas las estadísticas de jugadores\n• Esta acción NO se puede deshacer');
-
+    
     if (!confirmacion) {
       return;
     }
@@ -16927,10 +18190,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Éxito
       showToast('🗑️ Partido eliminado exitosamente', 'success');
-
+      
       // Recargar el historial para reflejar los cambios
       cargarHistorialPartidos();
-
+      
       // Recargar estadísticas para actualizar los totales
       await cargarEstadisticas();
 
@@ -17401,7 +18664,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     try {
       console.log('📹 Editando link de review para partido:', partidoId);
-
+      
       // Pre-llenar el modal con el link actual
       document.getElementById('youtube-link-editar').value = obtenerLinkYouTubeReview(linkActual) || '';
 
@@ -17457,7 +18720,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       } else {
         showToast('🗑️ Link de review eliminado exitosamente', 'success');
       }
-
+      
       // Cerrar modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('editarYouTubeModal'));
       modal.hide();
@@ -17533,7 +18796,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Éxito
       showToast('✅ Partido actualizado exitosamente', 'success');
-
+      
       // Cerrar modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('editarPartidoModal'));
       modal.hide();
@@ -17557,13 +18820,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
   // --- Inicialización de la app ---
   console.log('🚀 Inicializando aplicación...');
-
+  
   // Verificar autenticación primero
   verificarAutenticacion();
-
+  
   // Actualizar UI según permisos inmediatamente
   actualizarUISegunPermisos();
-
+  
   // Cargar datos iniciales
   const cargaInicialJugadores = cargarTodosLosJugadores();
   inicializarPosiciones();
@@ -17586,6 +18849,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     cargarResumenTemporadas();
     // Poblar selector de jugadores en el header
     poblarSelectorJugadoresPerfil();
+    renderizarReviewSandbox();
 
     const jugadorRutaId = resolverJugadorIdDesdeRuta(rutaInicialPerfil.jugadorId);
 
@@ -17708,22 +18972,22 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   if (playerForm) {
     playerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-
+      
       const nombre = document.getElementById('nombre').value.trim();
       const posicionPrimaria = document.getElementById('posicion-primaria').value;
       const posicionSecundaria = document.getElementById('posicion-secundaria').value;
       const pulmon = document.getElementById('pulmon').value;
-
+      
       if (!nombre) {
         showToast('El nombre del jugador es obligatorio', 'error');
         return;
       }
-
+      
       if (!posicionPrimaria) {
         showToast('La posición primaria es obligatoria', 'error');
         return;
       }
-
+      
       try {
         if (jugadorEditando) {
           // Modo edición
@@ -17734,15 +18998,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon);
           showToast(`${nombre} ha sido agregado exitosamente`, 'success');
         }
-
+        
         // Cerrar modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('playerModal'));
         modal.hide();
-
+        
         // Recargar datos
         cargarEstadisticas();
         cargarTodosLosJugadores();
-
+        
       } catch (error) {
         console.error('Error al procesar jugador:', error);
         showToast('Error al procesar el jugador: ' + error.message, 'error');
@@ -17820,7 +19084,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     empates: 0,
     partidosGrupos: 0, // para fase de grupos (necesita 3 partidos)
     victoriasGrupos: 0, // victorias específicas en fase de grupos
-    empatesGrupos: 0, // empates específicos en fase de grupos
+    empatesGrupos: 0, // empates específicos en fase de grupos  
     derrotasGrupos: 0, // derrotas específicas en fase de grupos
     bonusCount: 0, // cantidad de bonus: 0, 1 (2V+1E) o 2 (3V)
     eliminado: false,
@@ -17835,7 +19099,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const bonus = jugador.bonusCount > 0 ? ' ⭐'.repeat(jugador.bonusCount) : '';
       return { badge: 'bg-success', text: `👑 Campeón${bonus}`, descripcion: 'Ganó el mundial' };
     }
-
+    
     switch (jugador.fase) {
       case 'grupos': {
         const record = `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`;
@@ -17986,7 +19250,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const loadOverridesFromDatabase = async () => {
     try {
       console.log('🔄 Cargando overrides de moneda desde la base de datos...');
-
+      
       const { data: overrides, error } = await supabase
         .from('mundialito_moneda_overrides')
         .select('*')
@@ -18015,7 +19279,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       console.log(`✅ Cargados ${overrides.length} overrides desde la base de datos`);
       console.log('📋 Overrides exactos:', Object.keys(window.mundialitoMonedaOverridesExact).length);
       console.log('📋 Overrides jugador-fase:', Object.keys(window.mundialitoMonedaOverridesJugadorFase).length);
-
+      
     } catch (error) {
       console.error('Error cargando overrides desde BD:', error);
     }
@@ -18027,15 +19291,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       console.log('🔄 Cargando campeones mundiales...');
       console.log('🔍 jugadoresMundial existe:', typeof jugadoresMundial !== 'undefined');
       console.log('🔍 jugadoresMundial size:', typeof jugadoresMundial !== 'undefined' ? jugadoresMundial.size : 'undefined');
-
+      
       // Limpiar cache anterior
       window.campeonesMundiales.clear();
-
+      
       // Buscar campeones en el mundialito actual
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
         console.log('🔍 Revisando jugadores del mundialito...');
         let campeonesEncontrados = 0;
-
+        
         jugadoresMundial.forEach(jugador => {
           console.log(`🔍 Jugador: ${jugador.nombre}, campeon: ${jugador.campeon}, fase: ${jugador.fase}`);
           if (jugador.campeon) {
@@ -18044,14 +19308,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             console.log(`🏆 Campeón detectado: ${jugador.nombre} (ID: ${jugador.id})`);
           }
         });
-
+        
         console.log(`🔍 Total campeones encontrados: ${campeonesEncontrados}`);
       } else {
         console.log('⚠️ jugadoresMundial no está disponible o está vacío');
       }
 
       console.log(`✅ Cargados ${window.campeonesMundiales.size} campeones mundiales`);
-
+      
     } catch (error) {
       console.error('Error cargando campeones mundiales:', error);
     }
@@ -18072,10 +19336,10 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     try {
       console.log('🔄 Renderizando último campeón...');
-
+      
       // Recargar campeones desde el mundialito actual
       await loadCampeonesMundiales();
-
+      
       if (window.campeonesMundiales.size === 0) {
         console.log('⚠️ No hay campeones, ocultando sección último campeón');
         container.innerHTML = '';
@@ -18121,7 +19385,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       console.log('🎨 Renderizando último campeón:', ultimoCampeon);
 
-      const fechaUltimo = ultimoCampeon.fechaCampeon ?
+      const fechaUltimo = ultimoCampeon.fechaCampeon ? 
         new Date(ultimoCampeon.fechaCampeon + 'T12:00:00').toLocaleDateString('es-ES', {
           year: 'numeric',
           month: 'long',
@@ -18138,8 +19402,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             <div class="card-body text-center p-4">
               <div class="mb-4">
                 ${imagenCampeon ? `
-                  <img src="${imagenCampeon}" alt="${ultimoCampeon.nombre} Campeón"
-                       class="img-fluid mb-3"
+                  <img src="${imagenCampeon}" alt="${ultimoCampeon.nombre} Campeón" 
+                       class="img-fluid mb-3" 
                        style="max-height: 400px; border-radius: 10px;">
                 ` : `
                   <i class="bi bi-trophy text-warning" style="font-size: 4rem;"></i>
@@ -18176,12 +19440,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     try {
       console.log('🔄 Renderizando campeones mundiales...');
-
+      
       // Recargar campeones desde el mundialito actual
       await loadCampeonesMundiales();
-
+      
       console.log('🔍 Campeones en cache:', window.campeonesMundiales.size);
-
+      
       if (window.campeonesMundiales.size === 0) {
         console.log('⚠️ No hay campeones en cache, ocultando sección');
         container.innerHTML = '';
@@ -18223,7 +19487,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       // Renderizar campeones centrados
       const html = campeonesInfo.map((campeon, index) => {
-        const fechaUltimo = campeon.fechaCampeon ?
+        const fechaUltimo = campeon.fechaCampeon ? 
           new Date(campeon.fechaCampeon + 'T12:00:00').toLocaleDateString('es-ES', {
             year: 'numeric',
             month: 'long',
@@ -18240,8 +19504,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               <div class="card-body text-center p-4">
                 ${imagenCampeon ? `
                   <div class="mb-3">
-                    <img src="${imagenCampeon}" alt="${campeon.nombre} Campeón"
-                         class="img-fluid rounded-circle"
+                    <img src="${imagenCampeon}" alt="${campeon.nombre} Campeón" 
+                         class="img-fluid rounded-circle" 
                          style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #ffc107;">
                   </div>
                 ` : `
@@ -18275,12 +19539,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Cargar overrides y campeones al inicializar
   loadOverridesFromDatabase();
   loadCampeonesMundiales();
-
+  
   // Función para cargar campeones automáticamente
   const cargarCampeonesAutomaticamente = async () => {
     try {
       console.log('🔄 Cargando campeones automáticamente...');
-
+      
       // Intentar cargar campeones desde el mundialito actual
       if (typeof jugadoresMundial !== 'undefined' && jugadoresMundial.size > 0) {
         console.log('✅ Mundialito ya procesado, cargando campeones...');
@@ -18289,19 +19553,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         await renderizarCampeonesMundiales();
         return;
       }
-
+      
       // Si no hay mundialito procesado, intentar procesarlo automáticamente
       console.log('🔄 Mundialito no procesado, intentando procesar automáticamente...');
-
+      
       try {
         // Procesar mundialito automáticamente
         if (typeof window.procesarMundialito === 'function') {
           console.log('🔄 Procesando mundialito automáticamente...');
           await window.procesarMundialito();
-
+          
           // Esperar un poco para que se procesen los datos
           await new Promise(resolve => setTimeout(resolve, 1000));
-
+          
           // Después de procesar, cargar campeones
           console.log('🔄 Mundialito procesado, cargando campeones...');
           await loadCampeonesMundiales();
@@ -18314,19 +19578,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       } catch (error) {
         console.log('⚠️ Error procesando mundialito automáticamente:', error);
       }
-
+      
       // Si no se pudo procesar, ocultar sección
       console.log('🔄 No se pudo procesar mundialito, ocultando sección...');
       const container = document.getElementById('campeones-container');
       if (container) {
         container.innerHTML = '';
       }
-
+      
     } catch (error) {
       console.error('Error cargando campeones automáticamente:', error);
     }
   };
-
+  
   // Cargar campeones después de que se carguen todos los datos
   setTimeout(async () => {
     await cargarCampeonesAutomaticamente();
@@ -18336,15 +19600,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const cargarMundialitoInvisible = async () => {
     try {
       console.log('🔄 Cargando mundialito invisiblemente...');
-
+      
       // Procesar mundialito sin mostrar interfaz
       if (typeof window.procesarMundialito === 'function') {
         await window.procesarMundialito();
         console.log('✅ Mundialito procesado invisiblemente');
-
+        
         // Esperar un poco para que se procesen los datos
         await new Promise(resolve => setTimeout(resolve, 1000));
-
+        
         // Después de procesar, cargar campeones
         await loadCampeonesMundiales();
         await renderizarUltimoCampeon();
@@ -18393,7 +19657,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       return false;
     }
   };
-
+  
   window.setMonedaOverrideJugadorFase = async (jugadorId, fase, pasa) => {
     try {
       // Guardar en base de datos
@@ -18417,12 +19681,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       // Actualizar cache local
       window.mundialitoMonedaOverridesJugadorFase[`${jugadorId}-${fase}`] = !!pasa;
       console.log(`✅ Override jugador-fase guardado en BD: ${jugadorId}-${fase} = ${pasa}`);
-
+      
     } catch (error) {
       console.error('Error en setMonedaOverrideJugadorFase:', error);
     }
   };
-
+  
   window.clearMonedaOverrides = async () => {
     try {
       // Limpiar de base de datos
@@ -18440,7 +19704,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       window.mundialitoMonedaOverridesExact = {};
       window.mundialitoMonedaOverridesJugadorFase = {};
       console.log('✅ Todos los overrides han sido limpiados de la BD');
-
+      
     } catch (error) {
       console.error('Error en clearMonedaOverrides:', error);
     }
@@ -18491,12 +19755,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const tirarMonedaDeterministica = (partidoId, jugadorId, fase) => {
     const keyExact = `${partidoId}-${jugadorId}-${fase}`;
     const keyJugadorFase = `${jugadorId}-${fase}`;
-
+    
     // Verificar overrides exactos primero
     if (keyExact in window.mundialitoMonedaOverridesExact) {
       return window.mundialitoMonedaOverridesExact[keyExact];
     }
-
+    
     // Verificar overrides por jugador-fase
     if (keyJugadorFase in window.mundialitoMonedaOverridesJugadorFase) {
       return window.mundialitoMonedaOverridesJugadorFase[keyJugadorFase];
@@ -18702,73 +19966,73 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Función para evaluar si pasa de fase de grupos
   const evaluarPaseGrupos = (jugador) => {
     const { victoriasGrupos, empatesGrupos, derrotasGrupos } = jugador;
-
+    
     // 3 victorias = 2 bonus (pasa directo sin moneda en 2 eliminatorias)
     if (victoriasGrupos === 3) {
       jugador.bonusCount = 2;
       return true;
     }
-
+    
     // 2 victorias + 1 empate = 1 bonus (pasa)
     if (victoriasGrupos === 2 && empatesGrupos === 1) {
       jugador.bonusCount = 1;
       return true;
     }
-
+    
     // 2 victorias + 1 derrota = pasa sin bonus
     if (victoriasGrupos === 2 && derrotasGrupos === 1) {
       jugador.bonusCount = 0;
       return true;
     }
-
+    
     // 1 victoria + 2 empates = pasa sin bonus
     if (victoriasGrupos === 1 && empatesGrupos === 2) {
       jugador.bonusCount = 0;
       return true;
     }
-
+    
     // 1 victoria + 1 empate + 1 derrota = tirar moneda para pasar
     if (victoriasGrupos === 1 && empatesGrupos === 1 && derrotasGrupos === 1) {
       // Usar último partido para generar seed determinística
       const partidoId = jugador.ultimoPartido?.id || 0;
       return tirarMonedaDeterministica(partidoId, jugador.id, 'grupos');
     }
-
+    
     // 1 victoria + 2 derrotas = afuera
     if (victoriasGrupos === 1 && derrotasGrupos === 2) {
       return false;
     }
-
+    
     // Cualquier otra combinación de empates/derrotas = afuera
     // Esto incluye: 0V, solo empates, 2+ derrotas, etc.
     return false;
   };
 
-  // Función para evaluar si pasa en fases eliminatorias
+  // Función para evaluar si pasa en fases eliminatorias  
   const evaluarPasePlayoffs = (jugador, resultado) => {
     // Si gana, pasa automáticamente sin consumir bonus
     if (resultado === 'victoria') {
       return true;
     }
-
+    
     // Si pierde, no pasa
     if (resultado === 'derrota') {
       return false;
     }
-
+    
     // Si empata y tiene bonus, consume 1 bonus y pasa automáticamente
     if (resultado === 'empate' && jugador.bonusCount > 0) {
       jugador.bonusCount--; // Consume 1 bonus
       return true;
     }
-
+    
     // Si empata sin bonus, tirar moneda
     if (resultado === 'empate') {
       // Usar último partido para generar seed determinística
       const partidoId = jugador.ultimoPartido?.id || 0;
       return tirarMonedaDeterministica(partidoId, jugador.id, jugador.fase);
     }
-
+    
     return false;
   };
 
@@ -18825,7 +20089,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       // Procesar resultado según la fase actual
       if (jugador.fase === 'grupos') {
         jugador.partidosGrupos++;
-
+        
         // Contar resultado específico de grupos
         if (resultado === 'victoria') {
           jugador.victoriasGrupos++;
@@ -18840,17 +20104,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
         // NUEVA REGLA: Eliminación inmediata con 2 derrotas
         if (jugador.derrotasGrupos >= 2) {
-
+      
           resetearAGrupos(jugador);
-          jugador.historialFases.push({
-            fase: 'eliminado_grupos',
-            completada: false,
+          jugador.historialFases.push({ 
+            fase: 'eliminado_grupos', 
+            completada: false, 
             fecha: partido.fecha,
             razon: '2 derrotas - Eliminación inmediata',
             metodo: 'automatico',
             partidoId: partido.id
           });
-
+          
           // Registrar cambio de fase
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -18862,24 +20126,24 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         // Evaluar si completó los 3 partidos de grupos
         else if (jugador.partidosGrupos >= 3) {
           const pasa = evaluarPaseGrupos(jugador);
-
+          
           if (pasa) {
             // Avanza a 8vos
             jugador.fase = '8vos';
-
+            
             // Determinar si fue por moneda
             const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
-
-            jugador.historialFases.push({
-              fase: 'grupos',
-              completada: true,
+            
+            jugador.historialFases.push({ 
+              fase: 'grupos', 
+              completada: true, 
               fecha: partido.fecha,
               record: `${jugador.victoriasGrupos}V-${jugador.empatesGrupos}E-${jugador.derrotasGrupos}D`,
               bonus: jugador.bonusCount,
               metodo: fueMoneda ? 'moneda' : 'automatico',
               partidoId: partido.id
             });
-
+            
             // Registrar cambio de fase
             cambiosFase.push({
               jugador: jugador.nombre,
@@ -18890,17 +20154,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           } else {
             // No pasa, resetear a grupos
             const fueMoneda = (jugador.victoriasGrupos === 1 && jugador.empatesGrupos === 1 && jugador.derrotasGrupos === 1);
-
+            
             resetearAGrupos(jugador);
-            jugador.historialFases.push({
-              fase: 'eliminado_grupos',
-              completada: false,
+            jugador.historialFases.push({ 
+              fase: 'eliminado_grupos', 
+              completada: false, 
               fecha: partido.fecha,
               razon: 'No clasificó de grupos',
               metodo: fueMoneda ? 'moneda' : 'automatico',
               partidoId: partido.id
             });
-
+            
             // Registrar cambio de fase
             cambiosFase.push({
               jugador: jugador.nombre,
@@ -18913,7 +20177,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       } else {
         // Fases eliminatorias (8vos, 4tos, semis, final)
         const pasa = evaluarPasePlayoffs(jugador, resultado);
-
+        
         // Contar estadísticas generales
         if (resultado === 'victoria') {
           jugador.victorias++;
@@ -18922,11 +20186,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         } else if (resultado === 'derrota') {
           jugador.derrotas++;
         }
-
+        
         if (pasa) {
           // Avanza a la siguiente fase
           const faseAnterior = jugador.fase;
-
+          
           if (jugador.fase === '8vos') {
             jugador.fase = '4tos';
           } else if (jugador.fase === '4tos') {
@@ -18946,20 +20210,20 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               partidoId: partido.id
             });
           }
-
+          
           // Determinar si fue por moneda (empate sin bonus)
           const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
-
-          jugador.historialFases.push({
-            fase: faseAnterior,
-            completada: true,
+          
+          jugador.historialFases.push({ 
+            fase: faseAnterior, 
+            completada: true, 
             fecha: partido.fecha,
             resultado: resultado,
             bonus: jugador.bonusCount,
             metodo: fueMoneda ? 'moneda' : 'automatico',
             partidoId: partido.id
           });
-
+          
           // Registrar cambio de fase
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -18970,21 +20234,21 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         } else {
           // No pasa, vuelve a grupos
           const faseAnterior = jugador.fase;
-
+          
           // Determinar si fue por moneda (empate sin bonus)
           const fueMoneda = (resultado === 'empate' && jugador.bonusCount === 0);
-
+          
           resetearAGrupos(jugador);
-          jugador.historialFases.push({
-            fase: `eliminado_${faseAnterior}`,
-            completada: false,
+          jugador.historialFases.push({ 
+            fase: `eliminado_${faseAnterior}`, 
+            completada: false, 
             fecha: partido.fecha,
             resultado: resultado,
             razon: `Eliminado en ${faseAnterior}`,
             metodo: fueMoneda ? 'moneda' : 'automatico',
             partidoId: partido.id
           });
-
+          
           // Registrar cambio de fase
           cambiosFase.push({
             jugador: jugador.nombre,
@@ -19006,7 +20270,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     try {
       const temporadaSelect = document.getElementById('mundialito-temporada');
       const temporadaSeleccionada = temporadaIdOverride ?? temporadaSelect?.value;
-
+      
       let query = supabase
         .from('partidos')
         .select(`*, jugador_partido(*, jugadores(id, nombre))`)
@@ -19033,12 +20297,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (container) {
         container.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-warning"></div><p class="text-light-emphasis mt-2">Procesando...</p></div>`;
       }
-
+      
       jugadoresMundial.clear();
       parejasMundial.clear();
       partidosJugadorParejas.clear();
       mundialPartidos = await cargarPartidosMundialito();
-
+      
       if (mundialPartidos.length === 0) {
         if (container) {
           container.innerHTML = `<div class="text-center py-4"><i class="bi bi-exclamation-triangle text-warning fs-2"></i><p class="text-light-emphasis mt-2">No se encontraron partidos</p></div>`;
@@ -19052,21 +20316,21 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         procesarPartidoParejasMundial(partido);
       });
       actualizarParejasCongeladasMundial();
-
+      
       mostrarFixtureMundialito();
       mostrarFixtureParejasMundialito();
       actualizarEstadisticasMundialito();
       actualizarEstadisticasParejasMundialito();
-
+      
       // Actualizar campeones mundiales después de procesar
       await loadCampeonesMundiales();
-
+      
       // Renderizar campeones en la página principal
       await renderizarCampeonesMundiales();
-
+      
       // Renderizar estadísticas (histograma) si la pestaña existe
       renderizarEstadisticasMundialito();
-
+      
     } catch (error) {
       console.error('❌ Error procesando mundialito:', error);
     }
@@ -19103,7 +20367,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     // Función para generar contenido del tooltip con historial
     const generarTooltipHistorial = (jugador) => {
       let tooltip = `<div class="fw-bold mb-2">🏆 Historial Mundial - ${jugador.nombre}</div>`;
-
+      
       // Estadísticas actuales
       tooltip += `<div class="mb-2">`;
       tooltip += `<strong>📊 Estado Actual:</strong><br>`;
@@ -19118,11 +20382,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       if (jugador.historialFases && jugador.historialFases.length > 0) {
         tooltip += `<div class="mb-2">`;
         tooltip += `<strong>📜 Historial de Fases:</strong><br>`;
-
+        
         jugador.historialFases.forEach((fase, index) => {
           const fechaCorregida = new Date(fase.fecha + 'T12:00:00');
           const fecha = fechaCorregida.toLocaleDateString('es-ES');
-
+          
           if (fase.completada) {
             if (fase.fase === 'grupos') {
               tooltip += `${index + 1}. ✅ Clasificó de Grupos (${fecha})`;
@@ -19175,9 +20439,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               const tooltipContent = generarTooltipHistorial(jugador);
               return `
                 <div class="col-md-4 col-lg-3">
-                  <div class="card bg-success bg-opacity-25 border-success mundialito-card"
-                       data-bs-toggle="tooltip"
-                       data-bs-placement="top"
+                  <div class="card bg-success bg-opacity-25 border-success mundialito-card" 
+                       data-bs-toggle="tooltip" 
+                       data-bs-placement="top" 
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
@@ -19219,9 +20483,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               const tooltipContent = generarTooltipHistorial(jugador);
               return `
                 <div class="col-md-4 col-lg-3">
-                  <div class="card bg-${fase.color} bg-opacity-10 border-${fase.color} border-opacity-25 mundialito-card"
-                       data-bs-toggle="tooltip"
-                       data-bs-placement="top"
+                  <div class="card bg-${fase.color} bg-opacity-10 border-${fase.color} border-opacity-25 mundialito-card" 
+                       data-bs-toggle="tooltip" 
+                       data-bs-placement="top" 
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
@@ -19242,7 +20506,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     });
 
     container.innerHTML = html || '<div class="col-12"><div class="text-center py-4"><p class="text-light-emphasis">No hay jugadores para mostrar</p></div></div>';
-
+    
     // Inicializar tooltips después de actualizar el contenido
     setTimeout(() => {
       const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -19614,7 +20878,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     parejasMundial.clear();
     partidosJugadorParejas.clear();
     mundialPartidos = [];
-
+    
     const container = document.getElementById('mundialito-fixture');
     if (container) {
       container.innerHTML = `<div class="text-center py-4"><p class="text-light-emphasis">Presiona "Procesar Mundial" para generar el fixture</p></div>`;
@@ -19748,30 +21012,30 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   // Función de test para verificar overrides de moneda
   window.testMonedaOverrides = () => {
     console.log('🧪 Iniciando test de overrides de moneda...');
-
+    
     // Test 1: Override exacto
     const partidoId = 1, jugadorId = 1, fase = '8vos';
     window.setMonedaOverrideExact(partidoId, jugadorId, fase, true);
     const resultado1 = tirarMonedaDeterministica(partidoId, jugadorId, fase);
     console.assert(resultado1 === true, 'Override exacto debería devolver true');
-
+    
     // Test 2: Override por jugador-fase
     const jugadorId2 = 2, fase2 = '4tos';
     window.setMonedaOverrideJugadorFase(jugadorId2, fase2, false);
     const resultado2 = tirarMonedaDeterministica(999, jugadorId2, fase2); // partidoId diferente
     console.assert(resultado2 === false, 'Override por jugador-fase debería devolver false');
-
+    
     // Test 3: Sin override (debería usar lógica determinística)
     const resultado3 = tirarMonedaDeterministica(999, 999, 'semis');
     console.log('Resultado sin override (determinístico):', resultado3);
-
+    
     // Test 4: Limpiar overrides
     window.clearMonedaOverrides();
     const resultado4 = tirarMonedaDeterministica(partidoId, jugadorId, fase);
     console.log('Resultado después de limpiar overrides:', resultado4);
-
+    
     console.log('✅ Test de overrides completado. Revisa la consola para ver los resultados.');
-
+    
     // Limpiar después del test
     window.clearMonedaOverrides();
   };
