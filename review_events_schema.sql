@@ -6,8 +6,14 @@ create extension if not exists "pgcrypto";
 alter table public.partidos
 add column if not exists review_inicio_segundos integer;
 
+alter table public.partidos
+add column if not exists compilado_youtube_link text;
+
 alter table public.goles
 add column if not exists review_segundos integer;
+
+alter table public.jugadores
+add column if not exists foto_url text;
 
 do $$
 begin

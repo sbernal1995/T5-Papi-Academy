@@ -39,6 +39,11 @@ let partidoHistorialPendiente = null;
 // Variables globales para datos compartidos
 let todosLosJugadoresGlobal = [];
 let todasLasTemporadasGlobal = [];
+let fotoPerfilJugadoresDisponible = true;
+
+const JUGADORES_FOTOS_BUCKET = 'jugadores-fotos';
+const FOTO_PERFIL_MAX_BYTES = 5 * 1024 * 1024;
+const FOTO_PERFIL_TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 // FunciÃ³n para verificar estado de autenticaciÃ³n
 async function verificarAutenticacion() {
@@ -285,21 +290,28 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
   const iconos = golesArray.map(item => {
     const minutosDecimales = item.minuto; // Minutos en formato decimal
     const tieneTiempo = minutosDecimales !== null && minutosDecimales !== undefined;
-    const youtubeReviewLink = obtenerLinkYouTubeReview(youtubeLink);
+    const youtubeReviewLink = obtenerLinkYouTubeReview(item.video_link) || obtenerLinkYouTubeReview(youtubeLink);
     const tieneVideo = youtubeReviewLink !== '';
+    const videoSegundos = item.video_segundos !== null && item.video_segundos !== undefined
+      ? Number(item.video_segundos)
+      : null;
     const reviewSegundos = item.review_segundos !== null && item.review_segundos !== undefined
       ? Number(item.review_segundos)
       : null;
+    const segundosLink = Number.isFinite(videoSegundos)
+      ? videoSegundos
+      : (Number.isFinite(reviewSegundos) ? reviewSegundos : null);
 
     // Si tiene tiempo Y video, crear link clickeable
-    if (tieneTiempo && tieneVideo) {
-      const linkConTimestamp = Number.isFinite(reviewSegundos)
-        ? generarLinkConTimestampSegundos(youtubeReviewLink, reviewSegundos)
+    if ((tieneTiempo || Number.isFinite(segundosLink)) && tieneVideo) {
+      const linkConTimestamp = Number.isFinite(segundosLink)
+        ? generarLinkConTimestampSegundos(youtubeReviewLink, segundosLink)
         : generarLinkConTimestamp(youtubeReviewLink, minutosDecimales);
       const mins = Math.floor(minutosDecimales);
       const secs = Math.round((minutosDecimales - mins) * 60);
       const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
-      return `<a href="${linkConTimestamp}" target="_blank" class="text-decoration-none" title="Ver ${tipo} en ${timeStr}">${icono}</a>`;
+      const origen = item.video_origen === 'compilado' ? 'compilado' : 'review';
+      return `<a href="${linkConTimestamp}" target="_blank" class="text-decoration-none" title="Ver ${tipo} en ${origen} (${timeStr})">${icono}</a>`;
     } else {
       // Si no tiene tiempo o no hay video, solo mostrar el Ã­cono sin link
       return icono;
@@ -308,6 +320,28 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
 
   // Agregar el total entre parÃ©ntesis
   return `${iconos}(${total})`;
+}
+
+function generarIconosCagadasConLinks(cagadasArray, youtubeLink, totalFallback = 0) {
+  const total = Math.max(0, Number(totalFallback) || 0);
+  const youtubeReviewLink = obtenerLinkYouTubeReview(youtubeLink);
+
+  if (!cagadasArray?.length) {
+    return total > 0 ? `💥${total}` : '';
+  }
+
+  const iconos = cagadasArray.map(item => {
+    const segundos = Number(item.video_segundos ?? item.compilado_segundos ?? item.review_segundos);
+    const linkEvento = obtenerLinkYouTubeReview(item.video_link) || youtubeReviewLink;
+    if (linkEvento && Number.isFinite(segundos)) {
+      const href = generarLinkConTimestampSegundos(linkEvento, segundos);
+      const origen = item.video_origen === 'compilado' ? 'compilado' : 'review';
+      return `<a href="${href}" target="_blank" class="text-decoration-none" title="Ver cagada en ${origen}">💥</a>`;
+    }
+    return '💥';
+  }).join('');
+
+  return `${iconos}(${Math.max(total, cagadasArray.length)})`;
 }
 
 function esErrorColumnaFaltante(error, columna) {
@@ -513,9 +547,274 @@ function escaparTextoParaJs(valor) {
     .replace(/"/g, '\\"');
 }
 
+function esErrorColumnaFotoPerfilFaltante(error) {
+  if (!error) return false;
+  const mensaje = String(error.message || error.details || error.hint || '').toLowerCase();
+  return error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    (mensaje.includes('foto_url') && (
+      mensaje.includes('does not exist') ||
+      mensaje.includes('could not find') ||
+      mensaje.includes('schema cache') ||
+      mensaje.includes('column')
+    ));
+}
+
+function normalizarUrlFotoJugador(valor) {
+  return String(valor || '').trim();
+}
+
+function obtenerArchivoFotoFormulario(form = null) {
+  const input = form?.foto_archivo || document.getElementById('foto-archivo');
+  return input?.files?.[0] || null;
+}
+
+function validarArchivoFotoPerfil(archivo) {
+  if (!archivo) return;
+
+  if (!FOTO_PERFIL_TIPOS_PERMITIDOS.includes(archivo.type)) {
+    throw new Error('La foto debe ser JPG, PNG, WEBP o GIF.');
+  }
+
+  if (archivo.size > FOTO_PERFIL_MAX_BYTES) {
+    throw new Error('La foto no puede superar los 5 MB.');
+  }
+}
+
+function limpiarNombreArchivoStorage(nombre) {
+  const partes = String(nombre || 'foto')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9.]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .split('.');
+
+  const extension = partes.length > 1 ? partes.pop() : 'jpg';
+  const base = partes.join('.').replace(/\.+/g, '-') || 'foto';
+  return `${base}.${extension || 'jpg'}`;
+}
+
+function obtenerMensajeErrorStorageFoto(error) {
+  const mensaje = String(error?.message || error?.error || error || '').trim();
+  if (/bucket not found|not found/i.test(mensaje)) {
+    return `No existe el bucket "${JUGADORES_FOTOS_BUCKET}". Ejecuta player_profile_photos_schema.sql en Supabase.`;
+  }
+  if (/row-level security|policy|unauthorized|permission/i.test(mensaje)) {
+    return `Falta configurar permisos del bucket "${JUGADORES_FOTOS_BUCKET}". Ejecuta player_profile_photos_schema.sql en Supabase.`;
+  }
+  return mensaje || 'No se pudo subir la foto.';
+}
+
+async function subirFotoPerfilJugador(jugadorId, archivo) {
+  if (!archivo) return null;
+
+  validarArchivoFotoPerfil(archivo);
+
+  const nombreArchivo = limpiarNombreArchivoStorage(archivo.name);
+  const rutaArchivo = `${jugadorId}/${Date.now()}-${nombreArchivo}`;
+  const { error } = await supabase.storage
+    .from(JUGADORES_FOTOS_BUCKET)
+    .upload(rutaArchivo, archivo, {
+      cacheControl: '3600',
+      contentType: archivo.type,
+      upsert: false
+    });
+
+  if (error) {
+    throw new Error(obtenerMensajeErrorStorageFoto(error));
+  }
+
+  const { data } = supabase.storage
+    .from(JUGADORES_FOTOS_BUCKET)
+    .getPublicUrl(rutaArchivo);
+
+  return data?.publicUrl || null;
+}
+
+async function actualizarFotoPerfilJugador(jugadorId, fotoUrl) {
+  if (!fotoPerfilJugadoresDisponible) {
+    showToast('Para guardar fotos de perfil falta ejecutar el SQL de foto_url.', 'warning');
+    return;
+  }
+
+  let { error } = await supabase
+    .from('jugadores')
+    .update({ foto_url: fotoUrl || null })
+    .eq('id', jugadorId);
+
+  if (error && esErrorColumnaFotoPerfilFaltante(error)) {
+    fotoPerfilJugadoresDisponible = false;
+    showToast('Para guardar fotos de perfil falta ejecutar el SQL de foto_url.', 'warning');
+    return;
+  }
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function subirYGuardarFotoPerfilJugador(jugadorId, archivo) {
+  if (!archivo) return null;
+  const fotoUrl = await subirFotoPerfilJugador(jugadorId, archivo);
+  await actualizarFotoPerfilJugador(jugadorId, fotoUrl);
+  return fotoUrl;
+}
+
+function limpiarPreviewFotoFormulario() {
+  const preview = document.getElementById('foto-preview');
+  const imagen = document.getElementById('foto-preview-img');
+  const placeholder = document.getElementById('foto-preview-placeholder');
+
+  if (imagen) {
+    if (imagen.dataset.objectUrl) {
+      URL.revokeObjectURL(imagen.dataset.objectUrl);
+      delete imagen.dataset.objectUrl;
+    }
+    imagen.removeAttribute('src');
+    imagen.classList.add('d-none');
+  }
+
+  if (placeholder) placeholder.classList.remove('d-none');
+  if (preview) preview.classList.remove('has-photo');
+}
+
+function actualizarPreviewFotoFormulario(src = '') {
+  const preview = document.getElementById('foto-preview');
+  const imagen = document.getElementById('foto-preview-img');
+  const placeholder = document.getElementById('foto-preview-placeholder');
+
+  if (!preview || !imagen || !placeholder) return;
+
+  limpiarPreviewFotoFormulario();
+  if (!src) return;
+
+  imagen.src = src;
+  imagen.classList.remove('d-none');
+  placeholder.classList.add('d-none');
+  preview.classList.add('has-photo');
+}
+
+function configurarPreviewFotoFormulario() {
+  const archivoInput = document.getElementById('foto-archivo');
+  const urlInput = document.getElementById('foto-url');
+
+  archivoInput?.addEventListener('change', () => {
+    const archivo = archivoInput.files?.[0];
+    if (!archivo) {
+      actualizarPreviewFotoFormulario(normalizarUrlFotoJugador(urlInput?.value || ''));
+      return;
+    }
+
+    try {
+      validarArchivoFotoPerfil(archivo);
+      const objectUrl = URL.createObjectURL(archivo);
+      actualizarPreviewFotoFormulario(objectUrl);
+      const imagen = document.getElementById('foto-preview-img');
+      if (imagen) imagen.dataset.objectUrl = objectUrl;
+    } catch (error) {
+      archivoInput.value = '';
+      showToast(error.message, 'warning');
+      actualizarPreviewFotoFormulario(normalizarUrlFotoJugador(urlInput?.value || ''));
+    }
+  });
+
+  urlInput?.addEventListener('input', () => {
+    if (archivoInput?.files?.[0]) return;
+    actualizarPreviewFotoFormulario(normalizarUrlFotoJugador(urlInput.value));
+  });
+}
+
+function obtenerJugadorConFotoPerfil(jugadorRef, nombreFallback = '') {
+  const jugadorBase = typeof jugadorRef === 'object' && jugadorRef !== null
+    ? jugadorRef
+    : { id: jugadorRef, nombre: nombreFallback };
+  const jugadorId = jugadorBase.id ?? jugadorBase.jugador_id;
+
+  const jugadorGlobal = jugadorId !== null && jugadorId !== undefined
+    ? todosLosJugadoresGlobal.find(jugador => String(jugador.id) === String(jugadorId))
+    : null;
+
+  const jugadorPerfil = datosPerfilJugador?.jugador &&
+    jugadorId !== null &&
+    jugadorId !== undefined &&
+    String(datosPerfilJugador.jugador.id) === String(jugadorId)
+    ? datosPerfilJugador.jugador
+    : null;
+
+  return {
+    ...jugadorBase,
+    ...(jugadorGlobal || {}),
+    ...(jugadorPerfil || {}),
+    nombre: jugadorPerfil?.nombre || jugadorGlobal?.nombre || jugadorBase.nombre || nombreFallback || 'Jugador'
+  };
+}
+
+function obtenerInicialesJugador(nombre) {
+  const partes = String(nombre || 'Jugador')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (partes.length === 0) return 'J';
+  const iniciales = partes.slice(0, 2).map(parte => parte[0]).join('');
+  return iniciales.toUpperCase();
+}
+
+function renderizarAvatarJugador(jugadorRef, nombreFallback = '', tamano = 'sm', clases = '') {
+  const jugador = obtenerJugadorConFotoPerfil(jugadorRef, nombreFallback);
+  const nombre = jugador.nombre || nombreFallback || 'Jugador';
+  const fotoUrl = normalizarUrlFotoJugador(
+    jugador.foto_url || jugador.fotoUrl || jugador.photo_url || jugador.avatar_url || ''
+  );
+  const iniciales = escaparHtmlPlano(obtenerInicialesJugador(nombre));
+  const titulo = escaparHtmlPlano(nombre);
+  const claseFoto = fotoUrl ? 'has-photo' : '';
+  const imagen = fotoUrl
+    ? `<img src="${escaparHtmlPlano(fotoUrl)}" alt="${titulo}" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">`
+    : '';
+
+  return `
+    <span class="player-avatar player-avatar-${tamano} ${claseFoto} ${clases}" title="${titulo}" aria-hidden="true">
+      ${imagen}
+      <span class="player-avatar-fallback">${iniciales}</span>
+    </span>
+  `;
+}
+
+function renderizarFotoCartaFutJugador(jugadorRef, nombreFallback = '') {
+  const jugador = obtenerJugadorConFotoPerfil(jugadorRef, nombreFallback);
+  const nombre = jugador.nombre || nombreFallback || 'Jugador';
+  const fotoUrl = normalizarUrlFotoJugador(
+    jugador.foto_url || jugador.fotoUrl || jugador.photo_url || jugador.avatar_url || ''
+  );
+  const titulo = escaparHtmlPlano(nombre);
+
+  if (fotoUrl) {
+    return `
+      <div class="fifa-card-photo has-photo">
+        <img src="${escaparHtmlPlano(fotoUrl)}" alt="${titulo}" loading="lazy" onerror="this.closest('.fifa-card-photo').classList.remove('has-photo'); this.remove();">
+      </div>
+    `;
+  }
+
+  return `
+    <div class="fifa-card-photo">
+      <div class="fifa-card-photo-fallback">${escaparHtmlPlano(obtenerInicialesJugador(nombre))}</div>
+    </div>
+  `;
+}
+
 function renderizarAccesoPerfilJugador(jugadorId, nombre, clases = '') {
-  const clasesFinales = ['btn btn-link p-0 border-0 text-decoration-none', clases].filter(Boolean).join(' ');
-  return `<button type="button" class="${clasesFinales}" onclick="irAPerfilJugador('${escaparTextoParaJs(jugadorId)}')">${escaparHtmlPlano(nombre || 'Jugador')}</button>`;
+  const jugador = obtenerJugadorConFotoPerfil(jugadorId, nombre);
+  const clasesFinales = ['btn btn-link p-0 border-0 text-decoration-none player-profile-link', clases].filter(Boolean).join(' ');
+  return `
+    <button type="button" class="${clasesFinales}" onclick="irAPerfilJugador('${escaparTextoParaJs(jugadorId)}')">
+      ${renderizarAvatarJugador(jugador, jugador.nombre, 'xs')}
+      <span class="player-profile-name">${escaparHtmlPlano(jugador.nombre || 'Jugador')}</span>
+    </button>
+  `;
 }
 
 function destacarPartidoEnHistorial(partidoId) {
@@ -802,18 +1101,222 @@ function inyectarEstilosPerfilFut() {
       z-index: 1;
       display: flex;
       align-items: stretch;
-      min-height: 220px;
+      min-height: 456px;
     }
     .fut-hero-left {
-      flex: 0 0 180px;
+      flex: 0 0 354px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 24px 16px;
+      padding: 18px 18px;
       border-right: 1px solid rgba(212,168,67,0.15);
       background: linear-gradient(180deg, rgba(212,168,67,0.08) 0%, transparent 100%);
+    }
+    .fifa-player-card {
+      position: relative;
+      width: min(304px, 100%);
+      min-height: 422px;
+      padding: 0 26px 34px;
+      color: #2f2411;
+      filter: drop-shadow(0 24px 30px rgba(0,0,0,0.42));
+      isolation: isolate;
+    }
+    .fifa-player-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(circle at 64% 14%, rgba(255,255,255,0.82), transparent 18%),
+        radial-gradient(circle at 34% 70%, rgba(255,237,132,0.48), transparent 27%),
+        linear-gradient(150deg, #fff5a9 0%, #f5df79 22%, #d8af3d 58%, #9b6b1e 100%);
+      clip-path: polygon(25% 0, 75% 0, 78% 5%, 91% 6%, 100% 16%, 100% 83%, 50% 100%, 0 83%, 0 16%, 9% 6%, 22% 5%);
+      box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,0.42),
+        inset 0 0 0 4px rgba(72,45,10,0.34),
+        inset 0 -26px 36px rgba(92,54,8,0.23),
+        0 0 0 1px rgba(23,18,9,0.64);
+    }
+    .fifa-player-card::after {
+      content: '';
+      position: absolute;
+      inset: 11px 12px 18px;
+      z-index: -1;
+      clip-path: polygon(25% 0, 75% 0, 78% 5%, 91% 6%, 100% 16%, 100% 83%, 50% 100%, 0 83%, 0 16%, 9% 6%, 22% 5%);
+      background:
+        linear-gradient(108deg, transparent 0 54%, rgba(255,255,255,0.24) 54% 56%, transparent 56% 100%),
+        repeating-linear-gradient(-13deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 13px),
+        repeating-linear-gradient(12deg, rgba(95,65,17,0.07) 0 1px, transparent 1px 16px);
+      opacity: 0.64;
+    }
+    @supports (clip-path: path('M 0 0 H 1 V 1 Z')) {
+      .fifa-player-card::before {
+        clip-path: path('M 76 0 C 71 12 62 18 47 19 L 30 21 C 12 25 0 42 0 68 L 0 350 C 0 358 5 365 13 368 L 152 422 L 291 368 C 299 365 304 358 304 350 L 304 68 C 304 42 292 25 274 21 L 257 19 C 242 18 233 12 228 0 Z');
+      }
+      .fifa-player-card::after {
+        inset: 0;
+        clip-path: path('M 76 0 C 71 12 62 18 47 19 L 30 21 C 12 25 0 42 0 68 L 0 350 C 0 358 5 365 13 368 L 152 422 L 291 368 C 299 365 304 358 304 350 L 304 68 C 304 42 292 25 274 21 L 257 19 C 242 18 233 12 228 0 Z');
+      }
+    }
+    .fifa-card-head {
+      left: 26px;
+      position: absolute;
+      top: 34px;
+      width: 58px;
+      z-index: 3;
+    }
+    .fifa-card-rating {
+      font-family: 'Oswald', sans-serif;
+      font-size: 48px;
+      font-weight: 600;
+      line-height: 0.9;
+      letter-spacing: 0;
+      text-align: center;
+    }
+    .fifa-card-position {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      margin-top: 8px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .fifa-card-badges {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .fifa-card-flag,
+    .fifa-card-club {
+      align-items: center;
+      border: 1px solid rgba(52,35,11,0.28);
+      display: inline-flex;
+      height: 22px;
+      justify-content: center;
+      margin: 0 auto;
+      overflow: hidden;
+      width: 34px;
+    }
+    .fifa-card-flag {
+      background:
+        linear-gradient(90deg, #42d3d6 0 50%, #fff3a9 50% 100%);
+      color: #263017;
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .fifa-card-club {
+      background: rgba(255,255,255,0.42);
+      border-radius: 999px;
+      font-size: 15px;
+    }
+    .fifa-card-photo {
+      align-items: center;
+      display: flex;
+      height: 176px;
+      justify-content: center;
+      margin: 44px 8px 0 68px;
+      overflow: hidden;
+      position: relative;
+      width: 186px;
+      z-index: 2;
+    }
+    .fifa-card-photo::after {
+      background: linear-gradient(180deg, transparent 58%, rgba(229, 190, 61, 0.84) 100%);
+      bottom: 0;
+      content: '';
+      height: 60px;
+      left: -10px;
+      position: absolute;
+      right: -10px;
+    }
+    .fifa-card-photo img {
+      filter: saturate(1.08) contrast(1.04);
+      height: 112%;
+      mix-blend-mode: multiply;
+      object-fit: cover;
+      object-position: center 16%;
+      width: 112%;
+      -webkit-mask-image: radial-gradient(ellipse 58% 76% at 48% 44%, #000 0 60%, rgba(0,0,0,0.78) 73%, transparent 100%);
+      mask-image: radial-gradient(ellipse 58% 76% at 48% 44%, #000 0 60%, rgba(0,0,0,0.78) 73%, transparent 100%);
+    }
+    .fifa-card-photo-fallback {
+      align-items: center;
+      background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.46), rgba(36,27,13,0.08));
+      border: 2px solid rgba(36,27,13,0.16);
+      border-radius: 999px;
+      display: flex;
+      font-family: 'Oswald', sans-serif;
+      font-size: 70px;
+      font-weight: 700;
+      height: 146px;
+      justify-content: center;
+      width: 146px;
+    }
+    .fifa-card-name {
+      border-bottom: 1px solid rgba(36,27,13,0.22);
+      font-family: 'Oswald', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1;
+      margin: 0 auto 9px;
+      max-width: 210px;
+      overflow: hidden;
+      padding: 7px 0 9px;
+      text-align: center;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .fifa-card-stats {
+      display: grid;
+      gap: 4px 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 0 auto;
+      max-width: 210px;
+      position: relative;
+    }
+    .fifa-card-stats::before {
+      background: rgba(36,27,13,0.18);
+      bottom: 0;
+      content: '';
+      left: 50%;
+      position: absolute;
+      top: 0;
+      width: 1px;
+    }
+    .fifa-card-stat {
+      align-items: baseline;
+      display: flex;
+      gap: 5px;
+      min-width: 0;
+    }
+    .fifa-card-stat:nth-child(even) {
+      justify-content: flex-end;
+    }
+    .fifa-card-stat-value {
+      font-family: 'Oswald', sans-serif;
+      font-size: 23px;
+      font-weight: 500;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+    .fifa-card-stat-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      text-transform: uppercase;
     }
     .fut-rating {
       font-family: 'Oswald', sans-serif;
@@ -843,6 +1346,21 @@ function inyectarEstilosPerfilFut() {
       font-size: 36px;
       background: rgba(212,168,67,0.08);
       box-shadow: 0 0 16px rgba(212,168,67,0.2);
+      overflow: hidden;
+      padding: 4px;
+    }
+    .fut-avatar-ring .player-avatar {
+      --player-avatar-size: 100%;
+      border: 0;
+      box-shadow: none;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 24px;
+      height: 100%;
+      width: 100%;
+    }
+    .fut-avatar-ring .player-avatar-fallback {
+      font-size: 24px;
+      letter-spacing: 0;
     }
     .fut-hero-right {
       flex: 1;
@@ -1615,6 +2133,39 @@ function inyectarEstilosPerfilFut() {
         border-bottom: 1px solid rgba(212,168,67,0.15);
         padding: 16px;
       }
+      .fifa-player-card {
+        min-height: 340px;
+        width: min(250px, 100%);
+      }
+      .fifa-player-card::before,
+      .fifa-player-card::after {
+        clip-path: polygon(25% 0, 75% 0, 78% 5%, 91% 6%, 100% 16%, 100% 83%, 50% 100%, 0 83%, 0 16%, 9% 6%, 22% 5%);
+      }
+      .fifa-player-card::after {
+        inset: 11px 12px 18px;
+      }
+      .fifa-card-photo {
+        height: 132px;
+        margin: 42px 5px 0 58px;
+        width: 148px;
+      }
+      .fifa-card-head { left: 22px; top: 34px; width: 48px; }
+      .fifa-card-rating { font-size: 36px; }
+      .fifa-card-position { font-size: 16px; margin-top: 6px; }
+      .fifa-card-flag,
+      .fifa-card-club { height: 19px; width: 30px; }
+      .fifa-card-name {
+        font-size: 21px;
+        margin-bottom: 6px;
+        max-width: 182px;
+        padding: 6px 0 7px;
+      }
+      .fifa-card-stats {
+        gap: 3px 14px;
+        max-width: 182px;
+      }
+      .fifa-card-stat-value { font-size: 18px; }
+      .fifa-card-stat-label { font-size: 12px; }
       .fut-rating { font-size: 42px; }
       .fut-player-name { font-size: 24px; }
       .fut-avatar-ring { width: 56px; height: 56px; font-size: 28px; }
@@ -2708,11 +3259,12 @@ function renderizarPerfilBasico() {
 
   const headerFut = document.getElementById('perfil-nombre-jugador');
   if (headerFut) {
-    headerFut.innerHTML = `<i class="bi bi-person-circle me-2"></i>${jugadorFut.nombre}`;
+    headerFut.classList.add('d-flex', 'align-items-center', 'gap-2');
+    headerFut.innerHTML = `${renderizarAvatarJugador(jugadorFut, jugadorFut.nombre, 'md')}<span>${escaparHtmlPlano(jugadorFut.nombre)}</span>`;
   }
 
   const avatarElFut = document.getElementById('perfil-avatar');
-  if (avatarElFut) avatarElFut.textContent = iconoPosicionFut;
+  if (avatarElFut) avatarElFut.innerHTML = renderizarAvatarJugador(jugadorFut, jugadorFut.nombre, 'lg');
 
   const nombreElFut = document.getElementById('perfil-nombre');
   if (nombreElFut) nombreElFut.textContent = jugadorFut.nombre;
@@ -2764,16 +3316,44 @@ function renderizarPerfilBasico() {
     `
     : '';
 
+  const fifaStatsFut = [
+    { label: 'GOL', value: resumenFut.goles },
+    { label: 'AST', value: resumenFut.asistencias },
+    { label: 'ARQ', value: resumenFut.atajadas },
+    { label: 'WR', value: Math.round(resumenFut.winrate) },
+    { label: 'PTS', value: resumenFut.puntos },
+    { label: 'MVP', value: resumenFut.mvp }
+  ];
+
   heroContainerFut.innerHTML = `
     <div class="fut-hero-card">
       <div class="fut-hero-inner">
         <div class="fut-hero-left">
-          <div class="fut-rating">${ratingFut}</div>
-          <div class="fut-position-badge">${abrevPosicionFut}</div>
-          <div class="fut-avatar-ring">${iconoPosicionFut}</div>
+          <article class="fifa-player-card" aria-label="Carta de ${escaparHtmlPlano(jugadorFut.nombre)}">
+            <div class="fifa-card-head">
+              <div>
+                <div class="fifa-card-rating">${ratingFut}</div>
+                <div class="fifa-card-position">${escaparHtmlPlano(abrevPosicionFut)}</div>
+                <div class="fifa-card-badges">
+                  <span class="fifa-card-flag">T5</span>
+                  <span class="fifa-card-club">${iconoPosicionFut}</span>
+                </div>
+              </div>
+            </div>
+            ${renderizarFotoCartaFutJugador(jugadorFut, jugadorFut.nombre)}
+            <div class="fifa-card-name">${escaparHtmlPlano(jugadorFut.nombre)}</div>
+            <div class="fifa-card-stats">
+              ${fifaStatsFut.map(stat => `
+                <div class="fifa-card-stat">
+                  <span class="fifa-card-stat-value">${escaparHtmlPlano(stat.value)}</span>
+                  <span class="fifa-card-stat-label">${escaparHtmlPlano(stat.label)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </article>
         </div>
         <div class="fut-hero-right">
-          <div class="fut-player-name">${jugadorFut.nombre}</div>
+          <div class="fut-player-name">${escaparHtmlPlano(jugadorFut.nombre)}</div>
           <div class="fut-player-meta">
             ${posicionPrimariaFut?.posicion ? `<span class="fut-meta-tag">${obtenerIconoPosicionPerfil(posicionPrimariaFut.posicion.nombre)} ${posicionPrimariaFut.posicion.nombre}</span>` : ''}
             ${posicionSecundariaFut?.posicion ? `<span class="fut-meta-tag">${obtenerIconoPosicionPerfil(posicionSecundariaFut.posicion.nombre)} ${posicionSecundariaFut.posicion.nombre}</span>` : ''}
@@ -5172,10 +5752,11 @@ const initApp = () => {
 
   // --- LÃ³gica de carga de datos ---
   async function cargarTodosLosJugadores() {
-    const { data, error } = await supabase.from('jugadores').select(`
+    const selectJugadoresBase = `
       id,
       nombre,
       pulmon,
+      foto_url,
       jugador_posicion (
         posicion_id,
         es_primaria,
@@ -5184,7 +5765,20 @@ const initApp = () => {
           nombre
         )
       )
-    `);
+    `;
+    const selectJugadoresFallback = selectJugadoresBase.replace(/\s*foto_url,\n/, '\n');
+
+    let { data, error } = await supabase.from('jugadores').select(selectJugadoresBase);
+
+    if (error && esErrorColumnaFotoPerfilFaltante(error)) {
+      fotoPerfilJugadoresDisponible = false;
+      const fallback = await supabase.from('jugadores').select(selectJugadoresFallback);
+      data = fallback.data;
+      error = fallback.error;
+    } else if (!error) {
+      fotoPerfilJugadoresDisponible = true;
+    }
+
     if (error) {
       console.error('Error al cargar jugadores:', error);
       showToast('Error al cargar la lista de jugadores', 'error');
@@ -5381,6 +5975,11 @@ const initApp = () => {
 
     // Limpiar formulario
     document.getElementById('player-form').reset();
+    const archivoInput = document.getElementById('foto-archivo');
+    if (archivoInput) archivoInput.value = '';
+    const fotoInput = document.getElementById('foto-url');
+    if (fotoInput) fotoInput.value = '';
+    limpiarPreviewFotoFormulario();
 
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
@@ -5415,6 +6014,11 @@ const initApp = () => {
 
     // Pre-llenar pulmÃ³n
     document.getElementById('pulmon').value = jugador.pulmon || '';
+    const fotoInput = document.getElementById('foto-url');
+    if (fotoInput) fotoInput.value = jugador.foto_url || '';
+    const archivoInput = document.getElementById('foto-archivo');
+    if (archivoInput) archivoInput.value = '';
+    actualizarPreviewFotoFormulario(jugador.foto_url || '');
 
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
@@ -8294,14 +8898,16 @@ const initApp = () => {
     if (label) label.textContent = activo ? 'Salir' : 'Pantalla';
   }
 
-  function redirigirFullscreenVideoReview() {
+  function redirigirFullscreenReproductorReview() {
     const frame = obtenerFrameFullscreenReview();
     const video = document.getElementById('review-player-video');
+    const iframe = document.getElementById('review-player-frame');
     const fullscreenElement = obtenerElementoFullscreenReview();
-    if (!frame || !video || fullscreenElement !== video || frame.dataset.reviewFullscreenRedirecting === '1') return false;
+    const debeRedirigir = fullscreenElement === video || fullscreenElement === iframe;
+    if (!frame || !debeRedirigir || frame.dataset.reviewFullscreenRedirecting === '1') return false;
 
     frame.dataset.reviewFullscreenRedirecting = '1';
-    const estabaReproduciendo = !video.paused;
+    const estabaReproduciendo = fullscreenElement === video && video && !video.paused;
     salirFullscreenReview()
       .then(() => solicitarFullscreenReview(frame))
       .catch(() => {})
@@ -8337,7 +8943,7 @@ const initApp = () => {
     document.getElementById('review-player-fullscreen')?.addEventListener('click', alternarFullscreenReview);
     ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(eventName => {
       document.addEventListener(eventName, () => {
-        if (!redirigirFullscreenVideoReview()) actualizarBotonFullscreenReview();
+        if (!redirigirFullscreenReproductorReview()) actualizarBotonFullscreenReview();
       });
     });
     actualizarBotonFullscreenReview();
@@ -8359,7 +8965,8 @@ const initApp = () => {
       return;
     }
 
-    const segundosPartido = Math.max(0, Math.round(segundosVideo - obtenerReviewInicioSegundos()));
+    const tiempoPartido = obtenerTiempoPartidoDesdeReproductor();
+    const segundosPartido = tiempoPartido?.segundos ?? Math.max(0, Math.round(segundosVideo - obtenerReviewInicioSegundos()));
     statusEl.className = reviewPopupEstado.pausado ? 'small text-warning mb-3' : 'small text-success mb-3';
     statusEl.textContent = `Reproductor sincronizado - Video ${formatearSegundosVideo(segundosVideo)} - Partido ${formatearSegundosVideo(segundosPartido)}${reviewPopupEstado.pausado ? ' - pausado' : ''}`;
     actualizarScorebugReview();
@@ -8533,11 +9140,15 @@ const initApp = () => {
     const inicioReview = obtenerReviewInicioSegundos();
     if (segundosVideo < inicioReview) return null;
 
-    const segundosPartido = Math.max(0, Math.round(segundosVideo - inicioReview));
+    const finReview = obtenerReviewFinSegundos();
+    const segundosVideoLimitado = Number.isFinite(Number(finReview)) && Number(finReview) > inicioReview
+      ? Math.min(segundosVideo, Number(finReview))
+      : segundosVideo;
+    const segundosPartido = Math.max(0, Math.round(segundosVideoLimitado - inicioReview));
     return {
       minuto: segundosPartido / 60,
       segundos: segundosPartido,
-      reviewSegundos: Math.max(0, Math.round(segundosVideo))
+      reviewSegundos: Math.max(0, Math.round(segundosVideoLimitado))
     };
   }
 
@@ -9107,7 +9718,7 @@ const initApp = () => {
       marcador: `${marcador.equipo1} - ${marcador.equipo2}`,
       eventosCount: eventos.length,
       atajadasCount: reviewSandbox.atajadas.length,
-      cagadasCount: reviewSandbox.cagadas.length,
+      cagadasCount: eventos.filter(evento => !!evento.cagada_id).length + reviewSandbox.cagadas.length,
       eventos: eventos.map((evento, index) => ({
         index,
         goleadorId: evento.goleador_id,
@@ -9143,6 +9754,14 @@ const initApp = () => {
         minuto: document.getElementById('review-inicio-minuto')?.value || '',
         segundo: document.getElementById('review-inicio-segundo')?.value || ''
       },
+      fin: {
+        minuto: document.getElementById('review-fin-minuto')?.value || '',
+        segundo: document.getElementById('review-fin-segundo')?.value || ''
+      },
+      resumenPersonal: crearResumenPersonalReview().map(item => ({
+        ...item,
+        texto: obtenerTextoResumenPersonalReview(item)
+      })),
       sync: obtenerSyncAnotacionReview()
     };
   }
@@ -9302,6 +9921,76 @@ const initApp = () => {
       min-width: 88px;
       padding: 0.4rem 0.75rem;
     }
+    .review-personal-grid {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .review-personal-team {
+      min-width: 0;
+    }
+    .review-personal-team-title {
+      align-items: center;
+      color: rgba(226, 232, 240, 0.86);
+      display: flex;
+      font-size: 0.74rem;
+      font-weight: 900;
+      gap: 0.4rem;
+      letter-spacing: 0;
+      margin-bottom: 0.42rem;
+      text-transform: uppercase;
+    }
+    .review-personal-team-title::before {
+      border-radius: 999px;
+      content: "";
+      height: 0.48rem;
+      width: 0.48rem;
+    }
+    .review-personal-team.is-team-1 .review-personal-team-title::before {
+      background: #60a5fa;
+    }
+    .review-personal-team.is-team-2 .review-personal-team-title::before {
+      background: #fb7185;
+    }
+    .review-personal-list {
+      display: grid;
+      gap: 0.38rem;
+    }
+    .review-personal-row {
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      color: #e2e8f0;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: space-between;
+      min-width: 0;
+      padding: 0.48rem 0.55rem;
+    }
+    .review-personal-name {
+      color: #f8fafc;
+      font-size: 0.85rem;
+      font-weight: 800;
+      min-width: 0;
+    }
+    .review-personal-stats {
+      color: rgba(226, 232, 240, 0.82);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .review-personal-empty {
+      color: rgba(226, 232, 240, 0.48);
+      font-size: 0.78rem;
+      padding: 0.35rem 0;
+    }
+    @media (max-width: 768px) {
+      .review-personal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     .review-empty {
       color: rgba(226, 232, 240, 0.58);
       font-size: 0.85rem;
@@ -9397,13 +10086,22 @@ const initApp = () => {
             <div class="col-md-4 d-flex align-items-end">
               <div id="review-marcador" class="review-score w-100">0 - 0</div>
             </div>
-            <div class="col-md-8">
+            <div class="col-md-6">
               <label class="form-label text-light small">Inicio partido en video</label>
               <div class="input-group input-group-sm">
                 <span class="input-group-text bg-dark border-secondary text-light">Min</span>
                 <input type="number" id="review-inicio-minuto" class="form-control" min="0" max="999" placeholder="0">
                 <span class="input-group-text bg-dark border-secondary text-light">Seg</span>
                 <input type="number" id="review-inicio-segundo" class="form-control" min="0" max="59" placeholder="0">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-light small">Final partido en video</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-dark border-secondary text-light">Min</span>
+                <input type="number" id="review-fin-minuto" class="form-control" min="0" max="999" placeholder="0">
+                <span class="input-group-text bg-dark border-secondary text-light">Seg</span>
+                <input type="number" id="review-fin-segundo" class="form-control" min="0" max="59" placeholder="0">
               </div>
             </div>
           </div>
@@ -9496,7 +10194,7 @@ const initApp = () => {
         </div>
 
         <div class="review-section">
-          <h3 class="review-section-title"><i class="bi bi-shield-check text-info"></i>Atajadas y cagadas</h3>
+          <h3 class="review-section-title"><i class="bi bi-shield-check text-info"></i>Atajadas</h3>
           <div class="small text-light-emphasis mb-2">
             Cada carga queda como jugada individual; el total por jugador se agrupa al guardar el partido.
           </div>
@@ -9514,36 +10212,20 @@ const initApp = () => {
             <div class="col-md-4">
               <button type="button" id="review-add-atajadas" class="btn btn-outline-info btn-sm w-100" data-action="add-stat" data-stat-type="atajadas">Agregar</button>
             </div>
-            <div class="col-md-4">
-              <label class="form-label text-light small">Cagadas</label>
-              <select id="review-cagadas-jugador" class="form-select form-select-sm searchable-select">
-                <option value="">Jugador</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-light small">Cant.</label>
-              <input type="number" id="review-cagadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-light small">Min</label>
-              <input type="number" id="review-cagadas-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-light small">Seg</label>
-              <input type="number" id="review-cagadas-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
-            </div>
-            <div class="col-md-2">
-              <button type="button" id="review-add-cagadas" class="btn btn-outline-danger btn-sm w-100" data-action="add-stat" data-stat-type="cagadas">Agregar</button>
-            </div>
           </div>
           <div class="row g-2 mt-2">
-            <div class="col-md-6">
+            <div class="col-12">
               <div id="review-atajadas-list"></div>
             </div>
-            <div class="col-md-6">
-              <div id="review-cagadas-list"></div>
-            </div>
           </div>
+        </div>
+
+        <div class="review-section">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="review-section-title mb-0"><i class="bi bi-person-lines-fill text-warning"></i>Estadisticas personales</h3>
+            <span class="badge bg-secondary" id="review-personal-count">0</span>
+          </div>
+          <div id="review-personal-stats-list" class="review-personal-grid"></div>
         </div>
 
         <button type="button" id="review-save-partido" class="btn btn-primary btn-lg btn-enhanced" data-action="save-match">
@@ -9670,6 +10352,8 @@ const initApp = () => {
         ganador: current('review-ganador'),
         inicioMinuto: current('review-inicio-minuto'),
         inicioSegundo: current('review-inicio-segundo'),
+        finMinuto: current('review-fin-minuto'),
+        finSegundo: current('review-fin-segundo'),
         mvpId: current('review-mvp'),
         aceId: current('review-ace')
       };
@@ -9714,6 +10398,21 @@ const initApp = () => {
         return '<div class="review-stat-row"' + seek + '><div class="min-w-0"><div class="text-truncate">' + escapeText(item.jugadorNombre) + '</div><div class="small text-light-emphasis">Partido ' + escapeText(fmtMinuto(item.minuto)) + ' - Minuto ' + escapeText(fmt(item.reviewSegundos)) + '</div></div><span class="d-flex align-items-center gap-2"><strong>' + escapeText(item.cantidad) + '</strong><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-stat" data-stat-type="' + tipo + '" data-index="' + index + '" title="Quitar"><i class="bi bi-x"></i></button></span></div>';
       }).join('');
     }
+    function renderResumenPersonal() {
+      const list = byId('review-personal-stats-list');
+      const count = byId('review-personal-count');
+      const items = state.resumenPersonal || [];
+      if (count) count.textContent = String(items.length);
+      if (!list) return;
+      const renderTeam = (team, title) => {
+        const jugadores = items.filter(item => Number(item.equipo) === team);
+        const rows = jugadores.length
+          ? jugadores.map(item => '<div class="review-personal-row"><span class="review-personal-name text-truncate">' + escapeText(item.nombre) + '</span><span class="review-personal-stats">' + escapeText(item.texto || '') + '</span></div>').join('')
+          : '<div class="review-personal-empty">Sin estadisticas</div>';
+        return '<div class="review-personal-team is-team-' + team + '"><div class="review-personal-team-title">' + escapeText(title) + '</div><div class="review-personal-list">' + rows + '</div></div>';
+      };
+      list.innerHTML = renderTeam(1, 'Equipo 1') + renderTeam(2, 'Equipo 2');
+    }
     function render() {
       const available = (state.jugadores || []).filter(j => !j.equipo);
       const partido = state.jugadoresPartido || [];
@@ -9722,15 +10421,13 @@ const initApp = () => {
         goal: current('review-goleador'),
         assist: current('review-asistencia'),
         mistake: current('review-cagada-gol'),
-        save: current('review-atajadas-jugador'),
-        mistakeStat: current('review-cagadas-jugador')
+        save: current('review-atajadas-jugador')
       };
       byId('review-jugador-select').innerHTML = options(available, 'Seleccionar jugador', selected.player);
       byId('review-goleador').innerHTML = options(partido, 'Goleador', selected.goal);
       byId('review-asistencia').innerHTML = options(partido, 'Sin asistencia', selected.assist);
       byId('review-cagada-gol').innerHTML = options(partido, 'Sin cagada', selected.mistake);
       byId('review-atajadas-jugador').innerHTML = options(partido, 'Jugador', selected.save);
-      byId('review-cagadas-jugador').innerHTML = options(partido, 'Jugador', selected.mistakeStat);
       byId('review-mvp').innerHTML = options(partido, 'Sin MVP', state.mvpId || '');
       byId('review-ace').innerHTML = options(partido, 'Sin ACE', state.aceId || '');
       byId('review-temporada').innerHTML = options(state.temporadas || [], 'Seleccionar temporada', state.partido?.temporadaId || '');
@@ -9740,12 +10437,14 @@ const initApp = () => {
       setValueIfNotFocused('review-ganador', state.partido?.ganador || '');
       setValueIfNotFocused('review-inicio-minuto', state.inicio?.minuto || '');
       setValueIfNotFocused('review-inicio-segundo', state.inicio?.segundo || '');
+      setValueIfNotFocused('review-fin-minuto', state.fin?.minuto || '');
+      setValueIfNotFocused('review-fin-segundo', state.fin?.segundo || '');
       byId('review-marcador').textContent = state.marcador || '0 - 0';
       renderEquipo('review-equipo1-list', state.equipo1 || [], 'equipo1');
       renderEquipo('review-equipo2-list', state.equipo2 || [], 'equipo2');
       renderEventos();
       renderStats('atajadas');
-      renderStats('cagadas');
+      renderResumenPersonal();
       initSearchableSelects(document);
       byId('score').textContent = 'Marcador ' + (state.marcador || '0 - 0') + ' | Goles ' + (state.eventosCount || 0) + ' | Atajadas ' + (state.atajadasCount || 0) + ' | Cagadas ' + (state.cagadasCount || 0);
       renderSync();
@@ -9761,14 +10460,13 @@ const initApp = () => {
       if (action === 'add-team') send('add-team', { team: target.dataset.team, jugadorId: current('review-jugador-select') });
       if (action === 'add-goal') send('add-goal', { matchData: collectMatchData(), goleadorId: current('review-goleador'), asistenciaId: current('review-asistencia'), cagadaId: current('review-cagada-gol'), minuto: current('review-minuto'), segundo: current('review-segundo'), golEnContra: byId('review-gol-contra').checked });
       if (action === 'add-stat') {
-        const tipo = target.dataset.statType === 'cagadas' ? 'cagadas' : 'atajadas';
         send('add-stat', {
           matchData: collectMatchData(),
-          tipo,
-          jugadorId: current(tipo === 'atajadas' ? 'review-atajadas-jugador' : 'review-cagadas-jugador'),
-          cantidad: current(tipo === 'atajadas' ? 'review-atajadas-cantidad' : 'review-cagadas-cantidad'),
-          minuto: tipo === 'atajadas' ? '' : current('review-cagadas-minuto'),
-          segundo: tipo === 'atajadas' ? '' : current('review-cagadas-segundo')
+          tipo: 'atajadas',
+          jugadorId: current('review-atajadas-jugador'),
+          cantidad: current('review-atajadas-cantidad'),
+          minuto: '',
+          segundo: ''
         });
       }
       if (action === 'remove-player') send('remove-player', { team: target.dataset.team, index: Number(target.dataset.index) });
@@ -9776,7 +10474,7 @@ const initApp = () => {
       if (action === 'remove-stat') send('remove-stat', { tipo: target.dataset.statType, index: Number(target.dataset.index) });
       if (action === 'save-match') send('save-match', { matchData: collectMatchData() });
     });
-    ['review-fecha', 'review-cancha', 'review-temporada', 'review-resultado', 'review-ganador', 'review-inicio-minuto', 'review-inicio-segundo'].forEach(id => {
+    ['review-fecha', 'review-cancha', 'review-temporada', 'review-resultado', 'review-ganador', 'review-inicio-minuto', 'review-inicio-segundo', 'review-fin-minuto', 'review-fin-segundo'].forEach(id => {
       const el = byId(id);
       if (!el) return;
       el.addEventListener('input', queueMatchSync);
@@ -9810,6 +10508,8 @@ const initApp = () => {
       setValue('review-ganador', datos.ganador);
       setValue('review-inicio-minuto', datos.inicioMinuto);
       setValue('review-inicio-segundo', datos.inicioSegundo);
+      setValue('review-fin-minuto', datos.finMinuto);
+      setValue('review-fin-segundo', datos.finSegundo);
       setValue('review-mvp', datos.mvpId);
       setValue('review-ace', datos.aceId);
       actualizarEstadoPopupReview();
@@ -9849,12 +10549,12 @@ const initApp = () => {
       if (data.action === 'add-stat') {
         if (payload.matchData) aplicarDatosPartido(payload.matchData);
         const tipo = payload.tipo === 'cagadas' ? 'cagadas' : 'atajadas';
-        setValue(tipo === 'atajadas' ? 'review-atajadas-jugador' : 'review-cagadas-jugador', payload.jugadorId);
-        setValue(tipo === 'atajadas' ? 'review-atajadas-cantidad' : 'review-cagadas-cantidad', payload.cantidad);
         if (tipo === 'cagadas') {
-          setValue('review-cagadas-minuto', payload.minuto);
-          setValue('review-cagadas-segundo', payload.segundo);
+          showToast('Carga la cagada desde el gol correspondiente.', 'warning');
+          return;
         }
+        setValue('review-atajadas-jugador', payload.jugadorId);
+        setValue('review-atajadas-cantidad', payload.cantidad);
         agregarStatReview(tipo);
       }
       if (data.action === 'set-recognition') {
@@ -10065,6 +10765,22 @@ const initApp = () => {
     return (minutos * 60) + segundos;
   }
 
+  function obtenerSegundosVideoDesdeInputs(minutoId, segundoId) {
+    const minutoInput = document.getElementById(minutoId);
+    const segundoInput = document.getElementById(segundoId);
+    const tieneMinuto = minutoInput && String(minutoInput.value).trim() !== '';
+    const tieneSegundo = segundoInput && String(segundoInput.value).trim() !== '';
+    if (!tieneMinuto && !tieneSegundo) return null;
+
+    const minutos = obtenerEnteroNoNegativoDesdeInput(minutoId);
+    const segundos = obtenerEnteroNoNegativoDesdeInput(segundoId, 59);
+    return (minutos * 60) + segundos;
+  }
+
+  function obtenerReviewFinSegundos() {
+    return obtenerSegundosVideoDesdeInputs('review-fin-minuto', 'review-fin-segundo');
+  }
+
   function calcularReviewSegundosDesdeMinuto(minutoPartido, inicioReviewSegundos = obtenerReviewInicioSegundos()) {
     if (minutoPartido === null || minutoPartido === undefined) return null;
     const minutoNumerico = Number(minutoPartido);
@@ -10109,6 +10825,107 @@ const initApp = () => {
       acumulado.set(key, actual);
     });
     return Array.from(acumulado.values()).filter(item => item.cantidad > 0);
+  }
+
+  function crearResumenPersonalReview() {
+    const resumen = new Map();
+    const obtener = jugadorId => {
+      if (!jugadorId) return null;
+      const key = String(jugadorId);
+      if (!resumen.has(key)) {
+        resumen.set(key, {
+          jugadorId,
+          nombre: obtenerNombreJugadorActual(jugadorId),
+          equipo: obtenerEquipoJugadorActual(jugadorId),
+          goles: 0,
+          asistencias: 0,
+          atajadas: 0,
+          cagadas: 0,
+          mvp: 0,
+          ace: 0
+        });
+      }
+      return resumen.get(key);
+    };
+
+    eventos.forEach(evento => {
+      const goleador = obtener(evento.goleador_id);
+      if (goleador) goleador.goles += 1;
+
+      const asistidor = obtener(evento.asistencia_id);
+      if (asistidor) asistidor.asistencias += 1;
+
+      const cagada = obtener(evento.cagada_id);
+      if (cagada) cagada.cagadas += 1;
+    });
+
+    reviewSandbox.atajadas.forEach(item => {
+      const stat = obtener(item.jugador_id);
+      if (stat) stat.atajadas += Number(item.cantidad) || 0;
+    });
+
+    reviewSandbox.cagadas.forEach(item => {
+      const stat = obtener(item.jugador_id);
+      if (stat) stat.cagadas += Number(item.cantidad) || 0;
+    });
+
+    const mvpId = document.getElementById('review-mvp')?.value || '';
+    const aceId = document.getElementById('review-ace')?.value || '';
+    const mvp = obtener(mvpId);
+    const ace = obtener(aceId);
+    if (mvp) mvp.mvp = 1;
+    if (ace) ace.ace = 1;
+
+    return Array.from(resumen.values())
+      .filter(item => item.goles || item.asistencias || item.atajadas || item.cagadas || item.mvp || item.ace)
+      .sort((a, b) => {
+        if ((a.equipo || 0) !== (b.equipo || 0)) return (a.equipo || 9) - (b.equipo || 9);
+        return String(a.nombre).localeCompare(String(b.nombre));
+      });
+  }
+
+  function obtenerTextoResumenPersonalReview(item) {
+    const partes = [];
+    if (item.goles) partes.push(`${item.goles}G`);
+    if (item.asistencias) partes.push(`${item.asistencias} A`);
+    if (item.atajadas) partes.push(`${item.atajadas} Atajadas`);
+    if (item.cagadas) partes.push(`${item.cagadas} Cagadas`);
+    if (item.mvp) partes.push('MVP');
+    if (item.ace) partes.push('ACE');
+    return partes.join(' / ');
+  }
+
+  function renderizarGrupoResumenPersonalReview(items, equipo, titulo) {
+    const jugadores = items.filter(item => Number(item.equipo) === equipo);
+    const filas = jugadores.length
+      ? jugadores.map(item => `
+        <div class="review-personal-row">
+          <span class="review-personal-name text-truncate">${escaparHtmlPlano(item.nombre)}</span>
+          <span class="review-personal-stats">${escaparHtmlPlano(obtenerTextoResumenPersonalReview(item))}</span>
+        </div>
+      `).join('')
+      : '<div class="review-personal-empty">Sin estadisticas</div>';
+
+    return `
+      <div class="review-personal-team is-team-${equipo}">
+        <div class="review-personal-team-title">${escaparHtmlPlano(titulo)}</div>
+        <div class="review-personal-list">${filas}</div>
+      </div>
+    `;
+  }
+
+  function renderizarResumenPersonalReview() {
+    const listEl = document.getElementById('review-personal-stats-list');
+    const countEl = document.getElementById('review-personal-count');
+    if (!listEl) return;
+
+    const resumen = crearResumenPersonalReview();
+    if (countEl) countEl.textContent = String(resumen.length);
+
+    listEl.innerHTML = `
+      ${renderizarGrupoResumenPersonalReview(resumen, 1, 'Equipo 1')}
+      ${renderizarGrupoResumenPersonalReview(resumen, 2, 'Equipo 2')}
+    `;
   }
 
   function obtenerUmbralAtajadasCompilado(id = 'review-compilado-atajadas-min') {
@@ -10425,6 +11242,184 @@ const initApp = () => {
     return ordenarClipsCompilado(deduplicarClipsCompilado(clips.filter(Boolean)));
   }
 
+  function obtenerLinkYoutubeCompilado(opciones = {}) {
+    const link = opciones.youtubeCompiladoLink ||
+      opciones.compiladoYoutubeLink ||
+      opciones.youtube_compilado_link ||
+      opciones.compilado_youtube_link ||
+      '';
+    return obtenerLinkYouTubeReview(link) || '';
+  }
+
+  function crearTimelineCompilado(clips = []) {
+    let acumulado = 0;
+    return clips.map((clip, index) => {
+      const duracion = Math.max(0, Number(clip.duracion ?? (clip.fin - clip.inicio)) || 0);
+      const inicio = Math.max(0, Number(clip.inicio) || 0);
+      const reviewSegundos = Math.max(0, Number(clip.reviewSegundos) || 0);
+      const eventoEnClip = Math.max(0, Math.min(duracion, reviewSegundos - inicio));
+      const item = {
+        orden: index + 1,
+        clip,
+        compiladoInicioSegundos: acumulado,
+        compiladoEventoSegundos: acumulado + eventoEnClip,
+        compiladoFinSegundos: acumulado + duracion,
+        eventoEnClipSegundos: eventoEnClip,
+        duracionSegundos: duracion
+      };
+      acumulado += duracion;
+      return item;
+    });
+  }
+
+  function obtenerEtiquetaEventoLinkeableCompilado(tipo) {
+    const etiquetas = {
+      gol: 'Gol',
+      asistencia: 'Asistencia',
+      cagada_gol: 'Cagada',
+      cagada: 'Cagada',
+      atajadas: 'Atajada'
+    };
+    return etiquetas[tipo] || 'Evento';
+  }
+
+  function crearEventosLinkeablesClipCompilado(clip, timelineItem, reviewLink = '', youtubeCompiladoLink = '') {
+    if (!clip || !timelineItem) return [];
+
+    const metadata = completarMetadataNombresCompilado(clip.metadata || {}, clip.jugadorId, clip.jugadorNombre);
+    const reviewSegundos = Math.max(0, Number(clip.reviewSegundos) || 0);
+    const compiladoSegundos = Math.max(0, Number(timelineItem.compiladoEventoSegundos) || 0);
+    const eventosLinkeables = [];
+
+    const agregar = (tipo, jugadorId, jugadorNombre) => {
+      const etiqueta = obtenerEtiquetaEventoLinkeableCompilado(tipo);
+      eventosLinkeables.push({
+        tipo,
+        etiqueta,
+        jugador_id: jugadorId || null,
+        jugador_nombre: jugadorNombre || null,
+        clip_orden: timelineItem.orden,
+        clip_source_key: clip.sourceKey || null,
+        review_segundos: reviewSegundos,
+        compilado_segundos: compiladoSegundos,
+        review_link: reviewLink ? generarLinkConTimestampSegundos(reviewLink, reviewSegundos) : null,
+        compilado_link: youtubeCompiladoLink ? generarLinkConTimestampSegundos(youtubeCompiladoLink, compiladoSegundos) : null
+      });
+    };
+
+    if (clip.tipo === 'gol') {
+      agregar('gol', clip.jugadorId || metadata.goleador_id, metadata.goleador_nombre || clip.jugadorNombre);
+      if (metadata.asistencia_id || metadata.asistidor_id) {
+        agregar('asistencia', metadata.asistencia_id || metadata.asistidor_id, metadata.asistencia_nombre || metadata.asistidor_nombre);
+      }
+      if (metadata.cagada_jugador_id || metadata.cagada_id) {
+        agregar('cagada_gol', metadata.cagada_jugador_id || metadata.cagada_id, metadata.cagada_jugador_nombre || metadata.cagada_nombre);
+      }
+    } else if (clip.tipo === 'atajadas') {
+      agregar('atajadas', clip.jugadorId, metadata.atajadas_jugador_nombre || clip.jugadorNombre);
+    } else if (clip.tipo === 'cagada' || clip.tipo === 'cagada_gol') {
+      agregar(clip.tipo, clip.jugadorId || metadata.cagada_jugador_id || metadata.cagada_id, metadata.cagada_jugador_nombre || metadata.cagada_nombre || clip.jugadorNombre);
+    }
+
+    return eventosLinkeables;
+  }
+
+  function crearEventosLinkeablesCompilado(clips = [], reviewLink = '', youtubeCompiladoLink = '') {
+    const timeline = crearTimelineCompilado(clips);
+    return timeline.flatMap(item => crearEventosLinkeablesClipCompilado(item.clip, item, reviewLink, youtubeCompiladoLink));
+  }
+
+  function buscarReviewEventoGolHistorial(partido, gol, orden) {
+    const reviewEventos = partido?.review_eventos || [];
+    const porOrden = reviewEventos.find(evento =>
+      evento.tipo === 'gol' && Number(evento.metadata?.orden) === Number(orden)
+    );
+    if (porOrden) return porOrden;
+
+    const reviewSegundosGol = Number(gol?.review_segundos);
+    if (Number.isFinite(reviewSegundosGol)) {
+      const porReview = reviewEventos.find(evento =>
+        evento.tipo === 'gol' &&
+        String(evento.jugador_id || '') === String(gol.goleador_id || '') &&
+        Math.abs((Number(evento.review_segundos) || 0) - reviewSegundosGol) <= 2
+      );
+      if (porReview) return porReview;
+    }
+
+    const minutoGol = Number(gol?.minuto);
+    if (Number.isFinite(minutoGol)) {
+      return reviewEventos.find(evento =>
+        evento.tipo === 'gol' &&
+        String(evento.jugador_id || '') === String(gol.goleador_id || '') &&
+        Math.abs((Number(evento.minuto_partido) || 0) - minutoGol) <= 0.04
+      ) || null;
+    }
+
+    return null;
+  }
+
+  function prepararLinksVideoHistorialPartido(partido) {
+    if (!partido || partido._linksVideoHistorialPreparados) return partido;
+    partido._linksVideoHistorialPreparados = true;
+
+    const reviewLink = obtenerLinkYouTubeReview(partido.youtube_link) || '';
+    const compiladoLink = obtenerLinkYouTubeReview(partido.compilado_youtube_link) || '';
+    partido._historial_video_link = reviewLink;
+    partido._historial_video_origen = 'review';
+    partido._historial_cagadas_links = new Map();
+
+    if (!compiladoLink || !Array.isArray(partido.review_eventos) || !partido.review_eventos.length) {
+      return partido;
+    }
+
+    const clips = construirClipsCompiladoDesdeEventos(partido.review_eventos, { atajadasMinimas: 3 });
+    const eventosLinkeables = crearEventosLinkeablesCompilado(clips, reviewLink, compiladoLink);
+    if (!eventosLinkeables.some(evento => ['gol', 'asistencia', 'cagada_gol', 'cagada'].includes(evento.tipo))) {
+      return partido;
+    }
+
+    const linkeablesPorClip = new Map();
+    eventosLinkeables.forEach(evento => {
+      const key = String(evento.clip_source_key || '');
+      if (!key) return;
+      if (!linkeablesPorClip.has(key)) linkeablesPorClip.set(key, []);
+      linkeablesPorClip.get(key).push(evento);
+    });
+
+    const golesOrdenados = [...(partido.goles || [])].sort((a, b) => {
+      const minA = a.minuto ?? 999;
+      const minB = b.minuto ?? 999;
+      return minA - minB;
+    });
+
+    golesOrdenados.forEach((gol, index) => {
+      const eventoGol = buscarReviewEventoGolHistorial(partido, gol, index + 1);
+      const linkeablesGol = linkeablesPorClip.get(String(eventoGol?.id || '')) || [];
+      const linkGol = linkeablesGol.find(evento => evento.tipo === 'gol');
+      if (!linkGol) return;
+
+      gol.video_segundos = Math.max(0, Math.round(Number(linkGol.compilado_segundos) || 0));
+      gol.video_origen = 'compilado';
+      gol.video_link = compiladoLink;
+      gol.compilado_segundos = gol.video_segundos;
+    });
+
+    eventosLinkeables
+      .filter(evento => evento.tipo === 'cagada_gol' || evento.tipo === 'cagada')
+      .forEach(evento => {
+        if (!evento.jugador_id) return;
+        const key = String(evento.jugador_id);
+        if (!partido._historial_cagadas_links.has(key)) partido._historial_cagadas_links.set(key, []);
+        partido._historial_cagadas_links.get(key).push({
+          video_segundos: Math.max(0, Math.round(Number(evento.compilado_segundos) || 0)),
+          video_origen: 'compilado',
+          video_link: compiladoLink,
+          review_segundos: evento.review_segundos
+        });
+      });
+    return partido;
+  }
+
   function renderizarClipsCompiladoHtml(clips, reviewLink = '', opciones = {}) {
     const { atajadasMinimas } = normalizarOpcionesCompilado(opciones);
     if (!clips.length) {
@@ -10435,8 +11430,13 @@ const initApp = () => {
       `;
     }
 
+    const youtubeCompiladoLink = obtenerLinkYoutubeCompilado(opciones);
+    const timeline = crearTimelineCompilado(clips);
+
     return clips.map((clip, index) => {
       const href = reviewLink ? generarLinkConTimestampSegundos(reviewLink, clip.inicio) : '';
+      const timelineItem = timeline[index];
+      const eventosLinkeables = crearEventosLinkeablesClipCompilado(clip, timelineItem, reviewLink, youtubeCompiladoLink);
       return `
         <div class="review-clip-row">
           <div class="min-w-0">
@@ -10449,9 +11449,22 @@ const initApp = () => {
             <div class="review-clip-meta">
               Partido ${escaparHtmlPlano(formatearTiempoReview(clip.minutoPartido))}
               - Jugada ${escaparHtmlPlano(formatearSegundosVideo(clip.reviewSegundos))}
+              - Compilado ${escaparHtmlPlano(formatearSegundosVideo(timelineItem?.compiladoEventoSegundos))}
               - Corte ${escaparHtmlPlano(formatearSegundosVideo(clip.inicio))}-${escaparHtmlPlano(formatearSegundosVideo(clip.fin))}
               - ${clip.pre}s antes / ${clip.post}s despues
             </div>
+            ${eventosLinkeables.length ? `
+              <div class="d-flex flex-wrap gap-1 mt-2">
+                ${eventosLinkeables.map(evento => {
+                  const contenido = `${evento.etiqueta} ${formatearSegundosVideo(evento.compilado_segundos)}`;
+                  return evento.compilado_link ? `
+                    <a class="review-time-chip text-decoration-none" href="${escaparAtributoHtml(evento.compilado_link)}" target="_blank" rel="noopener noreferrer" title="Abrir ${escaparAtributoHtml(evento.etiqueta)} en el compilado">
+                      ${escaparHtmlPlano(contenido)}
+                    </a>
+                  ` : `<span class="review-time-chip">${escaparHtmlPlano(contenido)}</span>`;
+                }).join('')}
+              </div>
+            ` : ''}
           </div>
           <div class="d-flex align-items-center gap-2">
             <span class="badge bg-dark border border-secondary">${clip.duracion}s</span>
@@ -10515,12 +11528,20 @@ const initApp = () => {
     }
 
     const opcionesCompilado = normalizarOpcionesCompilado(opciones);
+    const youtubeCompiladoLink = obtenerLinkYoutubeCompilado(opciones);
+    const timeline = crearTimelineCompilado(clips);
+    const eventosLinkeables = crearEventosLinkeablesCompilado(clips, reviewLink, youtubeCompiladoLink);
+    const duracionEstimada = timeline.length
+      ? timeline[timeline.length - 1].compiladoFinSegundos
+      : clips.reduce((acc, clip) => acc + (Number(clip.duracion) || 0), 0);
     const payload = {
       generado_en: new Date().toISOString(),
       review_link: reviewLink || null,
       formato: 't5-review-compilado-v1',
       compilado: {
-        atajadas_minimas: opcionesCompilado.atajadasMinimas
+        atajadas_minimas: opcionesCompilado.atajadasMinimas,
+        youtube_link: youtubeCompiladoLink || null,
+        duracion_estimada_segundos: Math.round(duracionEstimada)
       },
       clips: clips.map((clip, index) => ({
         orden: index + 1,
@@ -10536,8 +11557,17 @@ const initApp = () => {
         duracion_segundos: clip.duracion,
         pre_segundos: clip.pre,
         post_segundos: clip.post,
+        compilado_inicio_segundos: Math.round(timeline[index]?.compiladoInicioSegundos || 0),
+        compilado_evento_segundos: Math.round(timeline[index]?.compiladoEventoSegundos || 0),
+        compilado_fin_segundos: Math.round(timeline[index]?.compiladoFinSegundos || 0),
         link_inicio: reviewLink ? generarLinkConTimestampSegundos(reviewLink, clip.inicio) : null,
+        link_compilado_evento: youtubeCompiladoLink ? generarLinkConTimestampSegundos(youtubeCompiladoLink, timeline[index]?.compiladoEventoSegundos || 0) : null,
         metadata: clip.metadata || {}
+      })),
+      eventos_linkeables: eventosLinkeables.map(evento => ({
+        ...evento,
+        compilado_segundos: Math.round(evento.compilado_segundos || 0),
+        review_segundos: Math.round(evento.review_segundos || 0)
       }))
     };
 
@@ -10549,6 +11579,7 @@ const initApp = () => {
   const FFMPEG_WASM_UTIL_URL = 'https://esm.sh/@ffmpeg/util@0.12.2';
   const FFMPEG_WASM_ESM_BASE = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
   const FFMPEG_WASM_CORE_BASE = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
+  const COMPILADO_TRANSICION_SEGUNDOS = 0.72;
   let ffmpegWasmPromise = null;
   let ffmpegClassWorkerUrlPromise = null;
 
@@ -10817,6 +11848,72 @@ const initApp = () => {
     }
 
     return datos;
+  }
+
+  function obtenerDuracionTransicionCompilado(duracion, habilitada = true) {
+    const duracionNumerica = Math.max(0, Number(duracion) || 0);
+    if (!habilitada || duracionNumerica <= 0.4) return 0;
+    return Math.min(COMPILADO_TRANSICION_SEGUNDOS, Math.max(0.25, duracionNumerica * 0.18), Math.max(0, duracionNumerica - 0.12));
+  }
+
+  function obtenerTextoMinutoTransicionCompilado(clip) {
+    const minutoPartido = Number(clip?.minutoPartido);
+    if (Number.isFinite(minutoPartido)) return formatearTiempoReview(minutoPartido);
+    return formatearSegundosVideo(clip?.reviewSegundos);
+  }
+
+  async function crearTransicionCompiladoPng(clip) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1920;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No se pudo preparar el canvas de transicion.');
+
+    try {
+      await document.fonts?.load('900 150px Inter');
+      await document.fonts?.load('800 34px Inter');
+    } catch (error) {
+      // Si la fuente no esta disponible, el canvas usa el fallback del sistema.
+    }
+
+    const fuente = 'Inter, "Segoe UI", Arial, sans-serif';
+    const minutoTexto = obtenerTextoMinutoTransicionCompilado(clip);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.22)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 150px ${fuente}`;
+    const textoWidth = Math.min(760, Math.max(360, ctx.measureText(minutoTexto).width + 150));
+    const panelX = (canvas.width - textoWidth) / 2;
+    const panelY = (canvas.height - 238) / 2;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 28;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.54)';
+    dibujarRectRedondeadoCompilado(ctx, panelX, panelY, textoWidth, 238, 24);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.font = `800 34px ${fuente}`;
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.9)';
+    ctx.fillText('MINUTO', canvas.width / 2, panelY + 58);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 18;
+    ctx.font = `900 150px ${fuente}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(minutoTexto, canvas.width / 2, panelY + 148);
+    ctx.restore();
+
+    return convertirCanvasAPngBytes(canvas);
   }
 
   function dibujarRectRedondeadoCompilado(ctx, x, y, width, height, radius) {
@@ -11703,37 +12800,55 @@ const initApp = () => {
     return [overlayNames].filter(Boolean);
   }
 
-  function construirFiltroVideoCompilado(duracion, overlayNames = []) {
+  function construirFiltroVideoCompilado(duracion, overlayNames = [], opciones = {}) {
     const duracionNumerica = Math.max(0, Number(duracion) || 0);
-    const fadeDuracion = Math.min(0.22, Math.max(0.08, duracionNumerica / 14));
-    const fadeInicioSalida = Math.max(0, duracionNumerica - fadeDuracion);
-    const fadeFiltro = `fade=t=in:st=0:d=${formatearDecimalFFmpeg(fadeDuracion)},fade=t=out:st=${formatearDecimalFFmpeg(fadeInicioSalida)}:d=${formatearDecimalFFmpeg(fadeDuracion)}`;
     const overlays = normalizarOverlaysCompilado(overlayNames);
-
-    if (!overlays.length) return `${fadeFiltro},format=yuv420p`;
+    const tieneTransicion = !!opciones.transitionOverlayName;
+    const duracionTransicion = obtenerDuracionTransicionCompilado(duracionNumerica, tieneTransicion);
 
     const filtros = [];
     let baseLabel = '0:v';
+
+    if (duracionTransicion > 0) {
+      const transitionInputIndex = overlays.length + 1;
+      const transitionDurationText = formatearDecimalFFmpeg(duracionTransicion);
+      const transitionEndText = formatearDecimalFFmpeg(Math.max(0, duracionTransicion - 0.001));
+      const blendAlpha = `if(lt(T,${transitionDurationText}),1-(T/${transitionDurationText}),0)`;
+
+      filtros.push(`[${baseLabel}]split=2[transitionClean][transitionBlurSrc]`);
+      filtros.push('[transitionBlurSrc]boxblur=luma_radius=18:luma_power=1:chroma_radius=10:chroma_power=1[transitionBlur]');
+      filtros.push(`[transitionClean][transitionBlur]blend=all_expr='A*(1-${blendAlpha})+B*${blendAlpha}'[transitionBase]`);
+      filtros.push(`[${transitionInputIndex}:v][transitionBase]scale2ref=w=main_w:h=main_h[transitionOv][transitionRef]`);
+      filtros.push(`[transitionOv]format=rgba,fade=t=out:st=0:d=${transitionDurationText}:alpha=1[transitionOvFade]`);
+      filtros.push(`[transitionRef][transitionOvFade]overlay=0:0:format=auto:enable='between(t,0,${transitionEndText})'[transitionOut]`);
+      baseLabel = 'transitionOut';
+    }
+
     overlays.forEach((_, index) => {
       const inputIndex = index + 1;
       const overlayLabel = `ov${index}`;
       const scaledBaseLabel = `base${index}`;
       const outputLabel = `vtmp${index}`;
-      const inicio = Math.min(index, duracionNumerica);
+      const inicio = Math.min(Math.max(index, duracionTransicion), duracionNumerica);
       const fin = Math.min(index + 1, duracionNumerica);
       const finSeguro = Math.max(inicio, fin - 0.001);
+
+      if (finSeguro <= inicio) return;
 
       filtros.push(`[${inputIndex}:v][${baseLabel}]scale2ref=w=main_w:h=main_h[${overlayLabel}][${scaledBaseLabel}]`);
       filtros.push(`[${scaledBaseLabel}][${overlayLabel}]overlay=0:0:format=auto:enable='between(t,${formatearDecimalFFmpeg(inicio)},${formatearDecimalFFmpeg(finSeguro)})'[${outputLabel}]`);
       baseLabel = outputLabel;
     });
 
-    filtros.push(`[${baseLabel}]${fadeFiltro},format=yuv420p[v]`);
+    if (!filtros.length) return 'format=yuv420p';
+
+    filtros.push(`[${baseLabel}]format=yuv420p[v]`);
     return filtros.join(';');
   }
 
-  function construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, codec = 'h264') {
+  function construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, codec = 'h264', opciones = {}) {
     const overlays = normalizarOverlaysCompilado(overlayNames);
+    const transitionOverlayName = opciones.transitionOverlayName || '';
     const args = [
       '-hide_banner',
       '-y',
@@ -11745,15 +12860,18 @@ const initApp = () => {
     overlays.forEach(overlayName => {
       args.push('-loop', '1', '-i', overlayName);
     });
+    if (transitionOverlayName) {
+      args.push('-loop', '1', '-i', transitionOverlayName);
+    }
 
     args.push(
       '-ss', formatearDecimalFFmpeg(offset),
       '-t', formatearDecimalFFmpeg(duracion)
     );
 
-    if (overlays.length) {
+    if (overlays.length || transitionOverlayName) {
       args.push(
-        '-filter_complex', construirFiltroVideoCompilado(duracion, overlays),
+        '-filter_complex', construirFiltroVideoCompilado(duracion, overlays, { transitionOverlayName }),
         '-map', '[v]',
         '-map', '0:a:0?'
       );
@@ -11790,8 +12908,8 @@ const initApp = () => {
     return args;
   }
 
-  async function ejecutarClipFFmpeg(ffmpeg, listName, outputName, offset, duracion, overlayNames = []) {
-    const argsH264 = construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, 'h264');
+  async function ejecutarClipFFmpeg(ffmpeg, listName, outputName, offset, duracion, overlayNames = [], opciones = {}) {
+    const argsH264 = construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, 'h264', opciones);
 
     try {
       await ffmpeg.exec(argsH264);
@@ -11801,7 +12919,7 @@ const initApp = () => {
       await borrarArchivoFFmpeg(ffmpeg, outputName);
     }
 
-    await ffmpeg.exec(construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, 'mpeg4'));
+    await ffmpeg.exec(construirArgsClipFFmpeg(listName, outputName, offset, duracion, overlayNames, 'mpeg4', opciones));
   }
 
   async function concatenarClipsFFmpeg(ffmpeg, clipNames, outputName) {
@@ -11879,6 +12997,7 @@ const initApp = () => {
         const listName = `${jobId}_clip_${trabajoIndex}.txt`;
         const clipName = `${jobId}_clip_${trabajoIndex}.mp4`;
         const overlayNames = [];
+        let transitionOverlayName = '';
         archivosTemporales.push(listName, clipName);
         await escribirTextoFFmpeg(ffmpeg, listName, segmentFiles.map(name => `file '${name}'`).join('\n'));
 
@@ -11899,16 +13018,25 @@ const initApp = () => {
           }));
         }
 
+        if (trabajoIndex > 0 && obtenerDuracionTransicionCompilado(trabajo.duracion, true) > 0) {
+          transitionOverlayName = `${jobId}_transition_${trabajoIndex}.png`;
+          archivosTemporales.push(transitionOverlayName);
+          await ffmpeg.writeFile(transitionOverlayName, await crearTransicionCompiladoPng(trabajo.clip));
+        }
+
         setEstadoCompilado(
           statusEl,
           `Codificando corte ${trabajoIndex + 1}/${trabajos.length}: ${trabajo.clip.etiqueta} (${formatearSegundosVideo(trabajo.inicio)}-${formatearSegundosVideo(trabajo.fin)})...`,
           'info'
         );
-        await ejecutarClipFFmpeg(ffmpeg, listName, clipName, trabajo.offset, trabajo.duracion, overlayNames);
+        await ejecutarClipFFmpeg(ffmpeg, listName, clipName, trabajo.offset, trabajo.duracion, overlayNames, { transitionOverlayName });
         clipNames.push(clipName);
 
         for (const overlayName of overlayNames) {
           await borrarArchivoFFmpeg(ffmpeg, overlayName);
+        }
+        if (transitionOverlayName) {
+          await borrarArchivoFFmpeg(ffmpeg, transitionOverlayName);
         }
         await borrarArchivoFFmpeg(ffmpeg, listName);
         for (const segmentName of segmentFiles) {
@@ -11997,6 +13125,107 @@ const initApp = () => {
     await seeked;
   }
 
+  function crearImagenCompiladoDesdePngBytes(bytes) {
+    const blob = new Blob([bytes], { type: 'image/png' });
+    if (window.createImageBitmap) {
+      return window.createImageBitmap(blob);
+    }
+
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(image);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('No se pudo preparar una imagen del overlay.'));
+      };
+      image.src = url;
+    });
+  }
+
+  function liberarImagenCompilado(image) {
+    if (image && typeof image.close === 'function') image.close();
+  }
+
+  function liberarImagenesCompilado(images = []) {
+    images.forEach(liberarImagenCompilado);
+  }
+
+  async function prepararRecursosCanvasClipCompilado(clip, index, total, clipsMarcador, incluirTransicion) {
+    const overlays = [];
+    const cantidadOverlays = obtenerCantidadOverlaysTemporizados(clip.fin - clip.inicio);
+    for (let overlayIndex = 0; overlayIndex < cantidadOverlays; overlayIndex += 1) {
+      overlays.push(await crearImagenCompiladoDesdePngBytes(await crearOverlayCompiladoPng(clip, index, total, {
+        minutoPartidoSegundos: obtenerSegundosPartidoOverlayClip(clip, overlayIndex),
+        reviewSegundosMarcador: clip.inicio + overlayIndex,
+        clipsMarcador
+      })));
+    }
+
+    const duracionTransicion = obtenerDuracionTransicionCompilado(clip.fin - clip.inicio, incluirTransicion);
+    const transicion = duracionTransicion > 0
+      ? await crearImagenCompiladoDesdePngBytes(await crearTransicionCompiladoPng(clip))
+      : null;
+
+    return {
+      overlays,
+      transicion,
+      duracionTransicion
+    };
+  }
+
+  function dibujarVideoCanvasCompilado(ctx, video, width, height) {
+    if (video.readyState >= 2) {
+      ctx.drawImage(video, 0, 0, width, height);
+      return;
+    }
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  function dibujarFrameCompiladoCanvas(ctx, canvas, video, renderState) {
+    const width = canvas.width;
+    const height = canvas.height;
+    const clip = renderState.clip;
+    ctx.clearRect(0, 0, width, height);
+    dibujarVideoCanvasCompilado(ctx, video, width, height);
+
+    if (!clip) return;
+
+    const elapsed = Math.max(0, Number(video.currentTime) - Number(clip.inicio || 0));
+    const transitionDuration = Number(renderState.duracionTransicion) || 0;
+    const transitionAlpha = transitionDuration > 0
+      ? Math.max(0, Math.min(1, 1 - (elapsed / transitionDuration)))
+      : 0;
+
+    if (transitionAlpha > 0 && renderState.transicion) {
+      ctx.save();
+      ctx.globalAlpha = transitionAlpha;
+      ctx.filter = `blur(${Math.max(1, Math.round(18 * transitionAlpha))}px)`;
+      dibujarVideoCanvasCompilado(ctx, video, width, height);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = transitionAlpha;
+      ctx.drawImage(renderState.transicion, 0, 0, width, height);
+      ctx.restore();
+      return;
+    }
+
+    const overlayIndex = Math.min(
+      Math.max(0, (renderState.overlays || []).length - 1),
+      Math.max(0, Math.floor(elapsed))
+    );
+    const overlay = renderState.overlays?.[overlayIndex];
+    if (overlay) {
+      ctx.drawImage(overlay, 0, 0, width, height);
+    }
+  }
+
   async function generarVideoCompiladoDesdeArchivo(file, clips, statusEl, nombreBase = 'compilado') {
     if (!file) {
       setEstadoCompilado(statusEl, 'Carga primero el video fuente del partido.', 'warning');
@@ -12032,6 +13261,17 @@ const initApp = () => {
     video.style.height = '180px';
     video.style.opacity = '0.01';
     document.body.appendChild(video);
+    let canvas = null;
+    let canvasStream = null;
+    let sourceStream = null;
+    let renderFrameId = null;
+    let renderActivo = false;
+    const renderState = {
+      clip: null,
+      overlays: [],
+      transicion: null,
+      duracionTransicion: 0
+    };
 
     try {
       setEstadoCompilado(statusEl, 'Preparando video fuente...', 'info');
@@ -12057,13 +13297,41 @@ const initApp = () => {
         return;
       }
 
-      const stream = obtenerStreamVideo(video);
-      if (!stream) {
-        throw new Error('El navegador no permite capturar el video fuente.');
+      canvas = document.createElement('canvas');
+      canvas.width = Math.max(640, Math.round(video.videoWidth || 1280));
+      canvas.height = Math.max(360, Math.round(video.videoHeight || 720));
+      canvas.style.position = 'fixed';
+      canvas.style.left = '-10000px';
+      canvas.style.top = '0';
+      canvas.style.width = '320px';
+      canvas.style.height = '180px';
+      canvas.style.opacity = '0.01';
+      document.body.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('No se pudo preparar el canvas del compilado.');
       }
 
+      if (typeof canvas.captureStream !== 'function') {
+        throw new Error('El navegador no permite capturar el canvas del compilado.');
+      }
+
+      sourceStream = obtenerStreamVideo(video);
+      canvasStream = canvas.captureStream(30);
+      if (sourceStream) {
+        sourceStream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
+      }
+
+      const renderLoop = () => {
+        dibujarFrameCompiladoCanvas(ctx, canvas, video, renderState);
+        if (renderActivo) renderFrameId = window.requestAnimationFrame(renderLoop);
+      };
+      renderActivo = true;
+      renderLoop();
+
       const chunks = [];
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(canvasStream, { mimeType });
       recorder.addEventListener('dataavailable', event => {
         if (event.data && event.data.size > 0) chunks.push(event.data);
       });
@@ -12077,16 +13345,36 @@ const initApp = () => {
 
       for (let i = 0; i < clipsValidos.length; i += 1) {
         const clip = clipsValidos[i];
-        setEstadoCompilado(statusEl, `Grabando corte ${i + 1}/${clipsValidos.length}: ${clip.etiqueta} (${formatearSegundosVideo(clip.inicio)}-${formatearSegundosVideo(clip.fin)})`, 'info');
+        let recursosClip = null;
 
-        video.pause();
-        await irATiempoVideo(video, clip.inicio);
+        try {
+          setEstadoCompilado(statusEl, `Preparando overlay ${i + 1}/${clipsValidos.length}: ${clip.etiqueta}...`, 'info');
+          recursosClip = await prepararRecursosCanvasClipCompilado(clip, i, clipsValidos.length, clipsValidos, i > 0);
+          renderState.clip = clip;
+          renderState.overlays = recursosClip.overlays;
+          renderState.transicion = recursosClip.transicion;
+          renderState.duracionTransicion = recursosClip.duracionTransicion;
 
-        if (recorder.state === 'paused') recorder.resume();
-        await video.play();
-        await esperarVideoHasta(video, clip.fin);
-        video.pause();
-        if (recorder.state === 'recording') recorder.pause();
+          setEstadoCompilado(statusEl, `Grabando corte ${i + 1}/${clipsValidos.length}: ${clip.etiqueta} (${formatearSegundosVideo(clip.inicio)}-${formatearSegundosVideo(clip.fin)})`, 'info');
+
+          video.pause();
+          await irATiempoVideo(video, clip.inicio);
+
+          if (recorder.state === 'paused') recorder.resume();
+          await video.play();
+          await esperarVideoHasta(video, clip.fin);
+          video.pause();
+          if (recorder.state === 'recording') recorder.pause();
+        } finally {
+          renderState.clip = null;
+          renderState.overlays = [];
+          renderState.transicion = null;
+          renderState.duracionTransicion = 0;
+          if (recursosClip) {
+            liberarImagenesCompilado(recursosClip.overlays);
+            liberarImagenCompilado(recursosClip.transicion);
+          }
+        }
       }
 
       if (recorder.state !== 'inactive') recorder.stop();
@@ -12103,11 +13391,236 @@ const initApp = () => {
       console.error('Error generando compilado:', error);
       setEstadoCompilado(statusEl, `No se pudo generar el compilado: ${error.message}`, 'error');
     } finally {
+      renderActivo = false;
+      if (renderFrameId) window.cancelAnimationFrame(renderFrameId);
+      canvasStream?.getTracks().forEach(track => track.stop());
+      sourceStream?.getTracks().forEach(track => track.stop());
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.remove();
+      canvas?.remove();
+      URL.revokeObjectURL(sourceUrl);
+    }
+  }
+
+  function seleccionarClipPortadaCompilado(clips = []) {
+    if (!Array.isArray(clips) || !clips.length) return null;
+
+    const goles = clips.filter(clip => clip?.tipo === 'gol');
+    if (goles.length) return goles[goles.length - 1];
+
+    const atajadas = clips.filter(clip => clip?.tipo === 'atajadas');
+    if (atajadas.length) return atajadas[atajadas.length - 1];
+
+    return clips[clips.length - 1];
+  }
+
+  function obtenerLimiteMarcadorPortadaCompilado(clips = []) {
+    return clips.reduce((maximo, clip) => {
+      const segundos = Number(clip?.reviewSegundos);
+      return Number.isFinite(segundos) ? Math.max(maximo, segundos) : maximo;
+    }, 0);
+  }
+
+  function crearResumenPortadaCompilado(clips = [], opciones = {}) {
+    const opcionesCompilado = normalizarOpcionesCompilado(opciones);
+    const goles = clips.filter(clip => clip?.tipo === 'gol');
+    const atajadas = clips.filter(clip => clip?.tipo === 'atajadas');
+    const cagadas = clips.filter(clip => clip?.tipo === 'cagada' || clip?.tipo === 'cagada_gol');
+    const goleadores = new Map();
+
+    goles.forEach(clip => {
+      const nombre = clip?.jugadorNombre || clip?.metadata?.goleador_nombre || 'Jugador';
+      goleadores.set(nombre, (goleadores.get(nombre) || 0) + 1);
+    });
+
+    const topGoleadores = Array.from(goleadores.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 3)
+      .map(([nombre, cantidad]) => `${nombre} ${cantidad}G`)
+      .join('   ');
+
+    return {
+      clips: clips.length,
+      goles: goles.length,
+      atajadas: atajadas.length,
+      cagadas: cagadas.length,
+      atajadasMinimas: opcionesCompilado.atajadasMinimas,
+      atajadasEtiqueta: opcionesCompilado.atajadasMinimas === 5 ? '5' : '3+',
+      topGoleadores
+    };
+  }
+
+  async function esperarFrameVideoCompilado(video) {
+    if (typeof video.requestVideoFrameCallback === 'function') {
+      await new Promise(resolve => video.requestVideoFrameCallback(resolve));
+      return;
+    }
+
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
+  async function dibujarPortadaCompilado(ctx, canvas, video, clipPortada, clips, opciones = {}) {
+    const indiceClip = Math.max(0, clips.indexOf(clipPortada));
+    const marcadorLimite = obtenerLimiteMarcadorPortadaCompilado(clips);
+    const minutoPartido = Number(clipPortada?.minutoPartido);
+    const overlayBytes = await crearOverlayCompiladoPng(clipPortada, indiceClip, clips.length, {
+      minutoPartidoSegundos: Number.isFinite(minutoPartido) ? minutoPartido * 60 : null,
+      reviewSegundosMarcador: marcadorLimite,
+      clipsMarcador: clips
+    });
+    const overlayImage = await crearImagenCompiladoDesdePngBytes(overlayBytes);
+    const resumen = crearResumenPortadaCompilado(clips, opciones);
+    const fecha = opciones.fecha || obtenerValorReviewInput('review-fecha');
+    const cancha = opciones.cancha || obtenerValorReviewInput('review-cancha');
+    const subtitulo = [fecha, cancha].filter(Boolean).join(' - ');
+    const fuente = 'Inter, "Segoe UI", Arial, sans-serif';
+
+    try {
+      await document.fonts?.load('900 86px Inter');
+      await document.fonts?.load('800 34px Inter');
+      await document.fonts?.load('700 26px Inter');
+    } catch (error) {
+      // Si la fuente no esta disponible, el canvas usa el fallback del sistema.
+    }
+
+    dibujarVideoCanvasCompilado(ctx, video, canvas.width, canvas.height);
+    ctx.drawImage(overlayImage, 0, 0, canvas.width, canvas.height);
+
+    const gradienteLateral = ctx.createLinearGradient(680, 0, 1920, 0);
+    gradienteLateral.addColorStop(0, 'rgba(2, 6, 23, 0)');
+    gradienteLateral.addColorStop(0.42, 'rgba(2, 6, 23, 0.12)');
+    gradienteLateral.addColorStop(1, 'rgba(2, 6, 23, 0.68)');
+    ctx.fillStyle = gradienteLateral;
+    ctx.fillRect(680, 0, 1240, 1080);
+
+    const panelW = 810;
+    const panelH = 286;
+    const panelX = 1920 - panelW - 52;
+    const panelY = 1080 - panelH - 54;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.76)';
+    dibujarRectRedondeadoCompilado(ctx, panelX, panelY, panelW, panelH, 18);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `900 86px ${fuente}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+    ctx.shadowBlur = 14;
+    dibujarTextoTruncadoCanvas(ctx, 'COMPILADO T5', panelX + 34, panelY + 92, panelW - 68);
+    ctx.shadowBlur = 0;
+
+    ctx.font = `800 34px ${fuente}`;
+    ctx.fillStyle = '#2dd4bf';
+    dibujarTextoTruncadoCanvas(
+      ctx,
+      `${resumen.goles} goles  |  ${resumen.atajadas} atajadas ${resumen.atajadasEtiqueta}  |  ${resumen.clips} clips`,
+      panelX + 38,
+      panelY + 146,
+      panelW - 76
+    );
+
+    ctx.font = `700 26px ${fuente}`;
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.92)';
+    dibujarTextoTruncadoCanvas(ctx, subtitulo || 'T5 Papi Academy', panelX + 38, panelY + 194, panelW - 76);
+
+    if (resumen.topGoleadores) {
+      ctx.font = `800 28px ${fuente}`;
+      ctx.fillStyle = '#facc15';
+      dibujarTextoTruncadoCanvas(ctx, resumen.topGoleadores, panelX + 38, panelY + 242, panelW - 76);
+    }
+
+    liberarImagenCompilado(overlayImage);
+  }
+
+  async function crearPortadaCompiladoPngDesdeArchivo(file, clips, opciones = {}) {
+    if (!file) {
+      throw new Error('Carga primero el video fuente del partido.');
+    }
+
+    if (!clips.length) {
+      throw new Error('No hay cortes elegibles para generar la portada.');
+    }
+
+    const clipPortada = seleccionarClipPortadaCompilado(clips);
+    if (!clipPortada) {
+      throw new Error('No se pudo elegir una jugada para la portada.');
+    }
+
+    const video = document.createElement('video');
+    const sourceUrl = URL.createObjectURL(file);
+    video.src = sourceUrl;
+    video.preload = 'auto';
+    video.playsInline = true;
+    video.muted = true;
+    video.style.position = 'fixed';
+    video.style.left = '-10000px';
+    video.style.top = '0';
+    video.style.width = '320px';
+    video.style.height = '180px';
+    video.style.opacity = '0.01';
+    document.body.appendChild(video);
+
+    try {
+      if (video.readyState < 1) {
+        await esperarEventoUnaVez(video, 'loadedmetadata', 20000);
+      }
+
+      const duracionVideo = Number(video.duration);
+      if (!Number.isFinite(duracionVideo) || duracionVideo <= 0) {
+        throw new Error('No se pudo leer la duracion del video fuente.');
+      }
+
+      const frameSegundos = Math.max(0, Math.min(
+        Number(clipPortada.reviewSegundos) || Number(clipPortada.inicio) || 0,
+        Math.max(0, duracionVideo - 0.1)
+      ));
+
+      await irATiempoVideo(video, frameSegundos);
+      if (video.readyState < 2) {
+        await esperarEventoUnaVez(video, 'loadeddata', 20000);
+      }
+      await esperarFrameVideoCompilado(video);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('No se pudo preparar el canvas de la portada.');
+      }
+
+      await dibujarPortadaCompilado(ctx, canvas, video, clipPortada, clips, opciones);
+      return convertirCanvasAPngBytes(canvas);
+    } finally {
       video.pause();
       video.removeAttribute('src');
       video.load();
       video.remove();
       URL.revokeObjectURL(sourceUrl);
+    }
+  }
+
+  async function generarPortadaCompiladoDesdeArchivo(file, clips, statusEl, nombreBase = 'compilado', opciones = {}) {
+    try {
+      setEstadoCompilado(statusEl, 'Preparando portada...', 'info');
+      const bytes = await crearPortadaCompiladoPngDesdeArchivo(file, clips, opciones);
+      const blob = new Blob([bytes], { type: 'image/png' });
+      descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}-portada.png`);
+      setEstadoCompilado(statusEl, 'Portada lista.', 'success');
+    } catch (error) {
+      console.error('Error generando portada:', error);
+      setEstadoCompilado(statusEl, `No se pudo generar la portada: ${obtenerMensajeError(error)}`, 'error');
     }
   }
 
@@ -12288,8 +13801,12 @@ const initApp = () => {
     const reviewLink = normalizarReviewUrl(document.getElementById('review-link')?.value) ||
       normalizarReviewUrl(document.getElementById('youtube-link-partido')?.value) ||
       '';
+    const youtubeCompiladoLink = obtenerLinkYouTubeReview(document.getElementById('review-compilado-youtube-link')?.value) || '';
 
-    listEl.innerHTML = renderizarClipsCompiladoHtml(clips, reviewLink, opcionesCompilado);
+    listEl.innerHTML = renderizarClipsCompiladoHtml(clips, reviewLink, {
+      ...opcionesCompilado,
+      youtubeCompiladoLink
+    });
   }
 
   function obtenerDatosCompiladoSandbox() {
@@ -12298,12 +13815,16 @@ const initApp = () => {
     const reviewLink = normalizarReviewUrl(document.getElementById('review-link')?.value) ||
       normalizarReviewUrl(document.getElementById('youtube-link-partido')?.value) ||
       '';
+    const youtubeCompiladoLink = obtenerLinkYouTubeReview(document.getElementById('review-compilado-youtube-link')?.value) || '';
     const fecha = document.getElementById('review-fecha')?.value || new Date().toISOString().slice(0, 10);
     return {
       clips,
       reviewLink,
       nombreBase: `compilado-t5-${fecha}`,
-      opcionesCompilado
+      opcionesCompilado: {
+        ...opcionesCompilado,
+        youtubeCompiladoLink
+      }
     };
   }
 
@@ -12405,6 +13926,10 @@ const initApp = () => {
         inicio: {
           minuto: obtenerValorReviewInput('review-inicio-minuto'),
           segundo: obtenerValorReviewInput('review-inicio-segundo')
+        },
+        fin: {
+          minuto: obtenerValorReviewInput('review-fin-minuto'),
+          segundo: obtenerValorReviewInput('review-fin-segundo')
         }
       },
       equipos: {
@@ -12445,13 +13970,15 @@ const initApp = () => {
         ace_id: obtenerValorReviewInput('review-ace') || null
       },
       compilado: {
-        atajadas_minimas: opcionesCompilado.atajadasMinimas
+        atajadas_minimas: opcionesCompilado.atajadasMinimas,
+        youtube_link: obtenerLinkYouTubeReview(obtenerValorReviewInput('review-compilado-youtube-link')) || null
       },
       resumen: {
         marcador: `${marcador.equipo1}-${marcador.equipo2}`,
         goles: eventos.length,
         atajadas: reviewSandbox.atajadas.length,
-        cagadas: reviewSandbox.cagadas.length,
+        cagadas: eventos.filter(evento => !!evento.cagada_id).length + reviewSandbox.cagadas.length,
+        jugadores_con_stats: crearResumenPersonalReview().length,
         clips_compilado: construirClipsCompiladoSandbox(opcionesCompilado).length
       }
     };
@@ -12540,6 +14067,7 @@ const initApp = () => {
 
     const partido = payload.partido || {};
     const inicio = partido.inicio || payload.inicio || {};
+    const fin = partido.fin || payload.fin || {};
     const reconocimientos = payload.reconocimientos || {};
     const temporadaId = partido.temporada_id || partido.temporadaId || '';
     const mvpId = reconocimientos.mvp_id || reconocimientos.mvpId || '';
@@ -12562,7 +14090,10 @@ const initApp = () => {
     setValorReviewInput('review-temporada', temporadaId);
     setValorReviewInput('review-inicio-minuto', inicio.minuto ?? '');
     setValorReviewInput('review-inicio-segundo', inicio.segundo ?? '');
+    setValorReviewInput('review-fin-minuto', fin.minuto ?? '');
+    setValorReviewInput('review-fin-segundo', fin.segundo ?? '');
     setValorReviewInput('review-compilado-atajadas-min', Number(payload.compilado?.atajadas_minimas) === 5 ? '5' : '3');
+    setValorReviewInput('review-compilado-youtube-link', payload.compilado?.youtube_link || payload.compilado?.youtubeLink || '');
 
     renderizarTablaGoles();
     actualizarMarcadorAutomatico();
@@ -12604,6 +14135,25 @@ const initApp = () => {
     }
   }
 
+  async function exportarPortadaCompiladoSandbox() {
+    const { clips, nombreBase, opcionesCompilado } = obtenerDatosCompiladoSandbox();
+    const fileInput = document.getElementById('review-compilado-video');
+    const statusEl = document.getElementById('review-compilado-status');
+    const button = document.getElementById('review-export-portada');
+    const file = fileInput?.files?.[0] || null;
+
+    if (button) button.disabled = true;
+    try {
+      await generarPortadaCompiladoDesdeArchivo(file, clips, statusEl, nombreBase, {
+        ...opcionesCompilado,
+        fecha: obtenerValorReviewInput('review-fecha'),
+        cancha: obtenerValorReviewInput('review-cancha')
+      });
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   async function generarCompiladoSandboxBeelup() {
     const { clips, reviewLink, nombreBase } = obtenerDatosCompiladoSandbox();
     const statusEl = document.getElementById('review-compilado-status');
@@ -12632,14 +14182,13 @@ const initApp = () => {
     poblarSelectReview('review-mvp', jugadoresPartido, 'Sin MVP');
     poblarSelectReview('review-ace', jugadoresPartido, 'Sin ACE');
     poblarSelectReview('review-atajadas-jugador', jugadoresPartido, 'Jugador');
-    poblarSelectReview('review-cagadas-jugador', jugadoresPartido, 'Jugador');
     initializeSearchableSelects(document.getElementById('review-sandbox-content'));
 
     renderizarEquipoReview('review-equipo1-list', 'equipo1', equipo1);
     renderizarEquipoReview('review-equipo2-list', 'equipo2', equipo2);
     renderizarEventosReview();
     renderizarStatsReview('atajadas');
-    renderizarStatsReview('cagadas');
+    renderizarResumenPersonalReview();
     renderizarCompiladoReviewSandbox();
     enviarEstadoAnotacionReview();
   }
@@ -12695,12 +14244,15 @@ const initApp = () => {
   }
 
   function agregarStatReview(tipo) {
-    const jugadorId = document.getElementById(tipo === 'atajadas' ? 'review-atajadas-jugador' : 'review-cagadas-jugador')?.value || '';
-    const cantidadInput = document.getElementById(tipo === 'atajadas' ? 'review-atajadas-cantidad' : 'review-cagadas-cantidad');
+    if (tipo === 'cagadas') {
+      showToast('Carga la cagada desde el gol correspondiente.', 'warning');
+      return;
+    }
+
+    const jugadorId = document.getElementById('review-atajadas-jugador')?.value || '';
+    const cantidadInput = document.getElementById('review-atajadas-cantidad');
     const cantidad = parseInt(cantidadInput?.value, 10) || 0;
-    const tiempoPartido = tipo === 'atajadas'
-      ? (obtenerTiempoPartidoDesdeReproductor() || { minuto: null, segundos: null, reviewSegundos: null })
-      : obtenerTiempoPartidoDesdeInputs('review-cagadas-minuto', 'review-cagadas-segundo');
+    const tiempoPartido = obtenerTiempoPartidoDesdeReproductor() || { minuto: null, segundos: null, reviewSegundos: null };
 
     if (!jugadorId || cantidad <= 0) {
       showToast('Selecciona jugador y cantidad mayor a cero.', 'warning');
@@ -12716,9 +14268,6 @@ const initApp = () => {
     });
 
     if (cantidadInput) cantidadInput.value = '';
-    if (tipo === 'cagadas') {
-      limpiarInputsTiempoReview(['review-cagadas-minuto', 'review-cagadas-segundo']);
-    }
     renderizarReviewSandbox();
   }
 
@@ -12803,7 +14352,7 @@ const initApp = () => {
       if (guardadoOk) {
         reviewSandbox.atajadas = [];
         reviewSandbox.cagadas = [];
-        ['review-fecha', 'review-cancha', 'review-resultado', 'review-ganador', 'review-mvp', 'review-ace', 'review-inicio-minuto', 'review-inicio-segundo'].forEach(id => {
+        ['review-fecha', 'review-cancha', 'review-resultado', 'review-ganador', 'review-mvp', 'review-ace', 'review-inicio-minuto', 'review-inicio-segundo', 'review-fin-minuto', 'review-fin-segundo', 'review-compilado-youtube-link'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = '';
         });
@@ -12830,7 +14379,6 @@ const initApp = () => {
     document.getElementById('review-add-equipo2')?.addEventListener('click', () => agregarJugadorAEquipoDesdeId('equipo2', document.getElementById('review-jugador-select')?.value));
     document.getElementById('review-add-gol')?.addEventListener('click', agregarEventoReviewSandbox);
     document.getElementById('review-add-atajadas')?.addEventListener('click', () => agregarStatReview('atajadas'));
-    document.getElementById('review-add-cagadas')?.addEventListener('click', () => agregarStatReview('cagadas'));
     document.getElementById('review-save-partido')?.addEventListener('click', guardarPartidoReviewSandbox);
     document.getElementById('review-export-analysis')?.addEventListener('click', exportarAnalisisReviewSandbox);
     document.getElementById('review-import-analysis')?.addEventListener('click', () => {
@@ -12847,13 +14395,21 @@ const initApp = () => {
     document.getElementById('review-build-compilado-beelup')?.addEventListener('click', generarCompiladoSandboxBeelup);
     document.getElementById('review-build-compilado')?.addEventListener('click', generarCompiladoSandbox);
     document.getElementById('review-compilado-atajadas-min')?.addEventListener('change', renderizarCompiladoReviewSandbox);
-    ['review-inicio-minuto', 'review-inicio-segundo'].forEach(id => {
+    document.getElementById('review-compilado-youtube-link')?.addEventListener('input', renderizarCompiladoReviewSandbox);
+    ['review-mvp', 'review-ace'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => {
+        renderizarResumenPersonalReview();
+        enviarEstadoAnotacionReview();
+      });
+    });
+    ['review-inicio-minuto', 'review-inicio-segundo', 'review-fin-minuto', 'review-fin-segundo'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
         renderizarEventosReview();
         renderizarStatsReview('atajadas');
-        renderizarStatsReview('cagadas');
+        renderizarResumenPersonalReview();
         renderizarCompiladoReviewSandbox();
         actualizarEstadoPopupReview();
+        enviarEstadoAnotacionReview();
       });
     });
 
@@ -13267,31 +14823,83 @@ const initApp = () => {
   }
 
   async function insertarPartidoConFallbackReview(partidoData) {
-      let { data, error } = await supabase
-          .from('partidos')
-          .insert([partidoData])
-          .select()
-          .single();
+      const columnasOpcionalesOmitidas = new Set();
+      let ultimoResultado = { data: null, error: null };
 
-      if (error && Object.prototype.hasOwnProperty.call(partidoData, 'review_inicio_segundos') && esErrorColumnaFaltante(error, 'review_inicio_segundos')) {
-          console.warn('La columna partidos.review_inicio_segundos no existe. Reintentando sin ese campo...');
-          const { review_inicio_segundos, ...partidoSinReviewInicio } = partidoData;
+      for (let intento = 0; intento < 3; intento += 1) {
+          const payload = { ...partidoData };
+          columnasOpcionalesOmitidas.forEach(columna => {
+              delete payload[columna];
+          });
 
-          const reintento = await supabase
+          ultimoResultado = await supabase
               .from('partidos')
-              .insert([partidoSinReviewInicio])
+              .insert([payload])
               .select()
               .single();
 
-          data = reintento.data;
-          error = reintento.error;
-
-          if (!error) {
-              showToast('Partido guardado, pero falta partidos.review_inicio_segundos. Ejecuta review_events_schema.sql.', 'warning');
+          if (!ultimoResultado.error) {
+              if (columnasOpcionalesOmitidas.has('review_inicio_segundos')) {
+                  showToast('Partido guardado, pero falta partidos.review_inicio_segundos. Ejecuta review_events_schema.sql.', 'warning');
+              }
+              if (columnasOpcionalesOmitidas.has('compilado_youtube_link')) {
+                  showToast('Partido guardado, pero falta partidos.compilado_youtube_link. Ejecuta review_events_schema.sql.', 'warning');
+              }
+              return ultimoResultado;
           }
+
+          const columnaFaltante = ['review_inicio_segundos', 'compilado_youtube_link'].find(columna =>
+              Object.prototype.hasOwnProperty.call(partidoData, columna) &&
+              !columnasOpcionalesOmitidas.has(columna) &&
+              esErrorColumnaFaltante(ultimoResultado.error, columna)
+          );
+
+          if (!columnaFaltante) {
+              return ultimoResultado;
+          }
+
+          console.warn(`La columna partidos.${columnaFaltante} no existe. Reintentando sin ese campo...`);
+          columnasOpcionalesOmitidas.add(columnaFaltante);
       }
 
-      return { data, error };
+      return ultimoResultado;
+  }
+
+  async function actualizarPartidoConFallbackColumnas(partidoId, partidoData, columnasOpcionales = []) {
+      const columnasOpcionalesOmitidas = new Set();
+      let ultimoError = null;
+
+      for (let intento = 0; intento <= columnasOpcionales.length; intento += 1) {
+          const payload = { ...partidoData };
+          columnasOpcionalesOmitidas.forEach(columna => {
+              delete payload[columna];
+          });
+
+          const { error } = await supabase
+              .from('partidos')
+              .update(payload)
+              .eq('id', partidoId);
+
+          ultimoError = error;
+          if (!ultimoError) {
+              if (columnasOpcionalesOmitidas.has('compilado_youtube_link')) {
+                  showToast('Cambios guardados, pero falta partidos.compilado_youtube_link. Ejecuta review_events_schema.sql.', 'warning');
+              }
+              return null;
+          }
+
+          const columnaFaltante = columnasOpcionales.find(columna =>
+              !columnasOpcionalesOmitidas.has(columna) &&
+              Object.prototype.hasOwnProperty.call(partidoData, columna) &&
+              esErrorColumnaFaltante(ultimoError, columna)
+          );
+
+          if (!columnaFaltante) return ultimoError;
+          console.warn(`La columna partidos.${columnaFaltante} no existe. Reintentando update sin ese campo...`);
+          columnasOpcionalesOmitidas.add(columnaFaltante);
+      }
+
+      return ultimoError;
   }
 
   async function insertarGolesConFallbackReview(golesData) {
@@ -13504,6 +15112,8 @@ const initApp = () => {
       const temporada_id = temporadaPartidoSelect ? temporadaPartidoSelect.value : null;
       const youtubeLinkInput = document.getElementById('youtube-link-partido').value.trim();
       const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
+      const compiladoYoutubeInput = document.getElementById('review-compilado-youtube-link')?.value.trim() || '';
+      const compilado_youtube_link = compiladoYoutubeInput ? obtenerLinkYouTubeReview(compiladoYoutubeInput) : null;
       const guardandoDesdeReview = document.body.dataset.guardandoReviewSandbox === '1';
       const review_inicio_segundos = guardandoDesdeReview ? obtenerReviewInicioSegundos() : null;
 
@@ -13519,6 +15129,11 @@ const initApp = () => {
 
       if (youtubeLinkInput && !youtube_link) {
           showToast('El link de review para Historial debe ser de YouTube.', 'warning');
+          return false;
+      }
+
+      if (compiladoYoutubeInput && !compilado_youtube_link) {
+          showToast('El link del compilado debe ser de YouTube.', 'warning');
           return false;
       }
 
@@ -13573,7 +15188,8 @@ const initApp = () => {
               resultado: resultado,
               equipo_ganador: parseInt(equipo_ganador), // 0 = empate, 1 = equipo1, 2 = equipo2
               temporada_id: temporada_id,
-              youtube_link: youtube_link
+              youtube_link: youtube_link,
+              compilado_youtube_link: compilado_youtube_link
           };
 
           if (guardandoDesdeReview) {
@@ -13680,6 +15296,7 @@ const initApp = () => {
                   // Determinar si es gol en contra
                   const equipoRealGoleador = equipo1.find(j => j.id === evento.goleador_id) ? 1 : 2;
                   const esGolEnContra = evento.es_en_contra || (evento.equipo !== equipoRealGoleador);
+
                   const golData = {
                       partido_id: partido_id,
                       goleador_id: evento.goleador_id,
@@ -15252,7 +16869,8 @@ const initApp = () => {
     btnCargarPartido.addEventListener('click', cargarPartido);
   }
 
-  if (playerForm) {
+  if (playerForm && !playerForm.dataset.playerSubmitBound) {
+    playerForm.dataset.playerSubmitBound = '1';
     playerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     console.log('Player form submitted');
@@ -15261,6 +16879,8 @@ const initApp = () => {
     const posicionPrimaria = form.posicion_primaria.value;
     const posicionSecundaria = form.posicion_secundaria.value;
     const pulmon = parseFloat(form.pulmon.value) || null;
+    const fotoUrl = normalizarUrlFotoJugador(form.foto_url?.value || '');
+    const fotoArchivo = obtenerArchivoFotoFormulario(form);
 
     if (!nombre) {
       showToast('Por favor ingresa el nombre del jugador.', 'warning');
@@ -15280,12 +16900,12 @@ const initApp = () => {
 
     try {
       if (jugadorEditando) {
-        // MODO EDICIÃ“N
-        await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria, pulmon);
+        // MODO EDICIÓN
+        await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria, pulmon, fotoUrl, fotoArchivo);
         showToast('Jugador actualizado exitosamente!', 'success');
       } else {
         // MODO AGREGAR
-        await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon);
+        await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon, fotoUrl, fotoArchivo);
         showToast('Jugador agregado exitosamente!', 'success');
       }
 
@@ -15295,6 +16915,7 @@ const initApp = () => {
         modal.hide();
       }
       form.reset();
+      limpiarPreviewFotoFormulario();
       jugadorEditando = null;
       cargarEstadisticas();
       cargarTodosLosJugadores(); // Actualizar lista de jugadores
@@ -15310,23 +16931,40 @@ const initApp = () => {
   });
   }
 
-  // FunciÃ³n para agregar un nuevo jugador
-  async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
+  // Función para agregar un nuevo jugador
+  async function agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon = null, fotoUrl = '', fotoArchivo = null) {
     // Verificar permisos de administrador
     if (!verificarPermisosAdmin('agregar un jugador')) {
         return;
     }
+
+    validarArchivoFotoPerfil(fotoArchivo);
 
     // Insertar el jugador
     const jugadorObject = { nombre: nombre };
     if (pulmon !== null) {
       jugadorObject.pulmon = pulmon;
     }
+    if (fotoUrl && !fotoArchivo) {
+      jugadorObject.foto_url = fotoUrl;
+    }
 
-    const { data: jugadorData, error: jugadorError } = await supabase
+    let { data: jugadorData, error: jugadorError } = await supabase
       .from('jugadores')
       .insert([jugadorObject])
       .select();
+
+    if (jugadorError && esErrorColumnaFotoPerfilFaltante(jugadorError) && 'foto_url' in jugadorObject) {
+      fotoPerfilJugadoresDisponible = false;
+      delete jugadorObject.foto_url;
+      showToast('Para guardar fotos de perfil falta ejecutar el SQL de foto_url. El jugador se guarda sin foto.', 'warning');
+      const reintento = await supabase
+        .from('jugadores')
+        .insert([jugadorObject])
+        .select();
+      jugadorData = reintento.data;
+      jugadorError = reintento.error;
+    }
 
     if (jugadorError) {
       throw jugadorError;
@@ -15334,25 +16972,51 @@ const initApp = () => {
 
     const jugadorId = jugadorData[0].id;
     await asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria);
+
+    if (fotoArchivo) {
+      try {
+        const fotoSubidaUrl = await subirYGuardarFotoPerfilJugador(jugadorId, fotoArchivo);
+        if (fotoSubidaUrl && jugadorData[0]) jugadorData[0].foto_url = fotoSubidaUrl;
+      } catch (error) {
+        console.error('Error al subir foto de perfil:', error);
+        showToast(`Jugador guardado, pero no se pudo subir la foto: ${error.message}`, 'warning');
+      }
+    }
   }
 
-  // FunciÃ³n para editar un jugador existente
-  async function editarJugador(jugadorId, nombre, posicionPrimaria, posicionSecundaria, pulmon = null) {
+  // Función para editar un jugador existente
+  async function editarJugador(jugadorId, nombre, posicionPrimaria, posicionSecundaria, pulmon = null, fotoUrl = '', fotoArchivo = null) {
     // Verificar permisos de administrador
     if (!verificarPermisosAdmin('editar un jugador')) {
         return;
     }
+
+    validarArchivoFotoPerfil(fotoArchivo);
 
     // Actualizar nombre del jugador
     const updateObject = { nombre: nombre };
     if (pulmon !== null) {
       updateObject.pulmon = pulmon;
     }
+    if (!fotoArchivo && (fotoPerfilJugadoresDisponible || fotoUrl)) {
+      updateObject.foto_url = fotoUrl || null;
+    }
 
-    const { error: jugadorError } = await supabase
+    let { error: jugadorError } = await supabase
       .from('jugadores')
       .update(updateObject)
       .eq('id', jugadorId);
+
+    if (jugadorError && esErrorColumnaFotoPerfilFaltante(jugadorError) && 'foto_url' in updateObject) {
+      fotoPerfilJugadoresDisponible = false;
+      delete updateObject.foto_url;
+      showToast('Para guardar fotos de perfil falta ejecutar el SQL de foto_url. Los otros datos se guardan sin cambiar la foto.', 'warning');
+      const reintento = await supabase
+        .from('jugadores')
+        .update(updateObject)
+        .eq('id', jugadorId);
+      jugadorError = reintento.error;
+    }
 
     if (jugadorError) {
       throw jugadorError;
@@ -15370,6 +17034,17 @@ const initApp = () => {
 
     // Asignar nuevas posiciones
     await asignarPosicionesJugador(jugadorId, posicionPrimaria, posicionSecundaria);
+
+    if (fotoArchivo) {
+      try {
+        const fotoSubidaUrl = await subirYGuardarFotoPerfilJugador(jugadorId, fotoArchivo);
+        const jugadorLocal = todosLosJugadores.find(jugador => String(jugador.id) === String(jugadorId));
+        if (jugadorLocal && fotoSubidaUrl) jugadorLocal.foto_url = fotoSubidaUrl;
+      } catch (error) {
+        console.error('Error al subir foto de perfil:', error);
+        showToast(`Datos guardados, pero no se pudo subir la foto: ${error.message}`, 'warning');
+      }
+    }
   }
 
   // FunciÃ³n auxiliar para asignar posiciones a un jugador
@@ -15410,7 +17085,37 @@ const initApp = () => {
 
 
 
-  // --- FunciÃ³n para cargar historial de partidos ---
+  async function anexarReviewEventosHistorial(partidos = []) {
+    const partidoIds = partidos.map(partido => partido.id).filter(Boolean);
+    if (!partidoIds.length) return;
+
+    const { data, error } = await supabase
+      .from('review_eventos')
+      .select('id, partido_id, jugador_id, tipo, cantidad, minuto_partido, review_segundos, metadata')
+      .in('partido_id', partidoIds);
+
+    if (error) {
+      if (esErrorTablaFaltante(error, 'review_eventos')) {
+        console.warn('La tabla review_eventos no existe; el historial usa las estadisticas tradicionales.');
+        return;
+      }
+      console.warn('No se pudieron cargar eventos de review para el historial:', error);
+      return;
+    }
+
+    const eventosPorPartido = new Map();
+    (data || []).forEach(evento => {
+      const key = String(evento.partido_id);
+      if (!eventosPorPartido.has(key)) eventosPorPartido.set(key, []);
+      eventosPorPartido.get(key).push(evento);
+    });
+
+    partidos.forEach(partido => {
+      partido.review_eventos = eventosPorPartido.get(String(partido.id)) || [];
+    });
+  }
+
+  // --- Función para cargar historial de partidos ---
   async function cargarHistorialPartidos() {
     const container = document.getElementById('historial-partidos-container');
     if (!container) {
@@ -15474,9 +17179,11 @@ const initApp = () => {
             id,
             goleador_id,
             asistidor_id,
+            cagada_jugador_id,
             equipo,
             minuto,
-            es_gol_en_contra
+            es_gol_en_contra,
+            review_segundos
           )
         `);
 
@@ -15509,7 +17216,9 @@ const initApp = () => {
         return;
       }
 
-      // Obtener IDs Ãºnicos de jugadores para buscar sus nombres
+      await anexarReviewEventosHistorial(partidos);
+
+      // Obtener IDs únicos de jugadores para buscar sus nombres
       const jugadorIds = new Set();
       partidos.forEach(partido => {
         partido.goles?.forEach(gol => {
@@ -16006,8 +17715,28 @@ const initApp = () => {
       const mvpData = partido.jugador_partido?.find(jp => jp.mvp);
       const aceData = partido.jugador_partido?.find(jp => jp.ace);
 
-      // Calcular estadÃ­sticas totales
-      const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.cagadas || 0), 0) || 0;
+      const obtenerCantidadReviewEventoJugador = (tipo, jugadorId) => {
+        return (partido.review_eventos || [])
+          .filter(evento => evento.tipo === tipo && String(evento.jugador_id || '') === String(jugadorId || ''))
+          .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
+      };
+
+      const contarCagadasGolDesdeMetadataReview = (jugadorId) => {
+        return (partido.review_eventos || [])
+          .filter(evento => evento.tipo === 'gol' && String(evento.metadata?.cagada_jugador_id || evento.metadata?.cagada_id || '') === String(jugadorId || ''))
+          .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
+      };
+
+      const obtenerCagadasJugadorPartido = (jp) => {
+        const cagadasViejas = Number(jp.cagadas) || 0;
+        const cagadasGolReview = obtenerCantidadReviewEventoJugador('cagada_gol', jp.jugador_id);
+        const cagadasGolMetadata = cagadasGolReview > 0 ? 0 : contarCagadasGolDesdeMetadataReview(jp.jugador_id);
+        const cagadasSueltasReview = cagadasViejas > 0 ? 0 : obtenerCantidadReviewEventoJugador('cagada', jp.jugador_id);
+        return cagadasViejas + cagadasGolReview + cagadasGolMetadata + cagadasSueltasReview;
+      };
+
+      // Calcular estadísticas totales
+      const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + obtenerCagadasJugadorPartido(jp), 0) || 0;
       const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
       const promedioAtajadasJugador = (partido.jugador_partido && partido.jugador_partido.length)
         ? totalAtajadas / partido.jugador_partido.length
@@ -16030,13 +17759,14 @@ const initApp = () => {
 
         const golesJugador = golesDelJugador.length;
         const asistenciasJugador = asistenciasDelJugador.length;
+        const cagadasJugador = obtenerCagadasJugadorPartido(jp);
 
         let skill = calcularSkillPartido({
           goles: golesJugador,
           asistencias: asistenciasJugador,
           mvp: jp.mvp ? 1 : 0,
           ace: jp.ace ? 1 : 0,
-          cagadas: jp.cagadas || 0,
+          cagadas: cagadasJugador,
           puntos: jp.puntos || 0,
           atajadas: jp.atajadas || 0
         });
@@ -16057,7 +17787,7 @@ const initApp = () => {
           else if (skill < skillEsperado - UMBRAL_TENDENCIA_SKILL) tendencia = 'â†“';
         }
 
-        const dataJugador = { golesJugador, asistenciasJugador, golesDelJugador, asistenciasDelJugador, skill, tendencia };
+        const dataJugador = { golesJugador, asistenciasJugador, golesDelJugador, asistenciasDelJugador, cagadasJugador, skill, tendencia };
         statsJugadorCache.set(jp.jugador_id, dataJugador);
         return dataJugador;
       };
@@ -16066,22 +17796,45 @@ const initApp = () => {
       const promedioSkill = skillValoresPartido.length
         ? skillValoresPartido.reduce((acc, val) => acc + val, 0) / skillValoresPartido.length
         : 0;
+      const skillMinPartido = skillValoresPartido.length ? Math.min(...skillValoresPartido) : 0;
+      const skillMaxPartido = skillValoresPartido.length ? Math.max(...skillValoresPartido) : 0;
+      const rangoSkillPartido = skillMaxPartido - skillMinPartido;
+
+      const normalizarPuntajePartido = (skill) => {
+        if (!Number.isFinite(skill)) return null;
+        if (rangoSkillPartido <= 0.001) return 5.5;
+        return Math.max(1, Math.min(10, 1 + ((skill - skillMinPartido) / rangoSkillPartido) * 9));
+      };
+
+      const obtenerClasePuntajeHistorial = (puntaje) => {
+        if (!Number.isFinite(puntaje)) return 'is-neutral';
+        if (puntaje >= 8) return 'is-elite';
+        if (puntaje >= 6.5) return 'is-high';
+        if (puntaje >= 4.5) return 'is-mid';
+        if (puntaje >= 3) return 'is-low';
+        return 'is-poor';
+      };
 
       const skillEquipo = (jugadores) => {
         if (!jugadores || jugadores.length === 0) return 0;
-        const total = jugadores.reduce((sum, jp) => sum + (obtenerStatsJugadorPartido(jp).skill || 0), 0);
-        return total / jugadores.length;
+        const puntajes = jugadores
+          .map(jp => normalizarPuntajePartido(obtenerStatsJugadorPartido(jp).skill))
+          .filter(puntaje => Number.isFinite(puntaje));
+        if (!puntajes.length) return 0;
+        return puntajes.reduce((sum, puntaje) => sum + puntaje, 0) / puntajes.length;
       };
 
       const skillEquipo1 = skillEquipo(equipo1);
       const skillEquipo2 = skillEquipo(equipo2);
+      prepararLinksVideoHistorialPartido(partido);
       const youtubeReviewLink = obtenerLinkYouTubeReview(partido.youtube_link);
+      const youtubeEventosLink = youtubeReviewLink;
 
       html += `
         <div class="col-lg-6 col-md-12">
           <div class="glass-effect rounded-3 p-4 h-100 border-top border-3 ${colorCard} partido-card" data-partido-id="${partido.id}">
             <!-- Header del partido -->
-            <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex justify-content-between align-items-start mb-3 historial-match-header">
               <div>
                 <h5 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
                   ${iconoResultado} Partido #${partidos.length - index}
@@ -16095,8 +17848,8 @@ const initApp = () => {
                 </div>
                 ${partido.temporadas ? `<div class="badge bg-info mt-2">${partido.temporadas.nombre}</div>` : ''}
               </div>
-              <div class="text-end">
-                <div class="d-flex align-items-center gap-2 mb-2">
+              <div class="text-end historial-match-actions">
+                <div class="d-flex align-items-center gap-2 mb-2 historial-match-action-row">
                   <div class="badge bg-primary fs-5 px-3 py-2">
                     ${golesEquipo1} - ${golesEquipo2}
                   </div>
@@ -16105,13 +17858,18 @@ const initApp = () => {
                       <i class="bi bi-camera-video"></i>
                     </a>
                   ` : ''}
+                  ${partido.compilado_youtube_link ? `
+                    <a href="${obtenerLinkYouTubeReview(partido.compilado_youtube_link)}" target="_blank" class="btn btn-sm btn-outline-success" title="Ver compilado en YouTube">
+                      <i class="bi bi-youtube"></i>
+                    </a>
+                  ` : ''}
                   ${partido.youtube_link ? `
                     <button onclick="mostrarCompiladoPartido('${partido.id}')" class="btn btn-sm btn-outline-success" title="Ver compilado">
                       <i class="bi bi-scissors"></i>
                     </button>
                   ` : ''}
                   ${esAdmin ? `
-                    <button onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-info" title="Editar link de review">
+                    <button onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}', '${(partido.compilado_youtube_link || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-info" title="Editar links de video">
                       <i class="bi bi-camera-video"></i>
                     </button>
                     <button onclick="console.log('ðŸ–±ï¸ CLICK detectado en botÃ³n editar'); editarPartido('${partido.id}')" class="btn btn-sm btn-outline-warning" title="Editar partido completo">
@@ -16127,84 +17885,140 @@ const initApp = () => {
             </div>
 
             <!-- Equipos -->
-            <div class="row g-3 mb-3">
-              <div class="col-6">
-                <div class="bg-primary bg-opacity-10 rounded-2 p-2">
-                  <h6 class="text-primary fw-bold mb-2 small">ðŸ”µ Equipo 1 (${equipo1.length}) â€” Skill ${skillEquipo1.toFixed(1)}</h6>
-                  <div class="text-white small">
+            <div class="row g-3 mb-3 historial-match-teams">
+              <div class="col-lg-6">
+                <div class="historial-team-panel is-team-1">
+                  <div class="historial-team-header">
+                    <div class="historial-team-title">
+                      <span class="historial-team-dot"></span>
+                      <span>Equipo 1</span>
+                      <span class="historial-team-count">${equipo1.length}</span>
+                    </div>
+                    <div class="historial-team-score">
+                      <span>Prom.</span>
+                      <strong>${skillEquipo1.toFixed(1)}</strong>
+                      <span>/10</span>
+                    </div>
+                  </div>
+                  <div class="historial-player-list">
                     ${equipo1.map(jp => {
-                      const { golesDelJugador, asistenciasDelJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+                      const { golesDelJugador, asistenciasDelJugador, cagadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+                      const puntaje = normalizarPuntajePartido(skill);
+                      const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
+                      const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
+                      const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
 
                       const stats = [];
                       if (golesDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(golesDelJugador, youtubeReviewLink, 'gol'));
+                        stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
                       }
                       if (asistenciasDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeReviewLink, 'asistencia'));
+                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
                       }
-                      if (jp.atajadas > 0) stats.push(`ðŸ¥…${jp.atajadas}`);
-                      if (jp.cagadas > 0) stats.push(`ðŸ’¥${jp.cagadas}`);
-                      const iconoTendencia = tendencia === 'â†‘' ? 'â†‘' : (tendencia === 'â†“' ? 'â†“' : '=');
-                      const skillLabel = Number.isFinite(skill)
-                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
+                      if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
+                      if (cagadasJugador > 0) {
+                        const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
+                        stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
+                      }
+                      const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
+                      const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
+                      const puntajeLabel = Number.isFinite(puntaje)
+                        ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
+                            <span class="historial-rating-value">${puntajeTexto}</span>
+                            <span class="historial-rating-max">/10</span>
+                            <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
+                          </div>`
                         : '';
 
                       return `
-                        <div class="mb-1 d-flex justify-content-between align-items-center">
-                          <span>
+                        <div class="historial-player-row">
+                          <div class="historial-player-main">
                             ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
-                            ${skillLabel}
-                            <button class="btn btn-sm btn-outline-warning ms-2"
+                            ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
+                          </div>
+                          <div class="historial-player-score">
+                            ${puntajeLabel}
+                            <div class="historial-rating-bar ${puntajeClase}" aria-hidden="true">
+                              <span style="width:${puntajeAncho}%"></span>
+                            </div>
+                          </div>
+                          <button class="historial-coin-btn"
                                     title="Forzar pase en Mundialito"
                                     onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
-                              ðŸª™
-                            </button>
-                          </span>
-                          ${stats.length > 0 ? `<span class="text-light-emphasis small">${stats.join(' ')}</span>` : ''}
+                            <i class="bi bi-coin"></i>
+                          </button>
                         </div>
                       `;
                     }).join('')}
-                    ${equipo1.length === 0 ? '<div class="text-muted">Sin jugadores registrados</div>' : ''}
+                    ${equipo1.length === 0 ? '<div class="historial-team-empty">Sin jugadores registrados</div>' : ''}
                   </div>
                 </div>
               </div>
-              <div class="col-6">
-                <div class="bg-danger bg-opacity-10 rounded-2 p-2">
-                  <h6 class="text-danger fw-bold mb-2 small">ðŸ”´ Equipo 2 (${equipo2.length}) â€” Skill ${skillEquipo2.toFixed(1)}</h6>
-                  <div class="text-white small">
+              <div class="col-lg-6">
+                <div class="historial-team-panel is-team-2">
+                  <div class="historial-team-header">
+                    <div class="historial-team-title">
+                      <span class="historial-team-dot"></span>
+                      <span>Equipo 2</span>
+                      <span class="historial-team-count">${equipo2.length}</span>
+                    </div>
+                    <div class="historial-team-score">
+                      <span>Prom.</span>
+                      <strong>${skillEquipo2.toFixed(1)}</strong>
+                      <span>/10</span>
+                    </div>
+                  </div>
+                  <div class="historial-player-list">
                     ${equipo2.map(jp => {
-                      const { golesDelJugador, asistenciasDelJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+                      const { golesDelJugador, asistenciasDelJugador, cagadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+                      const puntaje = normalizarPuntajePartido(skill);
+                      const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
+                      const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
+                      const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
 
                       const stats = [];
                       if (golesDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(golesDelJugador, youtubeReviewLink, 'gol'));
+                        stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
                       }
                       if (asistenciasDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeReviewLink, 'asistencia'));
+                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
                       }
-                      if (jp.atajadas > 0) stats.push(`ðŸ¥…${jp.atajadas}`);
-                      if (jp.cagadas > 0) stats.push(`ðŸ’¥${jp.cagadas}`);
-                      const iconoTendencia = tendencia === 'â†‘' ? 'â†‘' : (tendencia === 'â†“' ? 'â†“' : '=');
-                      const skillLabel = Number.isFinite(skill)
-                        ? `<span class="ms-1 ${skill >= promedioSkill ? 'text-success' : 'text-danger'}">${skill.toFixed(1)} ${iconoTendencia}</span>`
+                      if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
+                      if (cagadasJugador > 0) {
+                        const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
+                        stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
+                      }
+                      const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
+                      const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
+                      const puntajeLabel = Number.isFinite(puntaje)
+                        ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
+                            <span class="historial-rating-value">${puntajeTexto}</span>
+                            <span class="historial-rating-max">/10</span>
+                            <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
+                          </div>`
                         : '';
 
                       return `
-                        <div class="mb-1 d-flex justify-content-between align-items-center">
-                          <span>
+                        <div class="historial-player-row">
+                          <div class="historial-player-main">
                             ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
-                            ${skillLabel}
-                            <button class="btn btn-sm btn-outline-warning ms-2"
+                            ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
+                          </div>
+                          <div class="historial-player-score">
+                            ${puntajeLabel}
+                            <div class="historial-rating-bar ${puntajeClase}" aria-hidden="true">
+                              <span style="width:${puntajeAncho}%"></span>
+                            </div>
+                          </div>
+                          <button class="historial-coin-btn"
                                     title="Forzar pase en Mundialito"
                                     onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
-                              ðŸª™
-                            </button>
-                          </span>
-                          ${stats.length > 0 ? `<span class="text-light-emphasis small">${stats.join(' ')}</span>` : ''}
+                            <i class="bi bi-coin"></i>
+                          </button>
                         </div>
                       `;
                     }).join('')}
-                    ${equipo2.length === 0 ? '<div class="text-muted">Sin jugadores registrados</div>' : ''}
+                    ${equipo2.length === 0 ? '<div class="historial-team-empty">Sin jugadores registrados</div>' : ''}
                   </div>
                 </div>
               </div>
@@ -18243,7 +20057,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       return;
     }
 
-    let opcionesCompilado = { atajadasMinimas: 3 };
+    const compiladoYoutubeGuardado = obtenerLinkYouTubeReview(partido?.compilado_youtube_link) || '';
+    let opcionesCompilado = { atajadasMinimas: 3, youtubeCompiladoLink: compiladoYoutubeGuardado };
     let clips = construirClipsCompiladoDesdeEventos(reviewEventos, opcionesCompilado);
     let duracionTotal = clips.reduce((acc, clip) => acc + clip.duracion, 0);
     const linkPartido = normalizarReviewUrl(partido?.youtube_link) || '';
@@ -18284,8 +20099,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             <input type="text" id="compilado-modal-cover-equipo2" class="form-control form-control-sm text-uppercase" maxlength="3" value="E2" placeholder="FAC" style="width: 76px;">
           </div>
         </div>
+        <input type="url" id="compilado-modal-youtube-link" class="form-control form-control-sm mb-2" placeholder="Link de YouTube del compilado (opcional)" value="${escaparAtributoHtml(compiladoYoutubeGuardado)}">
         <input type="file" id="compilado-modal-video" class="form-control form-control-sm mb-2" accept="video/*">
         <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="compilado-modal-save-link" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-save me-1"></i>Guardar link
+          </button>
           <button type="button" id="compilado-modal-export" class="btn btn-outline-light btn-sm" ${clips.length ? '' : 'disabled'}>
             <i class="bi bi-download me-1"></i>Cortes JSON
           </button>
@@ -18305,14 +20124,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
     const exportBtn = document.getElementById('compilado-modal-export');
     const coverBtn = document.getElementById('compilado-modal-cover');
+    const saveLinkBtn = document.getElementById('compilado-modal-save-link');
     const buildBeelupBtn = document.getElementById('compilado-modal-build-beelup');
     const buildBtn = document.getElementById('compilado-modal-build');
     const fileInput = document.getElementById('compilado-modal-video');
     const statusEl = document.getElementById('compilado-modal-status');
     const nombreBase = `compilado-t5-${partido?.fecha || partidoId}`;
     vincularInputsSiglasPortada('compilado-modal-cover');
+    const obtenerOpcionesCompiladoModal = () => ({
+      atajadasMinimas: obtenerUmbralAtajadasCompilado('compilado-modal-atajadas-min'),
+      youtubeCompiladoLink: obtenerLinkYouTubeReview(document.getElementById('compilado-modal-youtube-link')?.value) || ''
+    });
     const actualizarClipsModal = () => {
-      opcionesCompilado = { atajadasMinimas: obtenerUmbralAtajadasCompilado('compilado-modal-atajadas-min') };
+      opcionesCompilado = obtenerOpcionesCompiladoModal();
       clips = construirClipsCompiladoDesdeEventos(reviewEventos, opcionesCompilado);
       duracionTotal = clips.reduce((acc, clip) => acc + clip.duracion, 0);
 
@@ -18329,6 +20153,30 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     };
 
     document.getElementById('compilado-modal-atajadas-min')?.addEventListener('change', actualizarClipsModal);
+    document.getElementById('compilado-modal-youtube-link')?.addEventListener('input', actualizarClipsModal);
+
+    saveLinkBtn?.addEventListener('click', async () => {
+      const input = document.getElementById('compilado-modal-youtube-link');
+      const raw = input?.value.trim() || '';
+      const link = raw ? obtenerLinkYouTubeReview(raw) : null;
+      if (raw && !link) {
+        showToast('El link del compilado debe ser de YouTube.', 'warning');
+        return;
+      }
+      saveLinkBtn.disabled = true;
+      try {
+        const errorGuardar = await actualizarPartidoConFallbackColumnas(partidoId, { compilado_youtube_link: link }, ['compilado_youtube_link']);
+        if (errorGuardar) throw new Error(errorGuardar.message || 'No se pudo guardar el link del compilado.');
+        if (partido) partido.compilado_youtube_link = link;
+        showToast(link ? 'Link de compilado guardado.' : 'Link de compilado eliminado.', 'success');
+        cargarHistorialPartidos();
+      } catch (errorGuardar) {
+        console.error('Error guardando link de compilado:', errorGuardar);
+        showToast(`Error al guardar el link: ${errorGuardar.message}`, 'error');
+      } finally {
+        saveLinkBtn.disabled = false;
+      }
+    });
 
     exportBtn?.addEventListener('click', () => {
       descargarJsonCompilado(clips, nombreBase, reviewLink, opcionesCompilado);
@@ -18375,7 +20223,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (!partido) return;
 
     const goles = partido.goles || [];
-    const youtubeLink = obtenerLinkYouTubeReview(partido.youtube_link) || null;
+    prepararLinksVideoHistorialPartido(partido);
+    const youtubeLink = partido._historial_video_link || obtenerLinkYouTubeReview(partido.youtube_link) || null;
+    const hayVideoGoles = !!youtubeLink || goles.some(gol => !!obtenerLinkYouTubeReview(gol.video_link));
 
     // Calcular marcador
     let golesEq1 = 0, golesEq2 = 0;
@@ -18467,13 +20317,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
         // Boton de video
         let videoBtn = '';
-        if (youtubeLink && gol.minuto !== null && gol.minuto !== undefined) {
-          const videoId = extraerVideoId(youtubeLink);
-          const segundos = Math.round(gol.minuto * 60);
+        const linkGolVideo = obtenerLinkYouTubeReview(gol.video_link) || youtubeLink;
+        if (linkGolVideo && gol.minuto !== null && gol.minuto !== undefined) {
+          const videoId = extraerVideoId(linkGolVideo);
+          const videoOrigen = gol.video_origen === 'compilado' ? 'compilado' : 'review';
+          const segundos = Number.isFinite(Number(gol.video_segundos))
+            ? Math.max(0, Math.round(Number(gol.video_segundos)))
+            : Math.round(gol.minuto * 60);
           if (videoId) {
             videoBtn = `<br><button class="btn btn-sm btn-outline-danger mt-1 btn-play-gol"
               data-video-id="${videoId}" data-start="${segundos}">
-              <i class="bi bi-play-fill"></i> Ver
+              <i class="bi bi-play-fill"></i> Ver ${videoOrigen}
             </button>`;
           }
         }
@@ -18516,7 +20370,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       html += `</div>`;
 
       // Video player
-      if (youtubeLink) {
+      if (hayVideoGoles) {
         html += `
           <div id="gol-video-player" class="mt-4 d-none">
             <div class="ratio ratio-16x9">
@@ -18732,6 +20586,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       document.getElementById('editar-cancha').value = partido.cancha || '';
       document.getElementById('editar-temporada').value = partido.temporada_id || '';
       document.getElementById('editar-youtube-link').value = obtenerLinkYouTubeReview(partido.youtube_link) || '';
+      document.getElementById('editar-compilado-youtube-link').value = obtenerLinkYouTubeReview(partido.compilado_youtube_link) || '';
 
       // Separar jugadores por equipo
       const jugadoresEquipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
@@ -19077,7 +20932,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   }
 
   // Funcion para editar solo el link de review de un partido
-  window.editarYouTubeLink = async function(partidoId, linkActual = '') {
+  window.editarYouTubeLink = async function(partidoId, linkActual = '', compiladoActual = '') {
     // Verificar permisos de administrador
     if (!verificarPermisosAdmin('editar el link de review')) {
         return;
@@ -19087,6 +20942,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       console.log('ðŸ“¹ Editando link de review para partido:', partidoId);
       // Pre-llenar el modal con el link actual
       document.getElementById('youtube-link-editar').value = obtenerLinkYouTubeReview(linkActual) || '';
+      document.getElementById('compilado-youtube-link-editar').value = obtenerLinkYouTubeReview(compiladoActual) || '';
 
       // Almacenar el ID del partido que se estÃ¡ editando
       window.partidoYouTubeEditandoId = partidoId;
@@ -19111,9 +20967,16 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     try {
       const youtubeLinkInput = document.getElementById('youtube-link-editar').value.trim();
       const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
+      const compiladoYoutubeInput = document.getElementById('compilado-youtube-link-editar')?.value.trim() || '';
+      const compilado_youtube_link = compiladoYoutubeInput ? obtenerLinkYouTubeReview(compiladoYoutubeInput) : null;
 
       if (youtubeLinkInput && !youtube_link) {
         showToast('El link de review para Historial debe ser de YouTube.', 'warning');
+        return;
+      }
+
+      if (compiladoYoutubeInput && !compilado_youtube_link) {
+        showToast('El link del compilado debe ser de YouTube.', 'warning');
         return;
       }
 
@@ -19123,20 +20986,24 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       btn.disabled = true;
       btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Guardando...';
 
-      // Actualizar solo el link de review en la base de datos
-      const { error } = await supabase
-        .from('partidos')
-        .update({ youtube_link: youtube_link })
-        .eq('id', window.partidoYouTubeEditandoId);
+      // Actualizar links de video en la base de datos
+      const error = await actualizarPartidoConFallbackColumnas(
+        window.partidoYouTubeEditandoId,
+        {
+          youtube_link: youtube_link,
+          compilado_youtube_link: compilado_youtube_link
+        },
+        ['compilado_youtube_link']
+      );
 
       if (error) {
         console.error('Error al actualizar link de review:', error);
         throw new Error(`Error al actualizar el link: ${error.message}`);
       }
 
-      // Ã‰xito
-      if (youtube_link) {
-        showToast('ðŸ“¹ Link de review actualizado exitosamente', 'success');
+      // Éxito
+      if (youtube_link || compilado_youtube_link) {
+        showToast('📹 Link de review actualizado exitosamente', 'success');
       } else {
         showToast('ðŸ—‘ï¸ Link de review eliminado exitosamente', 'success');
       }
@@ -19175,6 +21042,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const temporada_id = document.getElementById('editar-temporada').value || null;
       const youtubeLinkInput = document.getElementById('editar-youtube-link').value.trim();
       const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
+      const compiladoYoutubeInput = document.getElementById('editar-compilado-youtube-link')?.value.trim() || '';
+      const compilado_youtube_link = compiladoYoutubeInput ? obtenerLinkYouTubeReview(compiladoYoutubeInput) : null;
 
       if (!fecha) {
         showToast('La fecha es obligatoria', 'warning');
@@ -19186,6 +21055,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         return;
       }
 
+      if (compiladoYoutubeInput && !compilado_youtube_link) {
+        showToast('El link del compilado debe ser de YouTube.', 'warning');
+        return;
+      }
+
       // Mostrar loading
       const btn = document.getElementById('btn-guardar-cambios');
       const textoOriginal = btn.innerHTML;
@@ -19193,15 +21067,17 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Guardando...';
 
       // Actualizar partido en la base de datos
-      const { error } = await supabase
-        .from('partidos')
-        .update({
+      const error = await actualizarPartidoConFallbackColumnas(
+        window.partidoEditandoId,
+        {
           fecha: fecha,
           cancha: cancha,
           temporada_id: temporada_id,
-          youtube_link: youtube_link
-        })
-        .eq('id', window.partidoEditandoId);
+          youtube_link: youtube_link,
+          compilado_youtube_link: compilado_youtube_link
+        },
+        ['compilado_youtube_link']
+      );
 
       if (error) {
         console.error('Error al actualizar partido:', error);
@@ -19251,6 +21127,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const cargaInicialJugadores = cargarTodosLosJugadores();
   inicializarPosiciones();
   configurarFiltroPartidos();
+  configurarPreviewFotoFormulario();
   initReviewSandbox();
   initializeSearchableSelects(document);
 
@@ -19389,7 +21266,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   }
 
   // Event listeners para el formulario de jugadores
-  if (playerForm) {
+  if (playerForm && !playerForm.dataset.playerSubmitBound) {
+    playerForm.dataset.playerSubmitBound = '1';
     playerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -19397,6 +21275,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const posicionPrimaria = document.getElementById('posicion-primaria').value;
       const posicionSecundaria = document.getElementById('posicion-secundaria').value;
       const pulmon = document.getElementById('pulmon').value;
+      const fotoUrl = normalizarUrlFotoJugador(document.getElementById('foto-url')?.value || '');
+      const fotoArchivo = obtenerArchivoFotoFormulario();
 
       if (!nombre) {
         showToast('El nombre del jugador es obligatorio', 'error');
@@ -19410,12 +21290,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       try {
         if (jugadorEditando) {
-          // Modo ediciÃ³n
-          await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria, pulmon);
+          // Modo edición
+          await editarJugador(jugadorEditando.id, nombre, posicionPrimaria, posicionSecundaria, pulmon, fotoUrl, fotoArchivo);
           showToast(`${nombre} ha sido actualizado exitosamente`, 'success');
         } else {
           // Modo agregar
-          await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon);
+          await agregarJugador(nombre, posicionPrimaria, posicionSecundaria, pulmon, fotoUrl, fotoArchivo);
           showToast(`${nombre} ha sido agregado exitosamente`, 'success');
         }
 

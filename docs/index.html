@@ -468,6 +468,120 @@
         line-height: 1.15 !important;
       }
 
+      .player-profile-link {
+        align-items: center !important;
+        display: inline-flex !important;
+        gap: 0.4rem;
+        line-height: 1.1;
+        max-width: 100%;
+        min-width: 0;
+        text-align: left;
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+
+      .player-profile-name {
+        display: inline-block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+      }
+
+      .player-avatar {
+        --player-avatar-size: 28px;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.22), rgba(250, 204, 21, 0.2));
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        color: #f8fafc;
+        display: inline-flex;
+        flex: 0 0 var(--player-avatar-size);
+        height: var(--player-avatar-size);
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+        width: var(--player-avatar-size);
+      }
+
+      .player-avatar-xs {
+        --player-avatar-size: 30px;
+        font-size: 0.72rem;
+      }
+
+      .player-avatar-sm {
+        --player-avatar-size: 28px;
+        font-size: 0.72rem;
+      }
+
+      .player-avatar-md {
+        --player-avatar-size: 38px;
+        font-size: 0.88rem;
+      }
+
+      .player-avatar-lg {
+        --player-avatar-size: 72px;
+        font-size: 1.25rem;
+      }
+
+      .player-avatar img {
+        display: none;
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .player-avatar.has-photo img {
+        display: block;
+      }
+
+      .player-avatar.has-photo .player-avatar-fallback {
+        display: none;
+      }
+
+      .player-avatar-fallback {
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .player-photo-uploader {
+        align-items: center;
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .player-photo-preview {
+        --player-photo-preview-size: 72px;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.22), rgba(250, 204, 21, 0.18));
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        color: rgba(248, 250, 252, 0.88);
+        display: inline-flex;
+        flex: 0 0 var(--player-photo-preview-size);
+        height: var(--player-photo-preview-size);
+        justify-content: center;
+        overflow: hidden;
+        width: var(--player-photo-preview-size);
+      }
+
+      .player-photo-preview img {
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .player-photo-preview i {
+        font-size: 1.8rem;
+      }
+
+      @media (max-width: 575px) {
+        .player-photo-uploader {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .table.stats-table .position-badge {
         font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
         font-variant-numeric: tabular-nums;
@@ -673,7 +787,8 @@
       }
 
       .review-player-frame:fullscreen,
-      .review-player-frame:-webkit-full-screen {
+      .review-player-frame:-webkit-full-screen,
+      .review-player-frame.is-review-fullscreen {
         aspect-ratio: auto;
         background: #000;
         border: 0;
@@ -686,21 +801,25 @@
       .review-player-frame:fullscreen iframe,
       .review-player-frame:fullscreen video,
       .review-player-frame:-webkit-full-screen iframe,
-      .review-player-frame:-webkit-full-screen video {
+      .review-player-frame:-webkit-full-screen video,
+      .review-player-frame.is-review-fullscreen iframe,
+      .review-player-frame.is-review-fullscreen video {
         height: 100%;
         object-fit: contain;
         width: 100%;
       }
 
       .review-player-frame:fullscreen .review-player-broadcast-overlay,
-      .review-player-frame:-webkit-full-screen .review-player-broadcast-overlay {
+      .review-player-frame:-webkit-full-screen .review-player-broadcast-overlay,
+      .review-player-frame.is-review-fullscreen .review-player-broadcast-overlay {
         left: 1rem;
         top: 1rem;
         z-index: 20;
       }
 
       .review-player-frame:fullscreen .review-scorebug-show,
-      .review-player-frame:-webkit-full-screen .review-scorebug-show {
+      .review-player-frame:-webkit-full-screen .review-scorebug-show,
+      .review-player-frame.is-review-fullscreen .review-scorebug-show {
         left: 1rem;
         top: 1rem;
         z-index: 20;
@@ -915,6 +1034,96 @@
       .review-clip-meta {
         color: rgba(226, 232, 240, 0.72);
         font-size: 0.78rem;
+      }
+
+      .review-personal-summary {
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 8px;
+        margin-top: 0.85rem;
+        padding: 0.8rem;
+      }
+
+      .review-personal-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .review-personal-team {
+        min-width: 0;
+      }
+
+      .review-personal-team-title {
+        align-items: center;
+        color: rgba(226, 232, 240, 0.86);
+        display: flex;
+        font-size: 0.74rem;
+        font-weight: 900;
+        gap: 0.4rem;
+        letter-spacing: 0;
+        margin-bottom: 0.42rem;
+        text-transform: uppercase;
+      }
+
+      .review-personal-team-title::before {
+        border-radius: 999px;
+        content: "";
+        height: 0.48rem;
+        width: 0.48rem;
+      }
+
+      .review-personal-team.is-team-1 .review-personal-team-title::before {
+        background: #60a5fa;
+      }
+
+      .review-personal-team.is-team-2 .review-personal-team-title::before {
+        background: #fb7185;
+      }
+
+      .review-personal-list {
+        display: grid;
+        gap: 0.38rem;
+      }
+
+      .review-personal-row {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: #e2e8f0;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: space-between;
+        min-width: 0;
+        padding: 0.48rem 0.55rem;
+      }
+
+      .review-personal-name {
+        color: #f8fafc;
+        font-size: 0.85rem;
+        font-weight: 800;
+        min-width: 0;
+      }
+
+      .review-personal-stats {
+        color: rgba(226, 232, 240, 0.82);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .review-personal-empty {
+        color: rgba(226, 232, 240, 0.48);
+        font-size: 0.78rem;
+        padding: 0.35rem 0;
+      }
+
+      @media (max-width: 768px) {
+        .review-personal-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       .review-score {
@@ -2329,6 +2538,245 @@
         transform: scale(1.1);
       }
 
+      .historial-team-panel {
+        background: rgba(15, 23, 42, 0.62);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 8px;
+        min-width: 0;
+        padding: 0.7rem;
+      }
+
+      .historial-team-panel.is-team-1 {
+        background: linear-gradient(180deg, rgba(37, 99, 235, 0.16), rgba(15, 23, 42, 0.62));
+        border-color: rgba(96, 165, 250, 0.18);
+      }
+
+      .historial-team-panel.is-team-2 {
+        background: linear-gradient(180deg, rgba(244, 63, 94, 0.14), rgba(15, 23, 42, 0.62));
+        border-color: rgba(251, 113, 133, 0.18);
+      }
+
+      .historial-team-header {
+        align-items: center;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: space-between;
+        margin-bottom: 0.55rem;
+      }
+
+      .historial-team-title {
+        align-items: center;
+        color: #f8fafc;
+        display: inline-flex;
+        font-size: 0.82rem;
+        font-weight: 900;
+        gap: 0.4rem;
+        min-width: 0;
+      }
+
+      .historial-team-dot {
+        border-radius: 999px;
+        flex: 0 0 0.55rem;
+        height: 0.55rem;
+        width: 0.55rem;
+      }
+
+      .is-team-1 .historial-team-dot {
+        background: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+      }
+
+      .is-team-2 .historial-team-dot {
+        background: #fb7185;
+        box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.16);
+      }
+
+      .historial-team-count {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        color: rgba(226, 232, 240, 0.8);
+        display: inline-flex;
+        font-size: 0.68rem;
+        height: 1.15rem;
+        justify-content: center;
+        min-width: 1.15rem;
+        padding: 0 0.35rem;
+      }
+
+      .historial-team-score {
+        align-items: baseline;
+        background: rgba(2, 6, 23, 0.48);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        color: rgba(226, 232, 240, 0.72);
+        display: inline-flex;
+        font-size: 0.68rem;
+        font-weight: 800;
+        gap: 0.22rem;
+        padding: 0.23rem 0.5rem;
+        white-space: nowrap;
+      }
+
+      .historial-team-score strong {
+        color: #f8fafc;
+        font-size: 0.95rem;
+        line-height: 1;
+      }
+
+      .historial-player-list {
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .historial-player-row {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.32);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.36rem;
+        grid-template-columns: minmax(0, 1fr) 66px 26px;
+        min-height: 42px;
+        padding: 0.38rem 0.45rem;
+      }
+
+      .historial-player-main {
+        min-width: 0;
+      }
+
+      .historial-player-main .player-profile-link {
+        max-width: 100%;
+      }
+
+      .historial-player-main .player-avatar-xs {
+        --player-avatar-size: 26px;
+      }
+
+      .historial-player-events {
+        color: rgba(226, 232, 240, 0.68);
+        font-size: 0.72rem;
+        line-height: 1.15;
+        margin-top: 0.18rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .historial-player-score {
+        min-width: 0;
+      }
+
+      .historial-rating {
+        align-items: baseline;
+        display: flex;
+        gap: 0.1rem;
+        justify-content: flex-end;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .historial-rating-value {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 1rem;
+        font-weight: 800;
+      }
+
+      .historial-rating-max {
+        color: rgba(226, 232, 240, 0.55);
+        font-size: 0.52rem;
+        font-weight: 800;
+      }
+
+      .historial-rating-trend {
+        font-size: 0.58rem;
+        font-weight: 900;
+      }
+
+      .historial-rating-trend.is-up { color: #22c55e; }
+      .historial-rating-trend.is-down { color: #ef4444; }
+      .historial-rating-trend.is-flat { color: rgba(226, 232, 240, 0.45); }
+
+      .historial-rating-bar {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        height: 4px;
+        margin-top: 0.22rem;
+        overflow: hidden;
+      }
+
+      .historial-rating-bar span {
+        border-radius: inherit;
+        display: block;
+        height: 100%;
+      }
+
+      .historial-rating.is-elite .historial-rating-value { color: #5eead4; }
+      .historial-rating.is-high .historial-rating-value { color: #22c55e; }
+      .historial-rating.is-mid .historial-rating-value { color: #facc15; }
+      .historial-rating.is-low .historial-rating-value { color: #fb923c; }
+      .historial-rating.is-poor .historial-rating-value { color: #f87171; }
+      .historial-rating.is-neutral .historial-rating-value { color: rgba(226, 232, 240, 0.72); }
+      .historial-rating-bar.is-elite span { background: #5eead4; }
+      .historial-rating-bar.is-high span { background: #22c55e; }
+      .historial-rating-bar.is-mid span { background: #facc15; }
+      .historial-rating-bar.is-low span { background: #fb923c; }
+      .historial-rating-bar.is-poor span { background: #f87171; }
+      .historial-rating-bar.is-neutral span { background: rgba(226, 232, 240, 0.72); }
+
+      .historial-coin-btn {
+        align-items: center;
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        border-radius: 7px;
+        color: #fbbf24;
+        display: inline-flex;
+        height: 26px;
+        justify-content: center;
+        padding: 0;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+        width: 26px;
+      }
+
+      .historial-coin-btn:hover {
+        background: rgba(245, 158, 11, 0.22);
+        border-color: rgba(245, 158, 11, 0.62);
+        transform: translateY(-1px);
+      }
+
+      .historial-team-empty {
+        color: rgba(226, 232, 240, 0.48);
+        font-size: 0.82rem;
+        padding: 0.45rem;
+      }
+
+      @media (max-width: 575px) {
+        .partido-card .historial-match-header {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .partido-card .historial-match-actions {
+          text-align: left !important;
+          width: 100%;
+        }
+
+        .partido-card .historial-match-action-row {
+          flex-wrap: wrap;
+          justify-content: flex-start;
+        }
+
+        .historial-player-row {
+          grid-template-columns: minmax(0, 1fr) 62px 26px;
+          gap: 0.4rem;
+        }
+
+        .historial-player-events {
+          white-space: normal;
+        }
+      }
+
       /* Estilos para tooltips de skill */
       .skill-tooltip {
         font-size: 0.85rem !important;
@@ -3403,6 +3851,14 @@
                 <video id="review-player-video" class="d-none" controls controlsList="nofullscreen" playsinline></video>
               </div>
 
+              <div class="review-personal-summary">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h3 class="review-section-title mb-0"><i class="bi bi-person-lines-fill text-warning"></i>Estadisticas personales</h3>
+                  <span class="badge bg-secondary" id="review-personal-count">0</span>
+                </div>
+                <div id="review-personal-stats-list" class="review-personal-grid"></div>
+              </div>
+
             </div>
 
             <div class="review-control-panel enhanced-card rounded-3 p-3">
@@ -3439,13 +3895,22 @@
                   <div class="col-md-4 d-flex align-items-end">
                     <div id="review-marcador" class="review-score w-100">0 - 0</div>
                   </div>
-                  <div class="col-md-8">
+                  <div class="col-md-6">
                     <label class="form-label text-light small">Inicio partido en video</label>
                     <div class="input-group input-group-sm">
                       <span class="input-group-text bg-dark border-secondary text-light">Min</span>
                       <input type="number" id="review-inicio-minuto" class="form-control" min="0" max="999" placeholder="0">
                       <span class="input-group-text bg-dark border-secondary text-light">Seg</span>
                       <input type="number" id="review-inicio-segundo" class="form-control" min="0" max="59" placeholder="0">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label text-light small">Final partido en video</label>
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text bg-dark border-secondary text-light">Min</span>
+                      <input type="number" id="review-fin-minuto" class="form-control" min="0" max="999" placeholder="0">
+                      <span class="input-group-text bg-dark border-secondary text-light">Seg</span>
+                      <input type="number" id="review-fin-segundo" class="form-control" min="0" max="59" placeholder="0">
                     </div>
                   </div>
                 </div>
@@ -3538,7 +4003,7 @@
               </div>
 
               <div class="review-section">
-                <h3 class="review-section-title"><i class="bi bi-shield-check text-info"></i>Atajadas y cagadas</h3>
+                <h3 class="review-section-title"><i class="bi bi-shield-check text-info"></i>Atajadas</h3>
                 <div class="small text-light-emphasis mb-2">
                   Cada carga queda como jugada individual; el total por jugador se agrupa al guardar el partido.
                 </div>
@@ -3556,34 +4021,10 @@
                   <div class="col-md-4">
                     <button type="button" id="review-add-atajadas" class="btn btn-outline-info btn-sm w-100">Agregar</button>
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label text-light small">Cagadas</label>
-                    <select id="review-cagadas-jugador" class="form-select form-select-sm searchable-select">
-                      <option value="">Jugador</option>
-                    </select>
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label text-light small">Cant.</label>
-                    <input type="number" id="review-cagadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label text-light small">Min</label>
-                    <input type="number" id="review-cagadas-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label text-light small">Seg</label>
-                    <input type="number" id="review-cagadas-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
-                  </div>
-                  <div class="col-md-2">
-                    <button type="button" id="review-add-cagadas" class="btn btn-outline-danger btn-sm w-100">Agregar</button>
-                  </div>
                 </div>
                 <div class="row g-2 mt-2">
-                  <div class="col-md-6">
+                  <div class="col-12">
                     <div id="review-atajadas-list"></div>
-                  </div>
-                  <div class="col-md-6">
-                    <div id="review-cagadas-list"></div>
                   </div>
                 </div>
               </div>
@@ -3618,6 +4059,7 @@
                       <input type="text" id="review-cover-equipo2" class="form-control form-control-sm text-uppercase" maxlength="3" value="E2" placeholder="FAC" style="width: 76px;">
                     </div>
                   </div>
+                  <input type="url" id="review-compilado-youtube-link" class="form-control form-control-sm mb-2" placeholder="Link de YouTube del compilado (opcional)">
                   <input type="file" id="review-compilado-video" class="form-control form-control-sm mb-2" accept="video/*">
                   <div class="d-flex flex-wrap gap-2">
                     <button type="button" id="review-export-compilado" class="btn btn-outline-light btn-sm">
@@ -4633,6 +5075,24 @@
                 <div class="form-text text-light-emphasis">Resistencia fÃ­sica del jugador (0-10)</div>
               </div>
 
+              <div class="mb-3">
+                <label for="foto-archivo" class="form-label text-light"><i class="bi bi-image me-1"></i>Foto de perfil</label>
+                <div class="player-photo-uploader">
+                  <div class="player-photo-preview" id="foto-preview" aria-hidden="true">
+                    <img id="foto-preview-img" class="d-none" alt="">
+                    <span id="foto-preview-placeholder"><i class="bi bi-person"></i></span>
+                  </div>
+                  <div>
+                    <input type="file" name="foto_archivo" id="foto-archivo" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
+                    <div class="form-text text-light-emphasis">JPG, PNG, WEBP o GIF. Maximo 5 MB.</div>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <label for="foto-url" class="form-label text-light small mb-1">O pegar link publico</label>
+                  <input type="url" name="foto_url" id="foto-url" class="form-control form-control-sm" placeholder="https://...">
+                </div>
+              </div>
+
               <div class="d-flex gap-3">
                 <button type="submit" class="btn btn-primary btn-enhanced flex-fill" id="submit-btn">
                   <i class="bi bi-plus me-2" id="submit-icon"></i>
@@ -4902,10 +5362,15 @@
 
               <!-- Link de YouTube para administradores -->
               <div class="row g-3 mb-4">
-                <div class="col-md-12">
-                  <label for="editar-youtube-link" class="form-label text-light">ðŸ“¹ Link de Review en YouTube</label>
+                <div class="col-md-6">
+                  <label for="editar-youtube-link" class="form-label text-light">📹 Link de Review en YouTube</label>
                   <input type="url" id="editar-youtube-link" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
-                  <div class="form-text">Agrega el enlace de YouTube usado por Historial y los goles.</div>
+                  <div class="form-text">Review completa del partido.</div>
+                </div>
+                <div class="col-md-6">
+                  <label for="editar-compilado-youtube-link" class="form-label text-light">Link de Compilado en YouTube</label>
+                  <input type="url" id="editar-compilado-youtube-link" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
+                  <div class="form-text">Si existe, Historial usa este link para goles/asistencias/cagadas.</div>
                 </div>
               </div>
 
@@ -4983,9 +5448,14 @@
           <div class="modal-body">
             <form id="editar-youtube-form">
               <div class="mb-3">
-                <label for="youtube-link-editar" class="form-label text-light">ðŸ“¹ Link de Review en YouTube</label>
-                <input type="url" id="youtube-link-editar" class="form-control" placeholder="https://www.youtube.com/watch?v=..." required>
-                <div class="form-text">Deja vacÃ­o para quitar el link del partido.</div>
+                <label for="youtube-link-editar" class="form-label text-light">📹 Link de Review en YouTube</label>
+                <input type="url" id="youtube-link-editar" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
+                <div class="form-text">Deja vacío para quitar el link del partido.</div>
+              </div>
+              <div class="mb-3">
+                <label for="compilado-youtube-link-editar" class="form-label text-light">Link de Compilado en YouTube</label>
+                <input type="url" id="compilado-youtube-link-editar" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
+                <div class="form-text">Si se carga, los links de goles/asistencias/cagadas apuntan al compilado.</div>
               </div>
 
               <div class="d-flex gap-2">
