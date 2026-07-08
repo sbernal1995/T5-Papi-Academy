@@ -2,10 +2,10 @@
   "name": "t5-papi-academy",
   "version": "1.0.0",
   "description": "Proyecto para mostrar jugadores, estadísticas y armar equipos de fútbol entre amigos.",
-  "main": "public/index.html",
+  "main": "docs/index.html",
   "scripts": {
-    "start": "npx serve public",
-    "test": "node tests/data-export.test.js"
+    "start": "npx serve docs",
+    "test": "node tests/data-export.test.js && node tests/tracking-integration.test.js"
   },
   "keywords": [
     "football",

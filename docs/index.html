@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>T5 Papi Academy</title>
     <!-- Favicon de pelotita -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>âš½</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -24,15 +24,15 @@
         --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
         --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.3);
       }
-      
+
       body {
         font-family: 'Inter', sans-serif;
         background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 50%, #16213e 100%);
         min-height: 100vh;
       }
-      
+
       /* Texto con gradiente mejorado */
-      .text-gradient { 
+      .text-gradient {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -40,13 +40,13 @@
         background-size: 200% 200%;
         animation: gradientShift 4s ease-in-out infinite;
       }
-      
+
       @keyframes gradientShift {
         0%, 100% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
       }
-      
-      /* Título principal mejorado */
+
+      /* TÃ­tulo principal mejorado */
       .main-title {
         position: relative;
         display: inline-block;
@@ -54,7 +54,7 @@
         letter-spacing: -0.02em;
         text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
       }
-      
+
       .main-title::before {
         content: '';
         position: absolute;
@@ -68,23 +68,23 @@
         z-index: -1;
         animation: pulse 3s ease-in-out infinite;
       }
-      
+
       @keyframes pulse {
         0%, 100% { opacity: 0.5; transform: scale(1); }
         50% { opacity: 0.8; transform: scale(1.05); }
       }
-      
+
       /* Efecto de brillo en hover */
       .main-title:hover {
         transform: translateY(-2px);
         transition: all 0.3s ease;
       }
-      
+
       .main-title:hover::before {
         opacity: 1;
         transform: scale(1.1);
       }
-      
+
       /* Cards mejoradas */
       .enhanced-card {
         background: rgba(31, 41, 55, 0.9);
@@ -93,63 +93,63 @@
         backdrop-filter: blur(10px);
         transition: all 0.3s ease;
       }
-      
+
       .enhanced-card:hover {
         transform: translateY(-2px);
         box-shadow: var(--shadow-glow);
       }
-      
+
       /* Header mejorado */
       .header-gradient {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(20px);
       }
-      
+
       /* Efectos de glass */
       .glass-effect {
         background: rgba(31, 41, 55, 0.8);
         backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-      
-              /* Team cards específicas */
+
+              /* Team cards especÃ­ficas */
         .team-card {
           max-width: 480px;
           min-height: 780px;
           position: relative;
           z-index: 1;
         }
-        
+
         .team-card-body {
           background: rgba(15, 23, 42, 0.6);
           min-height: 340px;
           max-height: 420px;
           overflow-y: auto;
         }
-      
+
       .player-item {
         background: rgba(51, 65, 85, 0.8);
         border: 1px solid rgba(255, 255, 255, 0.1);
         transition: all 0.2s ease;
       }
-      
+
       .player-item:hover {
         background: rgba(71, 85, 105, 0.9);
         transform: translateX(5px);
       }
-      
+
       /* Botones mejorados */
       .btn-enhanced {
         transition: all 0.3s ease;
         font-weight: 600;
       }
-      
+
       .btn-enhanced:hover {
         transform: translateY(-1px);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
       }
-      
+
       /* VS Divisor */
       .vs-divider {
         width: 60px;
@@ -160,13 +160,13 @@
         position: relative;
         z-index: 10;
       }
-      
+
       /* Tabla mejorada */
       .table-dark {
         --bs-table-bg: rgba(31, 41, 55, 0.8);
         --bs-table-border-color: rgba(255, 255, 255, 0.1);
       }
-      
+
       .table-dark th {
         background: linear-gradient(145deg, #374151 0%, #1f2937 100%);
         border-bottom: 2px solid rgba(99, 102, 241, 0.3);
@@ -175,11 +175,11 @@
         top: 0;
         z-index: 10;
       }
-      
+
       .table-dark tbody tr:hover {
         background-color: rgba(99, 102, 241, 0.1);
       }
-      
+
       /* Animaciones */
       @keyframes fadeInUp {
         from {
@@ -191,44 +191,44 @@
           transform: translateY(0);
         }
       }
-      
+
       .animate-fade-in-up {
         animation: fadeInUp 0.6s ease forwards;
       }
-      
+
       /* Toast personalizado */
       .toast-container {
         z-index: 1055;
       }
-      
+
       /* Inputs mejorados */
       .form-control:focus {
         border-color: #6366f1;
         box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
       }
-      
+
       /* Columnas ordenables */
       .sortable {
         cursor: pointer;
         user-select: none;
         transition: all 0.2s ease;
       }
-      
+
       .sortable:hover {
         background-color: rgba(99, 102, 241, 0.2);
         transform: translateY(-1px);
       }
-      
+
       .sortable.active {
         background-color: rgba(99, 102, 241, 0.3);
       }
-      
+
       .sortable {
         position: relative;
         vertical-align: middle;
         padding-right: 25px !important; /* Espacio para la flecha */
       }
-      
+
       .sortable .bi-arrow-down-up {
         position: absolute;
         right: 8px;
@@ -238,41 +238,41 @@
         transition: all 0.2s ease;
         margin: 0 !important; /* Remover margin que desplaza */
       }
-      
+
       .sortable:hover .bi-arrow-down-up {
         opacity: 0.3;
       }
-      
+
       .sortable.asc .bi-arrow-down-up,
       .sortable.desc .bi-arrow-down-up {
         opacity: 1;
       }
-      
+
       .sortable.asc .bi-arrow-down-up::before {
         content: "\F145"; /* bi-arrow-up */
       }
-      
+
       .sortable.desc .bi-arrow-down-up::before {
         content: "\F144"; /* bi-arrow-down */
       }
-      
+
       /* Highlight de columna activa */
       .table-dark .column-highlight {
         background-color: rgba(99, 102, 241, 0.15) !important;
         border-left: 3px solid rgba(99, 102, 241, 0.6);
         border-right: 3px solid rgba(99, 102, 241, 0.6);
       }
-      
+
       .table-dark thead .column-highlight {
         background-color: rgba(99, 102, 241, 0.25) !important;
         border-top: 3px solid rgba(99, 102, 241, 0.8);
       }
-      
+
       .table-dark tbody tr:hover .column-highlight {
         background-color: rgba(99, 102, 241, 0.25) !important;
       }
-      
-      /* Posición en la tabla */
+
+      /* PosiciÃ³n en la tabla */
       .position-badge {
         display: inline-flex;
         align-items: center;
@@ -283,7 +283,7 @@
         font-weight: bold;
         font-size: 0.85rem;
       }
-      
+
       .position-1 { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #1a1a1a; }
       .position-2 { background: linear-gradient(135deg, #c0c0c0, #e5e5e5); color: #1a1a1a; }
       .position-3 { background: linear-gradient(135deg, #cd7f32, #deb887); color: #1a1a1a; }
@@ -639,7 +639,7 @@
         .stats-sticky-skill { left: 48px; }
         .stats-sticky-player { left: 114px; }
       }
-      
+
       .review-sandbox-shell {
         display: grid;
         gap: 1rem;
@@ -1027,7 +1027,7 @@
         }
       }
 
-      /* Botón flotante mejorado */
+      /* BotÃ³n flotante mejorado */
       .floating-btn {
         position: fixed;
         bottom: 30px;
@@ -1049,17 +1049,17 @@
         letter-spacing: 0.5px;
         white-space: nowrap;
       }
-      
+
       .floating-btn:hover {
         transform: translateY(-3px) scale(1.05);
         box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6), 0 6px 18px rgba(0, 0, 0, 0.4);
         background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
       }
-      
+
       .floating-btn:active {
         transform: translateY(-1px) scale(1.02);
       }
-      
+
       .floating-btn i {
         font-size: 1.2rem;
       }
@@ -1531,7 +1531,7 @@
           grid-template-columns: 1fr;
         }
       }
-      
+
       /* Cards de destacados */
       .destacado-card {
         background: linear-gradient(145deg, rgba(31, 41, 55, 0.9), rgba(15, 23, 42, 0.8));
@@ -1541,39 +1541,39 @@
         height: 100%;
         min-height: 160px;
       }
-      
+
       .destacado-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
       }
-      
+
       .destacado-card.puntos { border-top: 4px solid #ffd700; }
       .destacado-card.goles { border-top: 4px solid #22c55e; }
       .destacado-card.atajadas { border-top: 4px solid #3b82f6; }
       .destacado-card.asistencias { border-top: 4px solid #8b5cf6; }
       .destacado-card.winrate { border-top: 4px solid #f59e0b; }
       .destacado-card.racha-victorias { border-top: 4px solid #8b5cf6; }
-      
+
       .destacado-icon {
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
         display: block;
       }
-      
+
       .destacado-valor {
         font-size: 2rem;
         font-weight: 800;
         line-height: 1;
         margin-bottom: 0.25rem;
       }
-      
+
       .destacado-nombre {
         font-size: 1.6rem;
         font-weight: 800;
         margin-bottom: 0.25rem;
         line-height: 1.2;
       }
-      
+
       .destacado-categoria {
         font-size: 0.8rem;
         opacity: 0.8;
@@ -1581,7 +1581,7 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
-      
+
       .puntos .destacado-valor { color: #ffd700; }
       .goles .destacado-valor { color: #22c55e; }
       .atajadas .destacado-valor { color: #3b82f6; }
@@ -1598,30 +1598,30 @@
         height: 100%;
         min-height: 180px;
       }
-      
+
       .mejor-puesto-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
       }
-      
+
       .mejor-puesto-card.arquero { border-top: 4px solid #06b6d4; }
       .mejor-puesto-card.defensor { border-top: 4px solid #10b981; }
       .mejor-puesto-card.mediocampo { border-top: 4px solid #f59e0b; }
       .mejor-puesto-card.atacante { border-top: 4px solid #ef4444; }
-      
+
       .puesto-icon {
         font-size: 2.2rem;
         margin-bottom: 0.5rem;
         display: block;
       }
-      
+
       .puesto-nombre {
         font-size: 1.1rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
         line-height: 1.2;
       }
-      
+
       .puesto-posicion {
         font-size: 0.85rem;
         opacity: 0.9;
@@ -1630,23 +1630,23 @@
         letter-spacing: 0.5px;
         margin-bottom: 0.75rem;
       }
-      
+
       .puesto-stats {
         font-size: 0.9rem;
         line-height: 1.4;
       }
-      
+
       .puesto-stat-valor {
         font-weight: 700;
         font-size: 1.1rem;
       }
-      
+
       .arquero .puesto-stat-valor { color: #06b6d4; }
       .defensor .puesto-stat-valor { color: #10b981; }
       .mediocampo .puesto-stat-valor { color: #f59e0b; }
       .atacante .puesto-stat-valor { color: #ef4444; }
-      
-      /* Tooltip de información para gráfico radar */
+
+      /* Tooltip de informaciÃ³n para grÃ¡fico radar */
       .radar-info-tooltip {
         position: absolute;
         background: rgba(0, 0, 0, 0.95);
@@ -1662,33 +1662,33 @@
         display: none;
         pointer-events: none;
       }
-      
+
       .radar-info-tooltip h6 {
         color: #6366f1;
         margin-bottom: 8px;
         font-size: 0.85rem;
         font-weight: bold;
       }
-      
+
       .radar-info-tooltip ul {
         margin: 0;
         padding-left: 16px;
       }
-      
+
       .radar-info-tooltip li {
         margin-bottom: 4px;
       }
-      
+
       .radar-info-icon:hover {
         transform: scale(1.1);
         transition: transform 0.2s ease;
       }
-      
+
       .cursor-pointer {
         cursor: pointer;
         transition: all 0.2s ease;
       }
-      
+
       .cursor-pointer:hover {
         opacity: 0.8;
         transform: translateY(-1px);
@@ -1700,44 +1700,44 @@
             max-width: 100%;
             min-height: 680px;
           }
-          
+
           .team-card-body {
             min-height: 300px;
             max-height: 380px;
           }
-        
+
         .destacado-card {
           min-height: 140px;
         }
-        
+
         .destacado-icon {
           font-size: 2rem;
         }
-        
+
         .destacado-valor {
           font-size: 1.5rem;
         }
-        
+
         .destacado-nombre {
           font-size: 1.3rem;
         }
-        
+
         .vs-divider {
           width: 40px;
           height: 40px;
         }
-        
+
         .floating-btn {
           bottom: 20px;
           right: 20px;
           padding: 10px 16px;
           font-size: 0.8rem;
         }
-        
+
         .floating-btn span {
           display: none;
         }
-        
+
         .floating-btn {
           border-radius: 50%;
           width: 50px;
@@ -1745,27 +1745,27 @@
           padding: 0;
           justify-content: center;
         }
-        
+
         .main-title {
           font-size: 2rem !important;
         }
-        
+
         .mejor-puesto-card {
           min-height: 160px;
         }
-        
+
         .puesto-icon {
           font-size: 1.8rem;
         }
-        
+
         .puesto-nombre {
           font-size: 1rem;
         }
-        
+
 
       }
 
-      /* Estilos para análisis comparativo */
+      /* Estilos para anÃ¡lisis comparativo */
       .analysis-points {
         display: grid;
         gap: 1rem;
@@ -1833,7 +1833,7 @@
         font-family: 'Courier New', monospace;
       }
 
-      /* Estilos para análisis flotante */
+      /* Estilos para anÃ¡lisis flotante */
       .floating-analysis {
         position: absolute;
         top: calc(100% + 20px);
@@ -1852,7 +1852,7 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 
+        box-shadow:
           0 20px 40px rgba(0, 0, 0, 0.3),
           0 0 0 1px rgba(255, 255, 255, 0.05);
         position: relative;
@@ -1932,7 +1932,7 @@
         }
       }
 
-      /* Responsive para análisis flotante */
+      /* Responsive para anÃ¡lisis flotante */
       @media (max-width: 768px) {
         .floating-analysis {
           position: relative;
@@ -1962,7 +1962,7 @@
         }
       }
 
-      /* Estilos para el modal de algoritmo genético */
+      /* Estilos para el modal de algoritmo genÃ©tico */
       .spinning {
         animation: spin 1s linear infinite;
       }
@@ -2152,10 +2152,10 @@
         margin-bottom: 0;
       }
 
-      /* Estilo especial para el botón de IA */
+      /* Estilo especial para el botÃ³n de IA */
       .btn-ai-special {
         border: 2px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 
+        box-shadow:
           0 0 20px rgba(102, 126, 234, 0.4),
           0 4px 15px rgba(0, 0, 0, 0.3),
           inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
@@ -2166,7 +2166,7 @@
 
       .btn-ai-special:hover {
         border-color: rgba(255, 255, 255, 0.5) !important;
-        box-shadow: 
+        box-shadow:
           0 0 30px rgba(102, 126, 234, 0.6),
           0 6px 20px rgba(0, 0, 0, 0.4),
           inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
@@ -2175,7 +2175,7 @@
 
       .btn-ai-special:active {
         transform: translateY(0) scale(1.01);
-        box-shadow: 
+        box-shadow:
           0 0 25px rgba(102, 126, 234, 0.5),
           0 2px 10px rgba(0, 0, 0, 0.3),
           inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
@@ -2188,9 +2188,9 @@
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, 
-          transparent, 
-          rgba(255, 255, 255, 0.1), 
+        background: linear-gradient(90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
           transparent
         );
         transition: left 0.6s ease;
@@ -2270,21 +2270,21 @@
         transform: scale(1.05);
         transition: transform 0.2s ease;
       }
-      
+
       /* Estilos para botones de partido (editar y eliminar) */
       .partido-card .btn-outline-warning {
         opacity: 0;
         transform: translateX(10px);
         transition: all 0.3s ease;
       }
-      
+
       /* Botones de administrador que aparecen solo en hover */
       .partido-card .btn-outline-danger[title*="Eliminar"] {
         opacity: 0;
         transform: translateX(10px);
         transition: all 0.3s ease;
       }
-      
+
       /* Botones de review - siempre visibles */
       .partido-card .btn-outline-danger[title*="review"],
       .partido-card .btn-outline-danger[title*="Review"],
@@ -2293,28 +2293,28 @@
         transform: translateX(0) !important;
         transition: all 0.3s ease;
       }
-      
+
       .partido-card:hover .btn-outline-warning,
       .partido-card:hover .btn-outline-danger[title*="Eliminar"] {
         opacity: 1;
         transform: translateX(0);
       }
-      
+
       .partido-card .btn-outline-warning {
         transition-delay: 0.1s;
       }
-      
+
       .partido-card .btn-outline-danger {
         transition-delay: 0.2s;
       }
-      
+
       .partido-card .btn-outline-warning:hover {
         background-color: #ffc107;
         border-color: #ffc107;
         color: #212529;
         transform: scale(1.1);
       }
-      
+
       .partido-card .btn-outline-danger:hover {
         background-color: #dc3545;
         border-color: #dc3545;
@@ -2328,13 +2328,13 @@
         color: #212529;
         transform: scale(1.1);
       }
-      
+
       /* Estilos para tooltips de skill */
       .skill-tooltip {
         font-size: 0.85rem !important;
         max-width: 350px !important;
       }
-      
+
       .skill-tooltip .tooltip-inner {
         background-color: rgba(0, 0, 0, 0.95) !important;
         color: #ffffff !important;
@@ -2347,22 +2347,22 @@
         line-height: 1.4 !important;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
       }
-      
+
       .skill-tooltip .tooltip-arrow::before {
         border-right-color: rgba(0, 0, 0, 0.95) !important;
       }
-      
+
       /* Hover effect para filas del ranking */
       .ranking-row {
         transition: all 0.2s ease;
         cursor: pointer;
       }
-      
+
       .ranking-row:hover {
         background-color: rgba(255, 255, 255, 0.05) !important;
         transform: translateX(2px);
       }
-      
+
       /* Estilos para espectro de colores de skill */
       .skill-excellent {
         background: linear-gradient(135deg, #10b981, #34d399) !important;
@@ -2370,99 +2370,99 @@
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
       }
-      
+
       .skill-good {
         background: linear-gradient(135deg, #22c55e, #4ade80) !important;
         color: white !important;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
       }
-      
+
       .skill-average {
         background: linear-gradient(135deg, #eab308, #facc15) !important;
         color: #1f2937 !important;
         text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
         box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);
       }
-      
+
       .skill-below {
         background: linear-gradient(135deg, #f97316, #fb923c) !important;
         color: white !important;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
       }
-      
+
       .skill-poor {
         background: linear-gradient(135deg, #dc2626, #ef4444) !important;
         color: white !important;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
       }
-      
-      /* Estilos para cambios de ranking más visuales */
+
+      /* Estilos para cambios de ranking mÃ¡s visuales */
       .ranking-change-item {
         transition: all 0.3s ease;
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-      
+
       .ranking-change-item:hover {
         background: rgba(255, 255, 255, 0.1) !important;
         transform: translateX(3px);
         border-color: rgba(255, 255, 255, 0.2);
       }
-      
+
       .ranking-icon {
         transition: transform 0.2s ease;
       }
-      
+
       .ranking-change-item:hover .ranking-icon {
         transform: scale(1.2);
       }
-      
+
       .ranking-changes-container {
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 193, 7, 0.3) transparent;
       }
-      
+
       .ranking-changes-container::-webkit-scrollbar {
         width: 4px;
       }
-      
+
       .ranking-changes-container::-webkit-scrollbar-track {
         background: transparent;
       }
-      
+
       .ranking-changes-container::-webkit-scrollbar-thumb {
         background-color: rgba(255, 193, 7, 0.3);
         border-radius: 2px;
       }
-      
+
       .ranking-changes-container::-webkit-scrollbar-thumb:hover {
         background-color: rgba(255, 193, 7, 0.5);
       }
-      
-      /* Estilo mejorado para cambios de ranking más grandes */
+
+      /* Estilo mejorado para cambios de ranking mÃ¡s grandes */
       .ranking-change-item {
         transition: all 0.3s ease;
         border: 1px solid rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(10px);
       }
-      
+
       .ranking-change-item:hover {
         background: rgba(255, 255, 255, 0.12) !important;
         transform: translateY(-2px);
         border-color: rgba(255, 255, 255, 0.25);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       }
-      
+
       .ranking-icon {
         transition: transform 0.2s ease;
       }
-      
+
       .ranking-change-item:hover .ranking-icon {
         transform: scale(1.15);
       }
-      
+
       .skill-change-text {
         font-weight: 500;
         color: rgba(255, 255, 255, 0.8);
@@ -2472,39 +2472,39 @@
       .mundialito-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-      
+
       .mundialito-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
       }
-      
+
       .fase-badge {
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
         border-radius: 0.375rem;
       }
-      
+
       .campeon-glow {
         box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
         animation: glow-campeon 2s ease-in-out infinite alternate;
       }
-      
+
       @keyframes glow-campeon {
         from { box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
         to { box-shadow: 0 0 30px rgba(34, 197, 94, 0.6); }
       }
-      
+
       .mundialito-stats {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-      
-      /* Tooltip específico para mundialito */
+
+      /* Tooltip especÃ­fico para mundialito */
       .mundialito-tooltip {
         font-size: 11px;
         max-width: 400px !important;
       }
-      
+
       .mundialito-tooltip .tooltip-inner {
         background: rgba(0, 0, 0, 0.95);
         color: rgba(255, 255, 255, 0.9);
@@ -2514,7 +2514,7 @@
         text-align: left;
         line-height: 1.4;
       }
-      
+
       .mundialito-tooltip .tooltip-arrow::before {
         border-top-color: rgba(0, 0, 0, 0.95) !important;
         border-bottom-color: rgba(0, 0, 0, 0.95) !important;
@@ -2524,16 +2524,16 @@
   <body>
     <!-- Toast Container -->
     <div class="toast-container position-fixed top-0 end-0 p-3"></div>
-    
 
-    
+
+
     <!-- Header -->
         <header class="header-gradient py-3 sticky-top position-relative">
       <div class="container">
-        <!-- Título centrado -->
+        <!-- TÃ­tulo centrado -->
         <div class="text-center">
           <h1 class="display-5 mb-2">
-            <span style="font-size: 1.2em; filter: none; text-shadow: none; margin-right: 0.5rem;">⚽</span><span class="main-title text-gradient">T5 Papi Academy</span>
+            <span style="font-size: 1.2em; filter: none; text-shadow: none; margin-right: 0.5rem;">âš½</span><span class="main-title text-gradient">T5 Papi Academy</span>
           </h1>
           <p class="text-light fs-6 mb-3 opacity-75" style="font-weight: 300; letter-spacing: 0.5px;">
           </p>
@@ -2559,43 +2559,43 @@
           </div>
         </div>
       </div>
-      
-      <!-- Panel de Autenticación - Izquierda -->
+
+      <!-- Panel de AutenticaciÃ³n - Izquierda -->
       <div class="d-none d-md-flex flex-column gap-2 position-absolute top-0 h-100 justify-content-center ps-3" style="left: 0;">
         <!-- Estado de Usuario -->
         <div id="estado-usuario" class="d-flex align-items-center gap-2 px-2 py-1 rounded" style="background: rgba(255, 255, 255, 0.1);">
           <i class="bi bi-person text-warning"></i>
           <span class="text-warning small">Solo lectura</span>
         </div>
-        
-        <!-- Botones de Autenticación -->
+
+        <!-- Botones de AutenticaciÃ³n -->
         <button id="btn-login" type="button" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2 px-3 py-1" data-bs-toggle="modal" data-bs-target="#loginModal">
           <i class="bi bi-shield-lock"></i>
           <span class="fw-semibold">Admin</span>
         </button>
-        
+
         <button id="btn-logout" type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2 px-3 py-1" onclick="cerrarSesion()" style="display: none;">
           <i class="bi bi-box-arrow-right"></i>
           <span class="fw-semibold">Salir</span>
         </button>
       </div>
-      
+
       <!-- Controles Principales - Derecha -->
       <div class="d-none d-md-flex flex-column gap-2 position-absolute top-0 h-100 justify-content-center pe-3" style="right: 0;">
         <div class="d-flex align-items-center gap-2">
-          <label for="selector-temporada" class="text-light small mb-0">🏆</label>
+          <label for="selector-temporada" class="text-light small mb-0">ðŸ†</label>
           <select id="selector-temporada" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
             <option value="">Todas las temporadas</option>
           </select>
         </div>
-        
+
         <button type="button" class="btn btn-primary btn-sm btn-enhanced btn-agregar d-flex align-items-center gap-2 px-3 py-1" onclick="abrirModalAgregar()" data-admin-only>
           <i class="bi bi-person-plus-fill"></i>
           <span class="fw-semibold">Agregar Jugador</span>
         </button>
       </div>
-        
-        <!-- Controles móviles -->
+
+        <!-- Controles mÃ³viles -->
         <div class="d-md-none mt-3">
           <div class="d-flex flex-column gap-2 align-items-center">
             <!-- Estado de Usuario Mobile -->
@@ -2603,28 +2603,28 @@
               <i class="bi bi-person text-warning"></i>
               <span class="text-warning">Solo lectura</span>
             </div>
-            
-            <!-- Botones de Autenticación Mobile -->
+
+            <!-- Botones de AutenticaciÃ³n Mobile -->
             <div class="d-flex gap-2">
               <button id="btn-login-mobile" type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">
                 <i class="bi bi-shield-lock me-1"></i>Admin
               </button>
-              
+
               <button id="btn-logout-mobile" type="button" class="btn btn-outline-danger btn-sm" onclick="cerrarSesion()" style="display: none;">
                 <i class="bi bi-box-arrow-right me-1"></i>Salir
               </button>
             </div>
-            
+
             <!-- Separador visual -->
             <div class="w-50" style="height: 1px; background: rgba(255, 255, 255, 0.1); margin: 0.5rem 0;"></div>
-            
+
             <div class="d-flex align-items-center gap-2">
-              <label for="selector-temporada-mobile" class="text-light small mb-0">🏆</label>
+              <label for="selector-temporada-mobile" class="text-light small mb-0">ðŸ†</label>
               <select id="selector-temporada-mobile" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
                 <option value="">Todas las temporadas</option>
               </select>
             </div>
-            
+
             <button type="button" class="btn btn-primary btn-sm btn-enhanced btn-agregar d-flex align-items-center gap-2 px-3 py-1" onclick="abrirModalAgregar()" data-admin-only>
               <i class="bi bi-person-plus-fill"></i>
               <span class="fw-semibold">Agregar Jugador</span>
@@ -2639,7 +2639,7 @@
       <ul class="nav nav-tabs nav-dark justify-content-center" id="mainTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="estadisticas-tab" data-bs-toggle="tab" data-bs-target="#estadisticas-content" type="button" role="tab" aria-controls="estadisticas-content" aria-selected="true">
-            <i class="bi bi-trophy me-2"></i>Estadísticas y Equipos
+            <i class="bi bi-trophy me-2"></i>EstadÃ­sticas y Equipos
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -2677,28 +2677,28 @@
 
     <!-- Tab Content -->
     <div class="tab-content" id="mainTabContent">
-      <!-- Estadísticas Tab -->
+      <!-- EstadÃ­sticas Tab -->
       <div class="tab-pane fade show active" id="estadisticas-content" role="tabpanel" aria-labelledby="estadisticas-tab">
         <!-- Main Content -->
         <main class="container-fluid py-5">
-      <!-- Último Campeón Section -->
+      <!-- Ãšltimo CampeÃ³n Section -->
       <section class="mb-5 animate-fade-in-up d-none" id="ultimo-campeon-section" style="animation-delay: 0.02s">
         <div class="enhanced-card rounded-3 p-4">
           <div class="text-center mb-4">
             <h2 class="text-warning fw-bold mb-2">
               <i class="bi bi-crown me-2"></i>
-              Último Campeón Mundial
+              Ãšltimo CampeÃ³n Mundial
             </h2>
             <p class="text-light-emphasis">El rey actual del Mundialito T5</p>
           </div>
-          
+
           <div class="row g-3 mb-0" id="ultimo-campeon-container">
-            <!-- El último campeón se generará dinámicamente -->
+            <!-- El Ãºltimo campeÃ³n se generarÃ¡ dinÃ¡micamente -->
             <div class="col-12 text-center py-4">
               <div class="spinner-border text-warning" role="status">
                 <span class="visually-hidden">Cargando...</span>
               </div>
-              <p class="text-light-emphasis mt-2 mb-0">Cargando último campeón...</p>
+              <p class="text-light-emphasis mt-2 mb-0">Cargando Ãºltimo campeÃ³n...</p>
             </div>
           </div>
         </div>
@@ -2714,9 +2714,9 @@
             </h2>
             <p class="text-light-emphasis">Los reyes del Mundialito T5</p>
           </div>
-          
+
           <div class="row g-3 mb-0" id="campeones-container">
-            <!-- Las cards se generarán dinámicamente -->
+            <!-- Las cards se generarÃ¡n dinÃ¡micamente -->
             <div class="col-12 text-center py-4">
               <div class="spinner-border text-warning" role="status">
                 <span class="visually-hidden">Cargando...</span>
@@ -2732,19 +2732,19 @@
         <div class="enhanced-card rounded-3 p-4">
           <div class="text-center mb-4">
             <h2 class="h3 text-white mb-2">
-              <span class="me-2">🏆</span>
+              <span class="me-2">ðŸ†</span>
               Jugadores Destacados
             </h2>
-            <p class="text-light-emphasis">Los mejores en cada categoría</p>
+            <p class="text-light-emphasis">Los mejores en cada categorÃ­a</p>
           </div>
-          
+
           <div class="row g-3 mb-0" id="destacados-container">
-            <!-- Las cards se generarán dinámicamente -->
+            <!-- Las cards se generarÃ¡n dinÃ¡micamente -->
             <div class="col-12 text-center py-4">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando...</span>
               </div>
-              <p class="text-light-emphasis mt-2 mb-0">Cargando estadísticas destacadas...</p>
+              <p class="text-light-emphasis mt-2 mb-0">Cargando estadÃ­sticas destacadas...</p>
             </div>
           </div>
         </div>
@@ -2756,19 +2756,19 @@
         <div class="enhanced-card rounded-3 p-4">
           <div class="text-center mb-4">
             <h2 class="h3 text-white mb-2">
-              <span class="me-2">🏅</span>
+              <span class="me-2">ðŸ…</span>
               Mejores por Puesto
             </h2>
-            <p class="text-light-emphasis">Los jugadores destacados en cada posición</p>
+            <p class="text-light-emphasis">Los jugadores destacados en cada posiciÃ³n</p>
           </div>
-          
+
           <div class="row g-3 mb-0" id="mejores-puesto-container">
-            <!-- Las cards se generarán dinámicamente -->
+            <!-- Las cards se generarÃ¡n dinÃ¡micamente -->
             <div class="col-12 text-center py-4">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando...</span>
               </div>
-              <p class="text-light-emphasis mt-2 mb-0">Analizando jugadores por posición...</p>
+              <p class="text-light-emphasis mt-2 mb-0">Analizando jugadores por posiciÃ³n...</p>
             </div>
           </div>
         </div>
@@ -2782,16 +2782,16 @@
           <div class="stats-table-toolbar">
             <h3 class="stats-table-title">
               <i class="bi bi-table"></i>
-              Ranking de estadísticas
+              Ranking de estadÃ­sticas
             </h3>
             <div class="stats-table-filter">
               <label for="filtro-partidos">
                 <i class="bi bi-controller me-1"></i>Min. partidos
               </label>
-              <input 
-                type="number" 
-                id="filtro-partidos" 
-                class="form-control form-control-sm" 
+              <input
+                type="number"
+                id="filtro-partidos"
+                class="form-control form-control-sm"
                 placeholder="0"
                 min="0"
                 value="0"
@@ -2848,7 +2848,7 @@
                     <span class="stats-th stats-th-negative"><span class="stats-th-kicker">Errores</span><span class="stats-th-main"><i class="bi bi-exclamation-triangle-fill"></i>Cag</span></span>
                     <i class="bi bi-arrow-down-up ms-1"></i>
                   </th>
-                  <th scope="col" class="text-center fw-bold sortable stats-col-badge" data-sort="mvp_count" data-bs-toggle="tooltip" title="Jugador más valioso">
+                  <th scope="col" class="text-center fw-bold sortable stats-col-badge" data-sort="mvp_count" data-bs-toggle="tooltip" title="Jugador mÃ¡s valioso">
                     <span class="stats-th"><span class="stats-th-kicker">Premios</span><span class="stats-th-main"><i class="bi bi-star-fill"></i>MVP</span></span>
                     <i class="bi bi-arrow-down-up ms-1"></i>
                   </th>
@@ -2884,17 +2884,17 @@
       <!-- Match Form Section -->
       <section class="animate-fade-in-up" style="animation-delay: 0.3s">
         <div class="enhanced-card rounded-3 p-4">
-          
+
           <!-- Team Selection -->
           <div id="team-selection" class="mb-5">
             <div class="text-center mb-4">
               <h2 class="h3 text-white mb-2">
-                <span class="me-2">⚔️</span>
+                <span class="me-2">âš”ï¸</span>
                 Armado de Equipos
               </h2>
               <p class="text-light-emphasis">Agrega jugadores escribiendo sus nombres en cada equipo</p>
-              
-              <!-- Botón del Algoritmo Genético -->
+
+              <!-- BotÃ³n del Algoritmo GenÃ©tico -->
               <div class="mt-3">
                 <button id="btn-auto-equipos" class="btn btn-lg btn-gradient btn-enhanced px-4 py-3 btn-ai-special" onclick="abrirModalAutoEquipos()">
                   <i class="bi bi-robot me-2" style="font-size: 1.2rem;"></i>
@@ -2902,39 +2902,39 @@
                 </button>
               </div>
             </div>
-            
+
             <div class="row justify-content-center g-3 align-items-start">
               <!-- Equipo 1 -->
               <div class="col-12 col-lg-5">
                 <div class="team-card glass-effect rounded-3 p-3 mx-auto border-top border-primary border-4">
                   <h3 class="h5 text-primary fw-bold mb-3">
-                    ⚽
+                    âš½
                     Equipo 1
                   </h3>
                   <div class="input-group mb-3">
-                    <input 
-                      type="text" 
-                      id="input-equipo1" 
-                      class="form-control" 
+                    <input
+                      type="text"
+                      id="input-equipo1"
+                      class="form-control"
                       placeholder="Nombre del jugador..."
                       onkeypress="if(event.key==='Enter') agregarJugadorPorNombre('equipo1')"
                     >
-                    <button 
-                      id="btn-add-equipo1" 
+                    <button
+                      id="btn-add-equipo1"
                       onclick="agregarJugadorPorNombre('equipo1')"
                       class="btn btn-primary btn-enhanced">
                       <i class="bi bi-plus"></i>
                     </button>
                   </div>
                   <div id="equipo1-jugadores" class="team-card-body rounded-2 p-2">
-                    <!-- Jugadores aparecerán aquí -->
+                    <!-- Jugadores aparecerÃ¡n aquÃ­ -->
                   </div>
-                  
-                  <!-- Gráfico de Radar del Equipo 1 -->
+
+                  <!-- GrÃ¡fico de Radar del Equipo 1 -->
                   <div id="radar-equipo1-container" class="mt-3" style="display: none;">
                     <hr class="border-primary opacity-25 my-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                      <h6 class="text-primary text-center mb-0 small">📊 Rendimiento por Posición</h6>
+                      <h6 class="text-primary text-center mb-0 small">ðŸ“Š Rendimiento por PosiciÃ³n</h6>
                       <div class="radar-info-icon" data-equipo="1">
                         <i class="bi bi-info-circle text-primary" style="cursor: pointer; font-size: 0.9rem;"></i>
                       </div>
@@ -2942,74 +2942,74 @@
                     <div style="height: 180px;">
                       <canvas id="chart-radar-equipo1"></canvas>
                     </div>
-                    <!-- Información de Rendimiento -->
+                    <!-- InformaciÃ³n de Rendimiento -->
                     <div id="rendimiento-equipo1" class="mt-2 p-2 rounded" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); display: none;">
-                      <!-- El contenido se genera dinámicamente -->
+                      <!-- El contenido se genera dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- VS Divider con análisis flotante -->
+              <!-- VS Divider con anÃ¡lisis flotante -->
               <div class="col-12 col-lg-1 d-flex justify-content-center align-items-start position-relative" style="padding-top: 1rem;">
                 <div class="vs-divider rounded-circle d-flex align-items-center justify-content-center">
                   <span class="text-white fw-bold">VS</span>
                 </div>
-                
-                <!-- Análisis Comparativo Flotante -->
+
+                <!-- AnÃ¡lisis Comparativo Flotante -->
                 <div id="analisis-comparativo" class="floating-analysis" style="display: none;">
                   <div class="floating-analysis-content">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                       <div class="text-center flex-grow-1">
                         <h6 class="text-white fw-bold mb-1">
                           <i class="bi bi-lightning-charge me-2"></i>
-                          Análisis del Emparejamiento
+                          AnÃ¡lisis del Emparejamiento
                         </h6>
-                        <p class="text-light-emphasis small mb-0">Comparación detallada</p>
+                        <p class="text-light-emphasis small mb-0">ComparaciÃ³n detallada</p>
                       </div>
-                      <button onclick="cerrarAnalisisComparativo()" class="btn btn-sm btn-outline-light btn-close-analysis" title="Cerrar análisis">
+                      <button onclick="cerrarAnalisisComparativo()" class="btn btn-sm btn-outline-light btn-close-analysis" title="Cerrar anÃ¡lisis">
                         <i class="bi bi-x"></i>
                       </button>
                     </div>
-                    
+
                     <div id="puntos-comparativos" class="analysis-points">
-                      <!-- Los puntos se generarán dinámicamente -->
+                      <!-- Los puntos se generarÃ¡n dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
               </div>
-              
+
               <!-- Equipo 2 -->
               <div class="col-12 col-lg-5">
                 <div class="team-card glass-effect rounded-3 p-3 mx-auto border-top border-danger border-4">
                   <h3 class="h5 text-danger fw-bold mb-3">
-                    ⚽
+                    âš½
                     Equipo 2
                   </h3>
                   <div class="input-group mb-3">
-                    <input 
-                      type="text" 
-                      id="input-equipo2" 
-                      class="form-control" 
+                    <input
+                      type="text"
+                      id="input-equipo2"
+                      class="form-control"
                       placeholder="Nombre del jugador..."
                       onkeypress="if(event.key==='Enter') agregarJugadorPorNombre('equipo2')"
                     >
-                    <button 
-                      id="btn-add-equipo2" 
+                    <button
+                      id="btn-add-equipo2"
                       onclick="agregarJugadorPorNombre('equipo2')"
                       class="btn btn-danger btn-enhanced">
                       <i class="bi bi-plus"></i>
                     </button>
                   </div>
                   <div id="equipo2-jugadores" class="team-card-body rounded-2 p-2">
-                    <!-- Jugadores aparecerán aquí -->
+                    <!-- Jugadores aparecerÃ¡n aquÃ­ -->
                   </div>
-                  
-                  <!-- Gráfico de Radar del Equipo 2 -->
+
+                  <!-- GrÃ¡fico de Radar del Equipo 2 -->
                   <div id="radar-equipo2-container" class="mt-3" style="display: none;">
                     <hr class="border-danger opacity-25 my-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                      <h6 class="text-danger text-center mb-0 small">📊 Rendimiento por Posición</h6>
+                      <h6 class="text-danger text-center mb-0 small">ðŸ“Š Rendimiento por PosiciÃ³n</h6>
                       <div class="radar-info-icon" data-equipo="2">
                         <i class="bi bi-info-circle text-danger" style="cursor: pointer; font-size: 0.9rem;"></i>
                       </div>
@@ -3017,32 +3017,32 @@
                     <div style="height: 180px;">
                       <canvas id="chart-radar-equipo2"></canvas>
                     </div>
-                    <!-- Información de Rendimiento -->
+                    <!-- InformaciÃ³n de Rendimiento -->
                     <div id="rendimiento-equipo2" class="mt-2 p-2 rounded" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: none;">
-                      <!-- El contenido se genera dinámicamente -->
+                      <!-- El contenido se genera dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <!-- Análisis de Equipos -->
+
+            <!-- AnÃ¡lisis de Equipos -->
             <div class="row" id="analisis-equipos" style="display: none; margin-top: 8rem;">
               <div class="col-12">
                 <div class="text-center mb-4">
                   <h3 class="h4 text-white mb-2">
-                    <span class="me-2">📊</span>
-                    Análisis de Equipos
+                    <span class="me-2">ðŸ“Š</span>
+                    AnÃ¡lisis de Equipos
                   </h3>
-                  <p class="text-light-emphasis">Comparación estadística basada en datos reales</p>
+                  <p class="text-light-emphasis">ComparaciÃ³n estadÃ­stica basada en datos reales</p>
                 </div>
-                
+
                 <div class="row g-3">
                   <!-- Winrate -->
                   <div class="col-lg-4 col-md-12">
                     <div class="glass-effect rounded-3 p-3 border-top border-success border-3">
                       <div class="text-center mb-2">
-                        <h6 class="text-success mb-1 fw-bold">🏆 Winrate</h6>
+                        <h6 class="text-success mb-1 fw-bold">ðŸ† Winrate</h6>
                         <p class="text-light-emphasis small mb-0">Porcentaje de victorias</p>
                       </div>
                       <div style="height: 200px; position: relative;">
@@ -3050,12 +3050,12 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Goles por Partido -->
                   <div class="col-lg-4 col-md-12">
                     <div class="glass-effect rounded-3 p-3 border-top border-warning border-3">
                       <div class="text-center mb-2">
-                        <h6 class="text-warning mb-1 fw-bold">⚽ Goles</h6>
+                        <h6 class="text-warning mb-1 fw-bold">âš½ Goles</h6>
                         <p class="text-light-emphasis small mb-0">Promedio por partido</p>
                       </div>
                       <div style="height: 200px; position: relative;">
@@ -3063,12 +3063,12 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Atajadas por Partido -->
                   <div class="col-lg-4 col-md-12">
                     <div class="glass-effect rounded-3 p-3 border-top border-info border-3">
                       <div class="text-center mb-2">
-                        <h6 class="text-info mb-1 fw-bold">🥅 Atajadas</h6>
+                        <h6 class="text-info mb-1 fw-bold">ðŸ¥… Atajadas</h6>
                         <p class="text-light-emphasis small mb-0">Promedio por partido</p>
                       </div>
                       <div style="height: 200px; position: relative;">
@@ -3076,12 +3076,12 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Rendimiento Total -->
                   <div class="col-lg-6 col-md-12">
                     <div class="glass-effect rounded-3 p-3 border-top border-purple border-3" style="border-color: #8b5cf6 !important;">
                       <div class="text-center mb-2">
-                        <h6 class="mb-1 fw-bold" style="color: #8b5cf6;">⚡ Rendimiento</h6>
+                        <h6 class="mb-1 fw-bold" style="color: #8b5cf6;">âš¡ Rendimiento</h6>
                         <p class="text-light-emphasis small mb-0">Puntos totales por equipo</p>
                       </div>
                       <div style="height: 200px; position: relative;">
@@ -3089,13 +3089,13 @@
                       </div>
                     </div>
                   </div>
-                  
-                  <!-- Pulmón Promedio -->
+
+                  <!-- PulmÃ³n Promedio -->
                   <div class="col-lg-6 col-md-12">
                     <div class="glass-effect rounded-3 p-3 border-top border-3" style="border-color: #06b6d4 !important;">
                       <div class="text-center mb-2">
-                        <h6 class="mb-1 fw-bold" style="color: #06b6d4;">🫁 Pulmón</h6>
-                        <p class="text-light-emphasis small mb-0">Resistencia física promedio (0-10)</p>
+                        <h6 class="mb-1 fw-bold" style="color: #06b6d4;">ðŸ« PulmÃ³n</h6>
+                        <p class="text-light-emphasis small mb-0">Resistencia fÃ­sica promedio (0-10)</p>
                       </div>
                       <div style="height: 200px; position: relative;">
                         <canvas id="chart-pulmon"></canvas>
@@ -3113,45 +3113,45 @@
           <!-- Match Data -->
           <div class="glass-effect rounded-3 p-4 mb-4" data-admin-only>
             <h2 class="h4 text-white mb-4">
-              <span class="me-2">📋</span>
-              Información del Encuentro
+              <span class="me-2">ðŸ“‹</span>
+              InformaciÃ³n del Encuentro
             </h2>
-            
-            <!-- Información básica del partido -->
+
+            <!-- InformaciÃ³n bÃ¡sica del partido -->
             <div class="row g-3 mb-4">
               <div class="col-md-2">
-                <label class="form-label text-light">📅 Fecha</label>
+                <label class="form-label text-light">ðŸ“… Fecha</label>
                 <input type="date" id="fecha-partido" class="form-control">
               </div>
               <div class="col-md-3">
-                <label class="form-label text-light">🏟️ Cancha</label>
+                <label class="form-label text-light">ðŸŸï¸ Cancha</label>
                 <input type="text" id="cancha-partido" class="form-control" placeholder="Nombre de la cancha">
               </div>
               <div class="col-md-2">
-                <label class="form-label text-light">🎯 Resultado Final</label>
+                <label class="form-label text-light">ðŸŽ¯ Resultado Final</label>
                 <input type="text" id="resultado-final" class="form-control" placeholder="ej: 11-8">
               </div>
               <div class="col-md-2">
-                <label class="form-label text-light">🏆 Equipo Ganador</label>
+                <label class="form-label text-light">ðŸ† Equipo Ganador</label>
                 <select id="equipo-ganador" class="form-select" onchange="actualizarSelectACE()">
                   <option value="">Seleccionar ganador</option>
-                  <option value="1">🔵 Equipo 1 (Azul)</option>
-                  <option value="2">🔴 Equipo 2 (Rojo)</option>
-                  <option value="0">🤝 Empate</option>
+                  <option value="1">ðŸ”µ Equipo 1 (Azul)</option>
+                  <option value="2">ðŸ”´ Equipo 2 (Rojo)</option>
+                  <option value="0">ðŸ¤ Empate</option>
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label text-light">📅 Temporada</label>
+                <label class="form-label text-light">ðŸ“… Temporada</label>
                 <select id="temporada-partido" class="form-select">
                   <option value="">Seleccionar temporada</option>
                 </select>
               </div>
             </div>
-            
+
             <!-- Link de YouTube para administradores -->
             <div class="row g-3 mb-4" data-admin-only>
               <div class="col-md-12">
-                <label class="form-label text-light">📹 Link de Review en YouTube</label>
+                <label class="form-label text-light">ðŸ“¹ Link de Review en YouTube</label>
                 <input type="url" id="youtube-link-partido" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
                 <div class="form-text">Solo visible para administradores. Este enlace se usa en Historial para ver la review y los goles.</div>
               </div>
@@ -3160,22 +3160,22 @@
             <!-- Reconocimientos especiales -->
             <div class="row g-3 mb-4">
               <div class="col-md-6">
-                <label class="form-label text-light">🏆 MVP del Partido</label>
-                <select id="mvp-partido" class="form-select">
+                <label class="form-label text-light">ðŸ† MVP del Partido</label>
+                <select id="mvp-partido" class="form-select searchable-select">
                   <option value="">Seleccionar MVP</option>
                 </select>
-                <div class="form-text">Jugador más valioso del encuentro</div>
+                <div class="form-text">Jugador mÃ¡s valioso del encuentro</div>
               </div>
               <div class="col-md-6">
-                <label class="form-label text-light">⭐ ACE del Partido</label>
-                <select id="ace-partido" class="form-select">
+                <label class="form-label text-light">â­ ACE del Partido</label>
+                <select id="ace-partido" class="form-select searchable-select">
                   <option value="">Seleccionar ACE</option>
                 </select>
                 <div class="form-text">Mejor jugador del equipo perdedor</div>
               </div>
             </div>
 
-            <!-- Estadísticas detalladas -->
+            <!-- EstadÃ­sticas detalladas -->
             <div class="row g-4">
               <!-- Atajadas -->
               <div class="col-md-6">
@@ -3187,7 +3187,7 @@
                   <div id="atajadas-container">
                     <div class="atajadas-row row g-2 mb-2">
                       <div class="col-7">
-                        <select class="form-select form-select-sm atajadas-jugador">
+                        <select class="form-select form-select-sm atajadas-jugador searchable-select">
                           <option value="">Seleccionar jugador</option>
                         </select>
                       </div>
@@ -3218,7 +3218,7 @@
                   <div id="cagadas-container">
                     <div class="cagadas-row row g-2 mb-2">
                       <div class="col-7">
-                        <select class="form-select form-select-sm cagadas-jugador">
+                        <select class="form-select form-select-sm cagadas-jugador searchable-select">
                           <option value="">Seleccionar jugador</option>
                         </select>
                       </div>
@@ -3253,63 +3253,63 @@
                       0 - 0
                     </div>
                   </div>
-                  
+
                   <div class="table-responsive mb-3 rounded-3">
                     <table class="table table-dark table-hover mb-0">
                       <thead>
                         <tr>
-                          <th scope="col">⚽ Goleador</th>
-                          <th scope="col">🎯 Asistencia</th>
-                          <th scope="col">💥 Cagada</th>
-                          <th scope="col">👕 Equipo</th>
-                          <th scope="col">🔄 Tipo</th>
-                          <th scope="col">⏱️ Tiempo</th>
-                          <th scope="col">🗑️</th>
+                          <th scope="col">âš½ Goleador</th>
+                          <th scope="col">ðŸŽ¯ Asistencia</th>
+                          <th scope="col">ðŸ’¥ Cagada</th>
+                          <th scope="col">ðŸ‘• Equipo</th>
+                          <th scope="col">ðŸ”„ Tipo</th>
+                          <th scope="col">â±ï¸ Tiempo</th>
+                          <th scope="col">ðŸ—‘ï¸</th>
                         </tr>
                       </thead>
                       <tbody id="tabla-goles"></tbody>
                     </table>
                   </div>
-                  
+
                   <div class="row g-3 align-items-end">
                     <div class="col-md-2">
-                      <label class="form-label text-light">⚽ Goleador</label>
+                      <label class="form-label text-light">âš½ Goleador</label>
                       <select id="goleador" class="form-select searchable-select">
                         <option value="">Seleccionar goleador</option>
                       </select>
                     </div>
                     <div class="col-md-2">
-                      <label class="form-label text-light">🎯 Asistencia</label>
+                      <label class="form-label text-light">ðŸŽ¯ Asistencia</label>
                       <select id="asistencia" class="form-select searchable-select">
                         <option value="">Sin asistencia</option>
                       </select>
                     </div>
                     <div class="col-md-2">
-                      <label class="form-label text-light">💥 Cagada</label>
+                      <label class="form-label text-light">ðŸ’¥ Cagada</label>
                       <select id="cagada-gol" class="form-select searchable-select">
                         <option value="">Sin cagada</option>
                       </select>
                     </div>
                     <div class="col-md-1">
-                      <label class="form-label text-light">⏱️ Min</label>
+                      <label class="form-label text-light">â±ï¸ Min</label>
                       <input type="number" id="minuto-gol" class="form-control" placeholder="0" min="0" max="120">
                     </div>
                     <div class="col-md-1">
-                      <label class="form-label text-light">⏱️ Seg</label>
+                      <label class="form-label text-light">â±ï¸ Seg</label>
                       <input type="number" id="segundo-gol" class="form-control" placeholder="0" min="0" max="59">
                     </div>
                     <div class="col-md-2">
-                      <label class="form-label text-light">👕 Equipo</label>
+                      <label class="form-label text-light">ðŸ‘• Equipo</label>
                       <select id="equipo-gol" class="form-select">
-                        <option value="azul">🔵 Equipo 1</option>
-                        <option value="rojo">🔴 Equipo 2</option>
+                        <option value="azul">ðŸ”µ Equipo 1</option>
+                        <option value="rojo">ðŸ”´ Equipo 2</option>
                       </select>
                     </div>
                     <div class="col-md-2">
                       <div class="form-check mt-4">
                         <input class="form-check-input" type="checkbox" id="gol-en-contra">
                         <label class="form-check-label text-light small" for="gol-en-contra">
-                          🔄 En contra
+                          ðŸ”„ En contra
                         </label>
                       </div>
                     </div>
@@ -3324,7 +3324,7 @@
               </div>
             </div>
 
-            <!-- Botón para cargar partido -->
+            <!-- BotÃ³n para cargar partido -->
             <div class="d-grid mt-4" data-admin-only>
               <button id="btn-cargar-partido" class="btn btn-primary btn-lg btn-enhanced btn-agregar">
                 <i class="bi bi-save me-2"></i>
@@ -3337,7 +3337,7 @@
       </section>
     </main>
     </div>
-    <!-- End Estadísticas Tab -->
+    <!-- End EstadÃ­sticas Tab -->
 
     <!-- Review Sandbox Tab -->
     <div class="tab-pane fade" id="review-sandbox-content" role="tabpanel" aria-labelledby="review-sandbox-tab">
@@ -3608,10 +3608,23 @@
                 <div id="review-compilado-list" class="review-clip-list"></div>
                 <div class="border border-secondary border-opacity-25 rounded-3 p-2 mt-3">
                   <label class="form-label text-light small mb-1">Compilado descargable</label>
+                  <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+                    <div>
+                      <label for="review-cover-equipo1" class="form-label text-light small mb-1">Siglas E1</label>
+                      <input type="text" id="review-cover-equipo1" class="form-control form-control-sm text-uppercase" maxlength="3" value="E1" placeholder="MTX" style="width: 76px;">
+                    </div>
+                    <div>
+                      <label for="review-cover-equipo2" class="form-label text-light small mb-1">Siglas E2</label>
+                      <input type="text" id="review-cover-equipo2" class="form-control form-control-sm text-uppercase" maxlength="3" value="E2" placeholder="FAC" style="width: 76px;">
+                    </div>
+                  </div>
                   <input type="file" id="review-compilado-video" class="form-control form-control-sm mb-2" accept="video/*">
                   <div class="d-flex flex-wrap gap-2">
                     <button type="button" id="review-export-compilado" class="btn btn-outline-light btn-sm">
                       <i class="bi bi-download me-1"></i>Cortes JSON
+                    </button>
+                    <button type="button" id="review-download-portada" class="btn btn-outline-info btn-sm">
+                      <i class="bi bi-image me-1"></i>Portada PNG
                     </button>
                     <button type="button" id="review-build-compilado-beelup" class="btn btn-warning btn-sm">
                       <i class="bi bi-magic me-1"></i>Generar MP4 Beelup
@@ -3651,16 +3664,16 @@
           <div class="enhanced-card rounded-3 p-4">
             <div class="text-center mb-4">
               <h2 class="h3 text-white mb-2">
-                <span class="me-2">📊</span>
+                <span class="me-2">ðŸ“Š</span>
                 Historial de Partidos
               </h2>
-              <p class="text-light-emphasis">Últimos partidos registrados con estadísticas detalladas</p>
+              <p class="text-light-emphasis">Ãšltimos partidos registrados con estadÃ­sticas detalladas</p>
             </div>
-            
+
             <!-- Filtros -->
             <div class="row g-2 mb-4 justify-content-center align-items-end">
               <div class="col-auto">
-                <label for="cantidad-partidos" class="form-label text-light small mb-1">📅 Mostrar:</label>
+                <label for="cantidad-partidos" class="form-label text-light small mb-1">ðŸ“… Mostrar:</label>
                 <select id="cantidad-partidos" class="form-select form-select-sm" style="width: 110px;" onchange="cargarHistorialPartidos()">
                   <option value="all">Todos</option>
                   <option value="5">5 partidos</option>
@@ -3670,13 +3683,13 @@
                 </select>
               </div>
               <div class="col-auto">
-                <label for="filtro-jugador" class="form-label text-light small mb-1">🔍 Jugador:</label>
+                <label for="filtro-jugador" class="form-label text-light small mb-1">ðŸ” Jugador:</label>
                 <select id="filtro-jugador" class="form-select form-select-sm" style="width: 160px;" onchange="filtrarPartidosAvanzado()">
                   <option value="">Todos</option>
                 </select>
               </div>
               <div class="col-auto">
-                <label class="form-label text-light small mb-1">🤝 Jugó con:</label>
+                <label class="form-label text-light small mb-1">ðŸ¤ JugÃ³ con:</label>
                 <div class="tag-input-wrapper" id="companero-wrapper">
                   <div class="tag-input-tags" id="companero-tags"></div>
                   <input type="text" class="tag-input-field" id="companero-input" placeholder="Buscar..." autocomplete="off">
@@ -3684,7 +3697,7 @@
                 </div>
               </div>
               <div class="col-auto">
-                <label class="form-label text-light small mb-1">⚔️ Contra:</label>
+                <label class="form-label text-light small mb-1">âš”ï¸ Contra:</label>
                 <div class="tag-input-wrapper" id="rival-wrapper">
                   <div class="tag-input-tags" id="rival-tags"></div>
                   <input type="text" class="tag-input-field" id="rival-input" placeholder="Buscar..." autocomplete="off">
@@ -3692,7 +3705,7 @@
                 </div>
               </div>
               <div class="col-auto">
-                <label for="filtro-resultado" class="form-label text-light small mb-1">🏆 Resultado:</label>
+                <label for="filtro-resultado" class="form-label text-light small mb-1">ðŸ† Resultado:</label>
                 <select id="filtro-resultado" class="form-select form-select-sm" style="width: 120px;" onchange="filtrarPartidosAvanzado()">
                   <option value="">Todos</option>
                   <option value="ganado">Ganado</option>
@@ -3798,7 +3811,7 @@
                 color: #fff;
               }
             </style>
-            
+
             <!-- Contenedor del historial -->
             <div id="historial-partidos-container">
               <div class="col-12 text-center py-4">
@@ -3813,31 +3826,31 @@
       </main>
     </div>
           <!-- End Historial Tab -->
-      
+
       <!-- Ranking de Skill Individual Tab -->
       <div class="tab-pane fade" id="ranking-skill-content" role="tabpanel" aria-labelledby="ranking-skill-tab">
         <div class="container-fluid py-4">
-          
+
           <!-- Header -->
           <div class="text-center mb-4">
             <h2 class="h3 text-warning fw-bold mb-2">
-              <i class="bi bi-lightning-charge me-2"></i>⚡ Ranking de Skill Individual
+              <i class="bi bi-lightning-charge me-2"></i>âš¡ Ranking de Skill Individual
             </h2>
             <div class="text-light-emphasis">
               <strong>Ranking basado en Skill Individual:</strong><br>
-              <small>Rendimiento calculado por partido: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×0.4</small>
+              <small>Rendimiento calculado por partido: GolesÃ—5 + MVPÃ—7 + ACEÃ—6 + AsistÃ—4 - CagadasÃ—5 + PuntosÃ—2 + AtajadasÃ—0.4</small>
             </div>
           </div>
-          
+
           <!-- Filtro por partidos -->
           <div class="d-flex justify-content-center mb-4">
             <div class="d-flex align-items-center gap-2">
-              <label for="filtro-partidos-ranking" class="text-light small mb-0">🎮 Min. partidos:</label>
-              <input 
-                type="number" 
-                id="filtro-partidos-ranking" 
-                class="form-control form-control-sm" 
-                style="width: 80px;" 
+              <label for="filtro-partidos-ranking" class="text-light small mb-0">ðŸŽ® Min. partidos:</label>
+              <input
+                type="number"
+                id="filtro-partidos-ranking"
+                class="form-control form-control-sm"
+                style="width: 80px;"
                 placeholder="0"
                 min="0"
                 value="0"
@@ -3845,7 +3858,7 @@
               >
             </div>
           </div>
-          
+
           <!-- Contenido del ranking -->
           <div id="ranking-skill-container" class="enhanced-card rounded-3 p-4">
             <div class="text-center py-4">
@@ -3855,7 +3868,7 @@
               <p class="text-light-emphasis mt-2">Calculando posiciones...</p>
             </div>
           </div>
-          
+
         </div>
       </div>
       <!-- End Ranking de Skill Individual Tab -->
@@ -3868,7 +3881,7 @@
               <h2 class="h3 text-info fw-bold mb-1">
                 <i class="bi bi-calendar3-week me-2"></i>Temporadas
               </h2>
-              <div class="text-light-emphasis">Resumen de rendimiento, líderes y récords por temporada</div>
+              <div class="text-light-emphasis">Resumen de rendimiento, lÃ­deres y rÃ©cords por temporada</div>
             </div>
             <div class="d-flex align-items-center gap-2">
               <label for="temporadas-resumen-selector" class="text-light small mb-0">Temporada</label>
@@ -3893,18 +3906,18 @@
       <!-- Paternidades Tab -->
       <div class="tab-pane fade" id="paternidades-content" role="tabpanel" aria-labelledby="paternidades-tab">
         <div class="container-fluid py-4">
-          
+
           <!-- Header -->
           <div class="text-center mb-4">
             <h2 class="h3 text-primary fw-bold mb-2">
-              <i class="bi bi-people me-2"></i>🔍 Paternidades
+              <i class="bi bi-people me-2"></i>ðŸ” Paternidades
             </h2>
             <div class="text-light-emphasis">
-              <strong>Análisis de enfrentamientos y estadísticas entre jugadores</strong><br>
-              <small>Busca a un jugador para ver sus estadísticas de enfrentamientos y utiliza el "versus" para comparar</small>
+              <strong>AnÃ¡lisis de enfrentamientos y estadÃ­sticas entre jugadores</strong><br>
+              <small>Busca a un jugador para ver sus estadÃ­sticas de enfrentamientos y utiliza el "versus" para comparar</small>
             </div>
           </div>
-          
+
           <!-- Buscador de Jugador -->
           <div class="row justify-content-center mb-5">
             <div class="col-lg-8">
@@ -3913,10 +3926,10 @@
                   <i class="bi bi-search me-2"></i>Buscar Jugador
                 </h5>
                 <div class="input-group mb-3">
-                                     <input 
-                     type="text" 
-                     id="buscar-jugador-paternidades" 
-                     class="form-control form-control-lg" 
+                                     <input
+                     type="text"
+                     id="buscar-jugador-paternidades"
+                     class="form-control form-control-lg"
                      placeholder="Escribe el nombre del jugador..."
                      onkeyup="buscarJugadorPaternidades()"
                      onfocus="mostrarTodosLosJugadores()"
@@ -3926,23 +3939,23 @@
                   </button>
                 </div>
                 <div id="sugerencias-jugadores" class="mt-2">
-                  <!-- Sugerencias aparecerán aquí -->
+                  <!-- Sugerencias aparecerÃ¡n aquÃ­ -->
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Estadísticas del Jugador Seleccionado -->
+          <!-- EstadÃ­sticas del Jugador Seleccionado -->
           <div id="estadisticas-jugador-container" style="display: none;">
             <div class="enhanced-card rounded-3 p-4 mb-5">
               <div class="text-center mb-4">
                 <h4 class="text-white" id="jugador-seleccionado-nombre">
-                  <i class="bi bi-person-circle me-2"></i>Estadísticas de Jugador
+                  <i class="bi bi-person-circle me-2"></i>EstadÃ­sticas de Jugador
                 </h4>
               </div>
-              
+
               <div class="row g-4">
-                <!-- Dúos Más Exitosos -->
+                <!-- DÃºos MÃ¡s Exitosos -->
                 <div class="col-lg-6">
                   <div class="enhanced-card p-4 h-100" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(34, 197, 94, 0.2);">
                     <div class="d-flex align-items-center mb-4">
@@ -3950,12 +3963,12 @@
                         <i class="bi bi-people-fill text-success fs-5"></i>
                       </div>
                       <div>
-                        <h6 class="text-success fw-bold mb-0">Dúos Más Exitosos</h6>
-                        <small class="text-light-emphasis">Compañeros de equipo con mejor winrate</small>
+                        <h6 class="text-success fw-bold mb-0">DÃºos MÃ¡s Exitosos</h6>
+                        <small class="text-light-emphasis">CompaÃ±eros de equipo con mejor winrate</small>
                       </div>
                     </div>
                     <div id="mejores-duos">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
@@ -3969,11 +3982,11 @@
                       </div>
                       <div>
                         <h6 class="text-danger fw-bold mb-0">Rivales Principales</h6>
-                        <small class="text-light-emphasis">Oponentes que más victorias tienen</small>
+                        <small class="text-light-emphasis">Oponentes que mÃ¡s victorias tienen</small>
                       </div>
                     </div>
                     <div id="rivales-principales">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
@@ -3987,16 +4000,16 @@
                       </div>
                       <div>
                         <h6 class="text-warning fw-bold mb-0">Enfrentamientos Frecuentes</h6>
-                        <small class="text-light-emphasis">Oponentes más enfrentados</small>
+                        <small class="text-light-emphasis">Oponentes mÃ¡s enfrentados</small>
                       </div>
                     </div>
                     <div id="enfrentamientos-frecuentes">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
 
-                <!-- A Quien Más Le Gana -->
+                <!-- A Quien MÃ¡s Le Gana -->
                 <div class="col-lg-6">
                   <div class="enhanced-card p-4 h-100" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.2);">
                     <div class="d-flex align-items-center mb-4">
@@ -4004,24 +4017,24 @@
                         <i class="bi bi-trophy-fill text-success fs-5"></i>
                       </div>
                       <div>
-                        <h6 class="text-success fw-bold mb-0">A Quien Más Domina</h6>
-                        <small class="text-light-emphasis">Oponentes con más de 50% winrate</small>
+                        <h6 class="text-success fw-bold mb-0">A Quien MÃ¡s Domina</h6>
+                        <small class="text-light-emphasis">Oponentes con mÃ¡s de 50% winrate</small>
                       </div>
                     </div>
                     <div id="nunca-enfrentados">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
 
-                <!-- Estadísticas generales -->
+                <!-- EstadÃ­sticas generales -->
                 <div class="col-12">
                   <div class="glass-effect rounded-3 p-3 border-top border-primary border-3">
                     <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-graph-up me-2"></i>Estadísticas Generales de Enfrentamientos
+                      <i class="bi bi-graph-up me-2"></i>EstadÃ­sticas Generales de Enfrentamientos
                     </h6>
                     <div class="row g-3" id="estadisticas-generales">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
@@ -4032,24 +4045,24 @@
           <!-- Comparador "Versus" -->
           <div class="enhanced-card rounded-3 p-4">
             <h5 class="text-white mb-4">
-              <i class="bi bi-lightning me-2"></i>⚔️ Comparador Versus
+              <i class="bi bi-lightning me-2"></i>âš”ï¸ Comparador Versus
             </h5>
-            
+
             <div class="row g-4 align-items-center">
               <!-- Jugador 1 -->
               <div class="col-lg-5">
                 <div class="text-center">
                   <h6 class="text-primary mb-3">Jugador 1</h6>
-                  <input 
-                    type="text" 
-                    id="versus-jugador1" 
-                    class="form-control form-control-lg text-center" 
+                  <input
+                    type="text"
+                    id="versus-jugador1"
+                    class="form-control form-control-lg text-center"
                                          placeholder="Nombre del jugador 1..."
                      onkeyup="buscarJugadorVersus(1)"
                      onfocus="mostrarTodosLosJugadoresVersus(1)"
                    >
                   <div id="sugerencias-versus1" class="mt-2">
-                    <!-- Sugerencias aparecerán aquí -->
+                    <!-- Sugerencias aparecerÃ¡n aquÃ­ -->
                   </div>
                 </div>
               </div>
@@ -4068,28 +4081,28 @@
               <div class="col-lg-5">
                 <div class="text-center">
                   <h6 class="text-danger mb-3">Jugador 2</h6>
-                  <input 
-                    type="text" 
-                    id="versus-jugador2" 
-                    class="form-control form-control-lg text-center" 
+                  <input
+                    type="text"
+                    id="versus-jugador2"
+                    class="form-control form-control-lg text-center"
                                          placeholder="Nombre del jugador 2..."
                      onkeyup="buscarJugadorVersus(2)"
                      onfocus="mostrarTodosLosJugadoresVersus(2)"
                    >
                   <div id="sugerencias-versus2" class="mt-2">
-                    <!-- Sugerencias aparecerán aquí -->
+                    <!-- Sugerencias aparecerÃ¡n aquÃ­ -->
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Resultados de la Comparación -->
+            <!-- Resultados de la ComparaciÃ³n -->
             <div id="resultados-versus" class="mt-5" style="display: none;">
               <hr class="border-light-subtle my-4">
               <h6 class="text-white text-center mb-4">
                 <i class="bi bi-graph-down me-2"></i>Resultados del Enfrentamiento
               </h6>
-              
+
               <div class="row g-4">
                 <!-- Historial de enfrentamientos -->
                 <div class="col-lg-6">
@@ -4098,38 +4111,38 @@
                       <i class="bi bi-clock-history me-2"></i>Historial Directo
                     </h6>
                     <div id="historial-directo">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
 
-                <!-- Quién domina a quién -->
+                <!-- QuiÃ©n domina a quiÃ©n -->
                 <div class="col-lg-6">
                   <div class="glass-effect rounded-3 p-3">
                     <h6 class="text-success fw-bold mb-3">
                       <i class="bi bi-crown me-2"></i>Dominio y Paternidad
                     </h6>
                     <div id="dominio-paternidad">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
 
-                <!-- Estadísticas comparadas -->
+                <!-- EstadÃ­sticas comparadas -->
                 <div class="col-12">
                   <div class="glass-effect rounded-3 p-3">
                     <h6 class="text-info fw-bold mb-3">
-                      <i class="bi bi-bar-chart me-2"></i>Comparación de Estadísticas
+                      <i class="bi bi-bar-chart me-2"></i>ComparaciÃ³n de EstadÃ­sticas
                     </h6>
                     <div id="estadisticas-comparadas">
-                      <!-- Se llenará dinámicamente -->
+                      <!-- Se llenarÃ¡ dinÃ¡micamente -->
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          
+
         </div>
       </div>
       <!-- End Paternidades Tab -->
@@ -4137,15 +4150,15 @@
       <!-- Mundialito T5 Tab -->
       <div class="tab-pane fade" id="mundialito-content" role="tabpanel" aria-labelledby="mundialito-tab">
         <div class="container-fluid py-4">
-          
+
           <!-- Header -->
           <div class="text-center mb-4">
             <h2 class="h3 text-warning fw-bold mb-2">
-              <i class="bi bi-trophy me-2"></i>🏆 Mundialito T5
+              <i class="bi bi-trophy me-2"></i>ðŸ† Mundialito T5
             </h2>
             <div class="text-light-emphasis">
-              <strong>Mundial Individual:</strong> Cada jugador progresa según sus resultados en partidos reales<br>
-              <small>Fase de Grupos (3 partidos) → 8vos → 4tos → Semis → Final | Con sistema de monedas y bonus</small>
+              <strong>Mundial Individual:</strong> Cada jugador progresa segÃºn sus resultados en partidos reales<br>
+              <small>Fase de Grupos (3 partidos) â†’ 8vos â†’ 4tos â†’ Semis â†’ Final | Con sistema de monedas y bonus</small>
             </div>
           </div>
 
@@ -4153,15 +4166,15 @@
           <div class="row mb-4">
             <div class="col-md-6">
               <div class="enhanced-card rounded-3 p-3">
-                <h6 class="text-warning mb-3">⚙️ Configuración</h6>
+                <h6 class="text-warning mb-3">âš™ï¸ ConfiguraciÃ³n</h6>
                 <p class="small text-light-emphasis mb-3">
-                  🏆 Simula un mundial individual usando el historial real de partidos, cronológicamente.<br>
-                  <span class="text-info">⚡ Se actualiza automáticamente</span><br>
-                  <span class="text-success">🎲 Resultados de monedas determinísticos y reproducibles</span>
+                  ðŸ† Simula un mundial individual usando el historial real de partidos, cronolÃ³gicamente.<br>
+                  <span class="text-info">âš¡ Se actualiza automÃ¡ticamente</span><br>
+                  <span class="text-success">ðŸŽ² Resultados de monedas determinÃ­sticos y reproducibles</span>
                 </p>
                 <div class="row g-3">
                   <div class="col-12">
-                    <label for="mundialito-temporada" class="form-label small">🏅 Temporada:</label>
+                    <label for="mundialito-temporada" class="form-label small">ðŸ… Temporada:</label>
                     <select id="mundialito-temporada" class="form-select form-select-sm">
                       <option value="all">Todas las temporadas</option>
                     </select>
@@ -4170,7 +4183,7 @@
                 <div class="row g-2 mt-2">
                   <div class="col-12">
                     <button id="btn-reset-mundialito" class="btn btn-outline-secondary btn-sm w-100">
-                      🔄 Reset Mundial
+                      ðŸ”„ Reset Mundial
                     </button>
                   </div>
                 </div>
@@ -4178,7 +4191,7 @@
             </div>
             <div class="col-md-6">
               <div class="enhanced-card rounded-3 p-3">
-                <h6 class="text-info mb-3">📊 Estadísticas Globales</h6>
+                <h6 class="text-info mb-3">ðŸ“Š EstadÃ­sticas Globales</h6>
                 <div id="mundialito-stats" class="row g-2 text-center">
                   <div class="col-4">
                     <div class="small text-light-emphasis">Jugadores</div>
@@ -4207,7 +4220,7 @@
                 <button class="nav-link" id="mundialito-sub-tab-parejas" type="button">Parejas</button>
               </li>
               <li class="nav-item">
-                <button class="nav-link" id="mundialito-sub-tab-estadisticas" type="button">Estadísticas</button>
+                <button class="nav-link" id="mundialito-sub-tab-estadisticas" type="button">EstadÃ­sticas</button>
               </li>
             </ul>
           </div>
@@ -4218,7 +4231,7 @@
               <div class="col-12">
                 <div class="enhanced-card rounded-3 p-4">
                   <h5 class="text-warning mb-3">
-                    <i class="bi bi-diagram-3 me-2"></i>🏟️ Fixture del Mundial
+                    <i class="bi bi-diagram-3 me-2"></i>ðŸŸï¸ Fixture del Mundial
                   </h5>
                   <div id="mundialito-fixture" class="row">
                     <div class="text-center py-4">
@@ -4261,13 +4274,13 @@
             </div>
           </div>
 
-          <!-- Subtab: Estadísticas -->
+          <!-- Subtab: EstadÃ­sticas -->
           <div id="mundialito-sub-estadisticas" class="d-none">
             <div class="row">
               <div class="col-12">
                 <div class="enhanced-card rounded-3 p-4">
                   <h5 class="text-info mb-3">
-                    <i class="bi bi-bar-chart-line me-2"></i>📈 Estadísticas de Llegada (Histograma)
+                    <i class="bi bi-bar-chart-line me-2"></i>ðŸ“ˆ EstadÃ­sticas de Llegada (Histograma)
                   </h5>
                   <div class="row">
                     <div class="col-12 col-lg-8">
@@ -4275,10 +4288,10 @@
                     </div>
                     <div class="col-12 col-lg-4">
                       <div class="small text-light-emphasis">
-                        <p>Distribución de hasta dónde llegan los jugadores en el Mundialito T5.</p>
+                        <p>DistribuciÃ³n de hasta dÃ³nde llegan los jugadores en el Mundialito T5.</p>
                         <ul class="mb-0">
-                          <li>Grupos → 8vos → 4tos → Semis → Final → Campeón</li>
-                          <li>Se toma la fase más alta alcanzada por jugador (incluye la actual).</li>
+                          <li>Grupos â†’ 8vos â†’ 4tos â†’ Semis â†’ Final â†’ CampeÃ³n</li>
+                          <li>Se toma la fase mÃ¡s alta alcanzada por jugador (incluye la actual).</li>
                         </ul>
                       </div>
                     </div>
@@ -4292,30 +4305,30 @@
           <div class="row mt-4">
             <div class="col-12">
               <div class="enhanced-card rounded-3 p-3">
-                <h6 class="text-info mb-3">🏷️ Reglas del Mundialito T5</h6>
-                
+                <h6 class="text-info mb-3">ðŸ·ï¸ Reglas del Mundialito T5</h6>
+
                 <!-- Fase de Grupos -->
                 <div class="mb-4">
-                  <h6 class="text-warning mb-2">👥 Fase de Grupos (3 partidos)</h6>
+                  <h6 class="text-warning mb-2">ðŸ‘¥ Fase de Grupos (3 partidos)</h6>
                   <div class="row g-2 small">
                     <div class="col-md-4">
                       <div class="p-2 rounded bg-success bg-opacity-25">
-                        <strong>✅ Clasifican:</strong><br>
-                        • 1V + 2E (completa los 3)<br>
-                        • 3 victorias = Bonus ⭐
+                        <strong>âœ… Clasifican:</strong><br>
+                        â€¢ 1V + 2E (completa los 3)<br>
+                        â€¢ 3 victorias = Bonus â­
                       </div>
                     </div>
                     <div class="col-md-4">
                       <div class="p-2 rounded bg-warning bg-opacity-25">
-                        <strong>🪙 Moneda:</strong><br>
-                        • 1V-1E-1D = 50% chance<br>
-                        <small class="text-warning-emphasis">(Determinístico)</small>
+                        <strong>ðŸª™ Moneda:</strong><br>
+                        â€¢ 1V-1E-1D = 50% chance<br>
+                        <small class="text-warning-emphasis">(DeterminÃ­stico)</small>
                       </div>
                     </div>
                     <div class="col-md-4">
                       <div class="p-2 rounded bg-danger bg-opacity-25">
-                        <strong>❌ Eliminados:</strong><br>
-                        • 2 derrotas → Eliminación inmediata<br>
+                        <strong>âŒ Eliminados:</strong><br>
+                        â€¢ 2 derrotas â†’ EliminaciÃ³n inmediata<br>
                         <small class="text-danger-emphasis">(No espera 3er partido)</small>
                       </div>
                     </div>
@@ -4324,30 +4337,30 @@
 
                 <!-- Fases Eliminatorias -->
                 <div class="mb-3">
-                  <h6 class="text-info mb-2">🏆 Fases Eliminatorias (8vos → Final)</h6>
+                  <h6 class="text-info mb-2">ðŸ† Fases Eliminatorias (8vos â†’ Final)</h6>
                   <div class="row g-2 small">
                     <div class="col-md-3">
                       <div class="p-2 rounded bg-success bg-opacity-25">
-                        <strong>✅ Victoria:</strong><br>
-                        Pasa automáticamente
+                        <strong>âœ… Victoria:</strong><br>
+                        Pasa automÃ¡ticamente
                       </div>
                     </div>
                     <div class="col-md-3">
                       <div class="p-2 rounded bg-info bg-opacity-25">
-                        <strong>⭐ Empate con Bonus:</strong><br>
-                        Pasa automáticamente
+                        <strong>â­ Empate con Bonus:</strong><br>
+                        Pasa automÃ¡ticamente
                       </div>
                     </div>
                     <div class="col-md-3">
                       <div class="p-2 rounded bg-warning bg-opacity-25">
-                        <strong>🪙 Empate sin Bonus:</strong><br>
+                        <strong>ðŸª™ Empate sin Bonus:</strong><br>
                         50% chance (moneda)<br>
-                        <small class="text-warning-emphasis">(Determinístico)</small>
+                        <small class="text-warning-emphasis">(DeterminÃ­stico)</small>
                       </div>
                     </div>
                     <div class="col-md-3">
                       <div class="p-2 rounded bg-danger bg-opacity-25">
-                        <strong>❌ Derrota:</strong><br>
+                        <strong>âŒ Derrota:</strong><br>
                         Vuelve a grupos
                       </div>
                     </div>
@@ -4356,31 +4369,31 @@
 
                 <!-- Leyenda de Badges -->
                 <div>
-                  <h6 class="text-secondary mb-2">🎖️ Badges</h6>
+                  <h6 class="text-secondary mb-2">ðŸŽ–ï¸ Badges</h6>
                   <div class="row g-2 text-center">
                     <div class="col-md-2">
-                      <span class="badge bg-secondary">👥 Grupos</span>
+                      <span class="badge bg-secondary">ðŸ‘¥ Grupos</span>
                       <div class="small text-light-emphasis mt-1">V-E-D (partidos/3)</div>
                     </div>
                     <div class="col-md-2">
-                      <span class="badge bg-primary">🏃 8vos</span>
+                      <span class="badge bg-primary">ðŸƒ 8vos</span>
                       <div class="small text-light-emphasis mt-1">Clasificado</div>
                     </div>
                     <div class="col-md-2">
-                      <span class="badge bg-info">🚀 4tos</span>
+                      <span class="badge bg-info">ðŸš€ 4tos</span>
                       <div class="small text-light-emphasis mt-1">Clasificado</div>
                     </div>
                     <div class="col-md-2">
-                      <span class="badge bg-warning text-dark">⭐ Semis</span>
+                      <span class="badge bg-warning text-dark">â­ Semis</span>
                       <div class="small text-light-emphasis mt-1">Clasificado</div>
                     </div>
                     <div class="col-md-2">
-                      <span class="badge bg-danger">🔥 Final</span>
+                      <span class="badge bg-danger">ðŸ”¥ Final</span>
                       <div class="small text-light-emphasis mt-1">Finalista</div>
                     </div>
                     <div class="col-md-2">
-                      <span class="badge bg-success">👑 Campeón ⭐</span>
-                      <div class="small text-light-emphasis mt-1">¡Ganador!</div>
+                      <span class="badge bg-success">ðŸ‘‘ CampeÃ³n â­</span>
+                      <div class="small text-light-emphasis mt-1">Â¡Ganador!</div>
                     </div>
                   </div>
                 </div>
@@ -4399,7 +4412,6 @@
     <!-- VISTA DE PERFIL DE JUGADOR (oculta por defecto) -->
     <!-- ============================================= -->
     <div id="vista-perfil-jugador" class="container-fluid py-4 d-none">
-
       <!-- Header del perfil -->
       <div class="row mb-4">
         <div class="col-12">
@@ -4417,40 +4429,28 @@
 
       <div id="fut-hero-container"></div>
 
-      <!-- Info principal -->
-      <div id="perfil-info-principal-legacy" class="row mb-4">
-        <!-- Card de avatar y posición -->
-        <div class="col-md-3 mb-3 mb-md-0 d-none">
-          <div class="card bg-dark border-secondary h-100">
-            <div class="card-body text-center py-4">
-              <div class="display-1 mb-3" id="perfil-avatar">🏃‍♂️</div>
-              <h4 class="text-white mb-2" id="perfil-nombre">Jugador</h4>
-              <div id="perfil-posiciones" class="mb-3"></div>
-              <div class="badge bg-info fs-6" id="perfil-pulmon">
-                <i class="bi bi-heart-pulse me-1"></i>Pulmón: --
-              </div>
-            </div>
+      <!-- Layout OP.GG: Sidebar + Main Content -->
+      <div class="row g-4 mb-4">
+        <!-- Sidebar Izquierdo -->
+        <div class="col-lg-4 col-xl-3" id="perfil-sidebar-container">
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Cargando resumen...</p>
           </div>
         </div>
 
-        <!-- Stats principales -->
-        <div class="col-12">
-          <div class="row g-3" id="perfil-stats-principales">
-            <!-- Se llena dinámicamente con cards de stats -->
-            <div class="col-12 text-center py-5">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-              </div>
-              <p class="text-muted mt-2">Cargando estadísticas...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- Contenido Principal Derecho -->
+        <div class="col-lg-8 col-xl-9">
 
       <!-- Tabs del perfil -->
       <ul class="nav nav-tabs nav-fill" id="perfil-tabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-perfil-videos" data-bs-toggle="tab" data-bs-target="#perfil-videos" type="button" role="tab">
+          <button class="nav-link active" id="tab-perfil-partidos" data-bs-toggle="tab" data-bs-target="#perfil-partidos" type="button" role="tab">
+            <i class="bi bi-clock-history me-1"></i>Partidos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-videos" data-bs-toggle="tab" data-bs-target="#perfil-videos" type="button" role="tab">
             <i class="bi bi-play-circle me-1"></i>Mis Goles
           </button>
         </li>
@@ -4466,7 +4466,7 @@
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-perfil-estadisticas" data-bs-toggle="tab" data-bs-target="#perfil-estadisticas" type="button" role="tab">
-            <i class="bi bi-bar-chart me-1"></i>Estadísticas
+            <i class="bi bi-bar-chart me-1"></i>EstadÃ­sticas
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -4482,8 +4482,18 @@
       </ul>
 
       <div class="tab-content mt-4" id="perfil-tab-content">
+        <!-- Tab Partidos (OP.GG Style) -->
+        <div class="tab-pane fade show active" id="perfil-partidos" role="tabpanel">
+          <div id="perfil-partidos-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-clock-history display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus partidos recientes</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Tab Videos -->
-        <div class="tab-pane fade show active" id="perfil-videos" role="tabpanel">
+        <div class="tab-pane fade" id="perfil-videos" role="tabpanel">
           <div class="row g-3" id="perfil-videos-container">
             <div class="col-12 text-center py-5">
               <i class="bi bi-camera-video display-4 text-muted"></i>
@@ -4512,12 +4522,12 @@
           </div>
         </div>
 
-        <!-- Tab Estadísticas -->
+        <!-- Tab EstadÃ­sticas -->
         <div class="tab-pane fade" id="perfil-estadisticas" role="tabpanel">
           <div id="perfil-estadisticas-container">
             <div class="col-12 text-center py-5">
               <i class="bi bi-bar-chart display-4 text-muted"></i>
-              <p class="text-muted mt-3">Selecciona un jugador para ver sus estadísticas</p>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus estadÃ­sticas</p>
             </div>
           </div>
         </div>
@@ -4543,18 +4553,21 @@
         </div>
       </div>
 
+      </div> <!-- Cierre col-lg-8 -->
+      </div> <!-- Cierre row -->
+
     </div>
     <!-- End Vista Perfil Jugador -->
 
     <!-- Footer -->
     <footer class="text-center py-5 mt-5">
       <div class="text-light-emphasis">
-        <p class="fs-5 mb-2">Hecho con ❤️ por</p>
+        <p class="fs-5 mb-2">Hecho con â¤ï¸ por</p>
         <p class="h4 fw-bold text-gradient">Leopoldo</p>
         <div class="mx-auto mt-3" style="width: 80px; height: 4px; background: var(--gradient-primary); border-radius: 2px;"></div>
       </div>
     </footer>
-    
+
     <!-- Modal para Seleccionar Jugador (Perfil) -->
     <div class="modal fade" id="seleccionarJugadorModal" tabindex="-1" aria-labelledby="seleccionarJugadorModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -4587,7 +4600,7 @@
         <div class="modal-content enhanced-card border-0">
           <div class="modal-header border-bottom border-light-subtle">
             <h5 class="modal-title text-white" id="playerModalLabel">
-              <span class="me-2">👤</span> 
+              <span class="me-2">ðŸ‘¤</span>
               <span id="modal-title-text">Agregar Nuevo Jugador</span>
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -4595,31 +4608,31 @@
           <div class="modal-body">
             <form id="player-form">
               <div class="mb-3">
-                <label for="nombre" class="form-label text-light">✏️ Nombre del Jugador</label>
+                <label for="nombre" class="form-label text-light">âœï¸ Nombre del Jugador</label>
                 <input type="text" name="nombre" id="nombre" class="form-control" placeholder="Ingresa el nombre completo" required>
               </div>
-              
+
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
-                  <label for="posicion-primaria" class="form-label text-light">🎯 Posición Principal</label>
+                  <label for="posicion-primaria" class="form-label text-light">ðŸŽ¯ PosiciÃ³n Principal</label>
                   <select name="posicion_primaria" id="posicion-primaria" class="form-select" required>
-                    <option value="">Seleccionar posición</option>
+                    <option value="">Seleccionar posiciÃ³n</option>
                   </select>
                 </div>
                 <div class="col-md-6">
-                  <label for="posicion-secundaria" class="form-label text-light">🔄 Posición Secundaria</label>
+                  <label for="posicion-secundaria" class="form-label text-light">ðŸ”„ PosiciÃ³n Secundaria</label>
                   <select name="posicion_secundaria" id="posicion-secundaria" class="form-select">
-                    <option value="">Seleccionar posición (opcional)</option>
+                    <option value="">Seleccionar posiciÃ³n (opcional)</option>
                   </select>
                 </div>
               </div>
-              
+
               <div class="mb-3">
-                <label for="pulmon" class="form-label text-light">🫁 Pulmón</label>
-                <input type="number" name="pulmon" id="pulmon" class="form-control" placeholder="Valor de pulmón (opcional)" min="0" max="10" step="0.1">
-                <div class="form-text text-light-emphasis">Resistencia física del jugador (0-10)</div>
+                <label for="pulmon" class="form-label text-light">ðŸ« PulmÃ³n</label>
+                <input type="number" name="pulmon" id="pulmon" class="form-control" placeholder="Valor de pulmÃ³n (opcional)" min="0" max="10" step="0.1">
+                <div class="form-text text-light-emphasis">Resistencia fÃ­sica del jugador (0-10)</div>
               </div>
-              
+
               <div class="d-flex gap-3">
                 <button type="submit" class="btn btn-primary btn-enhanced flex-fill" id="submit-btn">
                   <i class="bi bi-plus me-2" id="submit-icon"></i>
@@ -4641,20 +4654,20 @@
         <div class="modal-content enhanced-card border-0">
           <div class="modal-header border-bottom border-light-subtle">
             <h5 class="modal-title text-white" id="autoEquiposModalLabel">
-              <span class="me-2">🤖</span> 
+              <span class="me-2">ðŸ¤–</span>
               Auto-Armado de Equipos con IA
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            
-            <!-- Sección de configuración -->
+
+            <!-- SecciÃ³n de configuraciÃ³n -->
             <div id="config-section">
               <div class="alert alert-info d-flex align-items-center mb-4">
                 <i class="bi bi-info-circle me-2"></i>
                 <div>
-                  <strong>¿Cómo funciona?</strong><br>
-                  El algoritmo genético analiza las estadísticas de los jugadores seleccionados y encuentra la combinación óptima para crear dos equipos equilibrados de 5 jugadores cada uno.
+                  <strong>Â¿CÃ³mo funciona?</strong><br>
+                  El algoritmo genÃ©tico analiza las estadÃ­sticas de los jugadores seleccionados y encuentra la combinaciÃ³n Ã³ptima para crear dos equipos equilibrados de 5 jugadores cada uno.
                 </div>
               </div>
 
@@ -4665,30 +4678,30 @@
                       <i class="bi bi-activity me-2"></i>
                       Base de rendimiento
                     </h6>
-                    <div id="performance-mode-help" class="small text-light-emphasis">El balance usa las estadísticas históricas/temporada que ya ves en la tabla.</div>
+                    <div id="performance-mode-help" class="small text-light-emphasis">El balance usa las estadÃ­sticas histÃ³ricas/temporada que ya ves en la tabla.</div>
                   </div>
                   <div class="btn-group btn-group-sm performance-toggle" role="group" aria-label="Base de rendimiento">
                     <input type="radio" class="btn-check" name="matchmaking-performance-mode" id="performance-mode-historical" value="historico" autocomplete="off" checked onchange="actualizarModoRendimientoMatchmaking()">
                     <label class="btn btn-outline-primary" for="performance-mode-historical">
-                      <i class="bi bi-clock-history me-1"></i>Histórico
+                      <i class="bi bi-clock-history me-1"></i>HistÃ³rico
                     </label>
                     <input type="radio" class="btn-check" name="matchmaking-performance-mode" id="performance-mode-recent" value="reciente" autocomplete="off" onchange="actualizarModoRendimientoMatchmaking()">
                     <label class="btn btn-outline-info" for="performance-mode-recent">
-                      <i class="bi bi-lightning-charge me-1"></i>Últimos X
+                      <i class="bi bi-lightning-charge me-1"></i>Ãšltimos X
                     </label>
                   </div>
                 </div>
                 <div id="recent-performance-settings" class="recent-performance-settings d-none mt-3">
                   <label for="input-partidos-recientes-matchmaking" class="form-label text-light small mb-1">Partidos recientes por jugador</label>
                   <div class="d-flex align-items-center gap-2">
-                    <span class="small text-light-emphasis">Últimos</span>
+                    <span class="small text-light-emphasis">Ãšltimos</span>
                     <input type="number" id="input-partidos-recientes-matchmaking" class="form-control form-control-sm" value="5" min="1" max="30" step="1" onchange="actualizarModoRendimientoMatchmaking()" oninput="actualizarModoRendimientoMatchmaking()">
                     <span class="small text-light-emphasis">partidos</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Selección de jugadores -->
+              <!-- SelecciÃ³n de jugadores -->
               <div class="mb-4">
                 <h6 class="text-white mb-3">
                   <i class="bi bi-people me-2"></i>
@@ -4696,14 +4709,14 @@
                 </h6>
                 <div class="mb-3">
                   <label class="form-label text-light">Escribe los nombres de los jugadores que van a jugar:</label>
-                  <input 
-                    type="text" 
-                    id="input-jugadores-partido" 
-                    class="form-control" 
+                  <input
+                    type="text"
+                    id="input-jugadores-partido"
+                    class="form-control"
                     placeholder="Ej: Metox, Bou, Cogorno, Kite, Boska, Berni, Never, Darmian, Facu, Fachita"
                     onkeyup="buscarJugadoresDisponibles()"
                   >
-                  <div class="form-text">Separar nombres con comas. Mínimo 10 jugadores para armar equipos de 5 vs 5. Después elegí si cada uno juega como jugador o arquero para el balance.</div>
+                  <div class="form-text">Separar nombres con comas. MÃ­nimo 10 jugadores para armar equipos de 5 vs 5. DespuÃ©s elegÃ­ si cada uno juega como jugador o arquero para el balance.</div>
                 </div>
 
                 <!-- Lista de jugadores seleccionados -->
@@ -4721,7 +4734,7 @@
                   <i class="bi bi-link me-2"></i>
                   Restricciones de Equipos (Opcional)
                 </h6>
-                
+
                 <!-- Parejas que deben estar enfrentadas -->
                 <div class="mb-3">
                   <label class="form-label text-light">
@@ -4752,7 +4765,7 @@
                 <div class="mb-3">
                   <label class="form-label text-light">
                     <i class="bi bi-heart me-1 text-success"></i>
-                    Jugadores que SÍ deben estar en el mismo equipo:
+                    Jugadores que SÃ deben estar en el mismo equipo:
                   </label>
                   <div id="parejas-juntas">
                     <div class="d-flex gap-2 mb-2">
@@ -4786,14 +4799,14 @@
               </div>
             </div>
 
-            <!-- Sección de progreso -->
+            <!-- SecciÃ³n de progreso -->
             <div id="progress-section" style="display: none;">
               <div class="text-center mb-4">
                 <h6 class="text-white">
                   <i class="bi bi-gear-fill spinning me-2"></i>
                   Optimizando equipos...
                 </h6>
-                <p class="text-light-emphasis small">El algoritmo genético está buscando la mejor combinación</p>
+                <p class="text-light-emphasis small">El algoritmo genÃ©tico estÃ¡ buscando la mejor combinaciÃ³n</p>
               </div>
 
               <div class="mb-3">
@@ -4808,7 +4821,7 @@
 
               <div class="row g-3 text-center">
                 <div class="col-4">
-                  <div class="small text-light-emphasis">Generación</div>
+                  <div class="small text-light-emphasis">GeneraciÃ³n</div>
                   <div id="current-generation" class="text-white fw-bold">0</div>
                 </div>
                 <div class="col-4">
@@ -4822,18 +4835,18 @@
               </div>
             </div>
 
-            <!-- Sección de resultados -->
+            <!-- SecciÃ³n de resultados -->
             <div id="results-section" style="display: none;">
               <div class="text-center mb-4">
                 <h6 class="text-success">
                   <i class="bi bi-check-circle-fill me-2"></i>
-                  ¡Equipos Optimizados!
+                  Â¡Equipos Optimizados!
                 </h6>
-                <p class="text-light-emphasis small">El algoritmo encontró la mejor combinación posible</p>
+                <p class="text-light-emphasis small">El algoritmo encontrÃ³ la mejor combinaciÃ³n posible</p>
               </div>
 
               <div id="equipos-resultado" class="row g-3 mb-4">
-                <!-- Los equipos se mostrarán aquí -->
+                <!-- Los equipos se mostrarÃ¡n aquÃ­ -->
               </div>
 
               <div class="d-flex gap-3">
@@ -4843,7 +4856,7 @@
                 </button>
                 <button id="btn-nueva-optimizacion" class="btn btn-outline-primary">
                   <i class="bi bi-arrow-clockwise me-2"></i>
-                  Nueva Optimización
+                  Nueva OptimizaciÃ³n
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                   Cerrar
@@ -4862,35 +4875,35 @@
         <div class="modal-content enhanced-card border-0">
           <div class="modal-header border-bottom border-light-subtle">
             <h5 class="modal-title text-white" id="editarPartidoModalLabel">
-              <span class="me-2">✏️</span> 
+              <span class="me-2">âœï¸</span>
               Editar Partido
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <form id="editar-partido-form">
-              <!-- Información básica del partido -->
+              <!-- InformaciÃ³n bÃ¡sica del partido -->
               <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                  <label for="editar-fecha" class="form-label text-light">📅 Fecha</label>
+                  <label for="editar-fecha" class="form-label text-light">ðŸ“… Fecha</label>
                   <input type="date" id="editar-fecha" class="form-control" required>
                 </div>
                 <div class="col-md-4">
-                  <label for="editar-cancha" class="form-label text-light">🏟️ Cancha</label>
+                  <label for="editar-cancha" class="form-label text-light">ðŸŸï¸ Cancha</label>
                   <input type="text" id="editar-cancha" class="form-control" placeholder="Nombre de la cancha">
                 </div>
                 <div class="col-md-4">
-                  <label for="editar-temporada" class="form-label text-light">🏆 Temporada</label>
+                  <label for="editar-temporada" class="form-label text-light">ðŸ† Temporada</label>
                   <select id="editar-temporada" class="form-select">
                     <option value="">Sin temporada</option>
                   </select>
                 </div>
               </div>
-              
+
               <!-- Link de YouTube para administradores -->
               <div class="row g-3 mb-4">
                 <div class="col-md-12">
-                  <label for="editar-youtube-link" class="form-label text-light">📹 Link de Review en YouTube</label>
+                  <label for="editar-youtube-link" class="form-label text-light">ðŸ“¹ Link de Review en YouTube</label>
                   <input type="url" id="editar-youtube-link" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
                   <div class="form-text">Agrega el enlace de YouTube usado por Historial y los goles.</div>
                 </div>
@@ -4899,15 +4912,15 @@
               <!-- Equipos -->
               <div class="row g-4 mb-4">
                 <div class="col-md-6">
-                  <h6 class="text-primary mb-3">🔵 Equipo 1</h6>
+                  <h6 class="text-primary mb-3">ðŸ”µ Equipo 1</h6>
                   <div id="editar-equipo1-container">
-                    <!-- Jugadores del equipo 1 se cargarán aquí -->
+                    <!-- Jugadores del equipo 1 se cargarÃ¡n aquÃ­ -->
                   </div>
                 </div>
                 <div class="col-md-6">
-                  <h6 class="text-danger mb-3">🔴 Equipo 2</h6>
+                  <h6 class="text-danger mb-3">ðŸ”´ Equipo 2</h6>
                   <div id="editar-equipo2-container">
-                    <!-- Jugadores del equipo 2 se cargarán aquí -->
+                    <!-- Jugadores del equipo 2 se cargarÃ¡n aquÃ­ -->
                   </div>
                 </div>
               </div>
@@ -4915,26 +4928,26 @@
               <!-- Goles -->
               <div class="mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h6 class="text-white mb-0">⚽ Goles del Partido</h6>
+                  <h6 class="text-white mb-0">âš½ Goles del Partido</h6>
                   <button type="button" class="btn btn-sm btn-success" onclick="agregarGolEdicion()">
                     <i class="bi bi-plus"></i> Agregar Gol
                   </button>
                 </div>
                 <div id="editar-goles-container">
-                  <!-- Goles se cargarán aquí -->
+                  <!-- Goles se cargarÃ¡n aquÃ­ -->
                 </div>
               </div>
 
               <!-- MVP y ACE -->
               <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                  <label for="editar-mvp" class="form-label text-light">👑 MVP</label>
+                  <label for="editar-mvp" class="form-label text-light">ðŸ‘‘ MVP</label>
                   <select id="editar-mvp" class="form-select">
                     <option value="">Sin MVP</option>
                   </select>
                 </div>
                 <div class="col-md-6">
-                  <label for="editar-ace" class="form-label text-light">⭐ ACE</label>
+                  <label for="editar-ace" class="form-label text-light">â­ ACE</label>
                   <select id="editar-ace" class="form-select">
                     <option value="">Sin ACE</option>
                   </select>
@@ -4962,7 +4975,7 @@
         <div class="modal-content enhanced-card border-0">
           <div class="modal-header border-bottom border-light-subtle">
             <h5 class="modal-title text-white" id="editarYouTubeModalLabel">
-              <span class="me-2">📹</span> 
+              <span class="me-2">ðŸ“¹</span>
               Editar Link de Review
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -4970,14 +4983,14 @@
           <div class="modal-body">
             <form id="editar-youtube-form">
               <div class="mb-3">
-                <label for="youtube-link-editar" class="form-label text-light">📹 Link de Review en YouTube</label>
+                <label for="youtube-link-editar" class="form-label text-light">ðŸ“¹ Link de Review en YouTube</label>
                 <input type="url" id="youtube-link-editar" class="form-control" placeholder="https://www.youtube.com/watch?v=..." required>
-                <div class="form-text">Deja vacío para quitar el link del partido.</div>
+                <div class="form-text">Deja vacÃ­o para quitar el link del partido.</div>
               </div>
-              
+
               <div class="d-flex gap-2">
                 <button type="button" id="btn-guardar-youtube" class="btn btn-danger btn-enhanced flex-fill">
-                  <i class="bi bi-youtube me-2"></i>
+                  <i class="bi bi-camera-video me-2"></i>
                   Guardar Link
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -4996,7 +5009,7 @@
         <div class="modal-content enhanced-card border-0">
           <div class="modal-header border-bottom border-light-subtle">
             <h5 class="modal-title text-white" id="rankingModalLabel">
-              <span class="me-2">⚡</span> 
+              <span class="me-2">âš¡</span>
               Ranking de Skill Individual
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -5007,11 +5020,11 @@
                 <i class="bi bi-info-circle me-2"></i>
                                   <div>
                     <strong>Ranking basado en Skill Individual (por partido):</strong><br>
-                    <small>Rendimiento calculado por: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×0.4</small>
+                    <small>Rendimiento calculado por: GolesÃ—5 + MVPÃ—7 + ACEÃ—6 + AsistÃ—4 - CagadasÃ—5 + PuntosÃ—2 + AtajadasÃ—0.4</small>
                   </div>
               </div>
             </div>
-            
+
             <div id="ranking-completo-container">
               <div class="text-center py-4">
                 <div class="spinner-border text-primary" role="status">
@@ -5038,7 +5051,7 @@
       </div>
     </div>
 
-    <!-- Tooltip para información del radar -->
+    <!-- Tooltip para informaciÃ³n del radar -->
     <!-- Modal para Ver Compilado del Partido -->
     <div class="modal fade" id="compiladoPartidoModal" tabindex="-1" aria-labelledby="compiladoPartidoModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -5065,10 +5078,10 @@
       display: none;
       border: 1px solid rgba(255, 255, 255, 0.2);
     ">
-      <!-- El contenido se genera dinámicamente en JavaScript -->
+      <!-- El contenido se genera dinÃ¡micamente en JavaScript -->
     </div>
 
-    <!-- Botón flotante para ir a equipos -->
+    <!-- BotÃ³n flotante para ir a equipos -->
     <button class="floating-btn" onclick="scrollToTeams()" title="Ir a Armado de Equipos">
       <i class="bi bi-people-fill"></i>
       <span>Armar Equipos</span>
@@ -5078,11 +5091,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js completo con todos los componentes -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    <!-- Algoritmo Genético -->
+    <!-- Algoritmo GenÃ©tico -->
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
     <script type="module" src="./app.js"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
+    <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
     <!-- Funcionalidad de Paternidades -->
     <script>
     // ===============================
@@ -5094,55 +5108,55 @@
     let jugadorSeleccionado = null;
     let partidosData = [];
 
-              // Función para cargar todos los jugadores disponibles
+              // FunciÃ³n para cargar todos los jugadores disponibles
      async function cargarJugadoresPaternidades() {
-       console.log('🚀 Iniciando carga de jugadores para paternidades...');
-       
+       console.log('ðŸš€ Iniciando carga de jugadores para paternidades...');
+
        try {
-         console.log('📡 Verificando conexión a Supabase...', !!window.supabase);
-         
+         console.log('ðŸ“¡ Verificando conexiÃ³n a Supabase...', !!window.supabase);
+
          if (!window.supabase) {
-           console.error('❌ Supabase no está disponible');
+           console.error('âŒ Supabase no estÃ¡ disponible');
            return;
          }
 
-         console.log('📊 Ejecutando consulta a la tabla jugadores...');
+         console.log('ðŸ“Š Ejecutando consulta a la tabla jugadores...');
          const { data: jugadores, error } = await window.supabase
            .from('jugadores')
            .select('*')
            .order('nombre');
 
-         console.log('📥 Respuesta recibida. Error:', !!error, 'Data:', !!jugadores);
-         
+         console.log('ðŸ“¥ Respuesta recibida. Error:', !!error, 'Data:', !!jugadores);
+
          if (error) {
-           console.error('❌ Error al cargar jugadores:', error);
+           console.error('âŒ Error al cargar jugadores:', error);
            return;
          }
 
-         console.log('🔍 Datos raw recibidos:', jugadores);
-         
+         console.log('ðŸ” Datos raw recibidos:', jugadores);
+
          jugadoresDisponibles = jugadores || [];
-         console.log('✅ Jugadores cargados para paternidades:', jugadoresDisponibles.length);
-         
+         console.log('âœ… Jugadores cargados para paternidades:', jugadoresDisponibles.length);
+
          if (jugadoresDisponibles.length > 0) {
-           console.log('👥 Nombres de jugadores cargados:', jugadoresDisponibles.map(j => j.nombre));
+           console.log('ðŸ‘¥ Nombres de jugadores cargados:', jugadoresDisponibles.map(j => j.nombre));
          } else {
-           console.warn('⚠️ No se encontraron jugadores en la base de datos');
+           console.warn('âš ï¸ No se encontraron jugadores en la base de datos');
          }
-         
+
        } catch (error) {
-         console.error('💥 Error completo al cargar jugadores:', error);
+         console.error('ðŸ’¥ Error completo al cargar jugadores:', error);
        }
      }
 
-         // Función para cargar todos los partidos con jugadores (con filtro de temporada)
+         // FunciÃ³n para cargar todos los partidos con jugadores (con filtro de temporada)
      async function cargarPartidosPaternidades() {
        try {
          // Obtener temporada seleccionada del selector principal
-         const temporadaSeleccionada = document.getElementById('selector-temporada')?.value || 
+         const temporadaSeleccionada = document.getElementById('selector-temporada')?.value ||
                                       document.getElementById('selector-temporada-mobile')?.value || '';
 
-         console.log('🏆 Cargando partidos para paternidades con temporada:', temporadaSeleccionada || 'Todas');
+         console.log('ðŸ† Cargando partidos para paternidades con temporada:', temporadaSeleccionada || 'Todas');
 
          let query = window.supabase
            .from('partidos')
@@ -5167,10 +5181,10 @@
            `)
            .order('fecha', { ascending: false });
 
-         // Filtrar por temporada si está seleccionada
+         // Filtrar por temporada si estÃ¡ seleccionada
          if (temporadaSeleccionada && temporadaSeleccionada !== '') {
            query = query.eq('temporada_id', temporadaSeleccionada);
-           console.log('🎯 Aplicando filtro de temporada:', temporadaSeleccionada);
+           console.log('ðŸŽ¯ Aplicando filtro de temporada:', temporadaSeleccionada);
          }
 
          const { data: partidos, error } = await query;
@@ -5181,21 +5195,21 @@
         }
 
         partidosData = partidos || [];
-        console.log('✅ Partidos cargados para paternidades:', partidosData.length, temporadaSeleccionada ? `(Temporada: ${temporadaSeleccionada})` : '(Todas las temporadas)');
+        console.log('âœ… Partidos cargados para paternidades:', partidosData.length, temporadaSeleccionada ? `(Temporada: ${temporadaSeleccionada})` : '(Todas las temporadas)');
       } catch (error) {
         console.error('Error al cargar partidos:', error);
       }
     }
 
-         // Función para buscar jugadores mientras se escribe
+         // FunciÃ³n para buscar jugadores mientras se escribe
      window.buscarJugadorPaternidades = function() {
        const input = document.getElementById('buscar-jugador-paternidades');
        const sugerenciasContainer = document.getElementById('sugerencias-jugadores');
        const busqueda = input.value.toLowerCase().trim();
 
-       console.log('🔍 Buscando jugador:', busqueda);
-       console.log('📊 Jugadores disponibles:', jugadoresDisponibles.length);
-       console.log('👥 Lista de jugadores:', jugadoresDisponibles.map(j => j.nombre));
+       console.log('ðŸ” Buscando jugador:', busqueda);
+       console.log('ðŸ“Š Jugadores disponibles:', jugadoresDisponibles.length);
+       console.log('ðŸ‘¥ Lista de jugadores:', jugadoresDisponibles.map(j => j.nombre));
 
        if (busqueda.length < 2) {
          sugerenciasContainer.innerHTML = '';
@@ -5206,7 +5220,7 @@
          jugador.nombre.toLowerCase().includes(busqueda)
        ).slice(0, 5);
 
-       console.log('🎯 Jugadores filtrados:', jugadoresFiltrados);
+       console.log('ðŸŽ¯ Jugadores filtrados:', jugadoresFiltrados);
 
        if (jugadoresFiltrados.length === 0) {
          sugerenciasContainer.innerHTML = '<div class="text-muted small">No se encontraron jugadores (total disponibles: ' + jugadoresDisponibles.length + ')</div>';
@@ -5222,15 +5236,15 @@
               sugerenciasContainer.innerHTML = sugerenciasHtml;
      };
 
-     // Función para mostrar todos los jugadores disponibles
+     // FunciÃ³n para mostrar todos los jugadores disponibles
      window.mostrarTodosLosJugadores = function() {
        const input = document.getElementById('buscar-jugador-paternidades');
        const sugerenciasContainer = document.getElementById('sugerencias-jugadores');
-       
-       // Si el input está vacío, mostrar todos los jugadores
+
+       // Si el input estÃ¡ vacÃ­o, mostrar todos los jugadores
        if (!input.value.trim()) {
-         console.log('📋 Mostrando todos los jugadores disponibles');
-         
+         console.log('ðŸ“‹ Mostrando todos los jugadores disponibles');
+
          if (jugadoresDisponibles.length === 0) {
            sugerenciasContainer.innerHTML = '<div class="text-muted small">Cargando jugadores...</div>';
            return;
@@ -5244,33 +5258,33 @@
          `).join('');
 
          if (jugadoresDisponibles.length > 10) {
-           sugerenciasContainer.innerHTML = sugerenciasHtml + `<div class="text-muted small p-2">... y ${jugadoresDisponibles.length - 10} más. Escribe para filtrar.</div>`;
+           sugerenciasContainer.innerHTML = sugerenciasHtml + `<div class="text-muted small p-2">... y ${jugadoresDisponibles.length - 10} mÃ¡s. Escribe para filtrar.</div>`;
          } else {
            sugerenciasContainer.innerHTML = sugerenciasHtml;
          }
        }
      };
 
-     // Función para seleccionar un jugador de las sugerencias
+     // FunciÃ³n para seleccionar un jugador de las sugerencias
     window.seleccionarJugador = function(jugadorId, nombre) {
       document.getElementById('buscar-jugador-paternidades').value = nombre;
       document.getElementById('sugerencias-jugadores').innerHTML = '';
       jugadorSeleccionado = { id: jugadorId, nombre: nombre };
     };
 
-    // Función principal para analizar un jugador
+    // FunciÃ³n principal para analizar un jugador
     window.analizarJugador = async function() {
       if (!jugadorSeleccionado) {
         const nombreInput = document.getElementById('buscar-jugador-paternidades').value.trim();
-        const jugadorEncontrado = jugadoresDisponibles.find(j => 
+        const jugadorEncontrado = jugadoresDisponibles.find(j =>
           j.nombre.toLowerCase() === nombreInput.toLowerCase()
         );
-        
+
         if (!jugadorEncontrado) {
-          alert('Por favor selecciona un jugador válido de la lista');
+          alert('Por favor selecciona un jugador vÃ¡lido de la lista');
           return;
         }
-        
+
         jugadorSeleccionado = { id: jugadorEncontrado.id, nombre: jugadorEncontrado.nombre };
       }
 
@@ -5280,16 +5294,16 @@
       `;
       document.getElementById('estadisticas-jugador-container').style.display = 'block';
 
-      // Analizar estadísticas
+      // Analizar estadÃ­sticas
       await analizarEstadisticasJugador(jugadorSeleccionado);
     };
 
-    // Función para analizar las estadísticas de un jugador
+    // FunciÃ³n para analizar las estadÃ­sticas de un jugador
     async function analizarEstadisticasJugador(jugador) {
       try {
-        // Actualizar título
+        // Actualizar tÃ­tulo
         document.getElementById('jugador-seleccionado-nombre').innerHTML = `
-          <i class="bi bi-person-circle me-2"></i>Estadísticas de ${jugador.nombre}
+          <i class="bi bi-person-circle me-2"></i>EstadÃ­sticas de ${jugador.nombre}
         `;
 
         // Analizar partidos del jugador
@@ -5306,7 +5320,7 @@
           return;
         }
 
-        // Analizar dúos más exitosos
+        // Analizar dÃºos mÃ¡s exitosos
         const mejoresDuos = analizarMejoresDuos(jugador, partidosJugador);
         renderizarMejoresDuos(mejoresDuos);
 
@@ -5318,21 +5332,21 @@
         const enfrentamientos = analizarEnfrentamientosFrecuentes(jugador, partidosJugador);
         renderizarEnfrentamientosFrecuentes(enfrentamientos);
 
-        // Analizar a quien más le gana
+        // Analizar a quien mÃ¡s le gana
         const aQuienMasLeGana = analizarAQuienMasLeGana(jugador, partidosJugador);
         renderizarAQuienMasLeGana(aQuienMasLeGana);
 
-        // Estadísticas generales
+        // EstadÃ­sticas generales
         const estadisticasGenerales = calcularEstadisticasGenerales(jugador, partidosJugador);
         renderizarEstadisticasGenerales(estadisticasGenerales);
 
       } catch (error) {
         console.error('Error al analizar jugador:', error);
-        alert('Error al analizar las estadísticas del jugador');
+        alert('Error al analizar las estadÃ­sticas del jugador');
       }
     }
 
-         // Función para analizar los mejores dúos
+         // FunciÃ³n para analizar los mejores dÃºos
      function analizarMejoresDuos(jugador, partidos) {
        const duos = {};
 
@@ -5341,14 +5355,14 @@
          if (!jugadorData) return;
 
          const equipoJugador = jugadorData.equipo;
-         const compañeros = partido.jugador_partido?.filter(jp => 
+         const compaÃ±eros = partido.jugador_partido?.filter(jp =>
            jp.equipo === equipoJugador && jp.jugador_id !== jugador.id
          ) || [];
 
          const gano = partido.equipo_ganador === equipoJugador;
 
-         compañeros.forEach(compañero => {
-           const nombre = compañero.jugadores?.nombre;
+         compaÃ±eros.forEach(compaÃ±ero => {
+           const nombre = compaÃ±ero.jugadores?.nombre;
            if (!nombre) return;
 
            if (!duos[nombre]) {
@@ -5369,7 +5383,7 @@
            ...duo,
            winrate: ((duo.victorias + duo.empates * 0.5) / duo.partidos * 100)
          }))
-         .filter(duo => duo.winrate > 0) // No mostrar dúos con 0% winrate
+         .filter(duo => duo.winrate > 0) // No mostrar dÃºos con 0% winrate
          .sort((a, b) => {
            if (Math.abs(a.winrate - b.winrate) < 0.1) {
              return b.partidos - a.partidos;
@@ -5381,7 +5395,7 @@
        return duosArray;
      }
 
-     // Función para analizar rivales principales
+     // FunciÃ³n para analizar rivales principales
      function analizarRivalesPrincipales(jugador, partidos) {
        const rivales = {};
 
@@ -5424,7 +5438,7 @@
          .slice(0, 5);
      }
 
-     // Función para analizar enfrentamientos frecuentes
+     // FunciÃ³n para analizar enfrentamientos frecuentes
      function analizarEnfrentamientosFrecuentes(jugador, partidos) {
        const enfrentamientos = {};
 
@@ -5433,7 +5447,7 @@
          if (!jugadorData) return;
 
          const equipoJugador = jugadorData.equipo;
-         const todosOponentes = partido.jugador_partido?.filter(jp => 
+         const todosOponentes = partido.jugador_partido?.filter(jp =>
            jp.equipo !== equipoJugador && jp.jugadores?.nombre
          ) || [];
 
@@ -5444,12 +5458,12 @@
            const nombre = oponente.jugadores.nombre;
 
            if (!enfrentamientos[nombre]) {
-             enfrentamientos[nombre] = { 
-               nombre, 
-               partidos: 0, 
-               victorias: 0, 
-               derrotas: 0, 
-               empates: 0 
+             enfrentamientos[nombre] = {
+               nombre,
+               partidos: 0,
+               victorias: 0,
+               derrotas: 0,
+               empates: 0
              };
            }
 
@@ -5461,7 +5475,7 @@
        });
 
        return Object.values(enfrentamientos)
-         .filter(enfrentamiento => enfrentamiento.partidos >= 3) // Mínimo 3 enfrentamientos
+         .filter(enfrentamiento => enfrentamiento.partidos >= 3) // MÃ­nimo 3 enfrentamientos
          .map(enfrentamiento => ({
            ...enfrentamiento,
            // Calcular winrate basado en puntos (empates valen 1 punto)
@@ -5471,7 +5485,7 @@
          .slice(0, 8);
      }
 
-     // Función para analizar a quien más le gana (enfrentamientos directos)
+     // FunciÃ³n para analizar a quien mÃ¡s le gana (enfrentamientos directos)
      function analizarAQuienMasLeGana(jugador, partidos) {
        const oponentes = {};
 
@@ -5480,9 +5494,9 @@
          if (!jugadorData) return;
 
          const equipoJugador = jugadorData.equipo;
-         
+
          // Solo contar oponentes que estuvieron en el equipo contrario
-         const oponentesDirectos = partido.jugador_partido?.filter(jp => 
+         const oponentesDirectos = partido.jugador_partido?.filter(jp =>
            jp.equipo !== equipoJugador && jp.jugadores?.nombre
          ) || [];
 
@@ -5493,12 +5507,12 @@
            const nombre = oponente.jugadores.nombre;
 
            if (!oponentes[nombre]) {
-             oponentes[nombre] = { 
-               nombre, 
-               partidos: 0, 
-               victorias: 0, 
-               derrotas: 0, 
-               empates: 0 
+             oponentes[nombre] = {
+               nombre,
+               partidos: 0,
+               victorias: 0,
+               derrotas: 0,
+               empates: 0
              };
            }
 
@@ -5511,7 +5525,7 @@
 
        // Calcular winrate y filtrar/ordenar
        const oponentesArray = Object.values(oponentes)
-         .filter(oponente => oponente.partidos >= 2) // Mínimo 2 enfrentamientos directos
+         .filter(oponente => oponente.partidos >= 2) // MÃ­nimo 2 enfrentamientos directos
          .map(oponente => ({
            ...oponente,
            // Calcular winrate basado en puntos (empates valen 1 punto)
@@ -5530,7 +5544,7 @@
        return oponentesArray;
      }
 
-     // Función para calcular estadísticas generales
+     // FunciÃ³n para calcular estadÃ­sticas generales
      function calcularEstadisticasGenerales(jugador, partidos) {
        const stats = {
          partidosJugados: partidos.length,
@@ -5552,7 +5566,7 @@
        // Calcular winrate basado en puntos (empates valen 1 punto)
        const puntosObtenidos = (stats.victorias * 3) + (stats.empates * 1);
        const puntosTotales = stats.partidosJugados * 3;
-       stats.winrate = puntosTotales > 0 ? 
+       stats.winrate = puntosTotales > 0 ?
          Math.round((puntosObtenidos / puntosTotales) * 100) : 0;
 
        return stats;
@@ -5561,13 +5575,13 @@
      // Funciones de renderizado
      function renderizarMejoresDuos(duos) {
        const container = document.getElementById('mejores-duos');
-       
+
        if (duos.length === 0) {
          container.innerHTML = `
            <div class="text-center py-4">
              <i class="bi bi-people text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
-             <p class="text-muted mb-0">No hay dúos exitosos disponibles</p>
-             <small class="text-light-emphasis">Mínimo 2 partidos con >0% winrate en temporada actual</small>
+             <p class="text-muted mb-0">No hay dÃºos exitosos disponibles</p>
+             <small class="text-light-emphasis">MÃ­nimo 2 partidos con >0% winrate en temporada actual</small>
            </div>
          `;
          return;
@@ -5585,18 +5599,18 @@
            </div>
          </div>
        `).join('');
-       
+
        container.innerHTML = html;
      }
 
      function renderizarRivalesPrincipales(rivales) {
        const container = document.getElementById('rivales-principales');
-       
+
        if (rivales.length === 0) {
          container.innerHTML = `
            <div class="text-center py-4">
              <i class="bi bi-shield-check text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
-             <p class="text-muted mb-0">¡Sin rivales destacados!</p>
+             <p class="text-muted mb-0">Â¡Sin rivales destacados!</p>
              <small class="text-light-emphasis">Nadie le ha ganado de forma consistente</small>
            </div>
          `;
@@ -5615,28 +5629,28 @@
            </div>
          </div>
        `).join('');
-       
+
        container.innerHTML = html;
      }
 
      function renderizarEnfrentamientosFrecuentes(enfrentamientos) {
        const container = document.getElementById('enfrentamientos-frecuentes');
-       
+
        if (enfrentamientos.length === 0) {
          container.innerHTML = `
            <div class="text-center py-4">
              <i class="bi bi-lightning text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
              <p class="text-muted mb-0">No hay enfrentamientos frecuentes</p>
-             <small class="text-light-emphasis">Mínimo 3 partidos contra el mismo oponente</small>
+             <small class="text-light-emphasis">MÃ­nimo 3 partidos contra el mismo oponente</small>
            </div>
          `;
          return;
        }
 
        const html = enfrentamientos.map(enfrentamiento => {
-         const winrateColor = enfrentamiento.winrate >= 60 ? 'success' : 
+         const winrateColor = enfrentamiento.winrate >= 60 ? 'success' :
                               enfrentamiento.winrate >= 40 ? 'warning' : 'danger';
-         
+
          return `
            <div class="d-flex justify-content-between align-items-center mb-1 p-2 rounded" style="background: rgba(245, 158, 11, 0.1);">
              <div>
@@ -5650,19 +5664,19 @@
            </div>
          `;
        }).join('');
-       
+
        container.innerHTML = html;
      }
 
      function renderizarAQuienMasLeGana(aQuienMasLeGana) {
        const container = document.getElementById('nunca-enfrentados'); // Reutilizamos el mismo container
-       
+
        if (aQuienMasLeGana.length === 0) {
          container.innerHTML = `
            <div class="text-center py-4">
              <i class="bi bi-trophy text-muted" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
              <p class="text-muted mb-0">No hay dominancia destacada</p>
-             <small class="text-light-emphasis">Mínimo 2 enfrentamientos con >50% winrate en temporada actual</small>
+             <small class="text-light-emphasis">MÃ­nimo 2 enfrentamientos con >50% winrate en temporada actual</small>
            </div>
          `;
          return;
@@ -5671,10 +5685,10 @@
        const html = `
          <div class="list-group list-group-flush">
            ${aQuienMasLeGana.map((oponente, index) => {
-             const dominanceLevel = oponente.winrate >= 80 ? 'danger' : 
+             const dominanceLevel = oponente.winrate >= 80 ? 'danger' :
                                    oponente.winrate >= 70 ? 'warning' : 'success';
              const position = index + 1;
-             
+
              return `
                <div class="list-group-item bg-transparent border-0 px-0 py-2">
                  <div class="d-flex justify-content-between align-items-center">
@@ -5695,13 +5709,13 @@
            }).join('')}
          </div>
        `;
-       
+
        container.innerHTML = html;
      }
 
      function renderizarEstadisticasGenerales(stats) {
        const container = document.getElementById('estadisticas-generales');
-       
+
        const html = `
          <div class="col-md-3">
            <div class="text-center p-2 rounded" style="background: rgba(59, 130, 246, 0.1);">
@@ -5728,7 +5742,7 @@
            </div>
          </div>
        `;
-       
+
        container.innerHTML = html;
      }
 
@@ -5761,12 +5775,12 @@
        sugerenciasContainer.innerHTML = sugerenciasHtml;
      };
 
-     // Función para mostrar todos los jugadores en el comparador versus
+     // FunciÃ³n para mostrar todos los jugadores en el comparador versus
      window.mostrarTodosLosJugadoresVersus = function(numero) {
        const input = document.getElementById(`versus-jugador${numero}`);
        const sugerenciasContainer = document.getElementById(`sugerencias-versus${numero}`);
-       
-       // Si el input está vacío, mostrar todos los jugadores
+
+       // Si el input estÃ¡ vacÃ­o, mostrar todos los jugadores
        if (!input.value.trim()) {
          if (jugadoresDisponibles.length === 0) {
            sugerenciasContainer.innerHTML = '<div class="text-muted small">Cargando jugadores...</div>';
@@ -5781,7 +5795,7 @@
          `).join('');
 
          if (jugadoresDisponibles.length > 8) {
-           sugerenciasContainer.innerHTML = sugerenciasHtml + `<div class="text-muted small p-2">... y ${jugadoresDisponibles.length - 8} más.</div>`;
+           sugerenciasContainer.innerHTML = sugerenciasHtml + `<div class="text-muted small p-2">... y ${jugadoresDisponibles.length - 8} mÃ¡s.</div>`;
          } else {
            sugerenciasContainer.innerHTML = sugerenciasHtml;
          }
@@ -5793,7 +5807,7 @@
        document.getElementById(`sugerencias-versus${numero}`).innerHTML = '';
      };
 
-     // Función para comparar dos jugadores
+     // FunciÃ³n para comparar dos jugadores
      window.compararJugadores = async function() {
        const nombre1 = document.getElementById('versus-jugador1').value.trim();
        const nombre2 = document.getElementById('versus-jugador2').value.trim();
@@ -5818,7 +5832,7 @@
 
        // Analizar enfrentamientos directos
        const enfrentamientosDirectos = analizarEnfrentamientosDirectos(jugador1, jugador2);
-       
+
        // Mostrar resultados
        document.getElementById('resultados-versus').style.display = 'block';
        renderizarHistorialDirecto(enfrentamientosDirectos, jugador1.nombre, jugador2.nombre);
@@ -5866,7 +5880,7 @@
 
      function renderizarHistorialDirecto(enfrentamientos, nombre1, nombre2) {
        const container = document.getElementById('historial-directo');
-       
+
        if (enfrentamientos.partidos.length === 0) {
          container.innerHTML = '<div class="text-muted">Estos jugadores nunca se han enfrentado directamente</div>';
          return;
@@ -5902,26 +5916,26 @@
              </div>
            </div>
          </div>
-         
+
          <div class="small">
-           <div class="fw-bold mb-2">Últimos 5 enfrentamientos:</div>
+           <div class="fw-bold mb-2">Ãšltimos 5 enfrentamientos:</div>
            ${enfrentamientos.partidos.slice(0, 5).map(partido => {
              const fecha = new Date(partido.fecha).toLocaleDateString();
              let resultado = '';
              if (partido.ganador === partido.equipo1) {
-               resultado = `<span class="text-success">${nombre1} ganó</span>`;
+               resultado = `<span class="text-success">${nombre1} ganÃ³</span>`;
              } else if (partido.ganador === partido.equipo2) {
-               resultado = `<span class="text-danger">${nombre2} ganó</span>`;
+               resultado = `<span class="text-danger">${nombre2} ganÃ³</span>`;
              } else {
                resultado = '<span class="text-warning">Empate</span>';
              }
-             
+
              const mvpAce = [];
              if (partido.mvp1) mvpAce.push(`${nombre1} MVP`);
              if (partido.mvp2) mvpAce.push(`${nombre2} MVP`);
              if (partido.ace1) mvpAce.push(`${nombre1} ACE`);
              if (partido.ace2) mvpAce.push(`${nombre2} ACE`);
-             
+
              return `
                <div class="d-flex justify-content-between align-items-center mb-1 p-1 rounded" style="background: rgba(255, 255, 255, 0.05);">
                  <span>${fecha}</span>
@@ -5932,13 +5946,13 @@
            }).join('')}
          </div>
        `;
-       
+
        container.innerHTML = html;
      }
 
      function renderizarDominioPaternidad(enfrentamientos, nombre1, nombre2) {
        const container = document.getElementById('dominio-paternidad');
-       
+
        if (enfrentamientos.partidos.length === 0) {
          container.innerHTML = '<div class="text-muted">No hay suficientes datos para determinar dominio</div>';
          return;
@@ -5946,63 +5960,63 @@
 
        const victorias1 = enfrentamientos.jugador1.victorias;
        const victorias2 = enfrentamientos.jugador2.victorias;
-       
+
        let dominancia = '';
        let emoji = '';
-       
+
        if (victorias1 > victorias2) {
          const diferencia = victorias1 - victorias2;
          if (diferencia >= 3) {
            dominancia = `${nombre1} tiene <strong>dominio total</strong> sobre ${nombre2}`;
-           emoji = '👑';
+           emoji = 'ðŸ‘‘';
          } else if (diferencia >= 2) {
            dominancia = `${nombre1} tiene <strong>ventaja clara</strong> sobre ${nombre2}`;
-           emoji = '⭐';
+           emoji = 'â­';
          } else {
            dominancia = `${nombre1} tiene <strong>ligera ventaja</strong> sobre ${nombre2}`;
-           emoji = '📈';
+           emoji = 'ðŸ“ˆ';
          }
        } else if (victorias2 > victorias1) {
          const diferencia = victorias2 - victorias1;
          if (diferencia >= 3) {
            dominancia = `${nombre2} tiene <strong>dominio total</strong> sobre ${nombre1}`;
-           emoji = '👑';
+           emoji = 'ðŸ‘‘';
          } else if (diferencia >= 2) {
            dominancia = `${nombre2} tiene <strong>ventaja clara</strong> sobre ${nombre1}`;
-           emoji = '⭐';
+           emoji = 'â­';
          } else {
            dominancia = `${nombre2} tiene <strong>ligera ventaja</strong> sobre ${nombre1}`;
-           emoji = '📈';
+           emoji = 'ðŸ“ˆ';
          }
        } else {
          dominancia = `Hay <strong>equilibrio total</strong> entre ambos jugadores`;
-         emoji = '⚖️';
+         emoji = 'âš–ï¸';
        }
 
        const html = `
          <div class="text-center p-3 rounded" style="background: rgba(34, 197, 94, 0.1);">
            <div style="font-size: 2rem;">${emoji}</div>
            <div class="mt-2">${dominancia}</div>
-           ${enfrentamientos.partidos.length >= 5 ? 
-             '<div class="text-success small mt-1">✅ Muestra estadísticamente significativa</div>' : 
-             '<div class="text-warning small mt-1">⚠️ Pocos enfrentamientos para conclusiones definitivas</div>'
+           ${enfrentamientos.partidos.length >= 5 ?
+             '<div class="text-success small mt-1">âœ… Muestra estadÃ­sticamente significativa</div>' :
+             '<div class="text-warning small mt-1">âš ï¸ Pocos enfrentamientos para conclusiones definitivas</div>'
            }
          </div>
        `;
-       
+
        container.innerHTML = html;
      }
 
      async function renderizarEstadisticasComparadas(jugador1, jugador2) {
        const container = document.getElementById('estadisticas-comparadas');
-       
+
        try {
-         // Obtener estadísticas desde los datos ya cargados en la app principal
+         // Obtener estadÃ­sticas desde los datos ya cargados en la app principal
          const stats1 = window.datosJugadores?.find(s => s.jugadores.id === jugador1.id) || {};
          const stats2 = window.datosJugadores?.find(s => s.jugadores.id === jugador2.id) || {};
 
          if (!stats1.jugadores || !stats2.jugadores) {
-            container.innerHTML = '<div class="text-warning">No se encontraron datos de estadísticas para uno o ambos jugadores. Asegúrate de que hayan jugado partidos.</div>';
+            container.innerHTML = '<div class="text-warning">No se encontraron datos de estadÃ­sticas para uno o ambos jugadores. AsegÃºrate de que hayan jugado partidos.</div>';
             return;
          }
 
@@ -6020,22 +6034,22 @@
          const html = comparaciones.map(comp => {
            const valor1 = stats1[comp.key] || 0;
            const valor2 = stats2[comp.key] || 0;
-           
+
            let display1 = valor1;
            let display2 = valor2;
-           
+
            if (comp.formato === 'porcentaje') {
              display1 = `${valor1.toFixed(1)}%`;
              display2 = `${valor2.toFixed(1)}%`;
            }
-           
+
            let comparison = '';
            if (valor1 > valor2) {
-             comparison = `<span class="text-success">▲ ${jugador1.nombre}</span>`;
+             comparison = `<span class="text-success">â–² ${jugador1.nombre}</span>`;
            } else if (valor2 > valor1) {
-             comparison = `<span class="text-danger">▲ ${jugador2.nombre}</span>`;
+             comparison = `<span class="text-danger">â–² ${jugador2.nombre}</span>`;
            } else {
-             comparison = '<span class="text-warning">⚖️ Empate</span>';
+             comparison = '<span class="text-warning">âš–ï¸ Empate</span>';
            }
 
            return `
@@ -6065,30 +6079,30 @@
          container.innerHTML = `<div class="row">${html}</div>`;
 
        } catch (error) {
-         console.error('Error al renderizar estadísticas comparadas:', error);
-         container.innerHTML = '<div class="text-danger">Error al cargar la comparación</div>';
+         console.error('Error al renderizar estadÃ­sticas comparadas:', error);
+         container.innerHTML = '<div class="text-danger">Error al cargar la comparaciÃ³n</div>';
        }
      }
 
-     // Función para esperar a que Supabase esté disponible
+     // FunciÃ³n para esperar a que Supabase estÃ© disponible
      async function esperarSupabase() {
-       console.log('⏳ Esperando a que Supabase esté disponible...');
-       
+       console.log('â³ Esperando a que Supabase estÃ© disponible...');
+
        return new Promise((resolve) => {
          let intentos = 0;
-         const maxIntentos = 50; // 5 segundos máximo
-         
+         const maxIntentos = 50; // 5 segundos mÃ¡ximo
+
          const checkSupabase = () => {
            intentos++;
-           console.log(`🔄 Intento ${intentos}/${maxIntentos} - Supabase disponible:`, !!window.supabase);
-           
+           console.log(`ðŸ”„ Intento ${intentos}/${maxIntentos} - Supabase disponible:`, !!window.supabase);
+
            if (window.supabase) {
-             console.log('✅ Supabase encontrado!');
+             console.log('âœ… Supabase encontrado!');
              resolve(window.supabase);
            } else if (intentos >= maxIntentos) {
-             console.error('❌ Timeout esperando Supabase después de', maxIntentos * 100, 'ms');
-             console.log('🔍 Estado actual de window.supabase:', window.supabase);
-             console.log('🔍 Tipo de window.supabase:', typeof window.supabase);
+             console.error('âŒ Timeout esperando Supabase despuÃ©s de', maxIntentos * 100, 'ms');
+             console.log('ðŸ” Estado actual de window.supabase:', window.supabase);
+             console.log('ðŸ” Tipo de window.supabase:', typeof window.supabase);
              // Resolver de todas formas para que no se cuelgue
              resolve(null);
            } else {
@@ -6099,42 +6113,42 @@
        });
      }
 
-     // Inicializar funcionalidad de paternidades cuando se abre la pestaña
+     // Inicializar funcionalidad de paternidades cuando se abre la pestaÃ±a
      document.addEventListener('DOMContentLoaded', function() {
        const paternidadesTab = document.getElementById('paternidades-tab');
        if (paternidadesTab) {
          paternidadesTab.addEventListener('shown.bs.tab', async function() {
-           console.log('🔍 Abriendo pestaña Paternidades...');
-           
-           // Esperar a que Supabase esté disponible
+           console.log('ðŸ” Abriendo pestaÃ±a Paternidades...');
+
+           // Esperar a que Supabase estÃ© disponible
            const supabaseInstance = await esperarSupabase();
-           console.log('✅ Supabase disponible:', !!supabaseInstance);
-           
+           console.log('âœ… Supabase disponible:', !!supabaseInstance);
+
            // Cargar jugadores siempre (para asegurar datos actualizados)
-           console.log('📊 Cargando jugadores...');
-           console.log('🎯 Ejecutando cargarJugadoresPaternidades desde tab event...');
+           console.log('ðŸ“Š Cargando jugadores...');
+           console.log('ðŸŽ¯ Ejecutando cargarJugadoresPaternidades desde tab event...');
            await cargarJugadoresPaternidades();
-           
+
            // Cargar partidos siempre (para aplicar filtros de temporada)
-           console.log('⚽ Cargando partidos con filtro de temporada...');
+           console.log('âš½ Cargando partidos con filtro de temporada...');
            await cargarPartidosPaternidades();
-           
-           console.log('🎯 Inicialización de Paternidades completada');
+
+           console.log('ðŸŽ¯ InicializaciÃ³n de Paternidades completada');
          });
        }
 
-       // Listener para cambios de temporada: recargar paternidades si está activa
+       // Listener para cambios de temporada: recargar paternidades si estÃ¡ activa
        const selectorTemporada = document.getElementById('selector-temporada');
        const selectorTemporadaMobile = document.getElementById('selector-temporada-mobile');
-       
+
        function handleTemporadaChange() {
          const paternidadesTab = document.getElementById('paternidades-tab');
          if (paternidadesTab && paternidadesTab.classList.contains('active')) {
-           console.log('🔄 Temporada cambiada - Recargando datos de paternidades...');
+           console.log('ðŸ”„ Temporada cambiada - Recargando datos de paternidades...');
            cargarPartidosPaternidades();
          }
        }
-       
+
        if (selectorTemporada) {
          selectorTemporada.addEventListener('change', handleTemporadaChange);
        }
@@ -6144,120 +6158,120 @@
      });
      </script>
     <script>
-      // Configuración de Supabase
+      // ConfiguraciÃ³n de Supabase
       window.SUPABASE_URL = 'https://jqslerzbzxtycwozvtcy.supabase.co';
       window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impxc2xlcnpienh0eWN3b3p2dGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MzI0ODIsImV4cCI6MjA2NjMwODQ4Mn0.zQr-6hMV4O5lVb6Qw-8FSy-bQS9FdZykxA02J0yfx4M';
-      
-      // Manejar tooltip de información del radar
+
+      // Manejar tooltip de informaciÃ³n del radar
       document.addEventListener('DOMContentLoaded', function() {
-        console.log('🔧 Configurando tooltip del radar...');
+        console.log('ðŸ”§ Configurando tooltip del radar...');
         const tooltip = document.getElementById('radar-info-tooltip');
-        
+
         if (!tooltip) {
-          console.error('❌ No se encontró el tooltip');
+          console.error('âŒ No se encontrÃ³ el tooltip');
           return;
         }
-        
-        console.log('✅ Tooltip encontrado:', tooltip);
-        
+
+        console.log('âœ… Tooltip encontrado:', tooltip);
+
         let currentTooltipTimeout = null;
-        
-        // Función para mostrar tooltip
+
+        // FunciÃ³n para mostrar tooltip
         function showTooltip(element) {
-          console.log('👁️ Mostrando tooltip para:', element);
-          
+          console.log('ðŸ‘ï¸ Mostrando tooltip para:', element);
+
           // Cancelar timeout de ocultar si existe
           if (currentTooltipTimeout) {
             clearTimeout(currentTooltipTimeout);
             currentTooltipTimeout = null;
           }
-          
-          // Contenido del tooltip sin la información del rendimiento
+
+          // Contenido del tooltip sin la informaciÃ³n del rendimiento
           tooltip.innerHTML = `
-            <div class="fw-bold mb-2">📊 Cálculo de Rendimiento (Promedio por Equipo)</div>
+            <div class="fw-bold mb-2">ðŸ“Š CÃ¡lculo de Rendimiento (Promedio por Equipo)</div>
             <div class="mb-2">
-              <strong class="text-info">🥅 Arquero:</strong><br>
+              <strong class="text-info">ðŸ¥… Arquero:</strong><br>
               <small>Ponderado: Mejor 80% + Resto 20%<br>
-              Fórmula: Winrate × 0.4 + (Atajadas/partido) × 25<br>
-              <em>Máx. teórico: 540 pts (20 ataj/partido = 100%)<br>
-              Referencia: 12 ataj/partido ≈ 70%</em></small>
+              FÃ³rmula: Winrate Ã— 0.4 + (Atajadas/partido) Ã— 25<br>
+              <em>MÃ¡x. teÃ³rico: 540 pts (20 ataj/partido = 100%)<br>
+              Referencia: 12 ataj/partido â‰ˆ 70%</em></small>
             </div>
             <div class="mb-2">
-              <strong class="text-success">🛡️ Defensor:</strong><br>
+              <strong class="text-success">ðŸ›¡ï¸ Defensor:</strong><br>
               <small>Principales + Secundarios (65%)<br>
-              Fórmula: Winrate - (Cagadas/partido) × 10<br>
-              <em>Máx. teórico: 100 pts (100%WR sin cagadas)</em></small>
+              FÃ³rmula: Winrate - (Cagadas/partido) Ã— 10<br>
+              <em>MÃ¡x. teÃ³rico: 100 pts (100%WR sin cagadas)</em></small>
             </div>
             <div class="mb-2">
-              <strong class="text-warning">⚡ Mediocampo:</strong><br>
+              <strong class="text-warning">âš¡ Mediocampo:</strong><br>
               <small>Principales + Secundarios (65%)<br>
-              Fórmula: (G+A)/partido × 24 + Winrate × 0.7<br>
-              <em>Máx. teórico: 145 pts<br>
+              FÃ³rmula: (G+A)/partido Ã— 24 + Winrate Ã— 0.7<br>
+              <em>MÃ¡x. teÃ³rico: 145 pts<br>
               Referencia: metox 5.6 G+A secundario = 70%</em></small>
             </div>
             <div>
-              <strong class="text-danger">⚽ Atacante:</strong><br>
+              <strong class="text-danger">âš½ Atacante:</strong><br>
               <small>Ponderado: Principales 80% + Resto 20%<br>
-              Principales (Atac+Med): (G+A)/partido × 27 + Winrate<br>
-              Resto (Def+Arq): (G+A)/partido × 18 + Winrate × 0.5<br>
-              <em>Máx. teórico: 240 pts<br>
+              Principales (Atac+Med): (G+A)/partido Ã— 27 + Winrate<br>
+              Resto (Def+Arq): (G+A)/partido Ã— 18 + Winrate Ã— 0.5<br>
+              <em>MÃ¡x. teÃ³rico: 240 pts<br>
               Referencia: metox 5.6 G+A principal = 80%</em></small>
             </div>
           `;
-          
+
           const rect = element.getBoundingClientRect();
           const tooltipRect = tooltip.getBoundingClientRect();
-          
-          // Calcular posición horizontal
+
+          // Calcular posiciÃ³n horizontal
           let left = rect.left - (tooltipRect.width / 2) + (rect.width / 2);
           left = Math.max(10, Math.min(left, window.innerWidth - tooltipRect.width - 10));
-          
-          // Posición vertical (arriba del icono)
+
+          // PosiciÃ³n vertical (arriba del icono)
           let top = rect.top - tooltipRect.height - 10;
           if (top < 10) {
             // Si no cabe arriba, mostrar abajo
             top = rect.bottom + 10;
           }
-          
+
           tooltip.style.left = left + 'px';
           tooltip.style.top = top + 'px';
           tooltip.style.display = 'block';
           tooltip.style.opacity = '1';
           tooltip.style.zIndex = '10000';
         }
-        
-        // Función para ocultar tooltip
+
+        // FunciÃ³n para ocultar tooltip
         function hideTooltip() {
-          console.log('🫥 Ocultando tooltip');
+          console.log('ðŸ«¥ Ocultando tooltip');
           tooltip.style.display = 'none';
           tooltip.style.opacity = '0';
         }
-        
-        // Función para configurar eventos en un icono
+
+        // FunciÃ³n para configurar eventos en un icono
         function setupIconEvents(icon) {
           icon.addEventListener('mouseenter', function(e) {
             e.stopPropagation();
-            console.log('🎯 Mouse enter en icono radar');
+            console.log('ðŸŽ¯ Mouse enter en icono radar');
             showTooltip(this);
           });
-          
+
           icon.addEventListener('mouseleave', function(e) {
             e.stopPropagation();
-            console.log('🚫 Mouse leave del icono radar');
+            console.log('ðŸš« Mouse leave del icono radar');
             currentTooltipTimeout = setTimeout(() => {
               hideTooltip();
-            }, 200); // Pequeño delay para evitar parpadeo
+            }, 200); // PequeÃ±o delay para evitar parpadeo
           });
         }
-        
+
         // Configurar eventos en iconos existentes
         function initializeTooltips() {
           const icons = document.querySelectorAll('.radar-info-icon');
-          console.log(`🔍 Encontrados ${icons.length} iconos de radar`);
-          
+          console.log(`ðŸ” Encontrados ${icons.length} iconos de radar`);
+
           icons.forEach(setupIconEvents);
         }
-        
+
         // Configurar eventos en el tooltip mismo para mantenerlo visible
         tooltip.addEventListener('mouseenter', function() {
           if (currentTooltipTimeout) {
@@ -6265,15 +6279,15 @@
             currentTooltipTimeout = null;
           }
         });
-        
+
         tooltip.addEventListener('mouseleave', function() {
           hideTooltip();
         });
-        
+
         // Inicializar tooltips
         initializeTooltips();
-        
-        // Observar cambios en el DOM para iconos que se agreguen dinámicamente
+
+        // Observar cambios en el DOM para iconos que se agreguen dinÃ¡micamente
         const observer = new MutationObserver(function(mutations) {
           let needsReinit = false;
           mutations.forEach(function(mutation) {
@@ -6289,20 +6303,20 @@
               });
             }
           });
-          
+
           if (needsReinit) {
             setTimeout(initializeTooltips, 100);
           }
         });
-        
+
         observer.observe(document.body, {
           childList: true,
           subtree: true
         });
-        
-        console.log('✅ Tooltip del radar configurado correctamente');
+
+        console.log('âœ… Tooltip del radar configurado correctamente');
       });
-      
+
       // Inicializar tooltips de Bootstrap
       document.addEventListener('DOMContentLoaded', function () {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -6329,19 +6343,19 @@
                 <input type="email" class="form-control bg-dark border-secondary text-white" id="email-login" required>
               </div>
               <div class="mb-3">
-                <label for="password-login" class="form-label text-light">Contraseña</label>
+                <label for="password-login" class="form-label text-light">ContraseÃ±a</label>
                 <input type="password" class="form-control bg-dark border-secondary text-white" id="password-login" required onkeypress="if(event.key==='Enter') iniciarSesion()">
               </div>
             </form>
             <div class="text-light-emphasis small">
               <i class="bi bi-info-circle me-1"></i>
-              Solo los administradores pueden modificar datos. El acceso de solo lectura está disponible para todos.
+              Solo los administradores pueden modificar datos. El acceso de solo lectura estÃ¡ disponible para todos.
             </div>
           </div>
           <div class="modal-footer border-secondary">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
             <button type="button" class="btn btn-primary" onclick="iniciarSesion()">
-              <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+              <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar SesiÃ³n
             </button>
           </div>
         </div>
