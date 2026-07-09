@@ -18382,6 +18382,142 @@ const initApp = () => {
       return skillRankingMap.get(jugadorId) ?? null;
     };
 
+    const obtenerCantidadReviewEventoJugadorHistorial = (partido, tipo, jugadorId) => {
+      return (partido.review_eventos || [])
+        .filter(evento => evento.tipo === tipo && String(evento.jugador_id || '') === String(jugadorId || ''))
+        .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
+    };
+
+    const contarCagadasGolDesdeMetadataReviewHistorial = (partido, jugadorId) => {
+      return (partido.review_eventos || [])
+        .filter(evento => evento.tipo === 'gol' && String(evento.metadata?.cagada_jugador_id || evento.metadata?.cagada_id || '') === String(jugadorId || ''))
+        .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
+    };
+
+    const obtenerCagadasJugadorPartidoHistorial = (partido, jp) => {
+      const cagadasViejas = Number(jp.cagadas) || 0;
+      const cagadasGolReview = obtenerCantidadReviewEventoJugadorHistorial(partido, 'cagada_gol', jp.jugador_id);
+      const cagadasGolMetadata = cagadasGolReview > 0 ? 0 : contarCagadasGolDesdeMetadataReviewHistorial(partido, jp.jugador_id);
+      const cagadasSueltasReview = cagadasViejas > 0 ? 0 : obtenerCantidadReviewEventoJugadorHistorial(partido, 'cagada', jp.jugador_id);
+      return cagadasViejas + cagadasGolReview + cagadasGolMetadata + cagadasSueltasReview;
+    };
+
+    const obtenerBuenasJugadasJugadorPartidoHistorial = (partido, jp) => {
+      return obtenerCantidadReviewEventoJugadorHistorial(partido, 'buena_jugada', jp.jugador_id);
+    };
+
+    const calcularMetricasPartidoHistorial = (partido) => {
+      const jugadoresPartido = partido.jugador_partido || [];
+      let golesEquipo1 = 0;
+      let golesEquipo2 = 0;
+
+      (partido.goles || []).forEach(gol => {
+        const jugadorData = jugadoresPartido.find(jp => jp.jugador_id === gol.goleador_id);
+        if (!jugadorData) return;
+
+        const esEnContra = gol.equipo !== jugadorData.equipo;
+        if (esEnContra) {
+          if (jugadorData.equipo === 1) golesEquipo2++;
+          else golesEquipo1++;
+        } else if (jugadorData.equipo === 1) {
+          golesEquipo1++;
+        } else {
+          golesEquipo2++;
+        }
+      });
+
+      const totalAsistencias = (partido.goles || []).filter(gol => {
+        if (!gol.asistidor_id) return false;
+        const asistidor = jugadoresPartido.find(jp => jp.jugador_id === gol.asistidor_id);
+        return !asistidor || asistidor.equipo === gol.equipo;
+      }).length;
+
+      return {
+        golesEquipo1,
+        golesEquipo2,
+        totalGoles: golesEquipo1 + golesEquipo2,
+        totalAsistencias,
+        totalAtajadas: jugadoresPartido.reduce((sum, jp) => sum + (Number(jp.atajadas) || 0), 0),
+        totalCagadas: jugadoresPartido.reduce((sum, jp) => sum + obtenerCagadasJugadorPartidoHistorial(partido, jp), 0),
+        totalBuenasJugadas: jugadoresPartido.reduce((sum, jp) => sum + obtenerBuenasJugadasJugadorPartidoHistorial(partido, jp), 0)
+      };
+    };
+
+    const metricasPartidoHistorial = new Map();
+    partidos.forEach(partido => {
+      metricasPartidoHistorial.set(String(partido.id), calcularMetricasPartidoHistorial(partido));
+    });
+
+    const obtenerMetricasPartidoHistorial = (partido) => {
+      const key = String(partido.id);
+      if (!metricasPartidoHistorial.has(key)) {
+        metricasPartidoHistorial.set(key, calcularMetricasPartidoHistorial(partido));
+      }
+      return metricasPartidoHistorial.get(key);
+    };
+
+    const recordsConfigHistorial = [
+      { key: 'totalGoles', tipo: 'goles', label: 'goles', icono: 'bi-trophy-fill', clase: 'is-goals' },
+      { key: 'totalAsistencias', tipo: 'asistencias', label: 'asistencias', icono: 'bi-bezier2', clase: 'is-assists' },
+      { key: 'totalAtajadas', tipo: 'atajadas', label: 'atajadas', icono: 'bi-shield-fill', clase: 'is-saves' },
+      { key: 'totalCagadas', tipo: 'cagadas', label: 'cagadas', icono: 'bi-exclamation-triangle-fill', clase: 'is-mistakes' }
+    ];
+
+    const calcularRecordsPartidoHistorial = () => {
+      const recordsPorPartido = new Map();
+      const maximos = Object.fromEntries(recordsConfigHistorial.map(config => [config.key, null]));
+      const partidosCronologicos = [...partidos].reverse();
+
+      partidosCronologicos.forEach(partido => {
+        const metricas = obtenerMetricasPartidoHistorial(partido);
+        const recordsPartido = [];
+
+        recordsConfigHistorial.forEach(config => {
+          const valor = Number(metricas[config.key]) || 0;
+          const anterior = maximos[config.key];
+          if (anterior !== null && valor > anterior && valor > 0) {
+            recordsPartido.push({
+              ...config,
+              valor,
+              anterior
+            });
+          }
+          if (anterior === null || valor > anterior) {
+            maximos[config.key] = valor;
+          }
+        });
+
+        if (recordsPartido.length) {
+          recordsPorPartido.set(String(partido.id), recordsPartido);
+        }
+      });
+
+      return recordsPorPartido;
+    };
+
+    const recordsPartidoHistorial = calcularRecordsPartidoHistorial();
+
+    const renderizarAchievementsPartidoHistorial = (recordsPartido = []) => {
+      if (!recordsPartido.length) return '';
+
+      return `
+        <div class="historial-achievements" aria-label="Achievements del partido">
+          ${recordsPartido.map(record => `
+            <div class="historial-achievement ${record.clase}" data-record-type="${record.tipo}">
+              <span class="historial-achievement-icon" aria-hidden="true">
+                <i class="bi ${record.icono}"></i>
+              </span>
+              <div class="historial-achievement-copy">
+                <span class="historial-achievement-kicker">Logro del partido</span>
+                <strong>Nuevo record de ${record.label}</strong>
+                <small>${record.valor} en este partido &middot; anterior ${record.anterior}</small>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    };
+
     let html = '<div class="row g-4">';
     const obtenerNombreJugadorHistorial = (jp) => (jp?.jugadores?.nombre || 'Jugador').trim();
     const obtenerInfoEquipoHistorial = (jugadores = [], obtenerPuntajeJugador = null) => {
@@ -18478,44 +18614,19 @@ const initApp = () => {
       const equipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
       const equipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
 
-      // Calcular marcador desde los goles registrados
-      let golesEquipo1 = 0;
-      let golesEquipo2 = 0;
-
-      if (partido.goles && partido.goles.length > 0) {
-        partido.goles.forEach(gol => {
-          const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
-          if (jugadorData) {
-            // Determinar si es gol en contra comparando el equipo del gol con el equipo del jugador
-            const esEnContra = gol.equipo !== jugadorData.equipo;
-
-            if (esEnContra) {
-              // Gol en contra suma al equipo contrario
-              if (jugadorData.equipo === 1) golesEquipo2++;
-              else golesEquipo1++;
-            } else {
-              // Gol normal suma al propio equipo
-              if (jugadorData.equipo === 1) golesEquipo1++;
-              else golesEquipo2++;
-            }
-          }
-        });
-      }
+      const metricasPartido = obtenerMetricasPartidoHistorial(partido);
+      const { golesEquipo1, golesEquipo2, totalGoles, totalAtajadas, totalCagadas, totalBuenasJugadas } = metricasPartido;
 
       // Obtener MVP y ACE
       const mvpData = partido.jugador_partido?.find(jp => jp.mvp);
       const aceData = partido.jugador_partido?.find(jp => jp.ace);
 
       const obtenerCantidadReviewEventoJugador = (tipo, jugadorId) => {
-        return (partido.review_eventos || [])
-          .filter(evento => evento.tipo === tipo && String(evento.jugador_id || '') === String(jugadorId || ''))
-          .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
+        return obtenerCantidadReviewEventoJugadorHistorial(partido, tipo, jugadorId);
       };
 
       const contarCagadasGolDesdeMetadataReview = (jugadorId) => {
-        return (partido.review_eventos || [])
-          .filter(evento => evento.tipo === 'gol' && String(evento.metadata?.cagada_jugador_id || evento.metadata?.cagada_id || '') === String(jugadorId || ''))
-          .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
+        return contarCagadasGolDesdeMetadataReviewHistorial(partido, jugadorId);
       };
 
       const obtenerCagadasJugadorPartido = (jp) => {
@@ -18531,9 +18642,6 @@ const initApp = () => {
       };
 
       // Calcular estadísticas totales
-      const totalCagadas = partido.jugador_partido?.reduce((sum, jp) => sum + obtenerCagadasJugadorPartido(jp), 0) || 0;
-      const totalBuenasJugadas = partido.jugador_partido?.reduce((sum, jp) => sum + obtenerBuenasJugadasJugadorPartido(jp), 0) || 0;
-      const totalAtajadas = partido.jugador_partido?.reduce((sum, jp) => sum + (jp.atajadas || 0), 0) || 0;
       const promedioAtajadasJugador = (partido.jugador_partido && partido.jugador_partido.length)
         ? totalAtajadas / partido.jugador_partido.length
         : 0;
@@ -18636,11 +18744,13 @@ const initApp = () => {
       const resultadoClase = equipo1Ganador ? 'is-winner-team-1' : (equipo2Ganador ? 'is-winner-team-2' : 'is-draw');
       const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.resultado : equipo2Info.resultado}`;
       const resumenPartido = [
-        `<span><strong>${golesEquipo1 + golesEquipo2}</strong> goles</span>`,
+        `<span><strong>${totalGoles}</strong> goles</span>`,
         totalAtajadas > 0 ? `<span><strong>${totalAtajadas}</strong> atajadas</span>` : '',
         totalBuenasJugadas > 0 ? `<span><strong>${totalBuenasJugadas}</strong> buenas jugadas</span>` : '',
         totalCagadas > 0 ? `<span><strong>${totalCagadas}</strong> cagadas</span>` : ''
       ].filter(Boolean).join('');
+      const achievementsPartido = recordsPartidoHistorial.get(String(partido.id)) || [];
+      const achievementsPartidoHtml = renderizarAchievementsPartidoHistorial(achievementsPartido);
 
       html += `
         <div class="col-lg-6 col-md-12">
@@ -18688,6 +18798,7 @@ const initApp = () => {
               </div>
             </div>
             <div class="historial-match-summary">${resumenPartido}</div>
+            ${achievementsPartidoHtml}
 
             <!-- Equipos -->
             <div class="row g-3 mb-3 historial-match-teams">

@@ -3266,6 +3266,109 @@
         font-size: 1rem;
       }
 
+      .historial-achievements {
+        display: grid;
+        gap: 0.46rem;
+      }
+
+      .historial-achievement {
+        align-items: center;
+        background:
+          linear-gradient(135deg, rgba(250, 204, 21, 0.14), rgba(15, 23, 42, 0.68)),
+          rgba(15, 23, 42, 0.78);
+        border: 1px solid rgba(250, 204, 21, 0.26);
+        border-radius: 8px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        display: grid;
+        gap: 0.56rem;
+        grid-template-columns: 42px minmax(0, 1fr);
+        min-width: 0;
+        padding: 0.58rem 0.66rem;
+      }
+
+      .historial-achievement-icon {
+        align-items: center;
+        background: rgba(250, 204, 21, 0.18);
+        border: 1px solid rgba(250, 204, 21, 0.34);
+        border-radius: 8px;
+        color: #facc15;
+        display: inline-flex;
+        font-size: 1.16rem;
+        height: 42px;
+        justify-content: center;
+        line-height: 1;
+        width: 42px;
+      }
+
+      .historial-achievement-copy {
+        display: grid;
+        gap: 0.08rem;
+        min-width: 0;
+      }
+
+      .historial-achievement-kicker {
+        color: rgba(250, 204, 21, 0.8);
+        font-size: 0.6rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .historial-achievement strong {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 1.02rem;
+        font-weight: 800;
+        line-height: 1.05;
+      }
+
+      .historial-achievement small {
+        color: rgba(226, 232, 240, 0.64);
+        font-size: 0.7rem;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .historial-achievement.is-assists {
+        background:
+          linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(15, 23, 42, 0.68)),
+          rgba(15, 23, 42, 0.78);
+        border-color: rgba(96, 165, 250, 0.3);
+      }
+
+      .historial-achievement.is-assists .historial-achievement-icon {
+        background: rgba(59, 130, 246, 0.16);
+        border-color: rgba(96, 165, 250, 0.34);
+        color: #bfdbfe;
+      }
+
+      .historial-achievement.is-saves {
+        background:
+          linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(15, 23, 42, 0.68)),
+          rgba(15, 23, 42, 0.78);
+        border-color: rgba(45, 212, 191, 0.3);
+      }
+
+      .historial-achievement.is-saves .historial-achievement-icon {
+        background: rgba(20, 184, 166, 0.16);
+        border-color: rgba(45, 212, 191, 0.34);
+        color: #99f6e4;
+      }
+
+      .historial-achievement.is-mistakes {
+        background:
+          linear-gradient(135deg, rgba(244, 63, 94, 0.14), rgba(15, 23, 42, 0.68)),
+          rgba(15, 23, 42, 0.78);
+        border-color: rgba(251, 113, 133, 0.3);
+      }
+
+      .historial-achievement.is-mistakes .historial-achievement-icon {
+        background: rgba(244, 63, 94, 0.16);
+        border-color: rgba(251, 113, 133, 0.34);
+        color: #fecdd3;
+      }
+
       .historial-team-panel {
         display: grid;
         gap: 0.68rem;
@@ -3712,6 +3815,21 @@
         .historial-match-result {
           align-self: flex-start;
           max-width: 100%;
+        }
+
+        .historial-achievement {
+          grid-template-columns: 36px minmax(0, 1fr);
+          padding: 0.52rem;
+        }
+
+        .historial-achievement-icon {
+          font-size: 1rem;
+          height: 36px;
+          width: 36px;
+        }
+
+        .historial-achievement strong {
+          font-size: 0.94rem;
         }
 
         .historial-score-row {
@@ -6634,7 +6752,7 @@
     <!-- Algoritmo Genético -->
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=historial-team-award-avatars-2026-07-09"></script>
+    <script type="module" src="./app.js?v=historial-match-records-2026-07-09"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
     <!-- Funcionalidad de Paternidades -->
