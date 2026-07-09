@@ -18801,6 +18801,174 @@ const initApp = () => {
       const achievementsPartido = recordsPartidoHistorial.get(String(partido.id)) || [];
       const achievementsPartidoHtml = renderizarAchievementsPartidoHistorial(achievementsPartido);
 
+      const formatearTiempoEventoHistorial = (item) => {
+        const minutoPartido = Number(item?.minuto);
+        if (Number.isFinite(minutoPartido)) {
+          const segundosPartido = Math.max(0, Math.round(minutoPartido * 60));
+          const mins = Math.floor(segundosPartido / 60);
+          const secs = segundosPartido % 60;
+          return secs > 0 ? `${mins}:${String(secs).padStart(2, '0')}` : `${mins}'`;
+        }
+
+        const segundos = [item?.review_segundos, item?.video_segundos, item?.compilado_segundos]
+          .map(valor => Number(valor))
+          .find(valor => Number.isFinite(valor));
+
+        if (!Number.isFinite(segundos)) return '';
+        const segundosPositivos = Math.max(0, segundos);
+        const mins = Math.floor(segundosPositivos / 60);
+        const secs = Math.round(segundosPositivos % 60);
+        return secs > 0 ? `${mins}:${String(secs).padStart(2, '0')}` : `${mins}'`;
+      };
+
+      const obtenerLinkEventoHistorial = (item, youtubeLink) => {
+        const linkBase = obtenerLinkYouTubeReview(item?.video_link) || obtenerLinkYouTubeReview(youtubeLink);
+        if (!linkBase) return '';
+
+        const segundos = [item?.video_segundos, item?.compilado_segundos, item?.review_segundos]
+          .map(valor => Number(valor))
+          .find(valor => Number.isFinite(valor));
+
+        if (Number.isFinite(segundos)) {
+          return generarLinkConTimestampSegundos(linkBase, segundos);
+        }
+
+        const minutoPartido = Number(item?.minuto);
+        if (Number.isFinite(minutoPartido)) {
+          return generarLinkConTimestamp(linkBase, minutoPartido);
+        }
+
+        return linkBase;
+      };
+
+      const renderizarChipEventosCarrilHistorial = ({ eventos = [], tipo, youtubeLink, partidoId }) => {
+        const total = Array.isArray(eventos) ? eventos.length : 0;
+        if (!total) return '';
+
+        const config = tipo === 'assist'
+          ? {
+              clase: 'assist',
+              icono: obtenerIconoEventoHistorial('assist'),
+              singular: 'asistencia',
+              plural: 'asistencias'
+            }
+          : {
+              clase: 'goal',
+              icono: obtenerIconoEventoHistorial('goal'),
+              singular: 'gol',
+              plural: 'goles'
+            };
+
+        const eventosOrdenados = [...eventos].sort((a, b) => {
+          const minutoA = Number(a?.minuto);
+          const minutoB = Number(b?.minuto);
+          if (Number.isFinite(minutoA) && Number.isFinite(minutoB) && minutoA !== minutoB) return minutoA - minutoB;
+          return String(a?.id || '').localeCompare(String(b?.id || ''), undefined, { numeric: true });
+        });
+
+        const detalleMinutos = eventosOrdenados
+          .map(item => formatearTiempoEventoHistorial(item))
+          .filter(Boolean)
+          .join(' ');
+        const title = detalleMinutos
+          ? `${total} ${total === 1 ? config.singular : config.plural}: ${detalleMinutos}`
+          : `${total} ${total === 1 ? config.singular : config.plural}`;
+
+        if (total >= 5) {
+          const textoColapsado = config.clase === 'assist' ? 'asist.' : config.plural;
+          return `
+            <button type="button" class="historial-lane-chip is-${config.clase} is-collapsed" onclick="mostrarGolesPartido('${escaparTextoParaJs(partidoId)}')" title="${escaparHtmlPlano(title)}">
+              <span class="historial-lane-icon">${config.icono}</span>
+              <span>${total} ${textoColapsado}</span>
+            </button>
+          `;
+        }
+
+        const tiemposHtml = eventosOrdenados.map((item, itemIndex) => {
+          const textoTiempo = formatearTiempoEventoHistorial(item) || `${itemIndex + 1}`;
+          const href = obtenerLinkEventoHistorial(item, youtubeLink);
+          const titleTiempo = `Ver ${config.singular} ${textoTiempo}`;
+          if (href) {
+            return `<a href="${escaparHtmlPlano(href)}" target="_blank" class="historial-lane-minute" title="${escaparHtmlPlano(titleTiempo)}">${escaparHtmlPlano(textoTiempo)}</a>`;
+          }
+          return `<span class="historial-lane-minute is-static" title="${escaparHtmlPlano(titleTiempo)}">${escaparHtmlPlano(textoTiempo)}</span>`;
+        }).join('');
+
+        return `
+          <span class="historial-lane-chip is-${config.clase}" title="${escaparHtmlPlano(title)}">
+            <span class="historial-lane-icon">${config.icono}</span>
+            <span class="historial-lane-times">${tiemposHtml}</span>
+          </span>
+        `;
+      };
+
+      const renderizarTextoCarrilHistorial = ({ tipo, icono, cantidad, label }) => {
+        const total = Math.max(0, Number(cantidad) || 0);
+        if (!total) return '';
+
+        return `
+          <span class="historial-lane-plain is-${tipo}" title="${escaparHtmlPlano(`${total} ${label}`)}">
+            <span class="historial-lane-icon">${icono}</span>
+            <span>${total}</span>
+          </span>
+        `;
+      };
+
+      const renderizarFilaJugadorHistorial = (jp) => {
+        const { golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+        const puntaje = normalizarPuntajePartido(skill);
+        const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
+        const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
+        const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
+        const nombreJugador = jp.jugadores?.nombre || 'Jugador';
+        const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
+        const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
+        const premioHtml = [
+          jp.mvp ? crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-trophy-fill"></i>', 'MVP') : '',
+          jp.ace ? crearDistintivoJugadorHistorial('ace', '<i class="bi bi-star-fill"></i>', 'ACE') : ''
+        ].filter(Boolean).join('');
+        const puntajeLabel = Number.isFinite(puntaje)
+          ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
+              <span class="historial-rating-value">${puntajeTexto}</span>
+              <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
+            </div>`
+          : '';
+        const buenasJugadasHtml = buenasJugadasJugador > 0
+          ? `<span class="historial-player-good-note" title="${buenasJugadasJugador} buenas jugadas"><i class="bi bi-stars"></i>${buenasJugadasJugador}</span>`
+          : '';
+
+        return `
+          <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
+            <div class="historial-player-main">
+              <div class="historial-player-name-line">
+                ${renderizarAccesoPerfilJugador(jp.jugador_id, nombreJugador, 'text-white fw-semibold text-start align-baseline')}
+                ${premioHtml}
+              </div>
+              <div class="historial-player-stat-lanes">
+                <span class="historial-stat-lane is-goals">${renderizarChipEventosCarrilHistorial({ eventos: golesDelJugador, tipo: 'goal', youtubeLink: youtubeEventosLink, partidoId: partido.id })}</span>
+                <span class="historial-stat-lane is-assists">${renderizarChipEventosCarrilHistorial({ eventos: asistenciasDelJugador, tipo: 'assist', youtubeLink: youtubeEventosLink, partidoId: partido.id })}</span>
+                <span class="historial-stat-lane is-saves">${renderizarTextoCarrilHistorial({ tipo: 'save', icono: obtenerIconoEventoHistorial('save'), cantidad: jp.atajadas, label: 'atajadas' })}</span>
+                <span class="historial-stat-lane is-mistakes">
+                  ${renderizarTextoCarrilHistorial({ tipo: 'mistake', icono: '<i class="bi bi-exclamation-triangle-fill"></i>', cantidad: cagadasJugador, label: 'cagadas' })}
+                  ${buenasJugadasHtml}
+                </span>
+              </div>
+            </div>
+            <div class="historial-player-score">
+              ${puntajeLabel}
+              <div class="historial-rating-bar ${puntajeClase}" aria-hidden="true">
+                <span style="width:${puntajeAncho}%"></span>
+              </div>
+            </div>
+            ${esAdmin ? `<button class="historial-coin-btn" data-admin-only
+                      title="Forzar pase en Mundialito"
+                      onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${nombreJugador.replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
+              <i class="bi bi-coin"></i>
+            </button>` : ''}
+          </div>
+        `;
+      };
+
       html += `
         <div class="col-lg-6 col-md-12">
           <div class="glass-effect historial-match-card h-100 ${resultadoClase} partido-card" data-partido-id="${partido.id}">
@@ -18854,12 +19022,12 @@ const initApp = () => {
               <div class="col-lg-6">
                 <div class="historial-team-panel is-team-1 ${equipo1Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-scoreboard">
+                    <div class="historial-team-identity">
+                      ${equipo1Info.headerHtml}
+                    </div>
                     <div class="historial-team-score-block">
                       <span>Goles</span>
                       <strong>${golesEquipo1}</strong>
-                    </div>
-                    <div class="historial-team-identity">
-                      ${equipo1Info.headerHtml}
                     </div>
                   </div>
                   <div class="historial-team-meta-row">
@@ -18867,65 +19035,7 @@ const initApp = () => {
                     <span>Prom. <strong>${skillEquipo1.toFixed(1)}</strong></span>
                   </div>
                   <div class="historial-player-list">
-                    ${equipo1.map(jp => {
-                      const { golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
-                      const puntaje = normalizarPuntajePartido(skill);
-                      const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
-                      const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
-                      const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
-
-                      const stats = [];
-                      if (jp.mvp) {
-                        stats.push(crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-award-fill"></i>', 'MVP'));
-                      }
-                      if (jp.ace) {
-                        stats.push(crearDistintivoJugadorHistorial('ace', '<i class="bi bi-award-fill"></i>', 'ACE'));
-                      }
-                      if (golesDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
-                      }
-                      if (asistenciasDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
-                      }
-                      if (jp.atajadas > 0) {
-                        stats.push(crearChipConteoHistorial('save', obtenerIconoEventoHistorial('save'), jp.atajadas, 'Atajadas'));
-                      }
-                      if (cagadasJugador > 0) {
-                        const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
-                        stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
-                      }
-                      if (buenasJugadasJugador > 0) {
-                        stats.push(crearChipConteoHistorial('good', 'BJ', buenasJugadasJugador, 'Buenas jugadas'));
-                      }
-                      const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
-                      const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
-                      const puntajeLabel = Number.isFinite(puntaje)
-                        ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
-                            <span class="historial-rating-value">${puntajeTexto}</span>
-                            <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
-                          </div>`
-                        : '';
-
-                      return `
-                        <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
-                          <div class="historial-player-main">
-                            ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
-                            ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
-                          </div>
-                          <div class="historial-player-score">
-                            ${puntajeLabel}
-                            <div class="historial-rating-bar ${puntajeClase}" aria-hidden="true">
-                              <span style="width:${puntajeAncho}%"></span>
-                            </div>
-                          </div>
-                          ${esAdmin ? `<button class="historial-coin-btn" data-admin-only
-                                    title="Forzar pase en Mundialito"
-                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
-                            <i class="bi bi-coin"></i>
-                          </button>` : ''}
-                        </div>
-                      `;
-                    }).join('')}
+                    ${equipo1.map(jp => renderizarFilaJugadorHistorial(jp)).join('')}
                     ${equipo1.length === 0 ? '<div class="historial-team-empty">Sin jugadores registrados</div>' : ''}
                   </div>
                 </div>
@@ -18933,12 +19043,12 @@ const initApp = () => {
               <div class="col-lg-6">
                 <div class="historial-team-panel is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-scoreboard">
-                    <div class="historial-team-identity">
-                      ${equipo2Info.headerHtml}
-                    </div>
                     <div class="historial-team-score-block">
                       <span>Goles</span>
                       <strong>${golesEquipo2}</strong>
+                    </div>
+                    <div class="historial-team-identity">
+                      ${equipo2Info.headerHtml}
                     </div>
                   </div>
                   <div class="historial-team-meta-row">
@@ -18946,89 +19056,12 @@ const initApp = () => {
                     <span>Prom. <strong>${skillEquipo2.toFixed(1)}</strong></span>
                   </div>
                   <div class="historial-player-list">
-                    ${equipo2.map(jp => {
-                      const { golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
-                      const puntaje = normalizarPuntajePartido(skill);
-                      const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
-                      const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
-                      const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
-
-                      const stats = [];
-                      if (jp.mvp) {
-                        stats.push(crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-award-fill"></i>', 'MVP'));
-                      }
-                      if (jp.ace) {
-                        stats.push(crearDistintivoJugadorHistorial('ace', '<i class="bi bi-award-fill"></i>', 'ACE'));
-                      }
-                      if (golesDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
-                      }
-                      if (asistenciasDelJugador.length > 0) {
-                        stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
-                      }
-                      if (jp.atajadas > 0) {
-                        stats.push(crearChipConteoHistorial('save', obtenerIconoEventoHistorial('save'), jp.atajadas, 'Atajadas'));
-                      }
-                      if (cagadasJugador > 0) {
-                        const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
-                        stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
-                      }
-                      if (buenasJugadasJugador > 0) {
-                        stats.push(crearChipConteoHistorial('good', 'BJ', buenasJugadasJugador, 'Buenas jugadas'));
-                      }
-                      const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
-                      const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
-                      const puntajeLabel = Number.isFinite(puntaje)
-                        ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
-                            <span class="historial-rating-value">${puntajeTexto}</span>
-                            <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
-                          </div>`
-                        : '';
-
-                      return `
-                        <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
-                          <div class="historial-player-main">
-                            ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
-                            ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
-                          </div>
-                          <div class="historial-player-score">
-                            ${puntajeLabel}
-                            <div class="historial-rating-bar ${puntajeClase}" aria-hidden="true">
-                              <span style="width:${puntajeAncho}%"></span>
-                            </div>
-                          </div>
-                          ${esAdmin ? `<button class="historial-coin-btn" data-admin-only
-                                    title="Forzar pase en Mundialito"
-                                    onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
-                            <i class="bi bi-coin"></i>
-                          </button>` : ''}
-                        </div>
-                      `;
-                    }).join('')}
+                    ${equipo2.map(jp => renderizarFilaJugadorHistorial(jp)).join('')}
                     ${equipo2.length === 0 ? '<div class="historial-team-empty">Sin jugadores registrados</div>' : ''}
                   </div>
                 </div>
               </div>
             </div>
-
-            ${(mvpData || aceData) ? `
-              <div class="historial-awards-row">
-                ${mvpData ? `
-                  <span class="historial-award-chip is-mvp">
-                    <i class="bi bi-trophy-fill"></i>
-                    <strong>MVP</strong>
-                    ${mvpData.jugadores?.nombre || 'N/A'}
-                  </span>
-                ` : ''}
-                ${aceData ? `
-                  <span class="historial-award-chip is-ace">
-                    <i class="bi bi-star-fill"></i>
-                    <strong>ACE</strong>
-                    ${aceData.jugadores?.nombre || 'N/A'}
-                  </span>
-                ` : ''}
-              </div>
-            ` : ''}
 
             <!-- Leyenda del Mundialito para este partido -->
             ${typeof generarLeyendaMundialito === 'function' ? generarLeyendaMundialito(partido) : ''}
