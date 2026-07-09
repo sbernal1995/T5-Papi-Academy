@@ -13,7 +13,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const EXPORT_VERSION = '2026-06-26.1';
+  const EXPORT_VERSION = '2026-07-09.1';
   const DEFAULT_PAGE_SIZE = 1000;
 
   const TABLE_CONFIGS = [
@@ -25,6 +25,7 @@
     { name: 'jugador_partido', orderBy: [{ column: 'partido_id', ascending: true }, { column: 'equipo', ascending: true }] },
     { name: 'goles', orderBy: [{ column: 'partido_id', ascending: true }, { column: 'minuto', ascending: true }] },
     { name: 'estadisticas_temporada', orderBy: [{ column: 'temporada_id', ascending: true }, { column: 'jugador_id', ascending: true }] },
+    { name: 'partido_records', orderBy: [{ column: 'temporada_scope', ascending: true }, { column: 'created_at', ascending: true }] },
     { name: 'mundialito_moneda_overrides', orderBy: [{ column: 'created_at', ascending: true }] },
     { name: 'tracking_analyses', orderBy: [{ column: 'created_at', ascending: true }] },
     { name: 'tracking_player_mapping', orderBy: [{ column: 'created_at', ascending: true }] },
