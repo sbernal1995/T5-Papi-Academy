@@ -26,6 +26,13 @@ function sampleExport() {
         speed_distribution_pct: { walk: 40, trot: 40, sprint: 20 },
         field_side: { own_pct: 40, rival_pct: 60 },
         goalkeeper_role: { total_seconds: 0, episodes: [] },
+        defense: {
+          defense_score: 76.4,
+          defense_score_method: 'tracking_movement',
+          defensive_half_pct: 64.2,
+          defensive_third_pct: 31.5,
+          defensive_distance_m: 420
+        },
         heatmap: {
           x_bins: 2,
           y_bins: 2,
@@ -60,7 +67,28 @@ function sampleExport() {
         goalkeeper_role: { total_seconds: 120, episodes: [{ start_seconds: 0, end_seconds: 120 }] },
         field_side: { own_pct: 70, rival_pct: 30 }
       }
-    ]
+    ],
+    available_metrics: {
+      physical_tracking: true,
+      heatmaps: true,
+      defensive_movement_score: true,
+      goal_event_positions: false
+    },
+    review_analysis: {
+      enabled: true,
+      tracking_only: true,
+      event_metrics_enabled: false,
+      reason: 'review legacy test',
+      coverage: { goals_total: 2, goals_linked: 0 },
+      defensive_players: [
+        { player_id: 'P01', name: 'Metox', team: 'A', role: 'field', defense_score: 76.4 }
+      ]
+    },
+    match_link: {
+      sync_mode: 'tracking_only',
+      tracking_only: true,
+      coverage: { goals_total: 2, goals_linked: 0 }
+    }
   };
 }
 
@@ -71,6 +99,10 @@ function run() {
   assert.strictEqual(normalized.players[0].detected_name, 'Metox');
   assert.strictEqual(normalized.players[0].avg_speed_kmh, 7.2);
   assert.strictEqual(normalized.players[0].max_speed_kmh, 14.4);
+  assert.strictEqual(normalized.players[0].defense_score, 76.4);
+  assert.strictEqual(normalized.available_metrics.defensive_movement_score, true);
+  assert.strictEqual(normalized.review_analysis.tracking_only, true);
+  assert.strictEqual(normalized.match_link.sync_mode, 'tracking_only');
   assert(normalized.players[0].pulmon_tracking > normalized.players[1].pulmon_tracking);
 
   const overlapSame = tracking.heatmapOverlap(

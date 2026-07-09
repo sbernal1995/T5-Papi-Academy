@@ -251,6 +251,8 @@
     const duration = toNumber(raw.duration_seconds ?? raw.config?.duration_seconds, 0);
     const heatmap = field.heatmap || rawPlayer.heatmap || null;
     const speedDistribution = field.speed_distribution_pct || rawPlayer.speed_distribution_pct || {};
+    const defense = rawPlayer.defense || rawPlayer.metrics?.defense || {};
+    const defenseScore = defense?.defense_score !== undefined ? toNumber(defense.defense_score, 0) : null;
     const robustSpeedMps = toNumber(
       field.speed_peak_mps ?? field.speed_max_mps ?? rawPlayer.speed_peak_mps ?? rawPlayer.speed_p95_mps,
       0
@@ -291,6 +293,9 @@
       directionality: field.directionality || rawPlayer.directionality || {},
       lane_distribution: field.lane_distribution_pct || rawPlayer.lane_distribution_pct || {},
       highlights: rawPlayer.highlights || field.highlights || {},
+      defense,
+      defense_score: defenseScore,
+      defense_score_method: defense.defense_score_method || defense.method || '',
       pulmon_tracking: computePulmonTracking(rawPlayer, duration)
     };
   }
@@ -337,14 +342,46 @@
       };
     });
 
+    const reviewAnalysis = raw.review_analysis || {};
+    const matchLink = raw.match_link || raw.t5_export?.match_link || {
+      review_json_path: raw.config?.review_json_path || '',
+      review_link: reviewAnalysis.review_link || '',
+      sync_mode: reviewAnalysis.event_metrics_enabled ? 'timed_events' : 'tracking_only',
+      tracking_only: Boolean(reviewAnalysis.tracking_only),
+      reason: reviewAnalysis.reason || '',
+      coverage: reviewAnalysis.coverage || {},
+      sync: reviewAnalysis.sync || {},
+      analysis_range: raw.config?.analysis_range || {}
+    };
+    const availableMetrics = raw.available_metrics || {
+      physical_tracking: players.length > 0,
+      heatmaps: players.some(player => player.heatmap),
+      team_stats: teams.length > 0,
+      average_positions: Boolean(raw.average_positions?.players),
+      speed_windows: Boolean(raw.temporal?.windows?.length),
+      marking_interactions: Boolean(raw.interactions?.enabled || raw.interactions?.marking_pairs?.length),
+      defensive_movement_score: players.some(player => player.defense_score !== null && player.defense_score !== undefined) || Boolean(reviewAnalysis.defensive_players?.length),
+      review_json_loaded: Boolean(raw.config?.review_json_path || matchLink.review_json_path || matchLink.review_link),
+      review_timeline: Boolean(reviewAnalysis.sync?.timeline_quality?.has_timeline),
+      goal_event_positions: Boolean(reviewAnalysis.event_metrics_enabled),
+      nearest_defender_on_goal: Boolean(reviewAnalysis.event_metrics_enabled),
+      lost_mark_detection: Boolean(reviewAnalysis.event_metrics_enabled),
+      defensive_score_from_goals: Boolean(reviewAnalysis.event_metrics_enabled),
+      save_timeline: toNumber(reviewAnalysis.coverage?.saves_linked, 0) > 0
+    };
+
     return {
       raw,
-      version: String(raw.version || raw.t5_export?.version || 'unknown'),
+      version: String(raw.version || raw.schema_version || raw.t5_export?.schema_version || raw.t5_export?.version || 'unknown'),
       duration_seconds: round(toNumber(raw.duration_seconds ?? raw.config?.duration_seconds, 0), 3),
       pitch,
       players,
       teams,
       summary: raw.summary || {},
+      available_metrics: availableMetrics,
+      review_analysis: reviewAnalysis,
+      match_link: matchLink,
+      limitations: raw.limitations || [],
       rankings: raw.rankings || {},
       temporal: raw.temporal || {},
       interactions: raw.interactions || {},
@@ -744,11 +781,18 @@
 
     const players = state.normalized.players;
     const mapped = players.filter(player => state.mappings.get(player.player_id)?.jugador_id).length;
+    const review = state.normalized.review_analysis || {};
+    const coverage = review.coverage || state.normalized.match_link?.coverage || {};
+    const defenseCount = players.filter(player => player.defense_score !== null && player.defense_score !== undefined).length;
+    const mode = review.event_metrics_enabled
+      ? `goles ${toNumber(coverage.goals_linked)}/${toNumber(coverage.goals_total)} sincronizados`
+      : 'solo tracking';
     summary.innerHTML = `
       <div class="alert alert-info py-2 mb-0">
         <strong>${escapeHtml(state.normalized.version)}</strong> -
         ${players.length} jugadores - ${formatTime(state.normalized.duration_seconds)} -
-        ${mapped}/${players.length} matcheados.
+        ${mapped}/${players.length} matcheados.<br>
+        <span>${escapeHtml(mode)} - defensa disponible para ${defenseCount} jugadores.</span>
       </div>
     `;
 
@@ -826,6 +870,10 @@
         total_distance_km: round(normalized.players.reduce((sum, player) => sum + player.distance_km, 0), 2),
         max_speed_kmh: round(Math.max(...normalized.players.map(player => player.max_speed_kmh)), 2),
         total_sprints: normalized.players.reduce((sum, player) => sum + player.sprints, 0),
+        sync_mode: normalized.match_link?.sync_mode || (normalized.review_analysis?.event_metrics_enabled ? 'timed_events' : 'tracking_only'),
+        tracking_only: Boolean(normalized.review_analysis?.tracking_only || normalized.match_link?.tracking_only),
+        available_metrics: normalized.available_metrics,
+        review_coverage: normalized.review_analysis?.coverage || normalized.match_link?.coverage || {},
         team_distance_km: normalized.teams.reduce((acc, team) => {
           acc[team.team] = team.distance_km;
           return acc;
@@ -894,6 +942,7 @@
             windows: player.windows,
             directionality: player.directionality,
             lane_distribution: player.lane_distribution,
+            defense: player.defense,
             own_side: player.own_side,
             rival_side: player.rival_side
           },
@@ -925,7 +974,11 @@
         { type: 'rankings', payload: normalized.rankings },
         { type: 'interactions', payload: normalized.interactions },
         { type: 'temporal', payload: normalized.temporal },
-        { type: 'average_positions', payload: normalized.average_positions }
+        { type: 'average_positions', payload: normalized.average_positions },
+        { type: 'available_metrics', payload: normalized.available_metrics },
+        { type: 'review_analysis', payload: normalized.review_analysis },
+        { type: 'match_link', payload: normalized.match_link },
+        { type: 'limitations', payload: { items: normalized.limitations || [] } }
       ].map(item => ({
         analysis_id: analysisId,
         interaction_type: item.type,
@@ -1047,6 +1100,7 @@
       const heatmapRow = heatmapByPlayer.get(row.player_id) || {};
       const rawPlayer = rawByPlayer.get(row.player_id) || rawPlayers[index] || {};
       const metrics = row.metrics || {};
+      const defense = metrics.defense || rawPlayer.defense || {};
       return {
         ...row,
         name: rawPlayer.detected_name || mapping.detected_name || row.detected_name || mapping.jugadores?.nombre || row.player_id,
@@ -1069,13 +1123,17 @@
         coverage_pct: preferRawWhenMissing(row.coverage_pct, rawPlayer.coverage_pct),
         pulmon_tracking: preferRawWhenMissing(row.pulmon_tracking, rawPlayer.pulmon_tracking),
         speed_distribution: row.speed_distribution || rawPlayer.speed_distribution || {},
+        defense,
+        defense_score: defense.defense_score !== undefined ? toNumber(defense.defense_score, 0) : rawPlayer.defense_score,
+        defense_score_method: defense.defense_score_method || rawPlayer.defense_score_method || defense.method || '',
         metrics: {
           ...metrics,
           windows: metrics.windows || rawPlayer.windows || [],
           fatigue: metrics.fatigue || rawPlayer.fatigue || {},
           recovery: metrics.recovery || rawPlayer.recovery || {},
           directionality: metrics.directionality || rawPlayer.directionality || {},
-          lane_distribution: metrics.lane_distribution || rawPlayer.lane_distribution || {}
+          lane_distribution: metrics.lane_distribution || rawPlayer.lane_distribution || {},
+          defense
         },
         highlights: row.highlights || rawPlayer.highlights || {},
         heatmap: heatmapRow.heatmap || rawPlayer.heatmap,
@@ -1092,6 +1150,10 @@
       temporal: interactionMap.temporal || analysisRes.data?.raw_json?.temporal || {},
       interactions: interactionMap.interactions || analysisRes.data?.raw_json?.interactions || {},
       average_positions: interactionMap.average_positions || analysisRes.data?.raw_json?.average_positions || {},
+      available_metrics: interactionMap.available_metrics || rawNormalized?.available_metrics || analysisRes.data?.raw_json?.available_metrics || {},
+      review_analysis: interactionMap.review_analysis || rawNormalized?.review_analysis || analysisRes.data?.raw_json?.review_analysis || {},
+      match_link: interactionMap.match_link || rawNormalized?.match_link || analysisRes.data?.raw_json?.match_link || {},
+      limitations: interactionMap.limitations?.items || rawNormalized?.limitations || analysisRes.data?.raw_json?.limitations || [],
       raw: analysisRes.data?.raw_json || null
     };
     APP.detailsByAnalysis.set(key, details);
@@ -1133,12 +1195,16 @@
     const topSpeed = [...players].sort((a, b) => toNumber(b.max_speed_kmh) - toNumber(a.max_speed_kmh))[0];
     const topPulmon = [...players].sort((a, b) => toNumber(b.pulmon_tracking) - toNumber(a.pulmon_tracking))[0];
     const topSprint = [...players].sort((a, b) => toNumber(b.sprints) - toNumber(a.sprints))[0];
+    const topDefense = [...players]
+      .filter(player => player.defense_score !== null && player.defense_score !== undefined)
+      .sort((a, b) => toNumber(b.defense_score) - toNumber(a.defense_score))[0];
     const marking = (details.interactions?.marking_pairs || [])[0];
 
     return [
       topDistance && { title: 'Mas corredor', main: `${topDistance.name || topDistance.detected_name || 'Jugador'}`, sub: `${toNumber(topDistance.distance_km).toFixed(2)} km recorridos` },
       topSpeed && { title: 'Mas rapido', main: `${topSpeed.name || topSpeed.detected_name || 'Jugador'}`, sub: `${toNumber(topSpeed.max_speed_kmh).toFixed(1)} km/h pico robusto` },
       topPulmon && { title: 'Pulmon tracking', main: `${topPulmon.name || topPulmon.detected_name || 'Jugador'}`, sub: `${toNumber(topPulmon.pulmon_tracking).toFixed(1)}/100 por actividad fisica` },
+      topDefense && { title: 'Defensa tracking', main: `${topDefense.name || topDefense.detected_name || 'Jugador'}`, sub: `${toNumber(topDefense.defense_score).toFixed(1)}/100 por ${topDefense.defense_score_method === 'event_tracking_blend' ? 'eventos y movimiento' : 'movimiento defensivo'}` },
       topSprint && { title: 'Mas sprints', main: `${topSprint.name || topSprint.detected_name || 'Jugador'}`, sub: `${toNumber(topSprint.sprints)} sprints sostenidos` },
       marking && { title: 'Marca sostenida', main: `${marking.marker || marking.a || 'Jugador'} vs ${marking.marked || marking.b || 'Rival'}`, sub: `${round(marking.seconds || marking.duration_seconds || 0, 1)} s cerca` }
     ].filter(Boolean);
@@ -1173,6 +1239,7 @@
           ${kpi('Pulmon promedio', `${avgPulmon}/100`)}
           ${kpi('Duracion', formatTime(details.analysis.duration_seconds))}
         </div>
+        ${renderTrackingAvailability(details)}
 
         <div class="tracking-canvas-grid">
           <div class="tracking-canvas-card">
@@ -1195,6 +1262,7 @@
           <h6 class="text-white mb-2">Resumen fisico por jugador</h6>
           ${renderPlayersTable(players)}
         </div>
+        ${renderDefenseSummary(details)}
 
         <div class="row g-3">
           <div class="col-lg-6">
@@ -1249,6 +1317,115 @@
     `;
   }
 
+  function renderTrackingAvailability(details) {
+    const metrics = details.available_metrics || {};
+    const review = details.review_analysis || {};
+    const matchLink = details.match_link || {};
+    if (!Object.keys(metrics).length && !Object.keys(review).length && !Object.keys(matchLink).length) return '';
+
+    const coverage = review.coverage || matchLink.coverage || {};
+    const syncMode = matchLink.sync_mode || (review.event_metrics_enabled ? 'timed_events' : 'tracking_only');
+    const modeLabel = review.event_metrics_enabled
+      ? `Goles sincronizados ${toNumber(coverage.goals_linked)}/${toNumber(coverage.goals_total)}`
+      : 'Solo tracking';
+    const metricBadges = [
+      ['Fisico', metrics.physical_tracking],
+      ['Heatmaps', metrics.heatmaps],
+      ['Equipos', metrics.team_stats],
+      ['Defensa movimiento', metrics.defensive_movement_score],
+      ['Goles sincronizados', metrics.goal_event_positions],
+      ['Marca perdida', metrics.lost_mark_detection],
+      ['Atajadas timeline', metrics.save_timeline]
+    ];
+    const reason = review.reason || matchLink.reason || '';
+
+    return `
+      <div class="tracking-profile-card">
+        <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+          <div>
+            <h6 class="text-white mb-1">Datos disponibles</h6>
+            <div class="text-light-emphasis small">${escapeHtml(modeLabel)} · ${escapeHtml(syncMode)}</div>
+          </div>
+          <div class="d-flex flex-wrap gap-1 justify-content-end">
+            ${metricBadges.map(([label, enabled]) => `
+              <span class="badge ${enabled ? 'text-bg-success' : 'text-bg-secondary'}">${escapeHtml(label)}</span>
+            `).join('')}
+          </div>
+        </div>
+        ${reason ? `<div class="text-light-emphasis small mt-2">${escapeHtml(reason)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function renderDefenseSummary(details) {
+    const review = details.review_analysis || {};
+    const playerById = new Map((details.players || []).map(player => [String(player.player_id), player]));
+    let rows = (review.defensive_players || [])
+      .filter(row => row.role !== 'goalkeeper')
+      .map(row => {
+        const player = playerById.get(String(row.player_id)) || {};
+        return { ...row, name: player.name || row.name, team: player.team || row.team };
+      });
+
+    if (!rows.length) {
+      rows = (details.players || [])
+        .filter(player => player.defense_score !== null && player.defense_score !== undefined && toNumber(player.goalkeeper_seconds, 0) <= 0)
+        .map(player => ({ ...player, ...(player.defense || {}) }));
+    }
+    rows.sort((a, b) => toNumber(b.defense_score) - toNumber(a.defense_score));
+    if (!rows.length) return '';
+
+    const coverage = review.coverage || {};
+    const modeText = review.event_metrics_enabled
+      ? `Eventos sincronizados: ${toNumber(coverage.goals_linked)}/${toNumber(coverage.goals_total)} goles.`
+      : 'Score defensivo por movimiento en campo propio y tercio defensivo.';
+
+    return `
+      <div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="text-white mb-0">Defensa tracking</h6>
+          <span class="small text-light-emphasis">${escapeHtml(modeText)}</span>
+        </div>
+        <div class="tracking-table-wrap">
+          <table class="tracking-table">
+            <thead>
+              <tr>
+                <th>Jugador</th>
+                <th>Equipo</th>
+                <th>Score</th>
+                <th>Metodo</th>
+                <th>Campo propio</th>
+                <th>Tercio def.</th>
+                <th>Dist. defensa</th>
+                <th>Goles contra</th>
+                <th>Marca perdida</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.slice(0, 10).map(row => {
+                const movement = row.movement || row;
+                const method = row.defense_score_method || row.method || review.defense_score_method || '';
+                return `
+                  <tr>
+                    <td><span class="tracking-player-dot" style="background:${row.team === 'A' ? '#60a5fa' : '#f87171'}"></span>${escapeHtml(row.name || row.detected_name || row.player_id || '-')}</td>
+                    <td>${escapeHtml(row.team || '-')}</td>
+                    <td><strong>${toNumber(row.defense_score).toFixed(1)}</strong></td>
+                    <td>${escapeHtml(method === 'event_tracking_blend' ? 'Eventos + movimiento' : 'Movimiento')}</td>
+                    <td>${toNumber(movement.defensive_half_pct ?? movement.own_half_pct).toFixed(1)}%</td>
+                    <td>${toNumber(movement.defensive_third_pct).toFixed(1)}%</td>
+                    <td>${toNumber(movement.defensive_distance_m).toFixed(0)} m</td>
+                    <td>${toNumber(row.goals_against)}</td>
+                    <td>${toNumber(row.lost_mark)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   function kpi(label, value) {
     return `
       <div class="tracking-kpi">
@@ -1270,6 +1447,7 @@
               <th>Vel prom</th>
               <th>Vel max</th>
               <th>Pulmon</th>
+              <th>Defensa</th>
               <th>Sprints</th>
               <th>Alta intensidad</th>
               <th>Arq</th>
@@ -1277,20 +1455,26 @@
             </tr>
           </thead>
           <tbody>
-            ${players.map(player => `
-              <tr>
-                <td><span class="tracking-player-dot" style="background:${player.team === 'A' ? '#60a5fa' : '#f87171'}"></span>${escapeHtml(player.name)}</td>
-                <td>${escapeHtml(player.team || '-')}</td>
-                <td>${toNumber(player.distance_km).toFixed(2)}</td>
-                <td>${toNumber(player.avg_speed_kmh).toFixed(1)} km/h</td>
-                <td>${toNumber(player.max_speed_kmh).toFixed(1)} km/h</td>
-                <td>${toNumber(player.pulmon_tracking).toFixed(1)}</td>
-                <td>${toNumber(player.sprints)}</td>
-                <td>${formatTime(player.high_intensity_seconds)}</td>
-                <td>${formatTime(player.goalkeeper_seconds)}</td>
-                <td>${toNumber(player.rival_half_pct).toFixed(1)}%</td>
-              </tr>
-            `).join('')}
+            ${players.map(player => {
+              const defenseScore = player.defense_score !== null && player.defense_score !== undefined
+                ? toNumber(player.defense_score).toFixed(1)
+                : '-';
+              return `
+                <tr>
+                  <td><span class="tracking-player-dot" style="background:${player.team === 'A' ? '#60a5fa' : '#f87171'}"></span>${escapeHtml(player.name)}</td>
+                  <td>${escapeHtml(player.team || '-')}</td>
+                  <td>${toNumber(player.distance_km).toFixed(2)}</td>
+                  <td>${toNumber(player.avg_speed_kmh).toFixed(1)} km/h</td>
+                  <td>${toNumber(player.max_speed_kmh).toFixed(1)} km/h</td>
+                  <td>${toNumber(player.pulmon_tracking).toFixed(1)}</td>
+                  <td>${defenseScore}</td>
+                  <td>${toNumber(player.sprints)}</td>
+                  <td>${formatTime(player.high_intensity_seconds)}</td>
+                  <td>${formatTime(player.goalkeeper_seconds)}</td>
+                  <td>${toNumber(player.rival_half_pct).toFixed(1)}%</td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>

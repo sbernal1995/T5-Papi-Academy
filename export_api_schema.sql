@@ -23,6 +23,7 @@ declare
     'jugador_partido',
     'goles',
     'estadisticas_temporada',
+    'partido_records',
     'mundialito_moneda_overrides',
     'tracking_analyses',
     'tracking_player_mapping',
@@ -60,7 +61,7 @@ begin
   return jsonb_build_object(
     'meta', jsonb_build_object(
       'schema', 't5-historical-export-rpc',
-      'version', '2026-06-26.1',
+      'version', '2026-07-09.1',
       'exported_at', now(),
       'row_counts', row_counts,
       'missing_tables', missing_tables
