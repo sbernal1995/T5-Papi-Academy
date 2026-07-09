@@ -18387,6 +18387,7 @@ const initApp = () => {
     const obtenerInfoEquipoHistorial = (jugadores = [], obtenerPuntajeJugador = null) => {
       const jugadoresConPuntaje = jugadores
         .map((jp, index) => ({
+          jugador: jp,
           nombre: obtenerNombreJugadorHistorial(jp),
           puntaje: typeof obtenerPuntajeJugador === 'function' ? obtenerPuntajeJugador(jp) : null,
           index
@@ -18395,8 +18396,12 @@ const initApp = () => {
 
       if (!jugadoresConPuntaje.length) {
         return {
-          corto: 'Sin jugadores',
-          completo: 'Sin jugadores registrados'
+          resultado: 'equipo sin jugadores',
+          headerHtml: `
+            <div class="historial-team-award-card is-empty">
+              <div class="historial-team-empty">Sin jugadores registrados</div>
+            </div>
+          `
         };
       }
 
@@ -18407,13 +18412,53 @@ const initApp = () => {
         return a.index - b.index;
       });
       const nombresOrdenados = jugadoresOrdenados.map(item => item.nombre);
-
-      const corto = nombresOrdenados.length <= 2
-        ? nombresOrdenados.join(' + ')
-        : `${nombresOrdenados.slice(0, 2).join(', ')} +${nombresOrdenados.length - 2}`;
+      const destacado = jugadoresOrdenados.find(item => item.jugador.mvp || item.jugador.ace) || jugadoresOrdenados[0];
+      const companeros = jugadoresOrdenados
+        .filter(item => item !== destacado)
+        .slice(0, 4);
+      const tipoPremio = destacado.jugador.mvp ? 'mvp' : (destacado.jugador.ace ? 'ace' : 'destacado');
+      const premioConfig = {
+        mvp: {
+          clase: 'is-mvp',
+          icono: 'bi-trophy-fill',
+          label: 'MVP'
+        },
+        ace: {
+          clase: 'is-ace',
+          icono: 'bi-star-fill',
+          label: 'ACE'
+        },
+        destacado: {
+          clase: 'is-featured',
+          icono: 'bi-person-badge-fill',
+          label: 'Destacado'
+        }
+      }[tipoPremio];
+      const companerosHtml = companeros.length
+        ? companeros.map(item => `
+          <button type="button" class="historial-team-mini-player" onclick="irAPerfilJugador('${escaparTextoParaJs(item.jugador.jugador_id)}')" title="${escaparHtmlPlano(item.nombre)}">
+            ${escaparHtmlPlano(item.nombre)}
+          </button>
+        `).join('')
+        : '<span class="historial-team-mini-empty">Sin companeros</span>';
+      const headerHtml = `
+        <div class="historial-team-award-card ${premioConfig.clase}">
+          <div class="historial-team-award-main">
+            <span class="historial-team-award-icon" aria-hidden="true">
+              <i class="bi ${premioConfig.icono}"></i>
+            </span>
+            <div class="historial-team-award-copy">
+              <span class="historial-team-award-label">${premioConfig.label}</span>
+              ${renderizarAccesoPerfilJugador(destacado.jugador.jugador_id, destacado.nombre, 'historial-team-award-player')}
+            </div>
+          </div>
+          <div class="historial-team-mini-roster">${companerosHtml}</div>
+        </div>
+      `;
 
       return {
-        corto,
+        resultado: `el equipo de ${destacado.nombre}`,
+        headerHtml,
         completo: nombresOrdenados.join(' · ')
       };
     };
@@ -18589,7 +18634,7 @@ const initApp = () => {
       const equipo1Info = obtenerInfoEquipoHistorial(equipo1, obtenerPuntajeJugadorHistorial);
       const equipo2Info = obtenerInfoEquipoHistorial(equipo2, obtenerPuntajeJugadorHistorial);
       const resultadoClase = equipo1Ganador ? 'is-winner-team-1' : (equipo2Ganador ? 'is-winner-team-2' : 'is-draw');
-      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.corto : equipo2Info.corto}`;
+      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.resultado : equipo2Info.resultado}`;
       const resumenPartido = [
         `<span><strong>${golesEquipo1 + golesEquipo2}</strong> goles</span>`,
         totalAtajadas > 0 ? `<span><strong>${totalAtajadas}</strong> atajadas</span>` : '',
@@ -18654,11 +18699,7 @@ const initApp = () => {
                       <strong>${golesEquipo1}</strong>
                     </div>
                     <div class="historial-team-identity">
-                      <div class="historial-team-title">
-                        <span class="historial-team-dot"></span>
-                        <span class="historial-team-name">${equipo1Info.corto}</span>
-                      </div>
-                      <div class="historial-team-roster">${equipo1Info.completo}</div>
+                      ${equipo1Info.headerHtml}
                     </div>
                   </div>
                   <div class="historial-team-meta-row">
@@ -18734,11 +18775,7 @@ const initApp = () => {
                 <div class="historial-team-panel is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-scoreboard">
                     <div class="historial-team-identity">
-                      <div class="historial-team-title">
-                        <span class="historial-team-dot"></span>
-                        <span class="historial-team-name">${equipo2Info.corto}</span>
-                      </div>
-                      <div class="historial-team-roster">${equipo2Info.completo}</div>
+                      ${equipo2Info.headerHtml}
                     </div>
                     <div class="historial-team-score-block">
                       <span>Goles</span>

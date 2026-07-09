@@ -3336,6 +3336,133 @@
         overflow-wrap: anywhere;
       }
 
+      .historial-team-award-card {
+        display: grid;
+        gap: 0.52rem;
+        min-width: 0;
+      }
+
+      .historial-team-award-main {
+        align-items: center;
+        display: grid;
+        gap: 0.54rem;
+        grid-template-columns: 48px minmax(0, 1fr);
+        min-width: 0;
+      }
+
+      .is-team-2 .historial-team-award-main {
+        grid-template-columns: minmax(0, 1fr) 48px;
+      }
+
+      .is-team-2 .historial-team-award-icon {
+        order: 2;
+      }
+
+      .is-team-2 .historial-team-award-copy {
+        align-items: flex-end;
+        text-align: right;
+      }
+
+      .historial-team-award-icon {
+        align-items: center;
+        border-radius: 8px;
+        display: inline-flex;
+        font-size: 1.52rem;
+        height: 48px;
+        justify-content: center;
+        line-height: 1;
+        width: 48px;
+      }
+
+      .historial-team-award-card.is-mvp .historial-team-award-icon {
+        background: rgba(250, 204, 21, 0.18);
+        border: 1px solid rgba(250, 204, 21, 0.42);
+        color: #facc15;
+      }
+
+      .historial-team-award-card.is-ace .historial-team-award-icon {
+        background: rgba(168, 85, 247, 0.18);
+        border: 1px solid rgba(192, 132, 252, 0.42);
+        color: #d8b4fe;
+      }
+
+      .historial-team-award-card.is-featured .historial-team-award-icon {
+        background: rgba(148, 163, 184, 0.14);
+        border: 1px solid rgba(226, 232, 240, 0.18);
+        color: #cbd5e1;
+      }
+
+      .historial-team-award-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.16rem;
+        min-width: 0;
+      }
+
+      .historial-team-award-label {
+        color: rgba(226, 232, 240, 0.58);
+        font-size: 0.64rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .historial-team-award-player {
+        color: #f8fafc !important;
+        font-family: 'Oswald', sans-serif;
+        font-size: 1.06rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        max-width: 100%;
+        text-align: inherit;
+      }
+
+      .historial-team-award-player .player-avatar-xs {
+        --player-avatar-size: 24px;
+      }
+
+      .historial-team-award-player .player-profile-name {
+        max-width: 100%;
+      }
+
+      .historial-team-mini-roster {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.24rem;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .is-team-2 .historial-team-mini-roster {
+        justify-content: flex-end;
+      }
+
+      .historial-team-mini-player,
+      .historial-team-mini-empty {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        color: rgba(226, 232, 240, 0.76);
+        display: inline-flex;
+        font-size: 0.66rem;
+        font-weight: 850;
+        line-height: 1;
+        max-width: 5.8rem;
+        min-height: 1.38rem;
+        overflow: hidden;
+        padding: 0.22rem 0.38rem;
+        text-decoration: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .historial-team-mini-player:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+      }
+
       .historial-team-roster {
         color: rgba(226, 232, 240, 0.55);
         font-size: 0.72rem;
@@ -3619,6 +3746,29 @@
 
         .historial-team-roster {
           font-size: 0.68rem;
+        }
+
+        .historial-team-award-main {
+          grid-template-columns: 42px minmax(0, 1fr);
+        }
+
+        .is-team-2 .historial-team-award-main {
+          grid-template-columns: minmax(0, 1fr) 42px;
+        }
+
+        .historial-team-award-icon {
+          font-size: 1.32rem;
+          height: 42px;
+          width: 42px;
+        }
+
+        .historial-team-award-player {
+          font-size: 0.96rem;
+        }
+
+        .historial-team-mini-player,
+        .historial-team-mini-empty {
+          max-width: 5.2rem;
         }
 
         .historial-action {
@@ -6471,7 +6621,7 @@
     <!-- Algoritmo Genético -->
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=profile-video-timestamps-2026-07-09-6"></script>
+    <script type="module" src="./app.js?v=historial-team-awards-2026-07-09"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
     <!-- Funcionalidad de Paternidades -->
