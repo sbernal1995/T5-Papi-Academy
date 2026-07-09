@@ -1332,18 +1332,26 @@
 
       .season-summary-shell {
         background:
-          linear-gradient(135deg, rgba(12, 16, 24, 0.94), rgba(16, 31, 27, 0.84)),
+          linear-gradient(135deg, rgba(12, 16, 24, 0.96), rgba(12, 19, 27, 0.9)),
           #0b1018;
         border: 1px solid rgba(148, 163, 184, 0.16);
-        border-radius: 8px;
+        border-radius: 12px;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
         overflow: hidden;
       }
 
       .season-summary {
         display: grid;
+        gap: 1.25rem;
+        padding: 1.25rem;
+      }
+
+      .season-overview {
+        align-items: end;
+        display: flex;
         gap: 1rem;
-        padding: 1rem;
+        justify-content: space-between;
+        min-width: 0;
       }
 
       .season-hero {
@@ -1381,7 +1389,6 @@
         display: flex;
         flex-wrap: wrap;
         gap: 0.45rem;
-        margin-top: 0.9rem;
       }
 
       .season-data-chip {
@@ -1464,40 +1471,40 @@
 
       .season-kpi-grid {
         display: grid;
-        gap: 0.7rem;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
       }
 
       .season-kpi {
-        background: rgba(2, 6, 23, 0.34);
+        background: rgba(15, 23, 42, 0.68);
         border: 1px solid rgba(148, 163, 184, 0.12);
         border-radius: 8px;
         display: grid;
-        gap: 0.55rem;
-        min-height: 92px;
-        padding: 0.82rem;
+        gap: 0.34rem;
+        min-height: 74px;
+        padding: 0.62rem 0.72rem;
         position: relative;
       }
 
       .season-kpi::after {
         background: var(--season-accent, #22d3ee);
         border-radius: 999px;
-        bottom: 0.65rem;
+        bottom: 0.5rem;
         content: "";
-        height: 3px;
-        left: 0.82rem;
+        height: 2px;
+        left: 0.72rem;
         opacity: 0.75;
         position: absolute;
-        width: 42px;
+        width: 34px;
       }
 
       .season-kpi-head {
         align-items: center;
         color: #a7b3c4;
         display: flex;
-        font-size: 0.76rem;
+        font-size: 0.72rem;
         font-weight: 800;
-        gap: 0.42rem;
+        gap: 0.34rem;
         min-width: 0;
       }
 
@@ -1508,9 +1515,162 @@
 
       .season-kpi-value {
         color: #f8fafc;
-        font-size: 1.62rem;
-        font-weight: 950;
+        font-size: 1.38rem;
+        font-weight: 850;
         line-height: 1;
+      }
+
+      .season-dashboard-section {
+        display: grid;
+        gap: 0.55rem;
+        min-width: 0;
+      }
+
+      .season-leader-grid {
+        display: grid;
+        gap: 0.62rem;
+        grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+      }
+
+      .season-leader-card {
+        background: rgba(15, 23, 42, 0.68);
+        border: 1px solid rgba(148, 163, 184, 0.13);
+        border-radius: 12px;
+        display: grid;
+        gap: 0.58rem;
+        min-width: 0;
+        padding: 0.82rem 0.92rem;
+      }
+
+      .season-leader-card-title {
+        align-items: center;
+        color: #cbd5e1;
+        display: flex;
+        font-size: 0.8rem;
+        font-weight: 850;
+        gap: 0.42rem;
+        line-height: 1;
+      }
+
+      .season-leader-card-title i {
+        color: var(--season-accent, #22d3ee);
+      }
+
+      .season-leader-list {
+        display: grid;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      .season-leader-row {
+        display: grid;
+        gap: 0.24rem;
+        min-width: 0;
+      }
+
+      .season-leader-line {
+        align-items: center;
+        display: grid;
+        gap: 0.42rem;
+        grid-template-columns: 1.55rem minmax(0, 1fr) auto;
+        min-width: 0;
+      }
+
+      .season-leader-rank {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        color: #e2e8f0;
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 900;
+        height: 1.45rem;
+        justify-content: center;
+        width: 1.45rem;
+      }
+
+      .season-leader-link {
+        color: #f8fafc !important;
+        font-size: 0.88rem;
+        font-weight: 850 !important;
+        min-width: 0;
+      }
+
+      .season-leader-link .player-avatar-xs {
+        --player-avatar-size: 28px;
+      }
+
+      .season-leader-value {
+        color: var(--season-accent, #22d3ee);
+        font-size: 0.94rem;
+        font-weight: 900;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .season-leader-bar {
+        background: rgba(2, 6, 23, 0.72);
+        border-radius: 999px;
+        height: 5px;
+        overflow: hidden;
+      }
+
+      .season-leader-bar span {
+        background: linear-gradient(90deg, var(--season-accent, #22d3ee), color-mix(in srgb, var(--season-accent, #22d3ee) 52%, #ffffff));
+        border-radius: inherit;
+        display: block;
+        height: 100%;
+        width: var(--season-meter, 0%);
+      }
+
+      .season-compact-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .season-compact-metric {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.68);
+        border: 1px solid rgba(148, 163, 184, 0.13);
+        border-radius: 999px;
+        display: inline-flex;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+        min-width: 0;
+        padding: 0.38rem 0.66rem;
+      }
+
+      .season-compact-icon {
+        align-items: center;
+        color: var(--season-accent, #22d3ee);
+        display: inline-flex;
+        flex: 0 0 auto;
+      }
+
+      .season-compact-label {
+        color: #94a3b8;
+        font-size: 0.78rem;
+        font-weight: 850;
+        white-space: nowrap;
+      }
+
+      .season-compact-player {
+        color: #f8fafc !important;
+        font-size: 0.86rem;
+        font-weight: 850 !important;
+      }
+
+      .season-compact-player .player-avatar-xs {
+        --player-avatar-size: 26px;
+      }
+
+      .season-compact-metric strong {
+        color: var(--season-accent, #22d3ee);
+        font-size: 0.9rem;
+        font-weight: 900;
+        white-space: nowrap;
       }
 
       .season-insight-board {
@@ -1747,7 +1907,7 @@
       }
 
       .season-section-title i {
-        color: #2dd4bf;
+        color: var(--season-accent, #2dd4bf);
       }
 
       .season-ranking-head .season-section-title {
@@ -1870,13 +2030,15 @@
       @media (max-width: 768px) {
         .season-page-header,
         .season-control,
+        .season-overview,
         .season-hero {
           align-items: stretch;
           grid-template-columns: 1fr;
         }
 
         .season-page-header,
-        .season-control {
+        .season-control,
+        .season-overview {
           flex-direction: column;
         }
 
@@ -1885,9 +2047,22 @@
         }
 
         .season-kpi-grid,
-        .season-insight-grid,
         .season-insight-side {
           grid-template-columns: 1fr;
+        }
+
+        .season-leader-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .season-compact-row {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .season-compact-metric {
+          border-radius: 10px;
+          justify-content: flex-start;
         }
 
         .season-hero-meter {
@@ -1901,7 +2076,8 @@
         }
 
         .season-hero,
-        .season-insight-card {
+        .season-insight-card,
+        .season-leader-card {
           padding: 0.75rem;
         }
 
@@ -1917,6 +2093,10 @@
 
         .season-kpi {
           min-height: 82px;
+        }
+
+        .season-leader-line {
+          grid-template-columns: 1.45rem minmax(0, 1fr) auto;
         }
 
         .season-hero-meter {
@@ -6857,7 +7037,7 @@
     <!-- Algoritmo Genético -->
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=historial-history-icons-admin-2026-07-09"></script>
+    <script type="module" src="./app.js?v=season-summary-redesign-kpis-2026-07-09"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
     <!-- Funcionalidad de Paternidades -->
