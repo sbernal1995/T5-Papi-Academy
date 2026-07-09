@@ -271,6 +271,33 @@ function generarLinkConTimestamp(youtubeLink, minutosDecimales) {
   return generarLinkConTimestampSegundos(youtubeLink, Math.round(Number(minutosDecimales) * 60));
 }
 
+function crearChipEventoHistorial({ tipo, iconos = '', cantidad = 0, label = '', title = '' }) {
+  const cantidadNormalizada = Math.max(0, Number(cantidad) || 0);
+  if (!cantidadNormalizada && !iconos) return '';
+
+  const labelTexto = label || tipo || 'Evento';
+  const titleTexto = title || `${cantidadNormalizada} ${labelTexto}`;
+  return `
+    <span class="historial-event-chip is-${tipo}" title="${titleTexto}">
+      <span class="historial-event-icons">${iconos || labelTexto}</span>
+      <span class="historial-event-count">${cantidadNormalizada}</span>
+    </span>
+  `;
+}
+
+function crearChipConteoHistorial(tipo, iconoHtml, cantidad, label) {
+  const cantidadNormalizada = Math.max(0, Number(cantidad) || 0);
+  if (!cantidadNormalizada) return '';
+
+  return crearChipEventoHistorial({
+    tipo,
+    iconos: `<span class="historial-event-symbol">${iconoHtml}</span>`,
+    cantidad: cantidadNormalizada,
+    label,
+    title: `${cantidadNormalizada} ${label.toLowerCase()}`
+  });
+}
+
 /**
  * Genera HTML para mostrar múltiples íconos de goles o asistencias con links
  * @param {Array} golesArray - Array de objetos gol del jugador
@@ -283,8 +310,10 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
     return '';
   }
 
-  const icono = tipo === 'gol' ? '⚽' : '🅰️';
   const total = golesArray.length;
+  const chipTipo = tipo === 'gol' ? 'goal' : 'assist';
+  const label = tipo === 'gol' ? 'Goles' : 'Asistencias';
+  const iconoEvento = tipo === 'gol' ? '<i class="bi bi-bullseye"></i>' : 'A';
 
   // Generar un ícono por cada gol/asistencia
   const iconos = golesArray.map(item => {
@@ -307,19 +336,28 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
       const linkConTimestamp = Number.isFinite(segundosLink)
         ? generarLinkConTimestampSegundos(youtubeReviewLink, segundosLink)
         : generarLinkConTimestamp(youtubeReviewLink, minutosDecimales);
-      const mins = Math.floor(minutosDecimales);
-      const secs = Math.round((minutosDecimales - mins) * 60);
+      const segundosTitulo = Number.isFinite(segundosLink)
+        ? segundosLink
+        : Math.round(Number(minutosDecimales) * 60);
+      const mins = Math.floor(segundosTitulo / 60);
+      const secs = Math.round(segundosTitulo % 60);
       const timeStr = secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}'`;
       const origen = item.video_origen === 'compilado' ? 'compilado' : 'review';
-      return `<a href="${linkConTimestamp}" target="_blank" class="text-decoration-none" title="Ver ${tipo} en ${origen} (${timeStr})">${icono}</a>`;
+      return `<a href="${linkConTimestamp}" target="_blank" class="historial-event-link text-decoration-none" title="Ver ${tipo} en ${origen} (${timeStr})">${iconoEvento}</a>`;
     } else {
       // Si no tiene tiempo o no hay video, solo mostrar el ícono sin link
-      return icono;
+      return `<span class="historial-event-symbol">${iconoEvento}</span>`;
     }
   }).join('');
 
   // Agregar el total entre paréntesis
-  return `${iconos}(${total})`;
+  return crearChipEventoHistorial({
+    tipo: chipTipo,
+    iconos,
+    cantidad: total,
+    label,
+    title: `${total} ${label.toLowerCase()}`
+  });
 }
 
 function generarIconosCagadasConLinks(cagadasArray, youtubeLink, totalFallback = 0) {
@@ -327,7 +365,7 @@ function generarIconosCagadasConLinks(cagadasArray, youtubeLink, totalFallback =
   const youtubeReviewLink = obtenerLinkYouTubeReview(youtubeLink);
 
   if (!cagadasArray?.length) {
-    return total > 0 ? `💥${total}` : '';
+    return crearChipConteoHistorial('mistake', '!', total, 'Cagadas');
   }
 
   const iconos = cagadasArray.map(item => {
@@ -336,12 +374,19 @@ function generarIconosCagadasConLinks(cagadasArray, youtubeLink, totalFallback =
     if (linkEvento && Number.isFinite(segundos)) {
       const href = generarLinkConTimestampSegundos(linkEvento, segundos);
       const origen = item.video_origen === 'compilado' ? 'compilado' : 'review';
-      return `<a href="${href}" target="_blank" class="text-decoration-none" title="Ver cagada en ${origen}">💥</a>`;
+      return `<a href="${href}" target="_blank" class="historial-event-link text-decoration-none" title="Ver cagada en ${origen}">!</a>`;
     }
-    return '💥';
+    return '<span class="historial-event-symbol">!</span>';
   }).join('');
 
-  return `${iconos}(${Math.max(total, cagadasArray.length)})`;
+  const cantidad = Math.max(total, cagadasArray.length);
+  return crearChipEventoHistorial({
+    tipo: 'mistake',
+    iconos,
+    cantidad,
+    label: 'Cagadas',
+    title: `${cantidad} cagadas`
+  });
 }
 
 function esErrorColumnaFaltante(error, columna) {
@@ -18019,22 +18064,15 @@ const initApp = () => {
         });
       }
 
-      // Determinar ganador y color del card
+      // Determinar ganador
       let equipoGanador = '';
-      let colorCard = 'border-secondary';
-      let iconoResultado = '🤝';
 
       if (partido.equipo_ganador === 1) {
         equipoGanador = 'Equipo 1';
-        colorCard = 'border-primary';
-        iconoResultado = '🏆';
       } else if (partido.equipo_ganador === 2) {
         equipoGanador = 'Equipo 2';
-        colorCard = 'border-danger';
-        iconoResultado = '🏆';
       } else {
         equipoGanador = 'Empate';
-        iconoResultado = '🤝';
       }
 
       // Obtener MVP y ACE
@@ -18161,65 +18199,81 @@ const initApp = () => {
       prepararLinksVideoHistorialPartido(partido);
       const youtubeReviewLink = obtenerLinkYouTubeReview(partido.youtube_link);
       const youtubeEventosLink = youtubeReviewLink;
+      const numeroPartido = partidos.length - index;
+      const equipo1Ganador = partido.equipo_ganador === 1;
+      const equipo2Ganador = partido.equipo_ganador === 2;
+      const esEmpate = !equipo1Ganador && !equipo2Ganador;
+      const resultadoClase = equipo1Ganador ? 'is-winner-team-1' : (equipo2Ganador ? 'is-winner-team-2' : 'is-draw');
+      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipoGanador}`;
+      const resumenPartido = [
+        `<span><strong>${golesEquipo1 + golesEquipo2}</strong> goles</span>`,
+        totalAtajadas > 0 ? `<span><strong>${totalAtajadas}</strong> atajadas</span>` : '',
+        totalBuenasJugadas > 0 ? `<span><strong>${totalBuenasJugadas}</strong> buenas jugadas</span>` : '',
+        totalCagadas > 0 ? `<span><strong>${totalCagadas}</strong> cagadas</span>` : ''
+      ].filter(Boolean).join('');
 
       html += `
         <div class="col-lg-6 col-md-12">
-          <div class="glass-effect rounded-3 p-4 h-100 border-top border-3 ${colorCard} partido-card" data-partido-id="${partido.id}">
-            <!-- Header del partido -->
-            <div class="d-flex justify-content-between align-items-start mb-3 historial-match-header">
-              <div>
-                <h5 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
-                  ${iconoResultado} Partido #${partidos.length - index}
-                  <span style="cursor:pointer" onclick="mostrarGolesPartido('${partido.id}')" title="Click para ver repeticion de los goles" class="badge bg-danger bg-opacity-75 fw-normal" role="button">
-                    <i class="bi bi-camera-video me-1"></i><em>Ver repeticion de los goles</em>
-                  </span>
-                </h5>
-                <div class="text-light-emphasis small">
-                  <i class="bi bi-calendar me-1"></i>${fecha}
-                  ${partido.cancha ? `<span class="ms-2"><i class="bi bi-geo-alt me-1"></i>${partido.cancha}</span>` : ''}
-                </div>
-                ${partido.temporadas ? `<div class="badge bg-info mt-2">${partido.temporadas.nombre}</div>` : ''}
+          <div class="glass-effect historial-match-card h-100 ${resultadoClase} partido-card" data-partido-id="${partido.id}">
+            <div class="historial-match-scoreboard">
+              <div class="historial-match-kicker">
+                <span class="historial-match-number">Partido #${numeroPartido}</span>
+                <span class="historial-match-result">${resultadoTexto}</span>
               </div>
-              <div class="text-end historial-match-actions">
-                <div class="d-flex align-items-center gap-2 mb-2 historial-match-action-row">
-                  <div class="badge bg-primary fs-5 px-3 py-2">
-                    ${golesEquipo1} - ${golesEquipo2}
-                  </div>
-                  ${youtubeReviewLink ? `
-                    <a href="${youtubeReviewLink}" target="_blank" class="btn btn-sm btn-outline-danger" title="Ver review en YouTube">
-                      <i class="bi bi-camera-video"></i>
-                    </a>
-                  ` : ''}
-                  ${partido.compilado_youtube_link ? `
-                    <a href="${obtenerLinkYouTubeReview(partido.compilado_youtube_link)}" target="_blank" class="btn btn-sm btn-outline-success" title="Ver compilado en YouTube">
-                      <i class="bi bi-youtube"></i>
-                    </a>
-                  ` : ''}
-                  ${partido.youtube_link ? `
-                    <button onclick="mostrarCompiladoPartido('${partido.id}')" class="btn btn-sm btn-outline-success" title="Ver compilado">
-                      <i class="bi bi-scissors"></i>
-                    </button>
-                  ` : ''}
-                  ${esAdmin ? `
-                    <button onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}', '${(partido.compilado_youtube_link || '').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-info" title="Editar links de video">
-                      <i class="bi bi-camera-video"></i>
-                    </button>
-                    <button onclick="console.log('🖱️ CLICK detectado en botón editar'); editarPartido('${partido.id}')" class="btn btn-sm btn-outline-warning" title="Editar partido completo">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button onclick="eliminarPartido('${partido.id}')" class="btn btn-sm btn-outline-danger" title="Eliminar partido">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  ` : ''}
+              <div class="historial-score-row">
+                <div class="historial-score-team is-team-1 ${equipo1Ganador ? 'is-winner' : ''}">
+                  <span>Equipo 1</span>
+                  <strong>${golesEquipo1}</strong>
                 </div>
-                ${equipoGanador !== 'Empate' ? `<div class="text-success small fw-bold">🏆 ${equipoGanador}</div>` : '<div class="text-warning small fw-bold">🤝 Empate</div>'}
+                <span class="historial-score-divider">-</span>
+                <div class="historial-score-team is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
+                  <strong>${golesEquipo2}</strong>
+                  <span>Equipo 2</span>
+                </div>
+              </div>
+              <div class="historial-match-meta">
+                <span><i class="bi bi-calendar-event"></i>${fecha}</span>
+                ${partido.cancha ? `<span><i class="bi bi-geo-alt"></i>${partido.cancha}</span>` : ''}
+                ${partido.temporadas ? `<span class="historial-season-chip">${partido.temporadas.nombre}</span>` : ''}
+              </div>
+              <div class="historial-match-actions">
+                <button type="button" onclick="mostrarGolesPartido('${partido.id}')" class="historial-action is-primary" title="Ver repeticion de los goles">
+                  <i class="bi bi-play-circle-fill"></i><span>Goles</span>
+                </button>
+                ${youtubeReviewLink ? `
+                  <a href="${youtubeReviewLink}" target="_blank" class="historial-action" title="Abrir review en YouTube">
+                    <i class="bi bi-camera-video"></i><span>Review</span>
+                  </a>
+                ` : ''}
+                ${partido.compilado_youtube_link ? `
+                  <a href="${obtenerLinkYouTubeReview(partido.compilado_youtube_link)}" target="_blank" class="historial-action" title="Abrir compilado en YouTube">
+                    <i class="bi bi-youtube"></i><span>Compilado</span>
+                  </a>
+                ` : ''}
+                ${partido.youtube_link ? `
+                  <button type="button" onclick="mostrarCompiladoPartido('${partido.id}')" class="historial-action" title="Ver compilado armado">
+                    <i class="bi bi-scissors"></i><span>Clips</span>
+                  </button>
+                ` : ''}
+                ${esAdmin ? `
+                  <button type="button" onclick="editarYouTubeLink('${partido.id}', '${(partido.youtube_link || '').replace(/'/g, "\\'")}', '${(partido.compilado_youtube_link || '').replace(/'/g, "\\'")}')" class="historial-action is-admin" title="Editar links de video">
+                    <i class="bi bi-camera-video"></i>
+                  </button>
+                  <button type="button" onclick="console.log('CLICK detectado en boton editar'); editarPartido('${partido.id}')" class="historial-action is-admin" title="Editar partido completo">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button type="button" onclick="eliminarPartido('${partido.id}')" class="historial-action is-danger" title="Eliminar partido">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                ` : ''}
               </div>
             </div>
+            <div class="historial-match-summary">${resumenPartido}</div>
 
             <!-- Equipos -->
             <div class="row g-3 mb-3 historial-match-teams">
               <div class="col-lg-6">
-                <div class="historial-team-panel is-team-1">
+                <div class="historial-team-panel is-team-1 ${equipo1Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-header">
                     <div class="historial-team-title">
                       <span class="historial-team-dot"></span>
@@ -18247,12 +18301,16 @@ const initApp = () => {
                       if (asistenciasDelJugador.length > 0) {
                         stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
                       }
-                      if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
+                      if (jp.atajadas > 0) {
+                        stats.push(crearChipConteoHistorial('save', '<i class="bi bi-shield-fill"></i>', jp.atajadas, 'Atajadas'));
+                      }
                       if (cagadasJugador > 0) {
                         const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
                         stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
                       }
-                      if (buenasJugadasJugador > 0) stats.push(`<span class="text-warning fw-semibold">BJ${buenasJugadasJugador}</span>`);
+                      if (buenasJugadasJugador > 0) {
+                        stats.push(crearChipConteoHistorial('good', 'BJ', buenasJugadasJugador, 'Buenas jugadas'));
+                      }
                       const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
                       const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
                       const puntajeLabel = Number.isFinite(puntaje)
@@ -18288,7 +18346,7 @@ const initApp = () => {
                 </div>
               </div>
               <div class="col-lg-6">
-                <div class="historial-team-panel is-team-2">
+                <div class="historial-team-panel is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-header">
                     <div class="historial-team-title">
                       <span class="historial-team-dot"></span>
@@ -18316,12 +18374,16 @@ const initApp = () => {
                       if (asistenciasDelJugador.length > 0) {
                         stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
                       }
-                      if (jp.atajadas > 0) stats.push(`🥅${jp.atajadas}`);
+                      if (jp.atajadas > 0) {
+                        stats.push(crearChipConteoHistorial('save', '<i class="bi bi-shield-fill"></i>', jp.atajadas, 'Atajadas'));
+                      }
                       if (cagadasJugador > 0) {
                         const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
                         stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
                       }
-                      if (buenasJugadasJugador > 0) stats.push(`<span class="text-warning fw-semibold">BJ${buenasJugadasJugador}</span>`);
+                      if (buenasJugadasJugador > 0) {
+                        stats.push(crearChipConteoHistorial('good', 'BJ', buenasJugadasJugador, 'Buenas jugadas'));
+                      }
                       const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
                       const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
                       const puntajeLabel = Number.isFinite(puntaje)
@@ -18358,44 +18420,24 @@ const initApp = () => {
               </div>
             </div>
 
-            <!-- Reconocimientos y estadísticas -->
-            <div class="row g-2 mb-3">
-              ${mvpData ? `
-                <div class="col-6">
-                  <div class="badge bg-warning text-dark small w-100">
-                    👑 MVP: ${mvpData.jugadores?.nombre || 'N/A'}
-                  </div>
-                </div>
-              ` : ''}
-              ${aceData ? `
-                <div class="col-6">
-                  <div class="badge bg-secondary small w-100">
-                    ⭐ ACE: ${aceData.jugadores?.nombre || 'N/A'}
-                  </div>
-                </div>
-              ` : ''}
-              ${totalAtajadas > 0 ? `
-                <div class="col-6">
-                  <div class="badge bg-info small w-100">
-                    🥅 Atajadas: ${totalAtajadas}
-                  </div>
-                </div>
-              ` : ''}
-              ${totalBuenasJugadas > 0 ? `
-                <div class="col-6">
-                  <div class="badge bg-warning text-dark small w-100">
-                    BJ: ${totalBuenasJugadas}
-                  </div>
-                </div>
-              ` : ''}
-              ${totalCagadas > 0 ? `
-                <div class="col-6">
-                  <div class="badge bg-danger small w-100">
-                    ❌ Cagadas: ${totalCagadas}
-                  </div>
-                </div>
-              ` : ''}
-            </div>
+            ${(mvpData || aceData) ? `
+              <div class="historial-awards-row">
+                ${mvpData ? `
+                  <span class="historial-award-chip is-mvp">
+                    <i class="bi bi-trophy-fill"></i>
+                    <strong>MVP</strong>
+                    ${mvpData.jugadores?.nombre || 'N/A'}
+                  </span>
+                ` : ''}
+                ${aceData ? `
+                  <span class="historial-award-chip is-ace">
+                    <i class="bi bi-star-fill"></i>
+                    <strong>ACE</strong>
+                    ${aceData.jugadores?.nombre || 'N/A'}
+                  </span>
+                ` : ''}
+              </div>
+            ` : ''}
 
             <!-- Leyenda del Mundialito para este partido -->
             ${typeof generarLeyendaMundialito === 'function' ? generarLeyendaMundialito(partido) : ''}
@@ -21043,9 +21085,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const opcionesCagada = jugadores.map(j => {
         const jugadorId = String(j.jugador_id || '');
         const nombre = j.jugadores?.nombre || 'Jugador';
-        const equipo = j.equipo === 1 ? '🔵' : '🔴';
         const selected = jugadorId === cagadaSeleccionada ? 'selected' : '';
-        return `<option value="${jugadorId}" ${selected}>${equipo} ${nombre}</option>`;
+        const equipoEtiqueta = j.equipo === 1 ? 'E1' : 'E2';
+        return `<option value="${jugadorId}" ${selected}>${equipoEtiqueta} ${nombre}</option>`;
       }).join('');
       const opcionesArquero = jugadores.map(j => {
         const jugadorId = String(j.jugador_id || '');

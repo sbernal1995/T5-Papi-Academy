@@ -2787,6 +2787,458 @@
         }
       }
 
+      .historial-filter-bar {
+        background: rgba(2, 6, 23, 0.34);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 8px;
+        margin-left: 0;
+        margin-right: 0;
+        padding: 0.85rem;
+      }
+
+      .historial-filter-bar .form-label {
+        color: rgba(226, 232, 240, 0.78) !important;
+        font-weight: 800;
+      }
+
+      .historial-filter-bar .form-select,
+      .historial-filter-bar .tag-input-wrapper {
+        background: rgba(2, 6, 23, 0.56);
+        border-color: rgba(148, 163, 184, 0.24);
+        color: #f8fafc;
+      }
+
+      .historial-match-card {
+        background:
+          radial-gradient(circle at top left, rgba(96, 165, 250, 0.12), transparent 34%),
+          radial-gradient(circle at top right, rgba(251, 113, 133, 0.1), transparent 38%),
+          rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 8px !important;
+        display: flex;
+        flex-direction: column;
+        gap: 0.82rem;
+        overflow: hidden;
+        padding: 1rem;
+      }
+
+      .historial-match-card.is-winner-team-1 {
+        border-color: rgba(96, 165, 250, 0.38);
+      }
+
+      .historial-match-card.is-winner-team-2 {
+        border-color: rgba(251, 113, 133, 0.38);
+      }
+
+      .historial-match-card.is-draw {
+        border-color: rgba(250, 204, 21, 0.28);
+      }
+
+      .historial-match-scoreboard {
+        background: rgba(2, 6, 23, 0.46);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.72rem;
+        padding: 0.9rem;
+      }
+
+      .historial-match-kicker {
+        align-items: center;
+        color: rgba(226, 232, 240, 0.72);
+        display: flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.5rem;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .historial-match-number,
+      .historial-match-result,
+      .historial-season-chip {
+        border-radius: 999px;
+        display: inline-flex;
+        min-width: 0;
+        padding: 0.2rem 0.48rem;
+      }
+
+      .historial-match-number {
+        background: rgba(255, 255, 255, 0.07);
+      }
+
+      .historial-match-result {
+        background: rgba(34, 197, 94, 0.12);
+        color: #86efac;
+        justify-content: center;
+        text-align: center;
+      }
+
+      .is-draw .historial-match-result {
+        background: rgba(250, 204, 21, 0.14);
+        color: #fde68a;
+      }
+
+      .historial-score-row {
+        align-items: center;
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      }
+
+      .historial-score-team {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.62);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: rgba(226, 232, 240, 0.7);
+        display: flex;
+        gap: 0.58rem;
+        justify-content: space-between;
+        min-height: 4rem;
+        min-width: 0;
+        padding: 0.62rem 0.75rem;
+      }
+
+      .historial-score-team.is-team-1 {
+        border-color: rgba(96, 165, 250, 0.2);
+      }
+
+      .historial-score-team.is-team-2 {
+        border-color: rgba(251, 113, 133, 0.2);
+      }
+
+      .historial-score-team.is-winner {
+        background: rgba(34, 197, 94, 0.1);
+        border-color: rgba(34, 197, 94, 0.42);
+        color: #dcfce7;
+      }
+
+      .historial-score-team span {
+        font-size: 0.82rem;
+        font-weight: 900;
+        overflow-wrap: anywhere;
+      }
+
+      .historial-score-team strong {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 2.55rem;
+        font-weight: 800;
+        line-height: 0.92;
+        min-width: 2.1rem;
+        text-align: center;
+      }
+
+      .historial-score-divider {
+        color: rgba(226, 232, 240, 0.42);
+        font-family: 'Oswald', sans-serif;
+        font-size: 1.35rem;
+        font-weight: 800;
+      }
+
+      .historial-match-meta {
+        align-items: center;
+        color: rgba(226, 232, 240, 0.64);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 0.78rem;
+        gap: 0.42rem 0.68rem;
+      }
+
+      .historial-match-meta span {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.28rem;
+        min-width: 0;
+      }
+
+      .historial-season-chip {
+        background: rgba(14, 165, 233, 0.12);
+        border: 1px solid rgba(14, 165, 233, 0.28);
+        color: #7dd3fc;
+      }
+
+      .historial-match-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+
+      .historial-action {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 6px;
+        color: rgba(226, 232, 240, 0.86);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.34rem;
+        justify-content: center;
+        line-height: 1;
+        min-height: 2rem;
+        padding: 0.42rem 0.56rem;
+        text-decoration: none;
+        transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        white-space: nowrap;
+      }
+
+      .historial-action:hover {
+        background: rgba(30, 41, 59, 0.9);
+        border-color: rgba(226, 232, 240, 0.34);
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+
+      .historial-action.is-primary {
+        background: rgba(220, 38, 38, 0.18);
+        border-color: rgba(248, 113, 113, 0.36);
+        color: #fecaca;
+      }
+
+      .historial-action.is-admin {
+        color: #7dd3fc;
+      }
+
+      .historial-action.is-danger {
+        color: #fca5a5;
+      }
+
+      .historial-match-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+      }
+
+      .historial-match-summary span {
+        align-items: baseline;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        color: rgba(226, 232, 240, 0.74);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.24rem;
+        padding: 0.32rem 0.48rem;
+      }
+
+      .historial-match-summary strong {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 1rem;
+      }
+
+      .historial-team-panel {
+        padding: 0.78rem;
+      }
+
+      .historial-team-panel.is-winner {
+        box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.26);
+      }
+
+      .historial-team-panel.is-winner .historial-team-title::after {
+        background: rgba(34, 197, 94, 0.16);
+        border: 1px solid rgba(34, 197, 94, 0.32);
+        border-radius: 999px;
+        color: #86efac;
+        content: "Ganador";
+        font-size: 0.64rem;
+        font-weight: 900;
+        padding: 0.1rem 0.36rem;
+      }
+
+      .historial-player-row {
+        grid-template-columns: minmax(0, 1fr) 74px 28px;
+        min-height: 52px;
+      }
+
+      .historial-player-events {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-top: 0.3rem;
+      }
+
+      .historial-player-events a {
+        font-size: inherit;
+      }
+
+      .historial-event-chip {
+        align-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        display: inline-flex;
+        font-size: 0.82rem;
+        font-weight: 900;
+        gap: 0.24rem;
+        line-height: 1;
+        min-height: 1.54rem;
+        padding: 0.18rem 0.42rem;
+        white-space: nowrap;
+      }
+
+      .historial-event-icons {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.1rem;
+      }
+
+      .historial-event-link,
+      .historial-event-symbol {
+        align-items: center;
+        color: inherit;
+        display: inline-flex;
+        justify-content: center;
+        min-width: 0.8rem;
+        text-decoration: none;
+      }
+
+      .historial-event-link:hover {
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+
+      .historial-event-chip i {
+        font-size: 0.9rem;
+        line-height: 1;
+      }
+
+      .historial-event-count {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.28);
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.72rem;
+        justify-content: center;
+        min-width: 1rem;
+        padding: 0.08rem 0.26rem;
+      }
+
+      .historial-event-chip.is-goal {
+        background: rgba(34, 197, 94, 0.14);
+        border-color: rgba(34, 197, 94, 0.32);
+        color: #86efac;
+      }
+
+      .historial-event-chip.is-assist {
+        background: rgba(59, 130, 246, 0.14);
+        border-color: rgba(96, 165, 250, 0.34);
+        color: #bfdbfe;
+      }
+
+      .historial-event-chip.is-save {
+        background: rgba(20, 184, 166, 0.14);
+        border-color: rgba(45, 212, 191, 0.34);
+        color: #99f6e4;
+      }
+
+      .historial-event-chip.is-mistake {
+        background: rgba(244, 63, 94, 0.14);
+        border-color: rgba(251, 113, 133, 0.34);
+        color: #fecdd3;
+      }
+
+      .historial-event-chip.is-good {
+        background: rgba(250, 204, 21, 0.14);
+        border-color: rgba(250, 204, 21, 0.34);
+        color: #fde68a;
+      }
+
+      .historial-awards-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.72rem;
+      }
+
+      .historial-award-chip {
+        align-items: center;
+        border-radius: 6px;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.34rem;
+        padding: 0.34rem 0.52rem;
+      }
+
+      .historial-award-chip.is-mvp {
+        background: rgba(250, 204, 21, 0.16);
+        border: 1px solid rgba(250, 204, 21, 0.34);
+        color: #fef3c7;
+      }
+
+      .historial-award-chip.is-ace {
+        background: rgba(168, 85, 247, 0.14);
+        border: 1px solid rgba(192, 132, 252, 0.32);
+        color: #e9d5ff;
+      }
+
+      @media (max-width: 575px) {
+        .historial-filter-bar {
+          justify-content: flex-start !important;
+          padding: 0.72rem;
+        }
+
+        .historial-filter-bar .col-auto {
+          width: 100%;
+        }
+
+        .historial-filter-bar .form-select,
+        .historial-filter-bar .tag-input-wrapper,
+        .historial-filter-bar .btn {
+          width: 100% !important;
+        }
+
+        .historial-match-card {
+          padding: 0.78rem;
+        }
+
+        .historial-match-kicker {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .historial-match-result {
+          align-self: flex-start;
+        }
+
+        .historial-score-row {
+          gap: 0.48rem;
+        }
+
+        .historial-score-team {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 0.3rem;
+          min-height: 4.6rem;
+          padding: 0.56rem;
+        }
+
+        .historial-score-team.is-team-2 {
+          align-items: flex-end;
+        }
+
+        .historial-score-team strong {
+          font-size: 2.1rem;
+        }
+
+        .historial-action {
+          flex: 1 1 auto;
+        }
+
+        .historial-player-row {
+          grid-template-columns: minmax(0, 1fr) 70px 28px;
+          min-height: 54px;
+        }
+
+        .historial-event-chip {
+          font-size: 0.78rem;
+        }
+      }
+
       /* Estilos para tooltips de skill */
       .skill-tooltip {
         font-size: 0.85rem !important;
@@ -4163,16 +4615,16 @@
           <div class="enhanced-card rounded-3 p-4">
             <div class="text-center mb-4">
               <h2 class="h3 text-white mb-2">
-                <span class="me-2">📊</span>
+                <i class="bi bi-calendar-event me-2"></i>
                 Historial de Partidos
               </h2>
               <p class="text-light-emphasis">Últimos partidos registrados con estadísticas detalladas</p>
             </div>
 
             <!-- Filtros -->
-            <div class="row g-2 mb-4 justify-content-center align-items-end">
+            <div class="historial-filter-bar row g-2 mb-4 justify-content-center align-items-end">
               <div class="col-auto">
-                <label for="cantidad-partidos" class="form-label text-light small mb-1">📅 Mostrar:</label>
+                <label for="cantidad-partidos" class="form-label text-light small mb-1"><i class="bi bi-list-ol me-1"></i>Mostrar:</label>
                 <select id="cantidad-partidos" class="form-select form-select-sm" style="width: 110px;" onchange="cargarHistorialPartidos()">
                   <option value="all">Todos</option>
                   <option value="5">5 partidos</option>
@@ -4182,13 +4634,13 @@
                 </select>
               </div>
               <div class="col-auto">
-                <label for="filtro-jugador" class="form-label text-light small mb-1">🔍 Jugador:</label>
+                <label for="filtro-jugador" class="form-label text-light small mb-1"><i class="bi bi-search me-1"></i>Jugador:</label>
                 <select id="filtro-jugador" class="form-select form-select-sm" style="width: 160px;" onchange="filtrarPartidosAvanzado()">
                   <option value="">Todos</option>
                 </select>
               </div>
               <div class="col-auto">
-                <label class="form-label text-light small mb-1">🤝 Jugó con:</label>
+                <label class="form-label text-light small mb-1"><i class="bi bi-people me-1"></i>Jugó con:</label>
                 <div class="tag-input-wrapper" id="companero-wrapper">
                   <div class="tag-input-tags" id="companero-tags"></div>
                   <input type="text" class="tag-input-field" id="companero-input" placeholder="Buscar..." autocomplete="off">
@@ -4196,7 +4648,7 @@
                 </div>
               </div>
               <div class="col-auto">
-                <label class="form-label text-light small mb-1">⚔️ Contra:</label>
+                <label class="form-label text-light small mb-1"><i class="bi bi-shield me-1"></i>Contra:</label>
                 <div class="tag-input-wrapper" id="rival-wrapper">
                   <div class="tag-input-tags" id="rival-tags"></div>
                   <input type="text" class="tag-input-field" id="rival-input" placeholder="Buscar..." autocomplete="off">
@@ -4204,7 +4656,7 @@
                 </div>
               </div>
               <div class="col-auto">
-                <label for="filtro-resultado" class="form-label text-light small mb-1">🏆 Resultado:</label>
+                <label for="filtro-resultado" class="form-label text-light small mb-1"><i class="bi bi-trophy me-1"></i>Resultado:</label>
                 <select id="filtro-resultado" class="form-select form-select-sm" style="width: 120px;" onchange="filtrarPartidosAvanzado()">
                   <option value="">Todos</option>
                   <option value="ganado">Ganado</option>
