@@ -18025,22 +18025,37 @@ const initApp = () => {
 
     let html = '<div class="row g-4">';
     const obtenerNombreJugadorHistorial = (jp) => (jp?.jugadores?.nombre || 'Jugador').trim();
-    const obtenerInfoEquipoHistorial = (jugadores = []) => {
-      const nombres = jugadores.map(obtenerNombreJugadorHistorial).filter(Boolean);
-      if (!nombres.length) {
+    const obtenerInfoEquipoHistorial = (jugadores = [], obtenerPuntajeJugador = null) => {
+      const jugadoresConPuntaje = jugadores
+        .map((jp, index) => ({
+          nombre: obtenerNombreJugadorHistorial(jp),
+          puntaje: typeof obtenerPuntajeJugador === 'function' ? obtenerPuntajeJugador(jp) : null,
+          index
+        }))
+        .filter(item => item.nombre);
+
+      if (!jugadoresConPuntaje.length) {
         return {
           corto: 'Sin jugadores',
           completo: 'Sin jugadores registrados'
         };
       }
 
-      const corto = nombres.length <= 2
-        ? nombres.join(' + ')
-        : `${nombres.slice(0, 2).join(', ')} +${nombres.length - 2}`;
+      const jugadoresOrdenados = jugadoresConPuntaje.sort((a, b) => {
+        const puntajeA = Number.isFinite(a.puntaje) ? a.puntaje : -Infinity;
+        const puntajeB = Number.isFinite(b.puntaje) ? b.puntaje : -Infinity;
+        if (puntajeA !== puntajeB) return puntajeB - puntajeA;
+        return a.index - b.index;
+      });
+      const nombresOrdenados = jugadoresOrdenados.map(item => item.nombre);
+
+      const corto = nombresOrdenados.length <= 2
+        ? nombresOrdenados.join(' + ')
+        : `${nombresOrdenados.slice(0, 2).join(', ')} +${nombresOrdenados.length - 2}`;
 
       return {
         corto,
-        completo: nombres.join(' · ')
+        completo: nombresOrdenados.join(' · ')
       };
     };
 
@@ -18211,8 +18226,9 @@ const initApp = () => {
       const equipo1Ganador = partido.equipo_ganador === 1;
       const equipo2Ganador = partido.equipo_ganador === 2;
       const esEmpate = !equipo1Ganador && !equipo2Ganador;
-      const equipo1Info = obtenerInfoEquipoHistorial(equipo1);
-      const equipo2Info = obtenerInfoEquipoHistorial(equipo2);
+      const obtenerPuntajeJugadorHistorial = (jp) => normalizarPuntajePartido(obtenerStatsJugadorPartido(jp).skill);
+      const equipo1Info = obtenerInfoEquipoHistorial(equipo1, obtenerPuntajeJugadorHistorial);
+      const equipo2Info = obtenerInfoEquipoHistorial(equipo2, obtenerPuntajeJugadorHistorial);
       const resultadoClase = equipo1Ganador ? 'is-winner-team-1' : (equipo2Ganador ? 'is-winner-team-2' : 'is-draw');
       const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.corto : equipo2Info.corto}`;
       const resumenPartido = [
