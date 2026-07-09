@@ -19120,33 +19120,75 @@ const initApp = () => {
     </article>
   `;
 
-  const renderizarCardResumenTemporada = ({ icono, titulo, ganadores, formatearValor, color }) => {
+  const renderizarBarraInsightTemporada = ({ valor, valorTotal, escalaMaxima, etiquetaBarra }) => {
+    const valorNumerico = Number(valor) || 0;
+    const referencia = Number(escalaMaxima) > 0
+      ? Number(escalaMaxima)
+      : Number(valorTotal) > 0
+        ? Number(valorTotal)
+        : 0;
+
+    if (!referencia || valorNumerico <= 0) {
+      return '';
+    }
+
+    const porcentaje = Math.max(6, Math.min(100, Math.round((valorNumerico / referencia) * 100)));
+    return `
+      <div class="season-insight-meter" aria-hidden="true" style="--season-meter:${porcentaje}%">
+        <span></span>
+      </div>
+      <div class="season-insight-meter-label">${etiquetaBarra || `${porcentaje}% de referencia`}</div>
+    `;
+  };
+
+  const renderizarCardResumenTemporada = ({
+    icono,
+    titulo,
+    descripcion,
+    ganadores,
+    formatearValor,
+    color,
+    tono = 'neutral',
+    compacto = false,
+    valorTotal,
+    escalaMaxima,
+    etiquetaBarra
+  }) => {
     const listaGanadores = ganadores || [];
     const principal = listaGanadores[0];
     const extras = listaGanadores.slice(1);
+    const clases = [
+      'season-insight-card',
+      `is-${tono}`,
+      compacto ? 'is-compact' : '',
+      !principal ? 'is-empty' : ''
+    ].filter(Boolean).join(' ');
 
     if (!principal) {
       return `
-        <article class="season-leader-row" style="--season-accent:${color}">
-          <div class="season-leader-head">
+        <article class="${clases}" style="--season-accent:${color}">
+          <div class="season-insight-head">
             <i class="bi ${icono}"></i>
-            <span>${titulo}</span>
+            <span class="season-insight-title">${titulo}</span>
           </div>
+          ${descripcion ? `<div class="season-insight-description">${descripcion}</div>` : ''}
           <div class="season-empty">Sin datos</div>
         </article>
       `;
     }
 
     return `
-      <article class="season-leader-row" style="--season-accent:${color}">
-        <div class="season-leader-head">
+      <article class="${clases}" style="--season-accent:${color}">
+        <div class="season-insight-head">
           <i class="bi ${icono}"></i>
-          <span>${titulo}</span>
+          <span class="season-insight-title">${titulo}</span>
         </div>
-        <div class="season-winner-line">
+        ${descripcion ? `<div class="season-insight-description">${descripcion}</div>` : ''}
+        <div class="season-insight-mainline">
           ${renderizarAccesoPerfilJugador(principal.id, principal.nombre, 'season-player-link')}
-          <span class="season-value-pill">${formatearValor(principal.valor)}</span>
+          <span class="season-insight-value">${formatearValor(principal.valor)}</span>
         </div>
+        ${renderizarBarraInsightTemporada({ valor: principal.valor, valorTotal, escalaMaxima, etiquetaBarra })}
         ${extras.length > 0 ? `
           <div class="season-extra-winners">
             Tambi&eacute;n: ${extras.map(ganador => `${escaparHtmlPlano(ganador.nombre)} (${formatearValor(ganador.valor)})`).join(', ')}
@@ -19496,6 +19538,7 @@ const initApp = () => {
     const etiquetaFuente = resumenDesdeAgregados ? 'Estad&iacute;sticas' : 'Partidos';
     const maxPuntosRanking = Math.max(...topRanking.map(jugador => Number(jugador.total_puntos) || 0), 1);
     const liderTemporada = topRanking[0];
+    const totalPuntosTemporada = jugadores.reduce((acc, jugador) => acc + (Number(jugador.total_puntos) || 0), 0);
 
     const kpisTemporada = [
       { icono: 'bi-people-fill', label: 'Jugadores', valor: totales.jugadores, color: '#e2e8f0' },
@@ -19506,59 +19549,81 @@ const initApp = () => {
       { icono: 'bi-shield-fill', label: 'Atajadas', valor: totales.atajadas, color: '#facc15' }
     ].map(renderizarKpiResumenTemporada).join('');
 
-    const positivos = [
+    const positivosConfig = [
       {
         icono: 'bi-award-fill',
         titulo: 'Puntos',
+        descripcion: 'Quien m&aacute;s empuj&oacute; el ranking general.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'total_puntos'),
         formatearValor: valor => `${valor} pts`,
-        color: '#facc15'
+        color: '#facc15',
+        valorTotal: totalPuntosTemporada,
+        etiquetaBarra: 'Participaci&oacute;n sobre los puntos repartidos'
       },
       {
         icono: 'bi-graph-up-arrow',
         titulo: candidatosWinrate.length > 0 ? 'Mejor WR (3+ PJ)' : 'Mejor WR',
+        descripcion: 'Eficacia de resultados con muestra suficiente.',
         ganadores: obtenerGanadoresResumenTemporada(baseWinrate, 'winrate', { decimales: 1 }),
         formatearValor: valor => `${valor}%`,
-        color: '#34d399'
+        color: '#34d399',
+        escalaMaxima: 100,
+        etiquetaBarra: 'Escala de eficacia'
       },
       {
         icono: 'bi-bullseye',
         titulo: 'Goles',
+        descripcion: 'Mayor aporte directo al marcador.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'goles'),
         formatearValor: valor => `${valor} G`,
-        color: '#22c55e'
+        color: '#22c55e',
+        valorTotal: totales.goles,
+        etiquetaBarra: 'Parte de los goles de la temporada'
       },
       {
         icono: 'bi-bezier2',
         titulo: 'Asistencias',
+        descripcion: 'Quien m&aacute;s dej&oacute; goles servidos.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'asistencias'),
         formatearValor: valor => `${valor} A`,
-        color: '#38bdf8'
+        color: '#38bdf8',
+        valorTotal: totales.asistencias,
+        etiquetaBarra: 'Parte de las asistencias'
       },
       {
         icono: 'bi-shield-fill',
         titulo: 'Atajadas',
+        descripcion: 'Intervenciones clave defendiendo el arco.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'atajadas'),
         formatearValor: valor => `${valor}`,
-        color: '#facc15'
+        color: '#facc15',
+        valorTotal: totales.atajadas,
+        etiquetaBarra: 'Parte de las atajadas registradas'
       },
       {
         icono: 'bi-star-fill',
         titulo: 'MVP',
+        descripcion: 'Reconocimientos al mejor del partido.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'mvp_count'),
         formatearValor: valor => `${valor}`,
-        color: '#f59e0b'
+        color: '#f59e0b',
+        valorTotal: totales.mvp,
+        etiquetaBarra: 'Parte de los MVP entregados'
       },
       {
         icono: 'bi-fire',
         titulo: 'ACE',
+        descripcion: 'Partidos donde fue factor diferencial.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'ace_count'),
         formatearValor: valor => `${valor}`,
-        color: '#22d3ee'
+        color: '#22d3ee',
+        valorTotal: totales.ace,
+        etiquetaBarra: 'Parte de los ACE entregados'
       },
       {
         icono: 'bi-bullseye',
         titulo: 'Max. goles en 1 partido',
+        descripcion: 'Pico goleador individual en un solo match.',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxGolesPartido, statsPorJugador),
         formatearValor: valor => `${valor}`,
         color: '#22c55e'
@@ -19566,23 +19631,28 @@ const initApp = () => {
       {
         icono: 'bi-bezier2',
         titulo: 'Max. asistencias en 1 partido',
+        descripcion: 'Mejor noche creativa registrada.',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxAsistenciasPartido, statsPorJugador),
         formatearValor: valor => `${valor}`,
         color: '#38bdf8'
       }
-    ].map(renderizarCardResumenTemporada).join('');
+    ];
 
-    const negativos = [
+    const negativosConfig = [
       {
         icono: 'bi-x-octagon-fill',
         titulo: 'Cagadas totales',
+        descripcion: 'Errores acumulados que conviene mirar.',
         ganadores: obtenerGanadoresResumenTemporada(jugadores, 'cagadas'),
         formatearValor: valor => `${valor}`,
-        color: '#fb7185'
+        color: '#fb7185',
+        valorTotal: totales.cagadas,
+        etiquetaBarra: 'Parte de las cagadas registradas'
       },
       {
         icono: 'bi-exclamation-diamond-fill',
         titulo: 'Cagador del a&ntilde;o',
+        descripcion: 'Mayor cantidad de errores en un partido.',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxCagadasPartido, statsPorJugador),
         formatearValor: valor => `${valor}`,
         color: '#fb7185'
@@ -19590,21 +19660,33 @@ const initApp = () => {
       {
         icono: 'bi-cloud-lightning-rain-fill',
         titulo: 'Perdedor del a&ntilde;o',
+        descripcion: 'Racha negativa m&aacute;s larga.',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxDerrotasHilo, statsPorJugador),
         formatearValor: valor => `${valor} PP`,
         color: '#f97316'
       }
-    ].map(renderizarCardResumenTemporada).join('');
+    ];
 
-    const rachas = [
+    const rachasConfig = [
       {
         icono: 'bi-gem',
         titulo: 'Talism&aacute;n',
+        descripcion: 'Racha ganadora individual m&aacute;s larga.',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxVictoriasHilo, statsPorJugador),
         formatearValor: valor => `${valor} PG`,
         color: '#a78bfa'
       }
-    ].map(renderizarCardResumenTemporada).join('');
+    ];
+
+    const positivos = positivosConfig
+      .map(item => renderizarCardResumenTemporada({ ...item, tono: 'positive' }))
+      .join('');
+    const negativos = negativosConfig
+      .map(item => renderizarCardResumenTemporada({ ...item, tono: 'negative', compacto: true }))
+      .join('');
+    const rachas = rachasConfig
+      .map(item => renderizarCardResumenTemporada({ ...item, tono: 'streak', compacto: true }))
+      .join('');
 
     const filasRanking = topRanking.map((jugador, index) => {
       const claseWinrate = jugador.winrate >= 60 ? 'text-success' : jugador.winrate >= 45 ? 'text-warning' : 'text-danger';
@@ -19670,23 +19752,50 @@ const initApp = () => {
           ${kpisTemporada}
         </section>
 
-        <section class="season-insight-layout">
-          <div class="season-panel is-positive">
-            <h4 class="season-section-title"><i class="bi bi-trophy-fill"></i>Positivas</h4>
-            <div class="season-leader-grid">
+        <section class="season-insight-board">
+          <div class="season-insight-cluster" style="--season-accent:#22c55e">
+            <div class="season-insight-cluster-head">
+              <div class="season-insight-title-block">
+                <span class="season-insight-cluster-icon"><i class="bi bi-trophy-fill"></i></span>
+                <div>
+                  <h4 class="season-insight-cluster-title">Estad&iacute;sticas positivas</h4>
+                  <p class="season-insight-cluster-copy">Lectura r&aacute;pida de qui&eacute;n sum&oacute; m&aacute;s por ranking, eficacia y aporte de juego.</p>
+                </div>
+              </div>
+              <span class="season-insight-count">${positivosConfig.length} m&eacute;tricas</span>
+            </div>
+            <div class="season-insight-grid">
               ${positivos}
             </div>
           </div>
-          <div class="season-side-stack">
-            <div class="season-panel is-negative">
-              <h4 class="season-section-title"><i class="bi bi-exclamation-triangle-fill"></i>Negativas</h4>
-              <div class="season-leader-grid">
+          <div class="season-insight-side">
+            <div class="season-insight-cluster" style="--season-accent:#fb7185">
+              <div class="season-insight-cluster-head">
+                <div class="season-insight-title-block">
+                  <span class="season-insight-cluster-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                  <div>
+                    <h4 class="season-insight-cluster-title">Estad&iacute;sticas negativas</h4>
+                    <p class="season-insight-cluster-copy">Marcas que necesitan contexto: errores, picos malos y rachas de derrotas.</p>
+                  </div>
+                </div>
+                <span class="season-insight-count">${negativosConfig.length}</span>
+              </div>
+              <div class="season-insight-grid is-compact">
                 ${negativos}
               </div>
             </div>
-            <div class="season-panel is-streaks">
-              <h4 class="season-section-title"><i class="bi bi-activity"></i>Rachas</h4>
-              <div class="season-leader-grid">
+            <div class="season-insight-cluster" style="--season-accent:#a78bfa">
+              <div class="season-insight-cluster-head">
+                <div class="season-insight-title-block">
+                  <span class="season-insight-cluster-icon"><i class="bi bi-activity"></i></span>
+                  <div>
+                    <h4 class="season-insight-cluster-title">Rachas</h4>
+                    <p class="season-insight-cluster-copy">Momentum sostenido en partidos consecutivos.</p>
+                  </div>
+                </div>
+                <span class="season-insight-count">${rachasConfig.length}</span>
+              </div>
+              <div class="season-insight-grid is-compact">
                 ${rachas}
               </div>
             </div>
