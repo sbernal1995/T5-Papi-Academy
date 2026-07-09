@@ -1278,94 +1278,193 @@
         display: none !important;
       }
 
-      .season-summary-shell {
-        background: rgba(15, 23, 42, 0.68);
+      .season-page-shell {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .season-page-header {
+        align-items: end;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+      }
+
+      .season-page-title {
+        color: #f8fafc;
+        font-size: 1.55rem;
+        font-weight: 900;
+        line-height: 1.1;
+        margin: 0;
+      }
+
+      .season-page-copy {
+        color: #a7b3c4;
+        font-size: 0.94rem;
+        margin: 0.35rem 0 0;
+      }
+
+      .season-control {
+        align-items: center;
+        background: rgba(12, 16, 24, 0.72);
         border: 1px solid rgba(148, 163, 184, 0.18);
-        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+        border-radius: 8px;
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.55rem 0.65rem;
+      }
+
+      .season-control label {
+        color: #cbd5e1;
+        font-size: 0.78rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .season-control .form-select {
+        background-color: rgba(2, 6, 23, 0.82);
+        border-color: rgba(45, 212, 191, 0.25);
+        color: #f8fafc;
+        font-size: 0.86rem;
+        font-weight: 800;
+        min-width: 190px;
+      }
+
+      .season-summary-shell {
+        background:
+          linear-gradient(135deg, rgba(12, 16, 24, 0.94), rgba(16, 31, 27, 0.84)),
+          #0b1018;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 8px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
         overflow: hidden;
       }
 
       .season-summary {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
+        display: grid;
+        gap: 1rem;
+        padding: 1rem;
       }
 
       .season-hero {
         align-items: stretch;
         background:
-          linear-gradient(135deg, rgba(8, 145, 178, 0.22), rgba(124, 58, 237, 0.12)),
-          rgba(15, 23, 42, 0.84);
-        border: 1px solid rgba(34, 211, 238, 0.16);
-        border-radius: 10px;
+          linear-gradient(135deg, rgba(17, 94, 89, 0.44), rgba(21, 32, 43, 0.9)),
+          #101923;
+        border: 1px solid rgba(45, 212, 191, 0.18);
+        border-radius: 8px;
         display: grid;
         gap: 1rem;
-        grid-template-columns: minmax(0, 1fr) auto;
-        padding: 1.25rem;
-      }
-
-      .season-eyebrow {
-        color: #67e8f9;
-        display: block;
-        font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        margin-bottom: 0.3rem;
-        text-transform: uppercase;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 0.38fr);
+        min-height: 168px;
+        padding: 1rem;
+        position: relative;
       }
 
       .season-title {
         color: #f8fafc;
-        font-size: 1.55rem;
-        font-weight: 800;
-        letter-spacing: 0;
-        line-height: 1.1;
+        font-size: 1.6rem;
+        font-weight: 900;
+        line-height: 1.08;
         margin: 0;
       }
 
       .season-summary-copy {
-        color: #aab6c7;
-        font-size: 0.92rem;
+        color: #b6c2d3;
+        font-size: 0.93rem;
+        line-height: 1.45;
         margin: 0.55rem 0 0;
         max-width: 720px;
       }
 
+      .season-hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.9rem;
+      }
+
+      .season-data-chip {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.42);
+        border: 1px solid rgba(148, 163, 184, 0.17);
+        border-radius: 6px;
+        color: #dbeafe;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.36rem;
+        line-height: 1;
+        padding: 0.42rem 0.55rem;
+      }
+
       .season-hero-meter {
         align-items: center;
-        background: rgba(2, 6, 23, 0.38);
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 10px;
-        display: flex;
-        gap: 0.85rem;
-        justify-content: center;
-        min-width: 170px;
-        padding: 0.9rem 1rem;
+        background: rgba(2, 6, 23, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: auto minmax(0, 1fr);
+        padding: 0.8rem;
       }
 
-      .season-hero-meter i {
-        color: #22d3ee;
-        font-size: 1.35rem;
+      .season-meter-ring {
+        align-items: center;
+        background:
+          radial-gradient(circle at center, rgba(2, 6, 23, 0.95) 52%, transparent 53%),
+          conic-gradient(#22c55e 0 68%, rgba(148, 163, 184, 0.22) 68% 100%);
+        border-radius: 50%;
+        display: grid;
+        height: 96px;
+        justify-items: center;
+        place-content: center;
+        width: 96px;
       }
 
-      .season-hero-meter span {
-        color: #94a3b8;
-        display: block;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .season-hero-meter strong {
+      .season-meter-ring strong {
         color: #f8fafc;
-        display: block;
-        font-size: 1.45rem;
-        line-height: 1.1;
+        font-size: 1.52rem;
+        font-weight: 950;
+        line-height: 1;
+      }
+
+      .season-meter-ring span {
+        color: #94a3b8;
+        font-size: 0.68rem;
+        font-weight: 800;
+      }
+
+      .season-hero-meter-list {
+        display: grid;
+        gap: 0.42rem;
+      }
+
+      .season-hero-meter-row {
+        align-items: center;
+        display: flex;
+        gap: 0.48rem;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .season-hero-meter-row span {
+        color: #95a3b7;
+        font-size: 0.76rem;
+        font-weight: 750;
+        min-width: 0;
+      }
+
+      .season-hero-meter-row strong {
+        color: #f8fafc;
+        font-size: 0.9rem;
+        font-weight: 900;
+        white-space: nowrap;
       }
 
       .season-kpi-grid {
         display: grid;
-        gap: 0.8rem;
+        gap: 0.7rem;
         grid-template-columns: repeat(6, minmax(0, 1fr));
       }
 
@@ -1375,126 +1474,186 @@
         border-radius: 8px;
         display: grid;
         gap: 0.55rem;
-        min-height: 96px;
-        padding: 0.95rem;
+        min-height: 92px;
+        padding: 0.82rem;
+        position: relative;
+      }
+
+      .season-kpi::after {
+        background: var(--season-accent, #22d3ee);
+        border-radius: 999px;
+        bottom: 0.65rem;
+        content: "";
+        height: 3px;
+        left: 0.82rem;
+        opacity: 0.75;
+        position: absolute;
+        width: 42px;
       }
 
       .season-kpi-head {
         align-items: center;
-        color: #94a3b8;
+        color: #a7b3c4;
         display: flex;
         font-size: 0.76rem;
-        font-weight: 700;
-        gap: 0.45rem;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+        font-weight: 800;
+        gap: 0.42rem;
+        min-width: 0;
+      }
+
+      .season-kpi-head i {
+        color: var(--season-accent, #22d3ee);
+        font-size: 0.95rem;
       }
 
       .season-kpi-value {
-        color: var(--season-accent, #f8fafc);
-        font-size: 1.7rem;
-        font-weight: 900;
+        color: #f8fafc;
+        font-size: 1.62rem;
+        font-weight: 950;
         line-height: 1;
+      }
+
+      .season-insight-layout {
+        align-items: start;
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.8fr);
+      }
+
+      .season-panel {
+        background: rgba(2, 6, 23, 0.24);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 8px;
+        padding: 0.9rem;
+      }
+
+      .season-panel + .season-panel {
+        margin-top: 0.8rem;
+      }
+
+      .season-panel.is-positive {
+        border-color: rgba(34, 197, 94, 0.2);
+      }
+
+      .season-panel.is-negative {
+        border-color: rgba(251, 113, 133, 0.22);
+      }
+
+      .season-panel.is-streaks {
+        border-color: rgba(250, 204, 21, 0.2);
       }
 
       .season-section-title {
         align-items: center;
         color: #f8fafc;
         display: flex;
-        font-size: 0.86rem;
-        font-weight: 800;
-        gap: 0.5rem;
-        letter-spacing: 0.08em;
+        font-size: 0.9rem;
+        font-weight: 900;
+        gap: 0.48rem;
+        line-height: 1;
         margin: 0 0 0.75rem;
-        text-transform: uppercase;
       }
 
       .season-section-title i {
-        color: #22d3ee;
+        color: #2dd4bf;
       }
 
-      .season-leader-grid,
-      .season-record-grid {
+      .season-leader-grid {
         display: grid;
-        gap: 0.8rem;
+        gap: 0.55rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
-      .season-leader-card,
-      .season-record-card {
-        background: rgba(15, 23, 42, 0.72);
+      .season-leader-row {
+        background: rgba(15, 23, 42, 0.74);
         border: 1px solid rgba(148, 163, 184, 0.14);
-        border-left: 4px solid var(--season-accent, #22d3ee);
+        border-left: 3px solid var(--season-accent, #22d3ee);
         border-radius: 8px;
-        min-height: 128px;
-        padding: 0.95rem;
+        display: grid;
+        gap: 0.46rem;
+        min-height: 104px;
+        padding: 0.65rem;
       }
 
-      .season-leader-head,
-      .season-record-head {
+      .season-leader-head {
         align-items: center;
-        color: #94a3b8;
+        color: #9eacc0;
         display: flex;
-        font-size: 0.76rem;
-        font-weight: 800;
-        gap: 0.45rem;
-        letter-spacing: 0.06em;
-        margin-bottom: 0.75rem;
-        text-transform: uppercase;
+        font-size: 0.72rem;
+        font-weight: 850;
+        gap: 0.4rem;
+        min-width: 0;
       }
 
-      .season-leader-head i,
-      .season-record-head i {
+      .season-leader-head i {
         color: var(--season-accent, #22d3ee);
       }
 
       .season-winner-line {
-        align-items: baseline;
+        align-items: start;
         display: flex;
-        flex-wrap: wrap;
         gap: 0.5rem;
+        justify-content: space-between;
         min-width: 0;
       }
 
       .season-player-link {
         color: #f8fafc !important;
-        font-size: 1.05rem;
-        font-weight: 800 !important;
+        font-size: 0.98rem;
+        font-weight: 900 !important;
         line-height: 1.1;
         max-width: 100%;
+        min-width: 0;
         overflow-wrap: anywhere;
         text-align: left;
       }
 
       .season-value-pill {
+        align-items: center;
         background: color-mix(in srgb, var(--season-accent, #22d3ee) 18%, transparent);
         border: 1px solid color-mix(in srgb, var(--season-accent, #22d3ee) 48%, transparent);
-        border-radius: 999px;
+        border-radius: 6px;
         color: var(--season-accent, #22d3ee);
         display: inline-flex;
-        font-size: 0.75rem;
-        font-weight: 900;
+        font-size: 0.74rem;
+        font-weight: 950;
         line-height: 1;
-        padding: 0.34rem 0.5rem;
+        padding: 0.34rem 0.46rem;
         white-space: nowrap;
       }
 
       .season-extra-winners {
-        color: #94a3b8;
-        font-size: 0.78rem;
-        margin-top: 0.55rem;
+        color: #91a0b5;
+        font-size: 0.74rem;
+        line-height: 1.25;
       }
 
       .season-empty {
+        align-items: center;
         color: #64748b;
-        font-size: 0.9rem;
-        font-weight: 700;
+        display: flex;
+        font-size: 0.82rem;
+        font-weight: 800;
+        min-height: 42px;
+      }
+
+      .season-side-stack {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .season-side-stack .season-leader-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .season-side-stack .season-leader-row {
+        min-height: 82px;
       }
 
       .season-ranking-panel {
-        background: rgba(2, 6, 23, 0.28);
+        background: rgba(2, 6, 23, 0.24);
         border: 1px solid rgba(148, 163, 184, 0.12);
-        border-radius: 10px;
+        border-radius: 8px;
         overflow: hidden;
       }
 
@@ -1502,13 +1661,9 @@
         align-items: center;
         border-bottom: 1px solid rgba(148, 163, 184, 0.12);
         display: flex;
-        justify-content: space-between;
         gap: 1rem;
-        padding: 0.9rem 1rem;
-      }
-
-      .season-ranking-head h4 {
-        margin: 0;
+        justify-content: space-between;
+        padding: 0.8rem 0.9rem;
       }
 
       .season-ranking-head .season-section-title {
@@ -1516,38 +1671,44 @@
       }
 
       .season-ranking-subtitle {
-        color: #94a3b8;
+        color: #a7b3c4;
         font-size: 0.82rem;
-        font-weight: 700;
+        font-weight: 800;
+        white-space: nowrap;
       }
 
       .season-ranking-table {
         margin: 0;
-        min-width: 860px;
+        min-width: 900px;
       }
 
       .season-ranking-table thead th {
-        background: rgba(15, 23, 42, 0.88);
+        background: rgba(15, 23, 42, 0.9);
         border-color: rgba(148, 163, 184, 0.12);
-        color: #94a3b8;
+        color: #9ca9bb;
         font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        font-weight: 850;
       }
 
       .season-ranking-table tbody td {
+        background: rgba(7, 12, 20, 0.32);
         border-color: rgba(148, 163, 184, 0.08);
-        font-size: 0.88rem;
+        color: #d9e2f0;
+        font-size: 0.84rem;
+      }
+
+      .season-ranking-table tbody tr:hover td {
+        background: rgba(34, 197, 94, 0.08);
       }
 
       .season-rank-badge {
         align-items: center;
-        background: rgba(148, 163, 184, 0.12);
-        border-radius: 8px;
+        background: rgba(148, 163, 184, 0.14);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 7px;
         color: #cbd5e1;
         display: inline-flex;
-        font-weight: 900;
+        font-weight: 950;
         height: 28px;
         justify-content: center;
         width: 32px;
@@ -1555,188 +1716,121 @@
 
       .season-rank-badge.top {
         background: rgba(250, 204, 21, 0.18);
-        color: #facc15;
+        border-color: rgba(250, 204, 21, 0.34);
+        color: #fde68a;
       }
 
-      .season-summary {
-        gap: 0.85rem;
-      }
-
-      .season-hero {
-        border-radius: 8px;
-        padding: 0.85rem 1rem;
-      }
-
-      .season-title {
-        font-size: 1.28rem;
-      }
-
-      .season-summary-copy {
-        font-size: 0.84rem;
-        margin-top: 0.3rem;
-      }
-
-      .season-hero-meter {
-        border-radius: 8px;
-        gap: 0.6rem;
-        min-width: 142px;
-        padding: 0.6rem 0.75rem;
-      }
-
-      .season-hero-meter i {
-        font-size: 1.1rem;
-      }
-
-      .season-hero-meter span {
-        font-size: 0.64rem;
-      }
-
-      .season-hero-meter strong {
-        font-size: 1.08rem;
-      }
-
-      .season-kpi-grid {
-        gap: 0.5rem;
-      }
-
-      .season-kpi {
-        gap: 0.3rem;
-        min-height: 66px;
-        padding: 0.6rem 0.7rem;
-      }
-
-      .season-kpi-head {
-        font-size: 0.66rem;
-      }
-
-      .season-kpi-value {
-        font-size: 1.32rem;
-      }
-
-      .season-group-grid {
+      .season-points-cell {
         display: grid;
-        gap: 0.75rem;
-        grid-template-columns: minmax(0, 2fr) minmax(220px, 0.9fr) minmax(220px, 0.9fr);
-        align-items: start;
+        gap: 0.28rem;
+        min-width: 92px;
       }
 
-      .season-group-panel {
-        background: rgba(2, 6, 23, 0.24);
-        border: 1px solid rgba(148, 163, 184, 0.12);
-        border-radius: 10px;
-        padding: 0.75rem;
+      .season-points-value {
+        color: #fde68a;
+        font-weight: 950;
+        line-height: 1;
       }
 
-      .season-group-panel.positive {
-        border-color: rgba(34, 197, 94, 0.2);
+      .season-points-bar {
+        background: rgba(148, 163, 184, 0.16);
+        border-radius: 999px;
+        height: 4px;
+        overflow: hidden;
       }
 
-      .season-group-panel.negative {
-        border-color: rgba(251, 113, 133, 0.22);
+      .season-points-bar span {
+        background: linear-gradient(90deg, #facc15, #22c55e);
+        border-radius: inherit;
+        display: block;
+        height: 100%;
+        width: var(--season-points, 0%);
       }
 
-      .season-group-panel.streaks {
-        border-color: rgba(167, 139, 250, 0.22);
-      }
-
-      .season-group-list {
+      .season-state {
+        align-items: center;
+        color: #a7b3c4;
         display: grid;
-        gap: 0.45rem;
+        justify-items: center;
+        min-height: 280px;
+        padding: 2rem 1rem;
+        text-align: center;
       }
 
-      .season-group-list.positive {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+      .season-state i {
+        color: #2dd4bf;
+        font-size: 2.5rem;
+        margin-bottom: 0.85rem;
       }
 
-      .season-leader-card,
-      .season-record-card {
-        border-left-width: 3px;
-        min-height: 0;
-        padding: 0.55rem 0.62rem;
-      }
-
-      .season-leader-head,
-      .season-record-head {
-        font-size: 0.64rem;
-        gap: 0.35rem;
+      .season-state h5 {
+        color: #f8fafc;
+        font-weight: 900;
         margin-bottom: 0.35rem;
       }
 
-      .season-player-link {
-        font-size: 0.92rem;
-      }
-
-      .season-value-pill {
-        font-size: 0.66rem;
-        padding: 0.25rem 0.4rem;
-      }
-
-      .season-extra-winners {
-        font-size: 0.68rem;
-        margin-top: 0.3rem;
-      }
-
-      .season-empty {
-        font-size: 0.78rem;
-      }
-
-      .season-section-title {
-        font-size: 0.74rem;
-        margin-bottom: 0.55rem;
-      }
-
-      .season-ranking-head {
-        padding: 0.65rem 0.8rem;
-      }
-
-      .season-ranking-table thead th {
-        font-size: 0.66rem;
-        padding-bottom: 0.45rem;
-        padding-top: 0.45rem;
-      }
-
-      .season-ranking-table tbody td {
-        font-size: 0.8rem;
-        padding-bottom: 0.45rem;
-        padding-top: 0.45rem;
-      }
-
       @media (max-width: 1200px) {
-        .season-kpi-grid,
-        .season-leader-grid,
-        .season-record-grid {
+        .season-kpi-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .season-group-grid {
+        .season-insight-layout {
           grid-template-columns: 1fr;
+        }
+
+        .season-side-stack {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
 
       @media (max-width: 768px) {
+        .season-page-header,
+        .season-control,
         .season-hero {
+          align-items: stretch;
+          grid-template-columns: 1fr;
+        }
+
+        .season-page-header,
+        .season-control {
+          flex-direction: column;
+        }
+
+        .season-control .form-select {
+          width: 100%;
+        }
+
+        .season-kpi-grid,
+        .season-leader-grid,
+        .season-side-stack {
           grid-template-columns: 1fr;
         }
 
         .season-hero-meter {
-          justify-content: flex-start;
-        }
-
-        .season-kpi-grid,
-        .season-leader-grid,
-        .season-record-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .season-group-list.positive {
-          grid-template-columns: 1fr;
+          grid-template-columns: auto minmax(0, 1fr);
         }
       }
 
-      @media (max-width: 520px) {
-        .season-kpi-grid,
-        .season-leader-grid,
-        .season-record-grid {
+      @media (max-width: 480px) {
+        .season-summary {
+          padding: 0.75rem;
+        }
+
+        .season-hero,
+        .season-panel {
+          padding: 0.75rem;
+        }
+
+        .season-title,
+        .season-page-title {
+          font-size: 1.32rem;
+        }
+
+        .season-kpi {
+          min-height: 82px;
+        }
+
+        .season-hero-meter {
           grid-template-columns: 1fr;
         }
       }
@@ -4988,24 +5082,26 @@
 
       <!-- Temporadas Tab -->
       <div class="tab-pane fade" id="temporadas-content" role="tabpanel" aria-labelledby="temporadas-tab">
-        <div class="container-fluid py-4">
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div class="container-fluid py-4 season-page-shell">
+          <div class="season-page-header">
             <div>
-              <h2 class="h3 text-info fw-bold mb-1">
+              <h2 class="season-page-title">
                 <i class="bi bi-calendar3-week me-2"></i>Temporadas
               </h2>
-              <div class="text-light-emphasis">Resumen de rendimiento, líderes y récords por temporada</div>
+              <p class="season-page-copy">Resumen de rendimiento, l&iacute;deres y r&eacute;cords por temporada</p>
             </div>
-            <div class="d-flex align-items-center gap-2">
-              <label for="temporadas-resumen-selector" class="text-light small mb-0">Temporada</label>
-              <select id="temporadas-resumen-selector" class="form-select form-select-sm" style="min-width: 180px;" onchange="cargarResumenTemporadas()">
+            <div class="season-control">
+              <label for="temporadas-resumen-selector">
+                <i class="bi bi-trophy-fill me-1"></i>Temporada
+              </label>
+              <select id="temporadas-resumen-selector" class="form-select form-select-sm" onchange="cargarResumenTemporadas()">
                 <option value="">Seleccionar temporada</option>
               </select>
             </div>
           </div>
 
-          <div id="temporadas-resumen-container" class="season-summary-shell rounded-3 p-4">
-            <div class="text-center py-4">
+          <div id="temporadas-resumen-container" class="season-summary-shell">
+            <div class="season-state">
               <div class="spinner-border text-info" role="status">
                 <span class="visually-hidden">Cargando...</span>
               </div>

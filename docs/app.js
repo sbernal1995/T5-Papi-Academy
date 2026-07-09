@@ -19111,13 +19111,13 @@ const initApp = () => {
   };
 
   const renderizarKpiResumenTemporada = ({ icono, label, valor, color }) => `
-    <div class="season-kpi" style="--season-accent:${color}">
+    <article class="season-kpi" style="--season-accent:${color}">
       <div class="season-kpi-head">
         <i class="bi ${icono}"></i>
         <span>${label}</span>
       </div>
       <div class="season-kpi-value">${valor}</div>
-    </div>
+    </article>
   `;
 
   const renderizarCardResumenTemporada = ({ icono, titulo, ganadores, formatearValor, color }) => {
@@ -19127,7 +19127,7 @@ const initApp = () => {
 
     if (!principal) {
       return `
-        <article class="season-leader-card" style="--season-accent:${color}">
+        <article class="season-leader-row" style="--season-accent:${color}">
           <div class="season-leader-head">
             <i class="bi ${icono}"></i>
             <span>${titulo}</span>
@@ -19138,7 +19138,7 @@ const initApp = () => {
     }
 
     return `
-      <article class="season-leader-card" style="--season-accent:${color}">
+      <article class="season-leader-row" style="--season-accent:${color}">
         <div class="season-leader-head">
           <i class="bi ${icono}"></i>
           <span>${titulo}</span>
@@ -19149,7 +19149,7 @@ const initApp = () => {
         </div>
         ${extras.length > 0 ? `
           <div class="season-extra-winners">
-            También: ${extras.map(ganador => `${escaparHtmlPlano(ganador.nombre)} (${formatearValor(ganador.valor)})`).join(', ')}
+            Tambi&eacute;n: ${extras.map(ganador => `${escaparHtmlPlano(ganador.nombre)} (${formatearValor(ganador.valor)})`).join(', ')}
           </div>
         ` : ''}
       </article>
@@ -19488,11 +19488,14 @@ const initApp = () => {
     const topRanking = jugadores.slice(0, 8);
     const resumenDesdeAgregados = resumen.origen === 'agregado';
     const descripcionResumen = resumenDesdeAgregados
-      ? 'Resumen desde estadísticas agregadas. Los récords de partido requieren partidos cargados.'
+      ? 'Datos agregados por jugador. Los r&eacute;cords de partido se completan cuando hay partidos cargados.'
       : 'Resumen calculado sobre partidos cargados en esta temporada.';
     const etiquetaPartidos = resumenDesdeAgregados
       ? `${totales.partidos} PJ max.`
       : `${totales.partidos} partidos`;
+    const etiquetaFuente = resumenDesdeAgregados ? 'Estad&iacute;sticas' : 'Partidos';
+    const maxPuntosRanking = Math.max(...topRanking.map(jugador => Number(jugador.total_puntos) || 0), 1);
+    const liderTemporada = topRanking[0];
 
     const kpisTemporada = [
       { icono: 'bi-people-fill', label: 'Jugadores', valor: totales.jugadores, color: '#e2e8f0' },
@@ -19579,14 +19582,14 @@ const initApp = () => {
       },
       {
         icono: 'bi-exclamation-diamond-fill',
-        titulo: 'Cagador del año',
+        titulo: 'Cagador del a&ntilde;o',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxCagadasPartido, statsPorJugador),
         formatearValor: valor => `${valor}`,
         color: '#fb7185'
       },
       {
         icono: 'bi-cloud-lightning-rain-fill',
-        titulo: 'Perdedor del año',
+        titulo: 'Perdedor del a&ntilde;o',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxDerrotasHilo, statsPorJugador),
         formatearValor: valor => `${valor} PP`,
         color: '#f97316'
@@ -19596,7 +19599,7 @@ const initApp = () => {
     const rachas = [
       {
         icono: 'bi-gem',
-        titulo: 'Talismán',
+        titulo: 'Talism&aacute;n',
         ganadores: obtenerGanadoresMapaResumenTemporada(records.maxVictoriasHilo, statsPorJugador),
         formatearValor: valor => `${valor} PG`,
         color: '#a78bfa'
@@ -19605,11 +19608,17 @@ const initApp = () => {
 
     const filasRanking = topRanking.map((jugador, index) => {
       const claseWinrate = jugador.winrate >= 60 ? 'text-success' : jugador.winrate >= 45 ? 'text-warning' : 'text-danger';
+      const puntosRelativos = Math.max(4, Math.min(100, Math.round(((Number(jugador.total_puntos) || 0) / maxPuntosRanking) * 100)));
       return `
         <tr>
           <td class="text-center"><span class="season-rank-badge ${index < 3 ? 'top' : ''}">${index + 1}</span></td>
           <td>${renderizarAccesoPerfilJugador(jugador.id, jugador.nombre, 'text-white fw-semibold season-player-link')}</td>
-          <td class="text-center fw-bold text-warning">${jugador.total_puntos}</td>
+          <td class="text-center">
+            <div class="season-points-cell">
+              <span class="season-points-value">${jugador.total_puntos}</span>
+              <span class="season-points-bar" style="--season-points:${puntosRelativos}%"><span></span></span>
+            </div>
+          </td>
           <td class="text-center">${jugador.pj}</td>
           <td class="text-center"><span class="text-success">${jugador.pg}</span>/<span class="text-warning">${jugador.pe}</span>/<span class="text-danger">${jugador.pp}</span></td>
           <td class="text-center fw-bold ${claseWinrate}">${jugador.winrate.toFixed(0)}%</td>
@@ -19625,16 +19634,34 @@ const initApp = () => {
     return `
       <div class="season-summary">
         <section class="season-hero">
-          <div>
-            <span class="season-eyebrow">Resumen de temporada</span>
+          <div class="season-hero-copy">
             <h3 class="season-title">${escaparHtmlPlano(temporadaNombre)}</h3>
             <p class="season-summary-copy">${descripcionResumen}</p>
+            <div class="season-hero-meta">
+              <span class="season-data-chip"><i class="bi ${resumenDesdeAgregados ? 'bi-bar-chart-fill' : 'bi-calendar-check-fill'}"></i>${etiquetaFuente}</span>
+              <span class="season-data-chip"><i class="bi bi-clock-history"></i>${etiquetaPartidos}</span>
+              <span class="season-data-chip"><i class="bi bi-person-check-fill"></i>${totales.jugadores} jugadores</span>
+              ${liderTemporada ? `<span class="season-data-chip"><i class="bi bi-award-fill"></i>L&iacute;der: ${escaparHtmlPlano(liderTemporada.nombre)}</span>` : ''}
+            </div>
           </div>
           <div class="season-hero-meter">
-            <i class="bi ${resumenDesdeAgregados ? 'bi-bar-chart-fill' : 'bi-calendar-check-fill'}"></i>
-            <div>
-              <span>${resumenDesdeAgregados ? 'Base' : 'Partidos'}</span>
-              <strong>${etiquetaPartidos}</strong>
+            <div class="season-meter-ring">
+              <strong>${totales.partidos}</strong>
+              <span>${resumenDesdeAgregados ? 'PJ max.' : 'partidos'}</span>
+            </div>
+            <div class="season-hero-meter-list">
+              <div class="season-hero-meter-row">
+                <span>Goles/PJ</span>
+                <strong>${promedioGoles}</strong>
+              </div>
+              <div class="season-hero-meter-row">
+                <span>Goles totales</span>
+                <strong>${totales.goles}</strong>
+              </div>
+              <div class="season-hero-meter-row">
+                <span>MVP / ACE</span>
+                <strong>${totales.mvp} / ${totales.ace}</strong>
+              </div>
             </div>
           </div>
         </section>
@@ -19643,23 +19670,25 @@ const initApp = () => {
           ${kpisTemporada}
         </section>
 
-        <section class="season-group-grid">
-          <div class="season-group-panel positive">
+        <section class="season-insight-layout">
+          <div class="season-panel is-positive">
             <h4 class="season-section-title"><i class="bi bi-trophy-fill"></i>Positivas</h4>
-            <div class="season-group-list positive">
+            <div class="season-leader-grid">
               ${positivos}
             </div>
           </div>
-          <div class="season-group-panel negative">
-            <h4 class="season-section-title"><i class="bi bi-exclamation-triangle-fill"></i>Negativas</h4>
-            <div class="season-group-list">
-              ${negativos}
+          <div class="season-side-stack">
+            <div class="season-panel is-negative">
+              <h4 class="season-section-title"><i class="bi bi-exclamation-triangle-fill"></i>Negativas</h4>
+              <div class="season-leader-grid">
+                ${negativos}
+              </div>
             </div>
-          </div>
-          <div class="season-group-panel streaks">
-            <h4 class="season-section-title"><i class="bi bi-activity"></i>Rachas</h4>
-            <div class="season-group-list">
-              ${rachas}
+            <div class="season-panel is-streaks">
+              <h4 class="season-section-title"><i class="bi bi-activity"></i>Rachas</h4>
+              <div class="season-leader-grid">
+                ${rachas}
+              </div>
             </div>
           </div>
         </section>
@@ -19671,24 +19700,24 @@ const initApp = () => {
           </div>
           <div class="table-responsive">
             <table class="table table-dark table-hover align-middle season-ranking-table">
-          <thead>
-            <tr>
-              <th class="text-center">#</th>
-              <th>Jugador</th>
-              <th class="text-center">PTS</th>
-              <th class="text-center">PJ</th>
-              <th class="text-center">PG/E/PP</th>
-              <th class="text-center">WR</th>
-              <th class="text-center">G</th>
-              <th class="text-center">A</th>
-              <th class="text-center">Cag.</th>
-              <th class="text-center">Ataj.</th>
-              <th class="text-center">MVP/ACE</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filasRanking || '<tr><td colspan="11" class="text-center text-light-emphasis py-4">Sin jugadores para mostrar</td></tr>'}
-          </tbody>
+              <thead>
+                <tr>
+                  <th class="text-center">#</th>
+                  <th>Jugador</th>
+                  <th class="text-center">PTS</th>
+                  <th class="text-center">PJ</th>
+                  <th class="text-center">PG/E/PP</th>
+                  <th class="text-center">WR</th>
+                  <th class="text-center">G</th>
+                  <th class="text-center">A</th>
+                  <th class="text-center">Cag.</th>
+                  <th class="text-center">Ataj.</th>
+                  <th class="text-center">MVP/ACE</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasRanking || '<tr><td colspan="11" class="text-center text-light-emphasis py-4">Sin jugadores para mostrar</td></tr>'}
+              </tbody>
             </table>
           </div>
         </section>
@@ -19696,29 +19725,38 @@ const initApp = () => {
     `;
   };
 
+  let temporadaResumenRequestId = 0;
+
   window.cargarResumenTemporadas = async function() {
     const container = document.getElementById('temporadas-resumen-container');
     if (!container) return;
 
+    const requestId = ++temporadaResumenRequestId;
     const temporadaId = obtenerTemporadaResumenActiva();
     const selectorResumen = document.getElementById('temporadas-resumen-selector');
     if (selectorResumen && temporadaId) {
       selectorResumen.value = String(temporadaId);
     }
 
+    const esSolicitudResumenVigente = () => {
+      if (requestId !== temporadaResumenRequestId) return false;
+      const valorActual = selectorResumen ? (selectorResumen.value || '') : (temporadaId || '');
+      return String(valorActual) === String(temporadaId || '');
+    };
+
     if (!temporadaId) {
       container.innerHTML = `
-        <div class="text-center py-4">
-          <i class="bi bi-calendar-x fs-1 text-warning mb-3"></i>
-          <h5 class="text-white">Selecciona una temporada</h5>
-          <p class="text-light-emphasis mb-0">No hay una temporada activa para resumir.</p>
+        <div class="season-state">
+          <i class="bi bi-calendar-x"></i>
+          <h5>Selecciona una temporada</h5>
+          <p class="mb-0">No hay una temporada activa para resumir.</p>
         </div>
       `;
       return;
     }
 
     container.innerHTML = `
-      <div class="text-center py-4">
+      <div class="season-state">
         <div class="spinner-border text-info" role="status">
           <span class="visually-hidden">Cargando...</span>
         </div>
@@ -19728,10 +19766,14 @@ const initApp = () => {
 
     try {
       const partidos = await consultarPartidosResumenTemporada(temporadaId);
+      if (!esSolicitudResumenVigente()) return;
+
       const temporadaNombre = partidos[0]?.temporadas?.nombre || obtenerNombreTemporadaResumen(temporadaId);
 
       if (partidos.length === 0) {
         const estadisticasAgregadas = await consultarEstadisticasAgregadasResumenTemporada(temporadaId);
+        if (!esSolicitudResumenVigente()) return;
+
         if (estadisticasAgregadas.length > 0) {
           const resumenAgregado = construirResumenTemporadaDesdeAgregados(estadisticasAgregadas);
           container.innerHTML = renderizarResumenTemporada(temporadaNombre, resumenAgregado);
@@ -19739,24 +19781,27 @@ const initApp = () => {
         }
 
         container.innerHTML = `
-          <div class="text-center py-4">
-            <i class="bi bi-inbox fs-1 text-info mb-3"></i>
-            <h5 class="text-white">${escaparHtmlPlano(temporadaNombre)}</h5>
-            <p class="text-light-emphasis mb-0">No hay partidos cargados para esta temporada.</p>
+          <div class="season-state">
+            <i class="bi bi-inbox"></i>
+            <h5>${escaparHtmlPlano(temporadaNombre)}</h5>
+            <p class="mb-0">No hay partidos cargados para esta temporada.</p>
           </div>
         `;
         return;
       }
 
       const resumen = construirResumenTemporada(partidos);
+      if (!esSolicitudResumenVigente()) return;
       container.innerHTML = renderizarResumenTemporada(temporadaNombre, resumen);
     } catch (error) {
+      if (!esSolicitudResumenVigente()) return;
+
       console.error('Error al cargar resumen de temporada:', error);
       container.innerHTML = `
-        <div class="text-center py-4">
-          <i class="bi bi-exclamation-triangle fs-1 text-danger mb-3"></i>
-          <h5 class="text-white">No se pudo cargar el resumen</h5>
-          <p class="text-light-emphasis mb-0">${escaparHtmlPlano(error.message || 'Error desconocido')}</p>
+        <div class="season-state">
+          <i class="bi bi-exclamation-triangle"></i>
+          <h5>No se pudo cargar el resumen</h5>
+          <p class="mb-0">${escaparHtmlPlano(error.message || 'Error desconocido')}</p>
         </div>
       `;
     }
