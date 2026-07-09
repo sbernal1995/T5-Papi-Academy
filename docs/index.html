@@ -3709,6 +3709,7 @@
                           <th scope="col">⚽ Goleador</th>
                           <th scope="col">🎯 Asistencia</th>
                           <th scope="col">💥 Cagada</th>
+                          <th scope="col">🧤 Arquero</th>
                           <th scope="col">👕 Equipo</th>
                           <th scope="col">🔄 Tipo</th>
                           <th scope="col">⏱️ Tiempo</th>
@@ -3736,6 +3737,12 @@
                       <label class="form-label text-light">💥 Cagada</label>
                       <select id="cagada-gol" class="form-select searchable-select">
                         <option value="">Sin cagada</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label text-light">🧤 Arquero</label>
+                      <select id="arquero-gol" class="form-select searchable-select">
+                        <option value="">Sin arquero</option>
                       </select>
                     </div>
                     <div class="col-md-1">
@@ -3961,22 +3968,28 @@
                   <span class="badge bg-secondary" id="review-event-count">0</span>
                 </div>
                 <div class="row g-2 align-items-end mb-3">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label text-light small">Goleador</label>
                     <select id="review-goleador" class="form-select form-select-sm searchable-select">
                       <option value="">Goleador</option>
                     </select>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label text-light small">Asistencia</label>
                     <select id="review-asistencia" class="form-select form-select-sm searchable-select">
                       <option value="">Sin asistencia</option>
                     </select>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label text-light small">Cagada</label>
                     <select id="review-cagada-gol" class="form-select form-select-sm searchable-select">
                       <option value="">Sin cagada</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-light small">Arquero</label>
+                    <select id="review-arquero-gol" class="form-select form-select-sm searchable-select">
+                      <option value="">Sin arquero</option>
                     </select>
                   </div>
                   <div class="col-md-2">
@@ -4025,6 +4038,40 @@
                 <div class="row g-2 mt-2">
                   <div class="col-12">
                     <div id="review-atajadas-list"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="review-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h3 class="review-section-title mb-0"><i class="bi bi-stars text-warning"></i>Buenas jugadas</h3>
+                  <span class="badge bg-secondary" id="review-buenas-jugadas-count">0</span>
+                </div>
+                <div class="small text-light-emphasis mb-2">
+                  Marca jugadas destacadas independientes de goles, asistencias o atajadas.
+                </div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Jugador</label>
+                    <select id="review-buena-jugada-jugador" class="form-select form-select-sm searchable-select">
+                      <option value="">Jugador</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Min</label>
+                    <input type="number" id="review-buena-jugada-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-light small">Seg</label>
+                    <input type="number" id="review-buena-jugada-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
+                  </div>
+                  <div class="col-md-4">
+                    <button type="button" id="review-add-buena-jugada" class="btn btn-outline-warning btn-sm w-100">Agregar</button>
+                  </div>
+                </div>
+                <div class="row g-2 mt-2">
+                  <div class="col-12">
+                    <div id="review-buenas-jugadas-list"></div>
                   </div>
                 </div>
               </div>

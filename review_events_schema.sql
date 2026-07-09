@@ -12,6 +12,9 @@ add column if not exists compilado_youtube_link text;
 alter table public.goles
 add column if not exists review_segundos integer;
 
+alter table public.goles
+add column if not exists arquero_id uuid references public.jugadores(id) on delete set null;
+
 alter table public.jugadores
 add column if not exists foto_url text;
 
@@ -46,6 +49,7 @@ create table if not exists public.review_eventos (
       'asistencia',
       'cagada_gol',
       'atajadas',
+      'buena_jugada',
       'cagada',
       'mvp',
       'ace'
@@ -67,11 +71,45 @@ alter table public.review_eventos add column if not exists review_segundos integ
 alter table public.review_eventos add column if not exists metadata jsonb not null default '{}'::jsonb;
 alter table public.review_eventos add column if not exists created_at timestamptz not null default now();
 
+do $$
+declare
+  constraint_name text;
+begin
+  for constraint_name in
+    select c.conname
+    from pg_constraint c
+    join pg_class t on t.oid = c.conrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    where n.nspname = 'public'
+      and t.relname = 'review_eventos'
+      and c.contype = 'c'
+      and pg_get_constraintdef(c.oid) like '%tipo%'
+  loop
+    execute format('alter table public.review_eventos drop constraint if exists %I', constraint_name);
+  end loop;
+
+  alter table public.review_eventos
+  add constraint review_eventos_tipo_check
+  check (
+    tipo in (
+      'gol',
+      'asistencia',
+      'cagada_gol',
+      'atajadas',
+      'buena_jugada',
+      'cagada',
+      'mvp',
+      'ace'
+    )
+  );
+end $$;
+
 create index if not exists idx_review_eventos_partido on public.review_eventos(partido_id);
 create index if not exists idx_review_eventos_jugador on public.review_eventos(jugador_id);
 create index if not exists idx_review_eventos_tipo on public.review_eventos(tipo);
 create index if not exists idx_review_eventos_review_segundos on public.review_eventos(partido_id, review_segundos);
 create index if not exists idx_goles_review_segundos on public.goles(partido_id, review_segundos);
+create index if not exists idx_goles_arquero_id on public.goles(arquero_id);
 
 alter table public.review_eventos enable row level security;
 

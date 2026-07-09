@@ -16,7 +16,7 @@ function run() {
       { partido_id: 'p1', jugador_id: 'j2', equipo: 2, goles: 0, asistencias: 0, atajadas: 0, cagadas: 1, puntos: 0, mvp: false, ace: false }
     ],
     goles: [
-      { id: 'g1', partido_id: 'p1', goleador_id: 'j1', asistidor_id: 'j2', equipo: 1, minuto: 3, es_gol_en_contra: false },
+      { id: 'g1', partido_id: 'p1', goleador_id: 'j1', asistidor_id: 'j2', arquero_id: 'j2', equipo: 1, minuto: 3, es_gol_en_contra: false },
       { id: 'g2', partido_id: 'p1', goleador_id: 'j2', equipo: 1, minuto: 5, es_gol_en_contra: true, cagada_jugador_id: 'j2' }
     ],
     tracking_analyses: [{ id: 'a1', partido_id: 'p1' }],
@@ -43,6 +43,7 @@ function run() {
   assert.strictEqual(boskaRow.cagadas_en_gol_eventos, 1);
 
   assert.strictEqual(derived.goal_rows[0].goleador_nombre, 'Metox');
+  assert.strictEqual(derived.goal_rows[0].arquero_nombre, 'Boska');
   assert.strictEqual(derived.tracking_player_rows[0].jugador_nombre, 'Metox');
 
   console.log('data export tests passed');

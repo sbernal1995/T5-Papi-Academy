@@ -302,6 +302,8 @@
         asistidor_nombre: getPlayerName(playersById, goal.asistidor_id),
         cagada_jugador_id: goal.cagada_jugador_id || null,
         cagada_jugador_nombre: getPlayerName(playersById, goal.cagada_jugador_id),
+        arquero_id: goal.arquero_id || null,
+        arquero_nombre: getPlayerName(playersById, goal.arquero_id),
         es_gol_en_contra: !!goal.es_gol_en_contra
       };
     });
