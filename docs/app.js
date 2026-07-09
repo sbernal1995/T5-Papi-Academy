@@ -292,6 +292,32 @@ function crearChipEventoHistorial({ tipo, iconos = '', cantidad = 0, label = '',
   `;
 }
 
+const ICONOS_EVENTO_HISTORIAL = {
+  goal: '<span class="historial-event-mark is-ball" aria-hidden="true"></span>',
+  assist: `
+    <span class="historial-event-mark is-boot" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M5.2 5.5h4.9l2.4 6.2 5.7 1.4c1.2.3 2.1 1.3 2.1 2.6v2.1H4.1c-1.2 0-2.1-.9-2.1-2.1v-2.3l4.4-1.2-1.2-6.7Z"></path>
+        <path d="M6.9 9.2h4.4M7.4 11.3h4.8M4.1 15.4h16.1"></path>
+      </svg>
+    </span>
+  `,
+  save: `
+    <span class="historial-event-mark is-glove" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M6.4 12.5V5.8c0-.9.7-1.6 1.6-1.6s1.6.7 1.6 1.6v5.1"></path>
+        <path d="M9.6 11.2V4.6c0-.9.7-1.6 1.6-1.6s1.6.7 1.6 1.6v6.4"></path>
+        <path d="M12.8 11.2V5.1c0-.9.7-1.6 1.6-1.6S16 4.2 16 5.1v7"></path>
+        <path d="M16 12.5V7.8c0-.9.7-1.5 1.5-1.5S19 7 19 7.8v7.7c0 3.1-2.5 5.6-5.6 5.6h-1.1c-2.2 0-4.3-1.2-5.3-3.2L4.6 13c-.4-.8-.1-1.7.7-2.1.7-.3 1.5-.1 2 .5l1.7 2"></path>
+      </svg>
+    </span>
+  `
+};
+
+function obtenerIconoEventoHistorial(tipo) {
+  return ICONOS_EVENTO_HISTORIAL[tipo] || '';
+}
+
 function crearChipConteoHistorial(tipo, iconoHtml, cantidad, label) {
   const cantidadNormalizada = Math.max(0, Number(cantidad) || 0);
   if (!cantidadNormalizada) return '';
@@ -329,7 +355,7 @@ function generarIconosConLinks(golesArray, youtubeLink, tipo = 'gol') {
   const total = golesArray.length;
   const chipTipo = tipo === 'gol' ? 'goal' : 'assist';
   const label = tipo === 'gol' ? 'Goles' : 'Asistencias';
-  const iconoEvento = tipo === 'gol' ? '<i class="bi bi-bullseye"></i>' : 'A';
+  const iconoEvento = obtenerIconoEventoHistorial(chipTipo);
 
   // Generar un ícono por cada gol/asistencia
   const iconos = golesArray.map(item => {
@@ -18552,6 +18578,7 @@ const initApp = () => {
       const companeros = jugadoresOrdenados
         .filter(item => item !== destacado)
         .slice(0, 4);
+      const formatearPuntajeEquipo = (puntaje) => Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
       const tipoPremio = destacado.jugador.mvp ? 'mvp' : (destacado.jugador.ace ? 'ace' : 'destacado');
       const premioConfig = {
         mvp: {
@@ -18572,11 +18599,15 @@ const initApp = () => {
       }[tipoPremio];
       const companerosHtml = companeros.length
         ? companeros.map(item => `
-          <button type="button" class="historial-team-mini-player" onclick="irAPerfilJugador('${escaparTextoParaJs(item.jugador.jugador_id)}')" title="${escaparHtmlPlano(item.nombre)}" aria-label="${escaparHtmlPlano(item.nombre)}">
+          <button type="button" class="historial-team-mini-player" onclick="irAPerfilJugador('${escaparTextoParaJs(item.jugador.jugador_id)}')" title="${escaparHtmlPlano(item.nombre)} - ${formatearPuntajeEquipo(item.puntaje)}" aria-label="${escaparHtmlPlano(item.nombre)} - puntaje ${formatearPuntajeEquipo(item.puntaje)}">
             ${renderizarAvatarJugador(item.jugador.jugador_id, item.nombre, 'xs', 'historial-team-mini-avatar')}
+            <span class="historial-team-mini-score">${formatearPuntajeEquipo(item.puntaje)}</span>
           </button>
         `).join('')
         : '<span class="historial-team-mini-empty">Sin companeros</span>';
+      const destacadoPuntajeHtml = Number.isFinite(destacado.puntaje)
+        ? `<span class="historial-team-award-rating">${formatearPuntajeEquipo(destacado.puntaje)}</span>`
+        : '';
       const headerHtml = `
         <div class="historial-team-award-card ${premioConfig.clase}">
           <div class="historial-team-award-main">
@@ -18586,6 +18617,7 @@ const initApp = () => {
             <div class="historial-team-award-copy">
               <span class="historial-team-award-label">${premioConfig.label}</span>
               ${renderizarAccesoPerfilJugador(destacado.jugador.jugador_id, destacado.nombre, 'historial-team-award-player')}
+              ${destacadoPuntajeHtml}
             </div>
           </div>
           <div class="historial-team-mini-roster">${companerosHtml}</div>
@@ -18815,7 +18847,7 @@ const initApp = () => {
                   </div>
                   <div class="historial-team-meta-row">
                     <span>${equipo1.length} jugadores</span>
-                    <span>Prom. <strong>${skillEquipo1.toFixed(1)}</strong> /10</span>
+                    <span>Prom. <strong>${skillEquipo1.toFixed(1)}</strong></span>
                   </div>
                   <div class="historial-player-list">
                     ${equipo1.map(jp => {
@@ -18839,7 +18871,7 @@ const initApp = () => {
                         stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
                       }
                       if (jp.atajadas > 0) {
-                        stats.push(crearChipConteoHistorial('save', '<i class="bi bi-shield-fill"></i>', jp.atajadas, 'Atajadas'));
+                        stats.push(crearChipConteoHistorial('save', obtenerIconoEventoHistorial('save'), jp.atajadas, 'Atajadas'));
                       }
                       if (cagadasJugador > 0) {
                         const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
@@ -18853,13 +18885,12 @@ const initApp = () => {
                       const puntajeLabel = Number.isFinite(puntaje)
                         ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
                             <span class="historial-rating-value">${puntajeTexto}</span>
-                            <span class="historial-rating-max">/10</span>
                             <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
                           </div>`
                         : '';
 
                       return `
-                        <div class="historial-player-row">
+                        <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
                           <div class="historial-player-main">
                             ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
                             ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
@@ -18870,11 +18901,11 @@ const initApp = () => {
                               <span style="width:${puntajeAncho}%"></span>
                             </div>
                           </div>
-                          <button class="historial-coin-btn"
+                          ${esAdmin ? `<button class="historial-coin-btn" data-admin-only
                                     title="Forzar pase en Mundialito"
                                     onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
                             <i class="bi bi-coin"></i>
-                          </button>
+                          </button>` : ''}
                         </div>
                       `;
                     }).join('')}
@@ -18895,7 +18926,7 @@ const initApp = () => {
                   </div>
                   <div class="historial-team-meta-row">
                     <span>${equipo2.length} jugadores</span>
-                    <span>Prom. <strong>${skillEquipo2.toFixed(1)}</strong> /10</span>
+                    <span>Prom. <strong>${skillEquipo2.toFixed(1)}</strong></span>
                   </div>
                   <div class="historial-player-list">
                     ${equipo2.map(jp => {
@@ -18919,7 +18950,7 @@ const initApp = () => {
                         stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
                       }
                       if (jp.atajadas > 0) {
-                        stats.push(crearChipConteoHistorial('save', '<i class="bi bi-shield-fill"></i>', jp.atajadas, 'Atajadas'));
+                        stats.push(crearChipConteoHistorial('save', obtenerIconoEventoHistorial('save'), jp.atajadas, 'Atajadas'));
                       }
                       if (cagadasJugador > 0) {
                         const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
@@ -18933,13 +18964,12 @@ const initApp = () => {
                       const puntajeLabel = Number.isFinite(puntaje)
                         ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
                             <span class="historial-rating-value">${puntajeTexto}</span>
-                            <span class="historial-rating-max">/10</span>
                             <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
                           </div>`
                         : '';
 
                       return `
-                        <div class="historial-player-row">
+                        <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
                           <div class="historial-player-main">
                             ${renderizarAccesoPerfilJugador(jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'text-white fw-semibold text-start align-baseline')}
                             ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
@@ -18950,11 +18980,11 @@ const initApp = () => {
                               <span style="width:${puntajeAncho}%"></span>
                             </div>
                           </div>
-                          <button class="historial-coin-btn"
+                          ${esAdmin ? `<button class="historial-coin-btn" data-admin-only
                                     title="Forzar pase en Mundialito"
                                     onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${(jp.jugadores?.nombre || 'Jugador').replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
                             <i class="bi bi-coin"></i>
-                          </button>
+                          </button>` : ''}
                         </div>
                       `;
                     }).join('')}
