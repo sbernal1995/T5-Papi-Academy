@@ -298,6 +298,15 @@ function crearChipConteoHistorial(tipo, iconoHtml, cantidad, label) {
   });
 }
 
+function crearDistintivoJugadorHistorial(tipo, iconoHtml, label) {
+  return `
+    <span class="historial-player-award is-${tipo}" title="${label}">
+      <span class="historial-player-award-icon">${iconoHtml}</span>
+      <span>${label}</span>
+    </span>
+  `;
+}
+
 /**
  * Genera HTML para mostrar múltiples íconos de goles o asistencias con links
  * @param {Array} golesArray - Array de objetos gol del jugador
@@ -18315,6 +18324,12 @@ const initApp = () => {
                       const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
 
                       const stats = [];
+                      if (jp.mvp) {
+                        stats.push(crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-award-fill"></i>', 'MVP'));
+                      }
+                      if (jp.ace) {
+                        stats.push(crearDistintivoJugadorHistorial('ace', '<i class="bi bi-award-fill"></i>', 'ACE'));
+                      }
                       if (golesDelJugador.length > 0) {
                         stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
                       }
@@ -18393,6 +18408,12 @@ const initApp = () => {
                       const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
 
                       const stats = [];
+                      if (jp.mvp) {
+                        stats.push(crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-award-fill"></i>', 'MVP'));
+                      }
+                      if (jp.ace) {
+                        stats.push(crearDistintivoJugadorHistorial('ace', '<i class="bi bi-award-fill"></i>', 'ACE'));
+                      }
                       if (golesDelJugador.length > 0) {
                         stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
                       }
