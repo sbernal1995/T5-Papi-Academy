@@ -193,6 +193,12 @@ function actualizarUISegunPermisos() {
       `;
     }
   }
+
+  window.T5AuthState = {
+    isAdmin: esAdmin,
+    userEmail: usuarioActual?.email || null
+  };
+  window.dispatchEvent(new CustomEvent('t5:admin-state-changed', { detail: window.T5AuthState }));
 }
 
 // Función para verificar permisos antes de operaciones críticas
@@ -228,6 +234,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 window.iniciarSesion = iniciarSesion;
 window.cerrarSesion = cerrarSesion;
 window.verificarPermisosAdmin = verificarPermisosAdmin;
+window.esUsuarioAdmin = () => esAdmin;
 
 // ==========================================
 // FUNCIONES AUXILIARES PARA LINKS DE YOUTUBE CON TIMESTAMP

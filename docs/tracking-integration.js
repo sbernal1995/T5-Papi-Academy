@@ -77,6 +77,31 @@
     return typeof window !== 'undefined' ? window.supabase : null;
   }
 
+  function userIsAdmin() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+    if (typeof window.esUsuarioAdmin === 'function') {
+      return window.esUsuarioAdmin();
+    }
+
+    if (window.T5AuthState && typeof window.T5AuthState.isAdmin === 'boolean') {
+      return window.T5AuthState.isAdmin;
+    }
+
+    const logoutButtons = [
+      document.getElementById('btn-logout'),
+      document.getElementById('btn-logout-mobile')
+    ].filter(Boolean);
+
+    return logoutButtons.some(button => {
+      const style = window.getComputedStyle(button);
+      return style.display !== 'none' && style.visibility !== 'hidden' && button.offsetParent !== null;
+    });
+  }
+
+  function removeHistoryTrackingCards() {
+    document.querySelectorAll('[data-tracking-card]').forEach(card => card.remove());
+  }
+
   async function waitForSupabase(timeoutMs = 10000) {
     const start = Date.now();
     while (!db() && Date.now() - start < timeoutMs) {
@@ -535,6 +560,11 @@
 
   function decorateHistoryCards() {
     ensureStyles();
+    if (!userIsAdmin()) {
+      removeHistoryTrackingCards();
+      return;
+    }
+
     ensureModals();
     const cards = Array.from(document.querySelectorAll('.partido-card[data-partido-id]'));
     if (!cards.length) return;
@@ -633,6 +663,11 @@
   }
 
   async function openImport(partidoId) {
+    if (!userIsAdmin()) {
+      showToast('Se requieren permisos de administrador para cargar tracking.', 'error');
+      return;
+    }
+
     try {
       ensureModals();
       const matchPlayers = await fetchMatchPlayers(partidoId);
@@ -764,6 +799,11 @@
   }
 
   async function saveCurrentImport() {
+    if (!userIsAdmin()) {
+      showToast('Se requieren permisos de administrador para guardar tracking.', 'error');
+      return;
+    }
+
     const state = APP.importState;
     if (!state?.normalized) return;
     const client = await waitForSupabase();
@@ -2246,6 +2286,7 @@
     decorateHistoryCards();
     ensureProfileTabs();
     attachProfileObserver();
+    window.addEventListener('t5:admin-state-changed', decorateHistoryCards);
 
     let scheduled = false;
     const observer = new MutationObserver(() => {
