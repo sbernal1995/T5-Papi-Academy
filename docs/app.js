@@ -3084,6 +3084,291 @@ function renderizarFilaRankingPerfil({ indice, nombre, principal, secundario = '
   `;
 }
 
+async function anexarReviewEventosPerfil(partidos = []) {
+  const partidoIds = partidos.map(partido => partido.id).filter(Boolean);
+  if (!partidoIds.length) return;
+
+  const { data, error } = await supabase
+    .from('review_eventos')
+    .select('id, partido_id, jugador_id, tipo, cantidad, minuto_partido, review_segundos, metadata')
+    .in('partido_id', partidoIds);
+
+  if (error) {
+    if (esErrorTablaFaltante(error, 'review_eventos')) {
+      console.warn('La tabla review_eventos no existe; el perfil usa los links tradicionales.');
+      return;
+    }
+    console.warn('No se pudieron cargar eventos de review para el perfil:', error);
+    return;
+  }
+
+  const eventosPorPartido = new Map();
+  (data || []).forEach(evento => {
+    const key = String(evento.partido_id);
+    if (!eventosPorPartido.has(key)) eventosPorPartido.set(key, []);
+    eventosPorPartido.get(key).push(evento);
+  });
+
+  partidos.forEach(partido => {
+    partido.review_eventos = eventosPorPartido.get(String(partido.id)) || [];
+  });
+}
+
+function obtenerConfigCompiladoPerfil(tipo, cantidad = 1, opciones = {}) {
+  const atajadasMinimas = Number(opciones.atajadasMinimas) === 5 ? 5 : 3;
+  const cantidadNumerica = Number(cantidad) || 0;
+  const configs = {
+    gol: { incluir: true, pre: 10, post: 5 },
+    atajadas: { incluir: cantidadNumerica >= atajadasMinimas, pre: 5, post: 5 },
+    buena_jugada: { incluir: true, pre: 6, post: 6 },
+    cagada: { incluir: true, pre: 5, post: 5 },
+    cagada_gol: { incluir: true, pre: 5, post: 5 }
+  };
+
+  return configs[tipo] || { incluir: false, pre: 0, post: 0 };
+}
+
+function construirClipsCompiladoPerfil(reviewEventos = [], opciones = {}) {
+  const clips = reviewEventos.map(evento => {
+    const config = obtenerConfigCompiladoPerfil(evento.tipo, evento.cantidad, opciones);
+    const reviewSegundos = Number(evento.review_segundos);
+    if (!config.incluir || !Number.isFinite(reviewSegundos)) return null;
+
+    const exacto = Math.max(0, Math.round(reviewSegundos));
+    const inicio = Math.max(0, exacto - config.pre);
+    const fin = exacto + config.post;
+
+    return {
+      tipo: evento.tipo,
+      jugadorId: evento.jugador_id || null,
+      cantidad: Number(evento.cantidad) || 1,
+      reviewSegundos: exacto,
+      inicio,
+      fin,
+      duracion: Math.max(0, fin - inicio),
+      sourceKey: evento.id,
+      metadata: evento.metadata || {}
+    };
+  }).filter(Boolean);
+
+  return [...clips].sort((a, b) => {
+    if (a.reviewSegundos !== b.reviewSegundos) return a.reviewSegundos - b.reviewSegundos;
+    return String(a.tipo).localeCompare(String(b.tipo));
+  }).filter((clip, index, ordenados) => {
+    if (clip.tipo !== 'cagada_gol') return true;
+    return !ordenados.some(otro =>
+      otro !== clip &&
+      otro.tipo === 'gol' &&
+      otro.reviewSegundos === clip.reviewSegundos &&
+      String(otro.metadata?.orden || '') === String(clip.metadata?.orden || '')
+    );
+  });
+}
+
+function crearEventosLinkeablesCompiladoPerfil(clips = []) {
+  let acumulado = 0;
+  return clips.flatMap(clip => {
+    const duracion = Math.max(0, Number(clip.duracion ?? (clip.fin - clip.inicio)) || 0);
+    const inicio = Math.max(0, Number(clip.inicio) || 0);
+    const reviewSegundos = Math.max(0, Number(clip.reviewSegundos) || 0);
+    const eventoEnClip = Math.max(0, Math.min(duracion, reviewSegundos - inicio));
+    const compiladoSegundos = acumulado + eventoEnClip;
+    acumulado += duracion;
+
+    const metadata = clip.metadata || {};
+    const eventos = [];
+    const agregar = (tipo, jugadorId) => {
+      if (!jugadorId) return;
+      eventos.push({
+        tipo,
+        jugador_id: jugadorId,
+        clip_source_key: clip.sourceKey || null,
+        review_segundos: reviewSegundos,
+        compilado_segundos: compiladoSegundos
+      });
+    };
+
+    if (clip.tipo === 'gol') {
+      agregar('gol', clip.jugadorId || metadata.goleador_id);
+      agregar('asistencia', metadata.asistencia_id || metadata.asistidor_id);
+      agregar('cagada_gol', metadata.cagada_jugador_id || metadata.cagada_id);
+    } else if (clip.tipo === 'atajadas') {
+      agregar('atajadas', clip.jugadorId || metadata.atajadas_jugador_id);
+    } else if (clip.tipo === 'buena_jugada') {
+      agregar('buena_jugada', clip.jugadorId || metadata.buena_jugada_jugador_id);
+    } else if (clip.tipo === 'cagada' || clip.tipo === 'cagada_gol') {
+      agregar(clip.tipo, clip.jugadorId || metadata.cagada_jugador_id || metadata.cagada_id);
+    }
+
+    return eventos;
+  });
+}
+
+function buscarReviewEventoGolPerfil(partido, gol) {
+  const reviewEventos = partido?.review_eventos || [];
+
+  const reviewSegundosGol = Number(gol?.review_segundos);
+  if (Number.isFinite(reviewSegundosGol)) {
+    const porReview = reviewEventos.find(evento =>
+      evento.tipo === 'gol' &&
+      String(evento.jugador_id || '') === String(gol.goleador_id || '') &&
+      Math.abs((Number(evento.review_segundos) || 0) - reviewSegundosGol) <= 2
+    );
+    if (porReview) return porReview;
+  }
+
+  const minutoGol = Number(gol?.minuto);
+  if (Number.isFinite(minutoGol)) {
+    return reviewEventos.find(evento =>
+      evento.tipo === 'gol' &&
+      String(evento.jugador_id || '') === String(gol.goleador_id || '') &&
+      Math.abs((Number(evento.minuto_partido) || 0) - minutoGol) <= 0.04
+    ) || null;
+  }
+
+  return null;
+}
+
+function formatearSegundosVideoPerfil(segundosTotales) {
+  if (segundosTotales === null || segundosTotales === undefined) return '--';
+  const total = Math.max(0, Math.round(Number(segundosTotales) || 0));
+  const horas = Math.floor(total / 3600);
+  const minutos = Math.floor((total % 3600) / 60);
+  const segundos = total % 60;
+
+  if (horas > 0) {
+    return `${horas}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+  }
+
+  return `${minutos}:${String(segundos).padStart(2, '0')}`;
+}
+
+async function enriquecerGolesPerfilConLinksVideo(goles = []) {
+  if (!Array.isArray(goles) || goles.length === 0) return goles;
+
+  const partidoIds = [...new Set(goles.map(gol => gol.partido_id).filter(Boolean).map(String))];
+  if (partidoIds.length === 0) return goles;
+
+  const consultaPartidos = supabase
+    .from('partidos')
+    .select('*')
+    .in('id', partidoIds);
+  const resultadoPartidos = await Promise.race([
+    consultaPartidos,
+    new Promise(resolve => setTimeout(() => resolve({ data: null, error: null, timeout: true }), 4000))
+  ]);
+
+  if (resultadoPartidos?.error || resultadoPartidos?.timeout) {
+    if (resultadoPartidos?.error) {
+      console.warn('No se pudieron preparar los links de resumen para el perfil:', resultadoPartidos.error);
+    }
+    return goles;
+  }
+
+  const partidosPorId = new Map();
+  const eventosLinkeablesPorPartido = new Map();
+  goles.forEach(gol => {
+    const partidoId = String(gol.partido_id || gol.partidos?.id || '');
+    if (!partidoId) return;
+    if (!partidosPorId.has(partidoId)) {
+      partidosPorId.set(partidoId, {
+        ...(gol.partidos || {}),
+        id: partidoId,
+        goles: []
+      });
+    }
+    partidosPorId.get(partidoId).goles.push(gol);
+  });
+
+  (resultadoPartidos?.data || []).forEach(partido => {
+    const partidoId = String(partido.id || '');
+    if (!partidoId || !partidosPorId.has(partidoId)) return;
+    partidosPorId.set(partidoId, {
+      ...partidosPorId.get(partidoId),
+      ...partido,
+      goles: partidosPorId.get(partidoId).goles
+    });
+  });
+
+  const partidos = Array.from(partidosPorId.values());
+  if (partidos.length === 0) return goles;
+
+  await Promise.race([
+    anexarReviewEventosPerfil(partidos),
+    new Promise(resolve => setTimeout(resolve, 5000))
+  ]);
+
+  partidos.forEach(partido => {
+    const partidoId = String(partido.id);
+
+    const compiladoLink = obtenerLinkYouTubeReview(partido.compilado_youtube_link) || '';
+    if (!compiladoLink || !Array.isArray(partido.review_eventos) || partido.review_eventos.length === 0) {
+      return;
+    }
+
+    const clips = construirClipsCompiladoPerfil(partido.review_eventos, { atajadasMinimas: 3 });
+    const eventosLinkeables = crearEventosLinkeablesCompiladoPerfil(clips);
+    const porClip = new Map();
+    eventosLinkeables.forEach(evento => {
+      const key = String(evento.clip_source_key || '');
+      if (!key) return;
+      if (!porClip.has(key)) porClip.set(key, []);
+      porClip.get(key).push(evento);
+    });
+    eventosLinkeablesPorPartido.set(partidoId, porClip);
+  });
+
+  return goles.map(gol => {
+    const partido = partidosPorId.get(String(gol.partido_id));
+    if (!partido) return gol;
+
+    const salida = {
+      ...gol,
+      partidos: {
+        ...(gol.partidos || {}),
+        id: partido.id,
+        fecha: partido.fecha ?? gol.partidos?.fecha,
+        temporada_id: partido.temporada_id ?? gol.partidos?.temporada_id,
+        youtube_link: partido.youtube_link ?? gol.partidos?.youtube_link,
+        compilado_youtube_link: partido.compilado_youtube_link ?? gol.partidos?.compilado_youtube_link,
+        review_inicio_segundos: partido.review_inicio_segundos ?? gol.partidos?.review_inicio_segundos
+      }
+    };
+
+    const eventoGol = buscarReviewEventoGolPerfil(partido, gol);
+    const eventosClip = eventosLinkeablesPorPartido.get(String(gol.partido_id))?.get(String(eventoGol?.id || '')) || [];
+    const linkGol = eventosClip.find(evento => evento.tipo === 'gol');
+    if (linkGol) {
+      salida.video_segundos = Math.max(0, Math.round(Number(linkGol.compilado_segundos) || 0));
+      salida.video_origen = 'compilado';
+      salida.video_link = obtenerLinkYouTubeReview(partido.compilado_youtube_link) || '';
+      salida.compilado_segundos = salida.video_segundos;
+      if (linkGol.review_segundos !== null && linkGol.review_segundos !== undefined) {
+        salida.review_segundos = Math.max(0, Math.round(Number(linkGol.review_segundos) || 0));
+      }
+    }
+
+    return salida;
+  });
+}
+
+function actualizarLinksVideoPerfilEnSegundoPlano(jugadorId, temporadaId, goles = []) {
+  enriquecerGolesPerfilConLinksVideo(goles)
+    .then(golesEnriquecidos => {
+      if (!datosPerfilJugador || jugadorPerfilActual !== jugadorId || temporadaPerfilSeleccionada !== temporadaId) {
+        return;
+      }
+
+      datosPerfilJugador.goles = golesEnriquecidos;
+      renderizarVideosGoles();
+      renderizarVideosAsistencias();
+      renderizarVideosCagadas();
+    })
+    .catch(error => {
+      console.warn('No se pudieron actualizar los links de video del perfil:', error);
+    });
+}
+
 /**
  * Carga el perfil completo de un jugador
  */
@@ -3235,7 +3520,6 @@ async function cargarPerfilJugador(jugadorId) {
     if (temporadaPerfilSeleccionada) {
       golesFiltrados = golesFiltrados.filter(g => g.partidos.temporada_id === temporadaPerfilSeleccionada);
     }
-
     // Contar goles, asistencias y cagadas en gol desde la tabla goles
     const golesCount = golesFiltrados.filter(g => g.goleador_id === jugadorId).length;
     const asistenciasCount = golesFiltrados.filter(g => g.asistidor_id === jugadorId).length;
@@ -3273,14 +3557,23 @@ async function cargarPerfilJugador(jugadorId) {
       cagadasEnGol: cagadasEnGolCount
     });
 
+    const renderizarSeccionPerfil = (nombreSeccion, renderFn) => {
+      try {
+        renderFn();
+      } catch (errorRender) {
+        console.error(`Error al renderizar ${nombreSeccion} del perfil:`, errorRender);
+      }
+    };
+
     // Renderizar el perfil
-    renderizarPerfilBasico();
-    renderizarSidebarPerfil();
-    renderizarPartidosRecientesPerfil();
-    renderizarVideosGoles();
-    renderizarVideosAsistencias();
-    renderizarVideosCagadas();
-    renderizarEstadisticasDetalladas(); // Keeps the original stats table working
+    renderizarSeccionPerfil('cabecera', renderizarPerfilBasico);
+    renderizarSeccionPerfil('sidebar', renderizarSidebarPerfil);
+    renderizarSeccionPerfil('goles en video', renderizarVideosGoles);
+    renderizarSeccionPerfil('asistencias en video', renderizarVideosAsistencias);
+    renderizarSeccionPerfil('cagadas en video', renderizarVideosCagadas);
+    actualizarLinksVideoPerfilEnSegundoPlano(jugadorId, temporadaPerfilSeleccionada, golesFiltrados);
+    renderizarSeccionPerfil('partidos recientes', renderizarPartidosRecientesPerfil);
+    renderizarSeccionPerfil('estadisticas detalladas', renderizarEstadisticasDetalladas); // Keeps the original stats table working
 
     // Las sinergias y rivalidades se cargan bajo demanda cuando se hace click en el tab
 
@@ -3628,6 +3921,61 @@ function obtenerNombreJugadorPorId(jugadorId) {
   return todosLosJugadoresGlobal.find(j => j.id === jugadorId)?.nombre || null;
 }
 
+function resolverVideoEventoPerfil(evento) {
+  const videoLink = obtenerLinkYouTubeReview(evento?.video_link);
+  const videoSegundosRaw = evento?.video_segundos ?? evento?.compilado_segundos;
+  const videoSegundos = videoSegundosRaw !== null && videoSegundosRaw !== undefined
+    ? Number(videoSegundosRaw)
+    : null;
+
+  if (videoLink && Number.isFinite(videoSegundos) && extraerVideoId(videoLink)) {
+    return {
+      link: videoLink,
+      videoId: extraerVideoId(videoLink),
+      segundos: Math.max(0, Math.round(videoSegundos)),
+      origen: evento?.video_origen === 'compilado' ? 'Resumen' : 'Video'
+    };
+  }
+
+  const reviewLink = obtenerLinkYouTubeReview(evento?.partidos?.youtube_link) ||
+    (evento?.video_origen !== 'compilado' ? videoLink : '');
+  const reviewSegundosRaw = evento?.review_segundos;
+  const reviewSegundos = reviewSegundosRaw !== null && reviewSegundosRaw !== undefined
+    ? Number(reviewSegundosRaw)
+    : null;
+
+  if (reviewLink && Number.isFinite(reviewSegundos) && extraerVideoId(reviewLink)) {
+    return {
+      link: reviewLink,
+      videoId: extraerVideoId(reviewLink),
+      segundos: Math.max(0, Math.round(reviewSegundos)),
+      origen: 'Review'
+    };
+  }
+
+  const tieneMinuto = evento?.minuto !== null && evento?.minuto !== undefined;
+  const minuto = tieneMinuto ? Number(evento.minuto) : null;
+  if (reviewLink && Number.isFinite(minuto) && extraerVideoId(reviewLink)) {
+    return {
+      link: reviewLink,
+      videoId: extraerVideoId(reviewLink),
+      segundos: Math.max(0, Math.round(minuto * 60)),
+      origen: 'Review'
+    };
+  }
+
+  return null;
+}
+
+function formatearMinutoPartidoPerfil(minuto) {
+  if (minuto === null || minuto === undefined) return 'Sin minuto de partido';
+  const minutoNumerico = Number(minuto);
+  if (!Number.isFinite(minutoNumerico)) return 'Sin minuto de partido';
+  const minutos = Math.floor(minutoNumerico);
+  const segundos = Math.round((minutoNumerico - minutos) * 60);
+  return segundos > 0 ? `${minutos}:${segundos.toString().padStart(2, '0')}` : `${minutos}'`;
+}
+
 function renderizarEventosConVideoPerfil({
   containerId,
   eventos,
@@ -3649,27 +3997,22 @@ function renderizarEventosConVideoPerfil({
     return;
   }
 
-  const tieneVideoConTimestamp = (evento) => {
-    const tieneMinuto = evento.minuto !== null && evento.minuto !== undefined;
-    const youtubeLink = evento.partidos?.youtube_link;
-    return !!(tieneMinuto && youtubeLink && extraerVideoId(youtubeLink));
-  };
-
-  const eventosConVideo = eventos.filter(tieneVideoConTimestamp);
-  const eventosSinVideo = eventos.filter(evento => !tieneVideoConTimestamp(evento));
+  const eventosPreparados = eventos.map(evento => ({
+    evento,
+    video: resolverVideoEventoPerfil(evento)
+  }));
+  const eventosConVideo = eventosPreparados.filter(item => item.video);
+  const eventosSinVideo = eventosPreparados.filter(item => !item.video).map(item => item.evento);
 
   let html = '';
 
   if (eventosConVideo.length > 0) {
-    html += eventosConVideo.map((evento, index) => {
-      const youtubeLink = evento.partidos?.youtube_link || '';
-      const videoId = extraerVideoId(youtubeLink);
-      const segundos = Math.round((evento.minuto || 0) * 60);
+    html += eventosConVideo.map(({ evento, video }, index) => {
       const fecha = evento.partidos?.fecha
         ? new Date(evento.partidos.fecha).toLocaleDateString('es-AR')
         : 'Fecha desconocida';
-      const minutos = Math.floor(evento.minuto || 0);
-      const segs = Math.round(((evento.minuto || 0) - minutos) * 60);
+      const minutoPartido = formatearMinutoPartidoPerfil(evento.minuto);
+      const minutoVideo = formatearSegundosVideoPerfil(video.segundos);
       const detalleExtra = detalleExtraFn ? detalleExtraFn(evento) : '';
 
       return `
@@ -3677,7 +4020,7 @@ function renderizarEventosConVideoPerfil({
           <div class="card bg-dark border-secondary h-100">
             <div class="ratio ratio-16x9">
               <iframe
-                src="https://www.youtube.com/embed/${videoId}?start=${segundos}"
+                src="https://www.youtube.com/embed/${video.videoId}?start=${video.segundos}"
                 title="${tituloEvento} ${index + 1}"
                 frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -3686,7 +4029,7 @@ function renderizarEventosConVideoPerfil({
             </div>
             <div class="card-body py-2">
               <small class="text-muted">${fecha}</small>
-              <p class="mb-0 small">${iconoLinea} Minuto ${minutos}'${segs > 0 ? segs.toString().padStart(2, '0') : ''}</p>
+              <p class="mb-0 small">${iconoLinea} Partido ${minutoPartido} - ${video.origen} ${minutoVideo}</p>
               ${detalleExtra}
             </div>
           </div>
@@ -3722,7 +4065,7 @@ function renderizarEventosConVideoPerfil({
  * Renderiza los videos de goles del jugador
  */
 function renderizarVideosGoles() {
-  const goles = datosPerfilJugador.goles.filter(g => g.goleador_id === jugadorPerfilActual);
+  const goles = (datosPerfilJugador?.goles || []).filter(g => g.goleador_id === jugadorPerfilActual);
 
   renderizarEventosConVideoPerfil({
     containerId: 'perfil-videos-container',
@@ -3745,7 +4088,7 @@ function renderizarVideosGoles() {
 }
 
 function renderizarVideosAsistencias() {
-  const asistencias = datosPerfilJugador.goles.filter(g => g.asistidor_id === jugadorPerfilActual);
+  const asistencias = (datosPerfilJugador?.goles || []).filter(g => g.asistidor_id === jugadorPerfilActual);
 
   renderizarEventosConVideoPerfil({
     containerId: 'perfil-asistencias-container',
@@ -3761,7 +4104,7 @@ function renderizarVideosAsistencias() {
 }
 
 function renderizarVideosCagadas() {
-  const cagadasEnGol = datosPerfilJugador.goles.filter(g => g.cagada_jugador_id === jugadorPerfilActual);
+  const cagadasEnGol = (datosPerfilJugador?.goles || []).filter(g => g.cagada_jugador_id === jugadorPerfilActual);
 
   renderizarEventosConVideoPerfil({
     containerId: 'perfil-cagadas-container',
