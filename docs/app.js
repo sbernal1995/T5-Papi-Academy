@@ -18436,8 +18436,8 @@ const initApp = () => {
       }[tipoPremio];
       const companerosHtml = companeros.length
         ? companeros.map(item => `
-          <button type="button" class="historial-team-mini-player" onclick="irAPerfilJugador('${escaparTextoParaJs(item.jugador.jugador_id)}')" title="${escaparHtmlPlano(item.nombre)}">
-            ${escaparHtmlPlano(item.nombre)}
+          <button type="button" class="historial-team-mini-player" onclick="irAPerfilJugador('${escaparTextoParaJs(item.jugador.jugador_id)}')" title="${escaparHtmlPlano(item.nombre)}" aria-label="${escaparHtmlPlano(item.nombre)}">
+            ${renderizarAvatarJugador(item.jugador.jugador_id, item.nombre, 'xs', 'historial-team-mini-avatar')}
           </button>
         `).join('')
         : '<span class="historial-team-mini-empty">Sin companeros</span>';
