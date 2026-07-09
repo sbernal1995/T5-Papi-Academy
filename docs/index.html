@@ -3604,6 +3604,94 @@
         font-size: 1rem;
       }
 
+      .historial-match-moments {
+        border-top: 1px solid rgba(148, 163, 184, 0.12);
+        display: grid;
+        gap: 0.42rem;
+        margin-top: -0.12rem;
+        padding: 0.55rem 0.08rem 0;
+      }
+
+      .historial-match-moments-label {
+        color: rgba(148, 163, 184, 0.54);
+        font-size: 0.64rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .historial-match-moments-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+
+      .historial-match-moment {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.34);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 999px;
+        color: rgba(226, 232, 240, 0.72);
+        display: inline-flex;
+        gap: 0.38rem;
+        max-width: 100%;
+        min-width: 0;
+        padding: 0.28rem 0.54rem;
+      }
+
+      .historial-match-moment-icon {
+        align-items: center;
+        color: rgba(203, 213, 225, 0.72);
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 0.86rem;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .historial-match-moment-copy {
+        align-items: baseline;
+        display: inline-flex;
+        gap: 0.32rem;
+        min-width: 0;
+      }
+
+      .historial-match-moment strong {
+        color: rgba(248, 250, 252, 0.78);
+        font-size: 0.72rem;
+        font-weight: 900;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .historial-match-moment small {
+        color: rgba(148, 163, 184, 0.72);
+        font-size: 0.7rem;
+        font-weight: 750;
+        line-height: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .historial-match-moment.is-comeback .historial-match-moment-icon {
+        color: #fbbf24;
+      }
+
+      .historial-match-moment.is-drama .historial-match-moment-icon {
+        color: #c4b5fd;
+      }
+
+      .historial-match-moment.is-streak .historial-match-moment-icon {
+        color: #fdba74;
+      }
+
+      .historial-match-moment.is-mistakes .historial-match-moment-icon {
+        color: #fda4af;
+      }
+
       .historial-achievements {
         display: block;
         margin: 0.72rem auto 0.9rem;
@@ -3820,6 +3908,24 @@
         background: rgba(244, 63, 94, 0.22);
         border-color: rgba(254, 243, 199, 0.42);
         color: #fff1f2;
+      }
+
+      .historial-achievement.is-comeback .historial-achievement-icon {
+        background: rgba(245, 158, 11, 0.24);
+        border-color: rgba(253, 230, 138, 0.48);
+        color: #fffbeb;
+      }
+
+      .historial-achievement.is-drama .historial-achievement-icon {
+        background: rgba(124, 58, 237, 0.24);
+        border-color: rgba(196, 181, 253, 0.48);
+        color: #f5f3ff;
+      }
+
+      .historial-achievement.is-streak .historial-achievement-icon {
+        background: rgba(249, 115, 22, 0.24);
+        border-color: rgba(254, 215, 170, 0.5);
+        color: #fff7ed;
       }
 
       @media (max-width: 575.98px) {
@@ -4394,6 +4500,46 @@
         background: rgba(250, 204, 21, 0.14);
         border-color: rgba(250, 204, 21, 0.34);
         color: #fde68a;
+      }
+
+      .gol-timeline-event {
+        border: 1px solid transparent;
+        position: relative;
+      }
+
+      .gol-timeline-event.is-comeback {
+        background:
+          linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(255, 255, 255, 0.02)),
+          rgba(245, 158, 11, 0.08) !important;
+        border-color: rgba(251, 191, 36, 0.34);
+      }
+
+      .gol-timeline-event.is-key {
+        border-color: rgba(250, 204, 21, 0.78);
+        box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.16), 0 8px 20px rgba(0, 0, 0, 0.16);
+      }
+
+      .gol-timeline-badge {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.66rem;
+        font-weight: 900;
+        gap: 0.24rem;
+        line-height: 1;
+        margin-bottom: 0.32rem;
+        padding: 0.22rem 0.42rem;
+        white-space: nowrap;
+      }
+
+      .gol-timeline-badge.is-key {
+        background: rgba(250, 204, 21, 0.22);
+        color: #fde68a;
+      }
+
+      .gol-timeline-badge.is-comeback {
+        background: rgba(245, 158, 11, 0.18);
+        color: #fed7aa;
       }
 
       .historial-match-teams {
@@ -5390,6 +5536,11 @@
         color: #ddd6fe;
       }
 
+      .perfil-award-mini.is-key-goal {
+        background: rgba(245, 158, 11, 0.18);
+        color: #fde68a;
+      }
+
       .perfil-skill-mini {
         background: rgba(148, 163, 184, 0.12);
         color: rgba(226, 232, 240, 0.74);
@@ -5807,6 +5958,21 @@
         color: #0c447c;
       }
 
+      .perfil-modern-achievement.is-comeback {
+        background: #fff1d8;
+        color: #6b3500;
+      }
+
+      .perfil-modern-achievement.is-pace {
+        background: #fff0ef;
+        color: #7f1d1d;
+      }
+
+      .perfil-modern-achievement.is-ice {
+        background: #e8fbff;
+        color: #075985;
+      }
+
       .perfil-modern-panel {
         display: grid;
         gap: 0.75rem;
@@ -5852,9 +6018,9 @@
       }
 
       .perfil-skill-sparkline {
-        height: 26px;
+        height: 34px;
         overflow: visible;
-        width: 110px;
+        width: 170px;
       }
 
       .perfil-skill-sparkline polyline,
@@ -5868,6 +6034,117 @@
 
       .perfil-skill-sparkline circle {
         fill: var(--perfil-tier-accent);
+      }
+
+      .perfil-moments-card {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .perfil-moments-grid {
+        display: grid;
+        gap: 0.65rem;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .perfil-moment-stat {
+        background: rgba(15, 23, 42, 0.42);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.18rem;
+        min-width: 0;
+        padding: 0.72rem 0.78rem;
+      }
+
+      .perfil-moment-stat.is-highlight {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(20, 184, 166, 0.12));
+        border-color: rgba(251, 191, 36, 0.36);
+      }
+
+      .perfil-moment-stat span {
+        color: rgba(226, 232, 240, 0.58);
+        font-size: 0.72rem;
+        font-weight: 850;
+        letter-spacing: 0;
+        line-height: 1.05;
+        text-transform: uppercase;
+      }
+
+      .perfil-moment-stat strong {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 1.34rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .perfil-moment-stat small {
+        color: rgba(203, 213, 225, 0.76);
+        font-size: 0.74rem;
+        font-weight: 700;
+        line-height: 1.18;
+      }
+
+      .perfil-goal-timing-wrap {
+        background: rgba(2, 6, 23, 0.32);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.72rem;
+        padding: 0.82rem;
+      }
+
+      .perfil-goal-timing-title {
+        color: rgba(226, 232, 240, 0.78);
+        font-size: 0.78rem;
+        font-weight: 850;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .perfil-goal-timing {
+        display: grid;
+        gap: 0.48rem;
+      }
+
+      .perfil-goal-timing-row {
+        align-items: center;
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: 3.8rem minmax(90px, 1fr) 2rem 2.6rem;
+      }
+
+      .perfil-goal-timing-row span,
+      .perfil-goal-timing-row small {
+        color: rgba(203, 213, 225, 0.72);
+        font-size: 0.76rem;
+        font-weight: 800;
+      }
+
+      .perfil-goal-timing-row strong {
+        color: #f8fafc;
+        font-size: 0.88rem;
+        line-height: 1;
+        text-align: right;
+      }
+
+      .perfil-goal-timing-row small {
+        text-align: right;
+      }
+
+      .perfil-goal-timing-track {
+        background: rgba(148, 163, 184, 0.16);
+        border-radius: 999px;
+        height: 0.42rem;
+        overflow: hidden;
+      }
+
+      .perfil-goal-timing-bar {
+        background: linear-gradient(90deg, #14b8a6, #f59e0b);
+        border-radius: inherit;
+        display: block;
+        height: 100%;
       }
 
       .fut-form-dot {
@@ -6088,6 +6365,14 @@
         color: #3c3489;
       }
 
+      .perfil-award-mini.is-key-goal {
+        align-items: center;
+        background: #ffe4a3;
+        color: #6d3c00;
+        display: inline-flex;
+        gap: 0.28rem;
+      }
+
       .perfil-award-mini.is-cag {
         background: #f7c1c1;
         color: #791f1f;
@@ -6200,6 +6485,10 @@
           justify-items: start;
         }
 
+        .perfil-moments-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
         .perfil-match-row {
           grid-template-columns: 3.3rem 4.6rem minmax(7rem, 0.75fr) minmax(10rem, 1fr) 2rem;
         }
@@ -6235,6 +6524,10 @@
         .perfil-sparkline-row,
         .perfil-modern-form {
           justify-content: space-between;
+        }
+
+        .perfil-moments-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .perfil-match-row {
@@ -6284,6 +6577,15 @@
 
         .perfil-modern-stats {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .perfil-moments-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .perfil-goal-timing-row {
+          gap: 0.42rem;
+          grid-template-columns: 3.2rem minmax(64px, 1fr) 1.7rem 2.2rem;
         }
 
         .perfil-match-row {

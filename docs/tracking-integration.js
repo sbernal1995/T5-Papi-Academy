@@ -1361,7 +1361,6 @@
     const review = details.review_analysis || {};
     const playerById = new Map((details.players || []).map(player => [String(player.player_id), player]));
     let rows = (review.defensive_players || [])
-      .filter(row => row.role !== 'goalkeeper')
       .map(row => {
         const player = playerById.get(String(row.player_id)) || {};
         return { ...row, name: player.name || row.name, team: player.team || row.team };
@@ -1369,7 +1368,7 @@
 
     if (!rows.length) {
       rows = (details.players || [])
-        .filter(player => player.defense_score !== null && player.defense_score !== undefined && toNumber(player.goalkeeper_seconds, 0) <= 0)
+        .filter(player => player.defense_score !== null && player.defense_score !== undefined)
         .map(player => ({ ...player, ...(player.defense || {}) }));
     }
     rows.sort((a, b) => toNumber(b.defense_score) - toNumber(a.defense_score));
@@ -1377,7 +1376,7 @@
 
     const coverage = review.coverage || {};
     const modeText = review.event_metrics_enabled
-      ? `Eventos sincronizados: ${toNumber(coverage.goals_linked)}/${toNumber(coverage.goals_total)} goles.`
+      ? `Eventos sincronizados: ${toNumber(coverage.goals_linked)}/${toNumber(coverage.goals_total)} goles, ${toNumber(coverage.saves_linked)}/${toNumber(coverage.saves_total)} atajadas.`
       : 'Score defensivo por movimiento en campo propio y tercio defensivo.';
 
     return `
@@ -1392,12 +1391,15 @@
               <tr>
                 <th>Jugador</th>
                 <th>Equipo</th>
+                <th>Rol</th>
                 <th>Score</th>
                 <th>Metodo</th>
                 <th>Campo propio</th>
                 <th>Tercio def.</th>
                 <th>Dist. defensa</th>
                 <th>Goles contra</th>
+                <th>Atajadas arco</th>
+                <th>Carga peligro</th>
                 <th>Marca perdida</th>
               </tr>
             </thead>
@@ -1405,16 +1407,25 @@
               ${rows.slice(0, 10).map(row => {
                 const movement = row.movement || row;
                 const method = row.defense_score_method || row.method || review.defense_score_method || '';
+                const isGoalkeeper = row.role === 'goalkeeper' || method === 'goalkeeper_clean_sheet';
+                const methodLabel = method === 'goalkeeper_clean_sheet'
+                  ? 'Arquero'
+                  : (method === 'event_tracking_blend' ? 'Eventos + movimiento' : 'Movimiento');
+                const saves = isGoalkeeper ? row.saves_made : (row.goalkeeper_saves_against ?? row.team_saves_against);
+                const dangerLoad = isGoalkeeper ? row.save_load : (row.goalkeeper_save_load_against ?? row.pressure_load_against);
                 return `
                   <tr>
                     <td><span class="tracking-player-dot" style="background:${row.team === 'A' ? '#60a5fa' : '#f87171'}"></span>${escapeHtml(row.name || row.detected_name || row.player_id || '-')}</td>
                     <td>${escapeHtml(row.team || '-')}</td>
+                    <td>${isGoalkeeper ? 'Arquero' : 'Defensa'}</td>
                     <td><strong>${toNumber(row.defense_score).toFixed(1)}</strong></td>
-                    <td>${escapeHtml(method === 'event_tracking_blend' ? 'Eventos + movimiento' : 'Movimiento')}</td>
-                    <td>${toNumber(movement.defensive_half_pct ?? movement.own_half_pct).toFixed(1)}%</td>
-                    <td>${toNumber(movement.defensive_third_pct).toFixed(1)}%</td>
-                    <td>${toNumber(movement.defensive_distance_m).toFixed(0)} m</td>
+                    <td>${escapeHtml(methodLabel)}</td>
+                    <td>${isGoalkeeper ? '-' : `${toNumber(movement.defensive_half_pct ?? movement.own_half_pct).toFixed(1)}%`}</td>
+                    <td>${isGoalkeeper ? '-' : `${toNumber(movement.defensive_third_pct).toFixed(1)}%`}</td>
+                    <td>${isGoalkeeper ? '-' : `${toNumber(movement.defensive_distance_m).toFixed(0)} m`}</td>
                     <td>${toNumber(row.goals_against)}</td>
+                    <td>${toNumber(saves)}</td>
+                    <td>${toNumber(dangerLoad).toFixed(1)}</td>
                     <td>${toNumber(row.lost_mark)}</td>
                   </tr>
                 `;
