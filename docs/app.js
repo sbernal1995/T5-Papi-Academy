@@ -18024,6 +18024,25 @@ const initApp = () => {
     };
 
     let html = '<div class="row g-4">';
+    const obtenerNombreJugadorHistorial = (jp) => (jp?.jugadores?.nombre || 'Jugador').trim();
+    const obtenerInfoEquipoHistorial = (jugadores = []) => {
+      const nombres = jugadores.map(obtenerNombreJugadorHistorial).filter(Boolean);
+      if (!nombres.length) {
+        return {
+          corto: 'Sin jugadores',
+          completo: 'Sin jugadores registrados'
+        };
+      }
+
+      const corto = nombres.length <= 2
+        ? nombres.join(' + ')
+        : `${nombres.slice(0, 2).join(', ')} +${nombres.length - 2}`;
+
+      return {
+        corto,
+        completo: nombres.join(' · ')
+      };
+    };
 
     // Continuar con los partidos
     partidos.forEach((partido, index) => {
@@ -18062,17 +18081,6 @@ const initApp = () => {
             }
           }
         });
-      }
-
-      // Determinar ganador
-      let equipoGanador = '';
-
-      if (partido.equipo_ganador === 1) {
-        equipoGanador = 'Equipo 1';
-      } else if (partido.equipo_ganador === 2) {
-        equipoGanador = 'Equipo 2';
-      } else {
-        equipoGanador = 'Empate';
       }
 
       // Obtener MVP y ACE
@@ -18203,8 +18211,10 @@ const initApp = () => {
       const equipo1Ganador = partido.equipo_ganador === 1;
       const equipo2Ganador = partido.equipo_ganador === 2;
       const esEmpate = !equipo1Ganador && !equipo2Ganador;
+      const equipo1Info = obtenerInfoEquipoHistorial(equipo1);
+      const equipo2Info = obtenerInfoEquipoHistorial(equipo2);
       const resultadoClase = equipo1Ganador ? 'is-winner-team-1' : (equipo2Ganador ? 'is-winner-team-2' : 'is-draw');
-      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipoGanador}`;
+      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.corto : equipo2Info.corto}`;
       const resumenPartido = [
         `<span><strong>${golesEquipo1 + golesEquipo2}</strong> goles</span>`,
         totalAtajadas > 0 ? `<span><strong>${totalAtajadas}</strong> atajadas</span>` : '',
@@ -18219,17 +18229,6 @@ const initApp = () => {
               <div class="historial-match-kicker">
                 <span class="historial-match-number">Partido #${numeroPartido}</span>
                 <span class="historial-match-result">${resultadoTexto}</span>
-              </div>
-              <div class="historial-score-row">
-                <div class="historial-score-team is-team-1 ${equipo1Ganador ? 'is-winner' : ''}">
-                  <span>Equipo 1</span>
-                  <strong>${golesEquipo1}</strong>
-                </div>
-                <span class="historial-score-divider">-</span>
-                <div class="historial-score-team is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
-                  <strong>${golesEquipo2}</strong>
-                  <span>Equipo 2</span>
-                </div>
               </div>
               <div class="historial-match-meta">
                 <span><i class="bi bi-calendar-event"></i>${fecha}</span>
@@ -18274,17 +18273,22 @@ const initApp = () => {
             <div class="row g-3 mb-3 historial-match-teams">
               <div class="col-lg-6">
                 <div class="historial-team-panel is-team-1 ${equipo1Ganador ? 'is-winner' : ''}">
-                  <div class="historial-team-header">
-                    <div class="historial-team-title">
-                      <span class="historial-team-dot"></span>
-                      <span>Equipo 1</span>
-                      <span class="historial-team-count">${equipo1.length}</span>
+                  <div class="historial-team-scoreboard">
+                    <div class="historial-team-score-block">
+                      <span>Goles</span>
+                      <strong>${golesEquipo1}</strong>
                     </div>
-                    <div class="historial-team-score">
-                      <span>Prom.</span>
-                      <strong>${skillEquipo1.toFixed(1)}</strong>
-                      <span>/10</span>
+                    <div class="historial-team-identity">
+                      <div class="historial-team-title">
+                        <span class="historial-team-dot"></span>
+                        <span class="historial-team-name">${equipo1Info.corto}</span>
+                      </div>
+                      <div class="historial-team-roster">${equipo1Info.completo}</div>
                     </div>
+                  </div>
+                  <div class="historial-team-meta-row">
+                    <span>${equipo1.length} jugadores</span>
+                    <span>Prom. <strong>${skillEquipo1.toFixed(1)}</strong> /10</span>
                   </div>
                   <div class="historial-player-list">
                     ${equipo1.map(jp => {
@@ -18347,17 +18351,22 @@ const initApp = () => {
               </div>
               <div class="col-lg-6">
                 <div class="historial-team-panel is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
-                  <div class="historial-team-header">
-                    <div class="historial-team-title">
-                      <span class="historial-team-dot"></span>
-                      <span>Equipo 2</span>
-                      <span class="historial-team-count">${equipo2.length}</span>
+                  <div class="historial-team-scoreboard">
+                    <div class="historial-team-identity">
+                      <div class="historial-team-title">
+                        <span class="historial-team-dot"></span>
+                        <span class="historial-team-name">${equipo2Info.corto}</span>
+                      </div>
+                      <div class="historial-team-roster">${equipo2Info.completo}</div>
                     </div>
-                    <div class="historial-team-score">
-                      <span>Prom.</span>
-                      <strong>${skillEquipo2.toFixed(1)}</strong>
-                      <span>/10</span>
+                    <div class="historial-team-score-block">
+                      <span>Goles</span>
+                      <strong>${golesEquipo2}</strong>
                     </div>
+                  </div>
+                  <div class="historial-team-meta-row">
+                    <span>${equipo2.length} jugadores</span>
+                    <span>Prom. <strong>${skillEquipo2.toFixed(1)}</strong> /10</span>
                   </div>
                   <div class="historial-player-list">
                     ${equipo2.map(jp => {

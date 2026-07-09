@@ -2871,6 +2871,8 @@
         background: rgba(34, 197, 94, 0.12);
         color: #86efac;
         justify-content: center;
+        max-width: min(72%, 34rem);
+        overflow-wrap: anywhere;
         text-align: center;
       }
 
@@ -3031,7 +3033,110 @@
       }
 
       .historial-team-panel {
+        display: grid;
+        gap: 0.68rem;
         padding: 0.78rem;
+      }
+
+      .historial-team-scoreboard {
+        align-items: stretch;
+        background: rgba(2, 6, 23, 0.42);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.72rem;
+        grid-template-columns: auto minmax(0, 1fr);
+        min-height: 5rem;
+        padding: 0.68rem;
+      }
+
+      .is-team-2 .historial-team-scoreboard {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .historial-team-score-block {
+        align-items: center;
+        border-radius: 8px;
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 4.4rem;
+        padding: 0.36rem 0.6rem;
+      }
+
+      .is-team-1 .historial-team-score-block {
+        background: rgba(37, 99, 235, 0.2);
+        border: 1px solid rgba(96, 165, 250, 0.3);
+      }
+
+      .is-team-2 .historial-team-score-block {
+        background: rgba(244, 63, 94, 0.18);
+        border: 1px solid rgba(251, 113, 133, 0.3);
+      }
+
+      .historial-team-score-block span {
+        color: rgba(226, 232, 240, 0.58);
+        font-size: 0.62rem;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .historial-team-score-block strong {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 2.75rem;
+        font-weight: 800;
+        line-height: 0.92;
+      }
+
+      .historial-team-identity {
+        align-self: center;
+        min-width: 0;
+      }
+
+      .historial-team-name {
+        display: block;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .historial-team-roster {
+        color: rgba(226, 232, 240, 0.55);
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1.25;
+        margin-top: 0.2rem;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+      }
+
+      .historial-team-meta-row {
+        align-items: center;
+        color: rgba(226, 232, 240, 0.66);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 0.72rem;
+        font-weight: 800;
+        gap: 0.34rem;
+        justify-content: space-between;
+      }
+
+      .historial-team-meta-row span {
+        align-items: baseline;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        display: inline-flex;
+        gap: 0.2rem;
+        padding: 0.18rem 0.46rem;
+      }
+
+      .historial-team-meta-row strong {
+        color: #f8fafc;
+        font-family: 'Oswald', sans-serif;
+        font-size: 0.95rem;
       }
 
       .historial-team-panel.is-winner {
@@ -3203,6 +3308,7 @@
 
         .historial-match-result {
           align-self: flex-start;
+          max-width: 100%;
         }
 
         .historial-score-row {
@@ -3223,6 +3329,29 @@
 
         .historial-score-team strong {
           font-size: 2.1rem;
+        }
+
+        .historial-team-scoreboard {
+          gap: 0.52rem;
+          min-height: 4.6rem;
+          padding: 0.56rem;
+        }
+
+        .historial-team-score-block {
+          min-width: 3.9rem;
+          padding: 0.34rem 0.48rem;
+        }
+
+        .historial-team-score-block strong {
+          font-size: 2.25rem;
+        }
+
+        .historial-team-meta-row {
+          justify-content: flex-start;
+        }
+
+        .historial-team-roster {
+          font-size: 0.68rem;
         }
 
         .historial-action {
