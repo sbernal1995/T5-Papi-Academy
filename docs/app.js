@@ -2739,6 +2739,7 @@ function crearRachaPerfil() {
 function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
   const maxGolesPartido = new Map();
   const maxAsistenciasPartido = new Map();
+  const maxAtajadasPartido = new Map();
   const maxCagadasPartido = new Map();
   const maxVictoriasHilo = new Map();
   const maxDerrotasHilo = new Map();
@@ -2774,6 +2775,7 @@ function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
     });
 
     (partido.jugador_partido || []).forEach(jp => {
+      actualizarMaximoPerfil(maxAtajadasPartido, jp.jugador_id, Number(jp.atajadas) || 0);
       actualizarMaximoPerfil(maxCagadasPartido, jp.jugador_id, Number(jp.cagadas) || 0);
 
       if (!rachasPorJugador.has(jp.jugador_id)) {
@@ -2813,6 +2815,7 @@ function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
   return {
     maxGolesPartido,
     maxAsistenciasPartido,
+    maxAtajadasPartido,
     maxCagadasPartido,
     maxVictoriasHilo,
     maxDerrotasHilo
@@ -19911,6 +19914,7 @@ const initApp = () => {
       records: {
         maxGolesPartido: new Map(),
         maxAsistenciasPartido: new Map(),
+        maxAtajadasPartido: new Map(),
         maxCagadasPartido: new Map(),
         maxVictoriasHilo: new Map(),
         maxDerrotasHilo: new Map()
@@ -20099,6 +20103,30 @@ const initApp = () => {
       }
     ].map(renderizarTopCardResumenTemporada).join('');
 
+    const recordsPartido = [
+      {
+        icono: 'bi-bullseye',
+        label: 'M&aacute;x. goles en 1 partido',
+        items: obtenerTopMapaResumenTemporada(records.maxGolesPartido, statsPorJugador),
+        formatearValor: valor => `${valor} en 1 PJ`,
+        color: '#22c55e'
+      },
+      {
+        icono: 'bi-bezier2',
+        label: 'M&aacute;x. asist. en 1 partido',
+        items: obtenerTopMapaResumenTemporada(records.maxAsistenciasPartido, statsPorJugador),
+        formatearValor: valor => `${valor} en 1 PJ`,
+        color: '#38bdf8'
+      },
+      {
+        icono: 'bi-shield-fill',
+        label: 'M&aacute;x. atajadas en 1 partido',
+        items: obtenerTopMapaResumenTemporada(records.maxAtajadasPartido, statsPorJugador),
+        formatearValor: valor => `${valor} en 1 PJ`,
+        color: '#facc15'
+      }
+    ].map(renderizarCompactMetricResumenTemporada).join('');
+
     const negativos = [
       {
         icono: 'bi-x-octagon-fill',
@@ -20187,6 +20215,13 @@ const initApp = () => {
           <h4 class="season-section-title"><i class="bi bi-shield-fill"></i>Arco y resultados</h4>
           <div class="season-leader-grid">
             ${arcoCards}
+          </div>
+        </section>
+
+        <section class="season-dashboard-section" style="--season-accent:#38bdf8">
+          <h4 class="season-section-title"><i class="bi bi-trophy-fill"></i>R&eacute;cords de partido</h4>
+          <div class="season-compact-row">
+            ${recordsPartido}
           </div>
         </section>
 
