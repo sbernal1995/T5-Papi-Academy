@@ -3633,12 +3633,12 @@
         align-items: center;
         display: grid;
         gap: 0.66rem;
-        grid-template-columns: 48px minmax(0, 1fr);
+        grid-template-columns: 56px minmax(0, 1fr);
         min-width: 0;
       }
 
       .is-team-2 .historial-team-award-main {
-        grid-template-columns: minmax(0, 1fr) 48px;
+        grid-template-columns: minmax(0, 1fr) 56px;
       }
 
       .is-team-2 .historial-team-award-icon {
@@ -3654,11 +3654,11 @@
         align-items: center;
         border-radius: 8px;
         display: inline-flex;
-        font-size: 1.52rem;
-        height: 48px;
+        font-size: 1.82rem;
+        height: 56px;
         justify-content: center;
         line-height: 1;
-        width: 48px;
+        width: 56px;
       }
 
       .historial-team-award-card.is-mvp .historial-team-award-icon {
@@ -3683,46 +3683,66 @@
         display: flex;
         flex-direction: column;
         gap: 0.22rem;
+        justify-content: center;
         min-width: 0;
       }
 
-      .historial-team-award-label {
-        color: rgba(226, 232, 240, 0.58);
-        font-size: 0.64rem;
-        font-weight: 900;
-        letter-spacing: 0.06em;
-        line-height: 1;
-        text-transform: uppercase;
-      }
-
-      .historial-team-award-player {
-        align-items: center !important;
+      .historial-team-award-player-card {
+        align-items: center;
+        background: transparent;
+        border: 0;
         color: #f8fafc !important;
+        cursor: pointer;
+        display: inline-grid;
         font-family: 'Oswald', sans-serif;
-        font-size: 1.14rem;
-        font-weight: 800;
-        gap: 0.62rem;
-        letter-spacing: 0;
+        gap: 0.34rem;
+        justify-items: start;
         max-width: 100%;
-        text-align: inherit;
+        min-width: 0;
+        padding: 0;
+        text-align: left;
       }
 
-      .is-team-2 .historial-team-award-player {
+      .historial-team-award-player-card:hover {
+        color: #ffffff !important;
+      }
+
+      .is-team-2 .historial-team-award-player-card {
+        justify-items: end;
+        text-align: right;
+      }
+
+      .historial-team-award-player-card .player-avatar-xs {
+        --player-avatar-size: 64px;
+        border-width: 2px;
+        font-size: 1.04rem;
+      }
+
+      .historial-team-award-footer {
+        align-items: center;
+        display: flex;
+        gap: 0.42rem;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .is-team-2 .historial-team-award-footer {
         flex-direction: row-reverse;
       }
 
-      .historial-team-award-player .player-avatar-xs {
-        --player-avatar-size: 58px;
-        border-width: 2px;
-        font-size: 1rem;
-      }
-
-      .historial-team-award-player .player-profile-name {
+      .historial-team-award-name {
+        display: block;
+        font-size: 1.08rem;
+        font-weight: 800;
+        line-height: 1.02;
         max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .historial-team-award-rating {
-        align-self: flex-start;
         background: rgba(15, 23, 42, 0.72);
         border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 999px;
@@ -3733,10 +3753,6 @@
         font-weight: 800;
         line-height: 1;
         padding: 0.2rem 0.46rem;
-      }
-
-      .is-team-2 .historial-team-award-rating {
-        align-self: flex-end;
       }
 
       .historial-team-mini-roster {
@@ -3934,16 +3950,17 @@
       .historial-event-mark {
         align-items: center;
         display: inline-flex;
-        height: 1.08rem;
+        height: 1.24rem;
         justify-content: center;
         position: relative;
-        width: 1.08rem;
+        width: 1.24rem;
       }
 
       .historial-event-mark svg {
         display: block;
-        height: 1.12rem;
-        width: 1.12rem;
+        height: 1.26rem;
+        overflow: visible;
+        width: 1.26rem;
       }
 
       .historial-event-mark svg path {
@@ -3954,15 +3971,40 @@
         stroke-width: 1.8;
       }
 
+      .historial-event-mark svg .icon-fill {
+        fill: currentColor;
+        stroke: none;
+      }
+
+      .historial-event-mark svg .icon-light {
+        fill: #f8fafc;
+        stroke: none;
+      }
+
+      .historial-event-mark svg .icon-dark {
+        fill: #111827;
+        stroke: none;
+      }
+
+      .historial-event-mark svg .icon-line {
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .historial-event-mark svg .icon-ball-outline {
+        stroke: #111827;
+        stroke-width: 1.35;
+      }
+
+      .historial-event-mark svg .icon-ball-seam {
+        stroke: #111827;
+        stroke-width: 1.1;
+      }
+
       .historial-event-mark.is-ball {
-        background:
-          radial-gradient(circle at 50% 50%, #1f2937 0 18%, transparent 19%),
-          linear-gradient(36deg, transparent 42%, rgba(31, 41, 55, 0.9) 43% 48%, transparent 49%),
-          linear-gradient(144deg, transparent 42%, rgba(31, 41, 55, 0.9) 43% 48%, transparent 49%),
-          #f8fafc;
-        border: 1px solid rgba(15, 23, 42, 0.72);
-        border-radius: 999px;
-        box-shadow: inset 0 0 0 2px rgba(134, 239, 172, 0.24);
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
       }
 
       .historial-event-mark.is-boot {
@@ -4142,25 +4184,25 @@
         }
 
         .historial-team-award-main {
-          grid-template-columns: 42px minmax(0, 1fr);
+          grid-template-columns: 48px minmax(0, 1fr);
         }
 
         .is-team-2 .historial-team-award-main {
-          grid-template-columns: minmax(0, 1fr) 42px;
+          grid-template-columns: minmax(0, 1fr) 48px;
         }
 
         .historial-team-award-icon {
-          font-size: 1.32rem;
-          height: 42px;
-          width: 42px;
+          font-size: 1.5rem;
+          height: 48px;
+          width: 48px;
         }
 
-        .historial-team-award-player {
+        .historial-team-award-player-card .player-avatar-xs {
+          --player-avatar-size: 56px;
+        }
+
+        .historial-team-award-name {
           font-size: 1rem;
-        }
-
-        .historial-team-award-player .player-avatar-xs {
-          --player-avatar-size: 50px;
         }
 
         .historial-team-award-rating {
@@ -7037,7 +7079,7 @@
     <!-- Algoritmo Genético -->
     <script src="./genetic-teams.js"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=season-summary-redesign-kpis-2026-07-09"></script>
+    <script type="module" src="./app.js?v=historial-icons-awards-2026-07-09"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
     <!-- Funcionalidad de Paternidades -->

@@ -293,22 +293,34 @@ function crearChipEventoHistorial({ tipo, iconos = '', cantidad = 0, label = '',
 }
 
 const ICONOS_EVENTO_HISTORIAL = {
-  goal: '<span class="historial-event-mark is-ball" aria-hidden="true"></span>',
+  goal: `
+    <span class="historial-event-mark is-ball" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <circle class="icon-light" cx="12" cy="12" r="9.2"></circle>
+        <path class="icon-line icon-ball-outline" d="M12 2.8a9.2 9.2 0 1 0 0 18.4 9.2 9.2 0 0 0 0-18.4Z"></path>
+        <path class="icon-dark" d="M12 6.9l3.2 2.3-1.2 3.7h-4l-1.2-3.7L12 6.9Z"></path>
+        <path class="icon-line icon-ball-seam" d="M8.8 9.2 5.7 8M15.2 9.2 18.3 8M10 12.9l-1.5 3.2M14 12.9l1.5 3.2M7.1 17.8l1.4-1.7M16.9 17.8l-1.4-1.7M5.7 8 4.4 12M18.3 8l1.3 4"></path>
+      </svg>
+    </span>
+  `,
   assist: `
     <span class="historial-event-mark is-boot" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
-        <path d="M5.2 5.5h4.9l2.4 6.2 5.7 1.4c1.2.3 2.1 1.3 2.1 2.6v2.1H4.1c-1.2 0-2.1-.9-2.1-2.1v-2.3l4.4-1.2-1.2-6.7Z"></path>
-        <path d="M6.9 9.2h4.4M7.4 11.3h4.8M4.1 15.4h16.1"></path>
+        <path class="icon-fill" d="M4.4 5.4h5.2l2.6 6 5.5 1.2c1.7.4 3 1.9 3 3.7v2.2H4.5c-1.4 0-2.5-1.1-2.5-2.5v-2.1l4.6-1.4-2.2-7.1Z"></path>
+        <path class="icon-line" d="M6.3 8.3h4.5M7.1 10.4h4.7M7.8 12.5h5M3.3 15.2h16.9"></path>
+        <path class="icon-line" d="M6.7 18.6v1.2M11.8 18.6v1.2M16.9 18.6v1.2"></path>
       </svg>
     </span>
   `,
   save: `
     <span class="historial-event-mark is-glove" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
-        <path d="M6.4 12.5V5.8c0-.9.7-1.6 1.6-1.6s1.6.7 1.6 1.6v5.1"></path>
-        <path d="M9.6 11.2V4.6c0-.9.7-1.6 1.6-1.6s1.6.7 1.6 1.6v6.4"></path>
-        <path d="M12.8 11.2V5.1c0-.9.7-1.6 1.6-1.6S16 4.2 16 5.1v7"></path>
-        <path d="M16 12.5V7.8c0-.9.7-1.5 1.5-1.5S19 7 19 7.8v7.7c0 3.1-2.5 5.6-5.6 5.6h-1.1c-2.2 0-4.3-1.2-5.3-3.2L4.6 13c-.4-.8-.1-1.7.7-2.1.7-.3 1.5-.1 2 .5l1.7 2"></path>
+        <rect class="icon-fill" x="6.2" y="4.5" width="2.9" height="10.4" rx="1.45"></rect>
+        <rect class="icon-fill" x="9.5" y="2.8" width="2.9" height="12.1" rx="1.45"></rect>
+        <rect class="icon-fill" x="12.8" y="3.8" width="2.9" height="11.3" rx="1.45"></rect>
+        <rect class="icon-fill" x="16.1" y="6.6" width="2.9" height="8.8" rx="1.45"></rect>
+        <path class="icon-fill" d="M5.2 12.3c.9-.5 1.8-.2 2.5.6l1.9 2.3h9.2v1.2c0 3.1-2.5 5.6-5.6 5.6h-1.4c-2.3 0-4.4-1.3-5.5-3.3l-1.9-3.6c-.5-1-.2-2.3.8-2.8Z"></path>
+        <path class="icon-line" d="M7.4 15.4h10.8M8.8 18.2h7.3M9.2 7.1h6.4"></path>
       </svg>
     </span>
   `
@@ -18583,18 +18595,15 @@ const initApp = () => {
       const premioConfig = {
         mvp: {
           clase: 'is-mvp',
-          icono: 'bi-trophy-fill',
-          label: 'MVP'
+          icono: 'bi-trophy-fill'
         },
         ace: {
           clase: 'is-ace',
-          icono: 'bi-star-fill',
-          label: 'ACE'
+          icono: 'bi-star-fill'
         },
         destacado: {
           clase: 'is-featured',
-          icono: 'bi-person-badge-fill',
-          label: 'Destacado'
+          icono: 'bi-person-badge-fill'
         }
       }[tipoPremio];
       const companerosHtml = companeros.length
@@ -18608,6 +18617,7 @@ const initApp = () => {
       const destacadoPuntajeHtml = Number.isFinite(destacado.puntaje)
         ? `<span class="historial-team-award-rating">${formatearPuntajeEquipo(destacado.puntaje)}</span>`
         : '';
+      const destacadoScoreTexto = Number.isFinite(destacado.puntaje) ? formatearPuntajeEquipo(destacado.puntaje) : 'sin puntaje';
       const headerHtml = `
         <div class="historial-team-award-card ${premioConfig.clase}">
           <div class="historial-team-award-main">
@@ -18615,9 +18625,13 @@ const initApp = () => {
               <i class="bi ${premioConfig.icono}"></i>
             </span>
             <div class="historial-team-award-copy">
-              <span class="historial-team-award-label">${premioConfig.label}</span>
-              ${renderizarAccesoPerfilJugador(destacado.jugador.jugador_id, destacado.nombre, 'historial-team-award-player')}
-              ${destacadoPuntajeHtml}
+              <button type="button" class="historial-team-award-player-card" onclick="irAPerfilJugador('${escaparTextoParaJs(destacado.jugador.jugador_id)}')" title="${escaparHtmlPlano(destacado.nombre)} - ${escaparHtmlPlano(destacadoScoreTexto)}" aria-label="${escaparHtmlPlano(destacado.nombre)} - puntaje ${escaparHtmlPlano(destacadoScoreTexto)}">
+                ${renderizarAvatarJugador(destacado.jugador.jugador_id, destacado.nombre, 'xs', 'historial-team-award-avatar')}
+                <span class="historial-team-award-footer">
+                  <span class="historial-team-award-name">${escaparHtmlPlano(destacado.nombre)}</span>
+                  ${destacadoPuntajeHtml}
+                </span>
+              </button>
             </div>
           </div>
           <div class="historial-team-mini-roster">${companerosHtml}</div>
