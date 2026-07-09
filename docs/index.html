@@ -2637,8 +2637,8 @@
         display: grid;
         gap: 0.36rem;
         grid-template-columns: minmax(0, 1fr) 66px 26px;
-        min-height: 42px;
-        padding: 0.38rem 0.45rem;
+        min-height: 46px;
+        padding: 0.44rem 0.5rem;
       }
 
       .historial-player-main {
@@ -2655,12 +2655,22 @@
 
       .historial-player-events {
         color: rgba(226, 232, 240, 0.68);
-        font-size: 0.72rem;
-        line-height: 1.15;
-        margin-top: 0.18rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        display: block;
+        font-size: 0.94rem;
+        font-weight: 700;
+        line-height: 1.25;
+        margin-top: 0.24rem;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+      }
+
+      .historial-player-events a {
+        align-items: center;
+        color: inherit;
+        display: inline-flex;
+        font-size: 1.08em;
+        line-height: 1;
       }
 
       .historial-player-score {
