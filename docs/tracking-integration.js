@@ -1634,24 +1634,6 @@
     }
     APP.profileReady = true;
 
-    if (!document.getElementById('tab-perfil-tracking-partidos')) {
-      tabs.insertAdjacentHTML('beforeend', `
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-perfil-tracking-partidos" data-bs-toggle="tab" data-bs-target="#perfil-tracking-partidos" type="button" role="tab">
-            <i class="bi bi-calendar2-week me-1"></i>Partidos
-          </button>
-        </li>
-      `);
-    }
-
-    if (!document.getElementById('perfil-tracking-partidos')) {
-      content.insertAdjacentHTML('beforeend', `
-        <div class="tab-pane fade" id="perfil-tracking-partidos" role="tabpanel">
-          <div id="perfil-tracking-partidos-container"></div>
-        </div>
-      `);
-    }
-
     if (!document.getElementById('tab-perfil-tracking')) {
       tabs.insertAdjacentHTML('beforeend', `
         <li class="nav-item" role="presentation">
@@ -1671,7 +1653,6 @@
     }
 
     bindProfileTabRender('tab-perfil-tracking');
-    bindProfileTabRender('tab-perfil-tracking-partidos');
   }
 
   function bindProfileTabRender(tabId) {
@@ -1686,7 +1667,7 @@
     if (APP.profileRenderTimer) clearTimeout(APP.profileRenderTimer);
     APP.profileRenderTimer = setTimeout(() => {
       APP.profileRenderTimer = null;
-      const active = document.querySelector('#tab-perfil-tracking.active, #tab-perfil-tracking-partidos.active');
+      const active = document.querySelector('#tab-perfil-tracking.active');
       if (active) renderProfileTracking();
     }, delay);
   }
@@ -2134,16 +2115,10 @@
       const playerId = getCurrentProfilePlayerId();
       if (!playerId || !isProfileVisible()) return;
       APP.profileDefaultTabPlayerId = playerId;
-      const tab = document.getElementById('tab-perfil-tracking-partidos');
-      if (!tab) return;
-      if (!tab.classList.contains('active')) {
-        if (window.bootstrap?.Tab) {
-          window.bootstrap.Tab.getOrCreateInstance(tab).show();
-        } else {
-          tab.click();
-        }
+      const tab = document.getElementById('tab-perfil-tracking');
+      if (tab?.classList.contains('active')) {
+        scheduleProfileTrackingRender(0);
       }
-      scheduleProfileTrackingRender(0);
     }, delay);
   }
 
@@ -2161,7 +2136,7 @@
         ensureProfileTabs();
         bindProfileSelectorChange();
         const playerId = getCurrentProfilePlayerId();
-        const active = document.querySelector('#tab-perfil-tracking.active, #tab-perfil-tracking-partidos.active');
+        const active = document.querySelector('#tab-perfil-tracking.active');
         const visible = isProfileVisible();
         if (visible && playerId && (!APP.profileWasVisible || playerId !== APP.profileDefaultTabPlayerId)) {
           activateProfileMatchesDashboard(40);

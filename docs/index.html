@@ -1666,6 +1666,71 @@
         --player-avatar-size: 26px;
       }
 
+      .season-compact-content {
+        display: grid;
+        gap: 0.16rem;
+        min-width: 0;
+      }
+
+      .season-compact-primary,
+      .season-compact-runner {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        color: #f8fafc;
+        display: inline-flex;
+        font: inherit;
+        gap: 0.36rem;
+        min-width: 0;
+        padding: 0;
+        text-align: left;
+      }
+
+      .season-compact-primary {
+        cursor: pointer;
+      }
+
+      .season-compact-primary:hover,
+      .season-compact-runner:hover {
+        color: #ffffff;
+      }
+
+      .season-compact-player-inline {
+        align-items: center;
+        display: inline-flex;
+        font-size: 0.86rem;
+        font-weight: 850;
+        gap: 0.34rem;
+        min-width: 0;
+      }
+
+      .season-compact-player-inline .player-avatar-xs {
+        --player-avatar-size: 26px;
+      }
+
+      .season-compact-player-inline > span:last-child {
+        max-width: 8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .season-compact-runners {
+        display: grid;
+        gap: 0.08rem;
+      }
+
+      .season-compact-runner {
+        color: rgba(226, 232, 240, 0.62);
+        cursor: pointer;
+        font-size: 0.68rem;
+        line-height: 1.05;
+      }
+
+      .season-compact-runner strong {
+        font-size: 0.68rem;
+      }
+
       .season-compact-metric strong {
         color: var(--season-accent, #22d3ee);
         font-size: 0.9rem;
@@ -4511,6 +4576,670 @@
         }
       }
 
+      .historial-match-teams {
+        display: grid !important;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .historial-team-panel {
+        border-radius: 8px;
+        gap: 0.78rem;
+        padding: 0.98rem;
+      }
+
+      .historial-team-scoreboard {
+        align-items: stretch;
+        background: rgba(2, 6, 23, 0.42);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.72rem;
+        grid-template-columns: auto minmax(0, 1fr);
+        min-height: 5rem;
+        padding: 0.68rem;
+      }
+
+      .is-team-2 .historial-team-scoreboard {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .historial-team-score-block {
+        min-height: 5.4rem;
+        min-width: 4.75rem;
+        padding: 0.42rem 0.68rem;
+      }
+
+      .historial-team-score-block strong {
+        font-size: 3rem;
+      }
+
+      .historial-player-list {
+        gap: 0.48rem;
+      }
+
+      .historial-player-row {
+        align-items: center;
+        background: rgba(2, 6, 23, 0.34);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 8px;
+        display: grid;
+        gap: 0.54rem;
+        grid-template-columns: minmax(0, 1fr) 74px;
+        min-height: 58px;
+        padding: 0.56rem 0.62rem;
+      }
+
+      .historial-player-row.has-coin-action {
+        grid-template-columns: minmax(0, 1fr) 74px 28px;
+      }
+
+      .historial-player-main .player-avatar-xs {
+        --player-avatar-size: 34px;
+      }
+
+      .historial-player-events {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.34rem;
+        margin-top: 0.34rem;
+        white-space: normal;
+      }
+
+      .historial-player-score {
+        align-self: center;
+        display: grid;
+        justify-items: end;
+        min-width: 74px;
+      }
+
+      .historial-rating-bar {
+        margin-left: auto;
+        width: 60px;
+      }
+
+      .historial-awards-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.72rem;
+      }
+
+      .historial-award-chip {
+        align-items: center;
+        border-radius: 6px;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        gap: 0.34rem;
+        padding: 0.34rem 0.52rem;
+      }
+
+      .historial-award-chip.is-mvp {
+        background: rgba(250, 204, 21, 0.16);
+        border: 1px solid rgba(250, 204, 21, 0.34);
+        color: #fef3c7;
+      }
+
+      .historial-award-chip.is-ace {
+        background: rgba(168, 85, 247, 0.14);
+        border: 1px solid rgba(192, 132, 252, 0.32);
+        color: #e9d5ff;
+      }
+
+      @media (max-width: 575px) {
+        .historial-match-teams {
+          grid-template-columns: 1fr;
+        }
+
+        .historial-team-scoreboard,
+        .is-team-2 .historial-team-scoreboard {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .historial-player-row {
+          grid-template-columns: minmax(0, 1fr) 68px;
+          min-height: 56px;
+        }
+
+        .historial-player-row.has-coin-action {
+          grid-template-columns: minmax(0, 1fr) 68px 28px;
+        }
+      }
+
+      .perfil-modern-header {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 8px;
+        display: grid;
+        gap: 1.4rem;
+        grid-template-columns: auto minmax(0, 1fr) minmax(360px, 0.8fr);
+        margin-bottom: 1.25rem;
+        padding: 1.25rem;
+      }
+
+      .perfil-modern-rating {
+        align-items: center;
+        background: #f6c96f;
+        border-radius: 50%;
+        color: #3b2608;
+        display: grid;
+        font-size: 2rem;
+        font-weight: 900;
+        height: 5.4rem;
+        justify-content: center;
+        line-height: 1;
+        width: 5.4rem;
+      }
+
+      .perfil-modern-identity,
+      .perfil-modern-name-row,
+      .perfil-modern-subrow {
+        min-width: 0;
+      }
+
+      .perfil-modern-name-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+      }
+
+      .perfil-modern-name-row h2 {
+        color: #f8fafc;
+        font-size: 2rem;
+        font-weight: 900;
+        line-height: 1.05;
+        margin: 0;
+      }
+
+      .perfil-modern-roles,
+      .perfil-modern-meta,
+      .perfil-modern-subrow,
+      .perfil-modern-achievements {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+
+      .perfil-modern-meta {
+        color: rgba(226, 232, 240, 0.62);
+        font-size: 0.88rem;
+        margin-top: 0.35rem;
+      }
+
+      .perfil-role-chip,
+      .perfil-modern-achievement,
+      .perfil-personal-stat,
+      .perfil-award-mini,
+      .perfil-skill-mini,
+      .perfil-tracking-badge {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-weight: 800;
+        gap: 0.28rem;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .perfil-role-chip {
+        background: rgba(245, 158, 11, 0.18);
+        color: #f8c471;
+        font-size: 0.9rem;
+        padding: 0.36rem 0.68rem;
+      }
+
+      .perfil-role-chip.is-secondary {
+        background: rgba(59, 130, 246, 0.16);
+        color: #93c5fd;
+      }
+
+      .perfil-role-chip.is-muted {
+        background: rgba(148, 163, 184, 0.14);
+        color: rgba(226, 232, 240, 0.7);
+      }
+
+      .perfil-modern-form {
+        align-items: center;
+        color: rgba(226, 232, 240, 0.58);
+        display: inline-flex;
+        gap: 0.34rem;
+        margin-top: 0.65rem;
+      }
+
+      .perfil-modern-achievements {
+        margin-top: 0.65rem;
+      }
+
+      .perfil-modern-achievement {
+        background: rgba(255, 255, 255, 0.075);
+        color: rgba(248, 250, 252, 0.86);
+        font-size: 0.75rem;
+        padding: 0.34rem 0.52rem;
+      }
+
+      .perfil-modern-stats {
+        display: grid;
+        gap: 0.7rem 1.2rem;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .perfil-modern-stat span {
+        color: rgba(226, 232, 240, 0.52);
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .perfil-modern-stat strong {
+        color: #f8fafc;
+        display: block;
+        font-size: 1.45rem;
+        font-weight: 900;
+        line-height: 1.1;
+      }
+
+      .perfil-side-card {
+        background: rgba(255, 255, 255, 0.052);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        margin-bottom: 0.9rem;
+        padding: 0.9rem;
+      }
+
+      .perfil-side-title {
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: #f8fafc;
+        display: flex;
+        font-size: 0.88rem;
+        font-weight: 900;
+        gap: 0.42rem;
+        margin-bottom: 0.78rem;
+        padding-bottom: 0.62rem;
+      }
+
+      .perfil-relation-list {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .perfil-relation-row {
+        align-items: center;
+        display: grid;
+        gap: 0.65rem;
+        grid-template-columns: minmax(0, 1fr) 5rem;
+      }
+
+      .perfil-relation-player {
+        align-items: center;
+        display: flex;
+        gap: 0.52rem;
+        min-width: 0;
+      }
+
+      .perfil-relation-player strong,
+      .perfil-relation-player span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .perfil-relation-player strong {
+        color: #f8fafc;
+        font-size: 0.84rem;
+      }
+
+      .perfil-relation-player span {
+        color: rgba(226, 232, 240, 0.52);
+        font-size: 0.72rem;
+      }
+
+      .perfil-relation-wr {
+        display: grid;
+        gap: 0.22rem;
+        justify-items: end;
+      }
+
+      .perfil-wr-mini {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        height: 0.34rem;
+        overflow: hidden;
+        width: 3.8rem;
+      }
+
+      .perfil-wr-mini span {
+        display: block;
+        height: 100%;
+      }
+
+      .perfil-relation-wr.is-high strong { color: #86efac; }
+      .perfil-relation-wr.is-mid strong { color: #fde68a; }
+      .perfil-relation-wr.is-low strong { color: #fca5a5; }
+      .perfil-relation-wr.is-high .perfil-wr-mini span { background: #22c55e; }
+      .perfil-relation-wr.is-mid .perfil-wr-mini span { background: #f59e0b; }
+      .perfil-relation-wr.is-low .perfil-wr-mini span { background: #ef4444; }
+
+      .perfil-match-list {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .perfil-match-item {
+        background: rgba(255, 255, 255, 0.052);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-left-width: 4px;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .perfil-match-item.is-win { border-left-color: #86efac; }
+      .perfil-match-item.is-draw { border-left-color: #fde68a; }
+      .perfil-match-item.is-loss { border-left-color: #fca5a5; }
+
+      .perfil-match-row {
+        align-items: center;
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: 4.25rem minmax(8rem, 0.85fr) minmax(7.5rem, 0.75fr) minmax(9rem, 1fr) auto 2rem;
+        min-height: 4.1rem;
+        padding: 0.62rem 0.8rem;
+      }
+
+      .perfil-result-pill {
+        align-items: center;
+        display: inline-flex;
+        font-size: 1.05rem;
+        justify-content: center;
+        min-height: 2.4rem;
+        padding: 0.42rem 0.8rem;
+      }
+
+      .perfil-result-pill.is-win {
+        background: rgba(34, 197, 94, 0.2);
+        color: #86efac;
+      }
+
+      .perfil-result-pill.is-draw {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fde68a;
+      }
+
+      .perfil-result-pill.is-loss {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+      }
+
+      .perfil-match-where {
+        min-width: 0;
+      }
+
+      .perfil-match-where strong,
+      .perfil-match-where span,
+      .perfil-match-where small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .perfil-match-where strong {
+        color: #f8fafc;
+        font-size: 1rem;
+      }
+
+      .perfil-match-where span,
+      .perfil-match-where small {
+        color: rgba(226, 232, 240, 0.54);
+        font-size: 0.78rem;
+      }
+
+      .perfil-match-personal,
+      .perfil-match-tags {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.32rem;
+        min-width: 0;
+      }
+
+      .perfil-personal-stat {
+        background: rgba(59, 130, 246, 0.14);
+        color: #bfdbfe;
+        font-size: 0.78rem;
+        padding: 0.34rem 0.48rem;
+      }
+
+      .perfil-personal-stat.is-negative {
+        background: rgba(239, 68, 68, 0.14);
+        color: #fca5a5;
+      }
+
+      .perfil-personal-stat.is-muted {
+        background: rgba(148, 163, 184, 0.12);
+        color: rgba(226, 232, 240, 0.56);
+      }
+
+      .perfil-award-mini,
+      .perfil-skill-mini,
+      .perfil-tracking-badge {
+        font-size: 0.72rem;
+        padding: 0.28rem 0.44rem;
+      }
+
+      .perfil-award-mini.is-mvp {
+        background: rgba(250, 204, 21, 0.17);
+        color: #fde68a;
+      }
+
+      .perfil-award-mini.is-ace {
+        background: rgba(168, 85, 247, 0.16);
+        color: #ddd6fe;
+      }
+
+      .perfil-skill-mini {
+        background: rgba(148, 163, 184, 0.12);
+        color: rgba(226, 232, 240, 0.68);
+      }
+
+      .perfil-tracking-badge {
+        background: rgba(22, 163, 74, 0.16);
+        color: #86efac;
+      }
+
+      .perfil-avatar-stack {
+        align-items: center;
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+        min-width: 5.5rem;
+      }
+
+      .perfil-avatar-stack .player-avatar-xs,
+      .perfil-avatar-more {
+        border: 2px solid rgba(15, 23, 42, 0.9);
+        margin-left: -0.45rem;
+      }
+
+      .perfil-avatar-stack .player-avatar-xs {
+        --player-avatar-size: 30px;
+      }
+
+      .perfil-avatar-more {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 50%;
+        color: rgba(248, 250, 252, 0.78);
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 900;
+        height: 30px;
+        justify-content: center;
+        width: 30px;
+      }
+
+      .perfil-expand-btn {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        color: rgba(226, 232, 240, 0.6);
+        display: inline-flex;
+        height: 2rem;
+        justify-content: center;
+        padding: 0;
+        width: 2rem;
+      }
+
+      .perfil-expand-btn:hover {
+        color: #f8fafc;
+      }
+
+      .perfil-match-detail {
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+        padding: 0.85rem 0.9rem 0.95rem;
+      }
+
+      .perfil-lineup-column {
+        display: grid;
+        gap: 0.42rem;
+        min-width: 0;
+      }
+
+      .perfil-lineup-column h6 {
+        color: rgba(226, 232, 240, 0.56);
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin: 0 0 0.12rem;
+      }
+
+      .perfil-lineup-player {
+        align-items: center;
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: minmax(0, 1fr) minmax(6rem, auto);
+      }
+
+      .perfil-lineup-player.is-current {
+        color: #f8fafc;
+      }
+
+      .perfil-lineup-name {
+        align-items: center;
+        display: flex;
+        gap: 0.44rem;
+        min-width: 0;
+      }
+
+      .perfil-lineup-name strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .perfil-lineup-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.26rem;
+        justify-content: flex-end;
+      }
+
+      .perfil-link-match {
+        align-self: end;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        color: #f8fafc;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.42rem 0.58rem;
+        white-space: nowrap;
+      }
+
+      .perfil-link-match:hover {
+        background: rgba(255, 255, 255, 0.13);
+      }
+
+      @media (max-width: 1199px) {
+        .perfil-modern-header {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .perfil-modern-stats {
+          grid-column: 1 / -1;
+        }
+
+        .perfil-match-row {
+          grid-template-columns: 4rem minmax(8rem, 1fr) minmax(8rem, 1fr) auto 2rem;
+        }
+
+        .perfil-match-tags {
+          grid-column: 2 / span 2;
+        }
+      }
+
+      @media (max-width: 767px) {
+        .perfil-modern-header {
+          grid-template-columns: 1fr;
+          padding: 1rem;
+        }
+
+        .perfil-modern-rating {
+          height: 4.35rem;
+          width: 4.35rem;
+        }
+
+        .perfil-modern-stats {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        #perfil-tabs {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        #perfil-tabs::-webkit-scrollbar {
+          display: none;
+        }
+
+        #perfil-tabs .nav-link {
+          min-width: max-content;
+        }
+
+        .perfil-match-row {
+          align-items: start;
+          grid-template-columns: 3.6rem minmax(0, 1fr) auto;
+        }
+
+        .perfil-match-personal,
+        .perfil-match-tags,
+        .perfil-avatar-stack {
+          grid-column: 2 / -1;
+        }
+
+        .perfil-expand-btn {
+          grid-column: 3;
+          grid-row: 1;
+        }
+
+        .perfil-match-detail {
+          grid-template-columns: 1fr;
+        }
+
+        .perfil-link-match {
+          justify-self: start;
+        }
+      }
+
       /* Estilos para tooltips de skill */
       .skill-tooltip {
         font-size: 0.85rem !important;
@@ -6675,33 +7404,23 @@
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-perfil-videos" data-bs-toggle="tab" data-bs-target="#perfil-videos" type="button" role="tab">
-            <i class="bi bi-play-circle me-1"></i>Mis Goles
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-perfil-asistencias" data-bs-toggle="tab" data-bs-target="#perfil-asistencias" type="button" role="tab">
-            <i class="bi bi-bullseye me-1"></i>Mis Asistencias
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-perfil-cagadas" data-bs-toggle="tab" data-bs-target="#perfil-cagadas" type="button" role="tab">
-            <i class="bi bi-exclamation-triangle me-1"></i>Mis cagadas
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-perfil-estadisticas" data-bs-toggle="tab" data-bs-target="#perfil-estadisticas" type="button" role="tab">
             <i class="bi bi-bar-chart me-1"></i>Estadísticas
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-perfil-sinergias" data-bs-toggle="tab" data-bs-target="#perfil-sinergias" type="button" role="tab">
-            <i class="bi bi-people me-1"></i>Sinergias
+            <i class="bi bi-people me-1"></i>Sinergias y rivalidades
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-perfil-rivalidades" data-bs-toggle="tab" data-bs-target="#perfil-rivalidades" type="button" role="tab">
-            <i class="bi bi-lightning me-1"></i>Rivalidades
+          <button class="nav-link" id="tab-perfil-tracking" data-bs-toggle="tab" data-bs-target="#perfil-tracking" type="button" role="tab">
+            <i class="bi bi-broadcast-pin me-1"></i>Tracking
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-perfil-logros" data-bs-toggle="tab" data-bs-target="#perfil-logros" type="button" role="tab">
+            <i class="bi bi-award me-1"></i>Logros
           </button>
         </li>
       </ul>
@@ -6765,14 +7484,30 @@
               <p class="text-muted mt-3">Selecciona un jugador para ver sus sinergias</p>
             </div>
           </div>
-        </div>
-
-        <!-- Tab Rivalidades -->
-        <div class="tab-pane fade" id="perfil-rivalidades" role="tabpanel">
-          <div id="perfil-rivalidades-container">
+          <div id="perfil-rivalidades-container" class="mt-4">
             <div class="col-12 text-center py-5">
               <i class="bi bi-lightning display-4 text-muted"></i>
               <p class="text-muted mt-3">Selecciona un jugador para ver sus rivalidades</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Tracking -->
+        <div class="tab-pane fade" id="perfil-tracking" role="tabpanel">
+          <div id="perfil-tracking-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-broadcast-pin display-4 text-muted"></i>
+              <p class="text-muted mt-3">Este jugador todavia no tiene tracking importado.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Logros -->
+        <div class="tab-pane fade" id="perfil-logros" role="tabpanel">
+          <div id="perfil-logros-container">
+            <div class="col-12 text-center py-5">
+              <i class="bi bi-award display-4 text-muted"></i>
+              <p class="text-muted mt-3">Selecciona un jugador para ver sus logros</p>
             </div>
           </div>
         </div>

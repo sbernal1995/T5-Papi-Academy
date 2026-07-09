@@ -950,7 +950,13 @@ window.irAPerfilJugadorTab = function(jugadorId, tabId) {
   window.irAPerfilJugador(jugadorId);
 
   window.setTimeout(() => {
-    const tab = document.getElementById(tabId);
+    const tabsCompatibles = {
+      'tab-perfil-videos': 'tab-perfil-estadisticas',
+      'tab-perfil-asistencias': 'tab-perfil-estadisticas',
+      'tab-perfil-cagadas': 'tab-perfil-estadisticas',
+      'tab-perfil-rivalidades': 'tab-perfil-sinergias'
+    };
+    const tab = document.getElementById(tabsCompatibles[tabId] || tabId);
     if (!tab) return;
 
     if (window.bootstrap?.Tab) {
@@ -2723,6 +2729,22 @@ function actualizarMaximoPerfil(mapa, clave, valor) {
   mapa.set(clave, Math.max(mapa.get(clave) || 0, numero));
 }
 
+function actualizarMaximoDetallePerfil(mapa, clave, valor, partido, extra = {}) {
+  if (!clave) return;
+  const numero = Number(valor) || 0;
+  if (numero <= 0) return;
+  const previo = mapa.get(clave);
+  const valorPrevio = Number(previo?.valor) || 0;
+  if (numero > valorPrevio) {
+    mapa.set(clave, {
+      valor: numero,
+      partidoId: partido?.id || null,
+      fecha: partido?.fecha || null,
+      ...extra
+    });
+  }
+}
+
 function pluralizarPerfil(cantidad, singular, plural = `${singular}s`) {
   return cantidad === 1 ? singular : plural;
 }
@@ -2743,6 +2765,11 @@ function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
   const maxCagadasPartido = new Map();
   const maxVictoriasHilo = new Map();
   const maxDerrotasHilo = new Map();
+  const maxGolesPartidoDetalle = new Map();
+  const maxAsistenciasPartidoDetalle = new Map();
+  const maxAtajadasPartidoDetalle = new Map();
+  const maxCagadasPartidoDetalle = new Map();
+  const mejorActuacionIndividualPartido = new Map();
   const rachasPorJugador = new Map();
 
   const partidosOrdenados = [...partidosTemporada].sort((a, b) => {
@@ -2755,6 +2782,7 @@ function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
   partidosOrdenados.forEach(partido => {
     const golesPorJugadorPartido = new Map();
     const asistenciasPorJugadorPartido = new Map();
+    const cagadasDesdeGolesPorJugadorPartido = new Map();
 
     (partido.goles || []).forEach(gol => {
       if (!gol.es_gol_en_contra && gol.goleador_id) {
@@ -2764,28 +2792,55 @@ function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
       if (!gol.es_gol_en_contra && gol.asistidor_id) {
         incrementarMapaPerfil(asistenciasPorJugadorPartido, gol.asistidor_id);
       }
+
+      if (gol.cagada_jugador_id) {
+        incrementarMapaPerfil(cagadasDesdeGolesPorJugadorPartido, gol.cagada_jugador_id);
+      }
     });
 
     golesPorJugadorPartido.forEach((valor, jugadorId) => {
       actualizarMaximoPerfil(maxGolesPartido, jugadorId, valor);
+      actualizarMaximoDetallePerfil(maxGolesPartidoDetalle, jugadorId, valor, partido);
     });
 
     asistenciasPorJugadorPartido.forEach((valor, jugadorId) => {
       actualizarMaximoPerfil(maxAsistenciasPartido, jugadorId, valor);
+      actualizarMaximoDetallePerfil(maxAsistenciasPartidoDetalle, jugadorId, valor, partido);
     });
 
     (partido.jugador_partido || []).forEach(jp => {
-      actualizarMaximoPerfil(maxAtajadasPartido, jp.jugador_id, Number(jp.atajadas) || 0);
-      actualizarMaximoPerfil(maxCagadasPartido, jp.jugador_id, Number(jp.cagadas) || 0);
+      const golesJugador = golesPorJugadorPartido.get(jp.jugador_id) || 0;
+      const asistenciasJugador = asistenciasPorJugadorPartido.get(jp.jugador_id) || 0;
+      const atajadasJugador = Number(jp.atajadas) || 0;
+      const cagadasJugador = (Number(jp.cagadas) || 0) + (cagadasDesdeGolesPorJugadorPartido.get(jp.jugador_id) || 0);
+      const equipoGanador = partido.equipo_ganador === null || partido.equipo_ganador === undefined
+        ? null
+        : Number(partido.equipo_ganador);
+      const equipoJugador = Number(jp.equipo);
+      const puntosJugador = equipoGanador === equipoJugador ? 3 : (equipoGanador === 1 || equipoGanador === 2 ? 0 : 1);
+      const skillPartido = (golesJugador * 5)
+        + ((jp.mvp ? 1 : 0) * 7)
+        + ((jp.ace ? 1 : 0) * 6)
+        + (asistenciasJugador * 4)
+        - (cagadasJugador * 5)
+        + (puntosJugador * 2)
+        + (atajadasJugador * 0.4);
+
+      actualizarMaximoPerfil(maxAtajadasPartido, jp.jugador_id, atajadasJugador);
+      actualizarMaximoDetallePerfil(maxAtajadasPartidoDetalle, jp.jugador_id, atajadasJugador, partido);
+      actualizarMaximoPerfil(maxCagadasPartido, jp.jugador_id, cagadasJugador);
+      actualizarMaximoDetallePerfil(maxCagadasPartidoDetalle, jp.jugador_id, cagadasJugador, partido);
+      actualizarMaximoDetallePerfil(mejorActuacionIndividualPartido, jp.jugador_id, skillPartido, partido, {
+        goles: golesJugador,
+        asistencias: asistenciasJugador,
+        atajadas: atajadasJugador,
+        cagadas: cagadasJugador
+      });
 
       if (!rachasPorJugador.has(jp.jugador_id)) {
         rachasPorJugador.set(jp.jugador_id, crearRachaPerfil());
       }
 
-      const equipoGanador = partido.equipo_ganador === null || partido.equipo_ganador === undefined
-        ? null
-        : Number(partido.equipo_ganador);
-      const equipoJugador = Number(jp.equipo);
       const racha = rachasPorJugador.get(jp.jugador_id);
       if (equipoGanador === equipoJugador) {
         racha.victoriasActuales += 1;
@@ -2818,7 +2873,12 @@ function calcularRecordsTemporadaPerfil(partidosTemporada = []) {
     maxAtajadasPartido,
     maxCagadasPartido,
     maxVictoriasHilo,
-    maxDerrotasHilo
+    maxDerrotasHilo,
+    maxGolesPartidoDetalle,
+    maxAsistenciasPartidoDetalle,
+    maxAtajadasPartidoDetalle,
+    maxCagadasPartidoDetalle,
+    mejorActuacionIndividualPartido
   };
 }
 
@@ -3615,6 +3675,7 @@ async function cargarPerfilJugador(jugadorId) {
     actualizarLinksVideoPerfilEnSegundoPlano(jugadorId, temporadaPerfilSeleccionada, golesFiltrados);
     renderizarSeccionPerfil('partidos recientes', renderizarPartidosRecientesPerfil);
     renderizarSeccionPerfil('estadisticas detalladas', renderizarEstadisticasDetalladas); // Keeps the original stats table working
+    renderizarSeccionPerfil('logros', renderizarLogrosPerfil);
 
     // Las sinergias y rivalidades se cargan bajo demanda cuando se hace click en el tab
 
@@ -3683,6 +3744,77 @@ function renderizarPerfilBasico() {
 
   const heroContainerFut = document.getElementById('fut-hero-container');
   if (!heroContainerFut) return;
+
+  const posicionesPerfil = posicionesFut
+    .filter(p => p?.posicion?.nombre)
+    .sort((a, b) => Number(Boolean(b.es_primaria)) - Number(Boolean(a.es_primaria)));
+  const rolesHtmlPerfil = posicionesPerfil.length > 0
+    ? posicionesPerfil.map((posicion, index) => `
+        <span class="perfil-role-chip ${index === 0 ? 'is-primary' : 'is-secondary'}">
+          ${obtenerIconoPosicionPerfil(posicion.posicion.nombre)}
+          ${escaparHtmlPlano(posicion.posicion.nombre)}
+        </span>
+      `).join('')
+    : '<span class="perfil-role-chip is-muted">Sin posicion</span>';
+  const formaHtmlPerfil = formaFut.length > 0
+    ? `
+      <div class="perfil-modern-form">
+        <span>Forma</span>
+        ${formaFut.map(resultado => `<span class="fut-form-dot fut-form-${resultado}">${resultado}</span>`).join('')}
+      </div>
+    `
+    : '';
+  const logrosHtmlPerfil = [
+    ...premiosFut,
+    ...insigniasFut.filter(insignia => insignia.unlocked)
+  ].slice(0, 5).map(logro => `
+    <span class="perfil-modern-achievement" title="${escaparHtmlPlano(logro.name)}: ${escaparHtmlPlano(logro.desc)}">
+      ${logro.iconHtml || logro.icon || '<i class="bi bi-award-fill"></i>'}
+      <span>${escaparHtmlPlano(logro.name)}</span>
+    </span>
+  `).join('');
+  const metricasHeaderPerfil = [
+    { label: 'PJ', value: resumenFut.pj },
+    { label: 'Goles', value: resumenFut.goles },
+    { label: 'Asist', value: resumenFut.asistencias },
+    { label: 'Ataj', value: resumenFut.atajadas },
+    { label: 'WR', value: `${resumenFut.winrate.toFixed(1)}%` },
+    { label: 'Pts', value: resumenFut.puntos }
+  ];
+  const posicionPrincipalNombrePerfil = posicionPrimariaFut?.posicion?.nombre
+    || posicionesPerfil[0]?.posicion?.nombre
+    || 'Sin posicion';
+
+  heroContainerFut.innerHTML = `
+    <section class="perfil-modern-header" aria-label="Resumen de ${escaparHtmlPlano(jugadorFut.nombre)}">
+      <div class="perfil-modern-rating" title="Rating del perfil">
+        ${ratingFut}
+      </div>
+      <div class="perfil-modern-identity">
+        <div class="perfil-modern-name-row">
+          <h2>${escaparHtmlPlano(jugadorFut.nombre)}</h2>
+          <div class="perfil-modern-roles">${rolesHtmlPerfil}</div>
+        </div>
+        <div class="perfil-modern-meta">
+          <span><i class="bi bi-heart-pulse"></i> Pulmon ${escaparHtmlPlano(jugadorFut.pulmon || '--')}</span>
+          <span><i class="bi bi-person-vcard"></i> ${escaparHtmlPlano(posicionPrincipalNombrePerfil)}</span>
+        </div>
+        <div class="perfil-modern-subrow">
+          ${formaHtmlPerfil}
+          ${logrosHtmlPerfil ? `<div class="perfil-modern-achievements">${logrosHtmlPerfil}</div>` : ''}
+        </div>
+      </div>
+      <div class="perfil-modern-stats">
+        ${metricasHeaderPerfil.map(stat => `
+          <div class="perfil-modern-stat">
+            <span>${escaparHtmlPlano(stat.label)}</span>
+            <strong>${escaparHtmlPlano(stat.value)}</strong>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+  return;
 
   const formaHtmlFut = formaFut.length > 0
     ? `
@@ -3818,6 +3950,10 @@ function renderizarStatsMainPerfil() {
   const resumenFut = datosPerfilJugador.resumenPerfil || obtenerResumenPerfilJugador(datosPerfilJugador);
   const containerFut = document.getElementById('perfil-stats-principales');
   if (!containerFut) return;
+
+  containerFut.innerHTML = '';
+  containerFut.classList.add('d-none');
+  return;
 
   const colorStatFut = (valor, thresholds) => {
     if (valor >= thresholds[2]) return 'var(--fut-green)';
@@ -4214,6 +4350,57 @@ function renderizarSidebarPerfil() {
 
   const { compas, rivales } = calcularCompanerosYRivalesPerfil();
 
+  const obtenerClaseWrPerfil = (wr) => {
+    if (wr >= 60) return 'is-high';
+    if (wr >= 40) return 'is-mid';
+    return 'is-low';
+  };
+
+  const renderRelacionPerfil = (item) => {
+    const wr = item.partidos > 0 ? Math.round((item.victorias / item.partidos) * 100) : 0;
+    const claseWr = obtenerClaseWrPerfil(wr);
+    return `
+      <div class="perfil-relation-row">
+        <div class="perfil-relation-player">
+          ${renderizarAvatarJugador(item.id, item.nombre, 'xs')}
+          <div>
+            <strong>${escaparHtmlPlano(item.nombre)}</strong>
+            <span>${item.partidos} PJ</span>
+          </div>
+        </div>
+        <div class="perfil-relation-wr ${claseWr}">
+          <div class="perfil-wr-mini" aria-hidden="true">
+            <span style="width:${Math.max(0, Math.min(100, wr))}%"></span>
+          </div>
+          <strong>${wr}%</strong>
+        </div>
+      </div>
+    `;
+  };
+
+  container.innerHTML = `
+    <div class="perfil-side-card">
+      <div class="perfil-side-title">
+        <i class="bi bi-people-fill"></i>
+        Compa&ntilde;eros frecuentes
+      </div>
+      <div class="perfil-relation-list">
+        ${compas.length > 0 ? compas.map(renderRelacionPerfil).join('') : '<p class="text-muted small text-center mb-0">No hay datos</p>'}
+      </div>
+    </div>
+
+    <div class="perfil-side-card">
+      <div class="perfil-side-title">
+        <i class="bi bi-lightning-charge-fill"></i>
+        Rivales frecuentes
+      </div>
+      <div class="perfil-relation-list">
+        ${rivales.length > 0 ? rivales.map(renderRelacionPerfil).join('') : '<p class="text-muted small text-center mb-0">No hay datos</p>'}
+      </div>
+    </div>
+  `;
+  return;
+
   const renderRow = (item) => {
     const wr = item.partidos > 0 ? Math.round((item.victorias / item.partidos) * 100) : 0;
     const wrColor = wr >= 50 ? 'text-success' : 'text-danger';
@@ -4236,7 +4423,7 @@ function renderizarSidebarPerfil() {
   container.innerHTML = `
     <div class="card bg-dark border-secondary mb-3">
       <div class="card-body">
-        <h6 class="text-white fw-bold border-bottom border-secondary pb-2 mb-3">Estadísticas Ranked</h6>
+        <h6 class="text-white fw-bold border-bottom border-secondary pb-2 mb-3">Resumen</h6>
         <div class="d-flex align-items-center gap-3">
           <div class="position-relative d-flex align-items-center justify-content-center" style="width: 70px; height: 70px; border-radius: 50%; background: conic-gradient(${winrateColor} ${winrate}%, #2c3034 0);">
             <div class="bg-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; position: absolute;">
@@ -4250,7 +4437,7 @@ function renderizarSidebarPerfil() {
               <span class="text-warning">${resumenFut.pe}E</span> -
               <span class="text-danger">${resumenFut.pp}D</span>
             </div>
-            <div class="text-info small fw-bold mt-1">Puntos: ${resumenFut.pts}</div>
+            <div class="text-info small fw-bold mt-1">Puntos: ${resumenFut.puntos}</div>
           </div>
         </div>
       </div>
@@ -4271,6 +4458,19 @@ function renderizarSidebarPerfil() {
     </div>
   `;
 }
+
+window.toggleDetallePartidoPerfil = function(button, detailId) {
+  const detail = document.getElementById(detailId);
+  if (!detail) return;
+  const expanded = !detail.classList.contains('d-none');
+  detail.classList.toggle('d-none', expanded);
+  button?.setAttribute('aria-expanded', String(!expanded));
+  const icon = button?.querySelector('i');
+  if (icon) {
+    icon.classList.toggle('bi-chevron-down', expanded);
+    icon.classList.toggle('bi-chevron-up', !expanded);
+  }
+};
 
 function renderizarPartidosRecientesPerfil() {
   const container = document.getElementById('perfil-partidos-container');
@@ -4296,6 +4496,163 @@ function renderizarPartidosRecientesPerfil() {
     const rendArquero = atajadas * 0.4;
     return rendAtaque + rendArquero;
   };
+
+  const perfilEsArquero = (datosPerfilJugador.jugador?.jugador_posicion || [])
+    .some(p => String(p?.posicion?.nombre || '').toLowerCase().includes('arquero'));
+
+  const renderAvatarStackPerfil = (jugadores, limite = 3) => {
+    const visibles = jugadores.slice(0, limite);
+    const restantes = Math.max(jugadores.length - visibles.length, 0);
+    return `
+      <div class="perfil-avatar-stack" aria-label="${jugadores.length} jugadores">
+        ${visibles.map(jp => renderizarAvatarJugador(jp.jugadores || jp.jugador_id, jp.jugadores?.nombre || 'Jugador', 'xs')).join('')}
+        ${restantes > 0 ? `<span class="perfil-avatar-more">+${restantes}</span>` : ''}
+      </div>
+    `;
+  };
+
+  const obtenerTrackingBadgePerfil = (jp) => {
+    const tracking = jp.tracking || jp.tracking_stats || jp.trackingPlayerStats || null;
+    if (!tracking) return '';
+    const km = Number(tracking.distance_km ?? tracking.km ?? 0);
+    const sprints = Number(tracking.sprints ?? tracking.sprint_count ?? 0);
+    if (!km && !sprints) return '';
+    return `
+      <span class="perfil-tracking-badge">
+        <i class="bi bi-activity"></i>
+        ${km ? `${km.toFixed(2)} km` : ''}
+        ${km && sprints ? ' &middot; ' : ''}
+        ${sprints ? `${Math.round(sprints)} sprints` : ''}
+      </span>
+    `;
+  };
+
+  const renderStatsCompactasPerfil = ({ goles, asistencias, atajadas, cagadas, mostrarAtajadasCero = false }) => {
+    const stats = [];
+    if (goles > 0) stats.push(`<span class="perfil-personal-stat">${goles} G</span>`);
+    if (asistencias > 0) stats.push(`<span class="perfil-personal-stat">${asistencias} A</span>`);
+    if (atajadas > 0 || mostrarAtajadasCero) stats.push(`<span class="perfil-personal-stat">${atajadas} ATA</span>`);
+    if (cagadas > 0) stats.push(`<span class="perfil-personal-stat is-negative">${cagadas} CAG</span>`);
+    return stats.join('') || '<span class="perfil-personal-stat is-muted">Sin stats</span>';
+  };
+
+  let htmlPerfil = '<div class="perfil-match-list">';
+
+  participaciones.forEach(part => {
+    if (!part.partidos) return;
+    const partido = part.partidos;
+    const jps = partido.jugador_partido || [];
+    const myJp = jps.find(jp => jp.jugador_id === jugadorId);
+    if (!myJp) return;
+
+    const equipoGanador = partido.equipo_ganador === null || partido.equipo_ganador === undefined
+      ? null
+      : Number(partido.equipo_ganador);
+    const equipoJugador = Number(myJp.equipo);
+    const esVictoria = equipoGanador === equipoJugador;
+    const esEmpate = equipoGanador !== 1 && equipoGanador !== 2;
+    const resultado = esVictoria ? 'V' : (esEmpate ? 'E' : 'D');
+    const resultadoClase = esVictoria ? 'is-win' : (esEmpate ? 'is-draw' : 'is-loss');
+    const golesPartido = partido.goles || [];
+    const misGoles = golesPartido.filter(g => g.goleador_id === jugadorId && !g.es_gol_en_contra).length;
+    const misAsists = golesPartido.filter(g => g.asistidor_id === jugadorId && !g.es_gol_en_contra).length;
+    const misCagadas = (Number(myJp.cagadas) || 0) + golesPartido.filter(g => g.cagada_jugador_id === jugadorId).length;
+    const atajadas = Number(myJp.atajadas) || 0;
+    const puntos = esVictoria ? 3 : (esEmpate ? 1 : 0);
+    const skill = calcularSkillPartido({
+      goles: misGoles,
+      asistencias: misAsists,
+      mvp: myJp.mvp ? 1 : 0,
+      ace: myJp.ace ? 1 : 0,
+      cagadas: misCagadas,
+      puntos,
+      atajadas
+    });
+    const fechaFormat = partido.fecha
+      ? new Date(`${partido.fecha}T12:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+      : '--/--';
+    const cancha = partido.cancha || partido.sede || partido.temporadas?.nombre || 'Partido';
+    const temporadaNombre = partido.temporadas?.nombre || '';
+    const miEquipo = jps.filter(jp => Number(jp.equipo) === equipoJugador);
+    const rivalEquipo = jps.filter(jp => Number(jp.equipo) !== equipoJugador);
+    const detailId = `perfil-match-${String(partido.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+    const partidoIdJs = escaparTextoParaJs(partido.id);
+
+    const obtenerStatsJugadorDetalle = (jp) => {
+      const golesJugador = golesPartido.filter(g => g.goleador_id === jp.jugador_id && !g.es_gol_en_contra).length;
+      const asistenciasJugador = golesPartido.filter(g => g.asistidor_id === jp.jugador_id && !g.es_gol_en_contra).length;
+      const cagadasJugador = (Number(jp.cagadas) || 0) + golesPartido.filter(g => g.cagada_jugador_id === jp.jugador_id).length;
+      return renderStatsCompactasPerfil({
+        goles: golesJugador,
+        asistencias: asistenciasJugador,
+        atajadas: Number(jp.atajadas) || 0,
+        cagadas: cagadasJugador
+      });
+    };
+
+    const renderJugadorDetalle = (jp) => {
+      const nombre = jp.jugadores?.nombre || 'Jugador';
+      const actual = jp.jugador_id === jugadorId ? 'is-current' : '';
+      return `
+        <div class="perfil-lineup-player ${actual}">
+          <div class="perfil-lineup-name">
+            ${renderizarAvatarJugador(jp.jugadores || jp.jugador_id, nombre, 'xs')}
+            <strong>${escaparHtmlPlano(nombre)}</strong>
+          </div>
+          <div class="perfil-lineup-stats">${obtenerStatsJugadorDetalle(jp)}</div>
+        </div>
+      `;
+    };
+
+    htmlPerfil += `
+      <article class="perfil-match-item ${resultadoClase}">
+        <div class="perfil-match-row">
+          <span class="perfil-result-pill ${resultadoClase}">${resultado}</span>
+          <div class="perfil-match-where">
+            <strong>${fechaFormat}</strong>
+            <span>${escaparHtmlPlano(cancha)}</span>
+            ${temporadaNombre ? `<small>${escaparHtmlPlano(temporadaNombre)}</small>` : ''}
+          </div>
+          <div class="perfil-match-personal">
+            ${renderStatsCompactasPerfil({
+              goles: misGoles,
+              asistencias: misAsists,
+              atajadas,
+              cagadas: misCagadas,
+              mostrarAtajadasCero: perfilEsArquero
+            })}
+          </div>
+          <div class="perfil-match-tags">
+            ${myJp.mvp ? '<span class="perfil-award-mini is-mvp"><i class="bi bi-trophy-fill"></i> MVP</span>' : ''}
+            ${myJp.ace ? '<span class="perfil-award-mini is-ace"><i class="bi bi-star-fill"></i> ACE</span>' : ''}
+            <span class="perfil-skill-mini">${skill.toFixed(1)} skill</span>
+            ${obtenerTrackingBadgePerfil(myJp)}
+          </div>
+          ${renderAvatarStackPerfil(jps, 3)}
+          <button type="button" class="perfil-expand-btn" aria-expanded="false" aria-controls="${detailId}" onclick="toggleDetallePartidoPerfil(this, '${detailId}')">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </div>
+        <div id="${detailId}" class="perfil-match-detail d-none">
+          <div class="perfil-lineup-column">
+            <h6>Tu equipo</h6>
+            ${miEquipo.map(renderJugadorDetalle).join('')}
+          </div>
+          <div class="perfil-lineup-column">
+            <h6>Rivales</h6>
+            ${rivalEquipo.map(renderJugadorDetalle).join('')}
+          </div>
+          <button type="button" class="perfil-link-match" onclick="irAHistorialPartido('${partidoIdJs}')">
+            <i class="bi bi-box-arrow-up-right"></i> Ver partido
+          </button>
+        </div>
+      </article>
+    `;
+  });
+
+  htmlPerfil += '</div>';
+  container.innerHTML = htmlPerfil;
+  return;
 
   let html = '<div class="d-flex flex-column gap-2">';
 
@@ -4401,6 +4758,53 @@ function renderizarPartidosRecientesPerfil() {
   container.innerHTML = html;
 }
 
+function renderizarLogrosPerfil() {
+  const container = document.getElementById('perfil-logros-container');
+  if (!container || !datosPerfilJugador) return;
+
+  const resumenFut = datosPerfilJugador.resumenPerfil || obtenerResumenPerfilJugador(datosPerfilJugador);
+  const premiosFut = datosPerfilJugador.premiosHistoricos || [];
+  const insigniasFut = datosPerfilJugador.insigniasPerfil || calcularInsigniasPerfil({
+    ...datosPerfilJugador,
+    resumenPerfil: resumenFut
+  });
+
+  const premiosHtml = premiosFut.length > 0
+    ? `<div class="fut-badges-grid">${premiosFut.map(renderizarBadgePerfil).join('')}</div>`
+    : `
+      <div class="fut-empty">
+        <div class="fut-empty-icon"><i class="bi bi-patch-check"></i></div>
+        <div>No hay premios historicos para esta temporada.</div>
+      </div>
+    `;
+
+  const insigniasHtml = insigniasFut.length > 0
+    ? `<div class="fut-badges-grid">${insigniasFut.map(renderizarBadgePerfil).join('')}</div>`
+    : `
+      <div class="fut-empty">
+        <div class="fut-empty-icon"><i class="bi bi-stars"></i></div>
+        <div>Sin insignias disponibles.</div>
+      </div>
+    `;
+
+  container.innerHTML = `
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Premios historicos</div>
+          ${premiosHtml}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Insignias del perfil</div>
+          ${insigniasHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderizarEstadisticasDetalladas() {
   const containerFut = document.getElementById('perfil-estadisticas-container');
   if (!containerFut) return;
@@ -4412,6 +4816,50 @@ function renderizarEstadisticasDetalladas() {
     resumenPerfil: resumenFut
   });
   const ultimosPartidosFut = resumenFut.ultimosPartidos || [];
+
+  containerFut.innerHTML = `
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Resumen general</div>
+          <table class="fut-detail-table">
+            <tr><td>Partidos</td><td>${resumenFut.pj}</td></tr>
+            <tr><td>Victorias / Empates / Derrotas</td><td>${resumenFut.pg} / ${resumenFut.pe} / ${resumenFut.pp}</td></tr>
+            <tr><td>Winrate</td><td>${resumenFut.winrate.toFixed(1)}%</td></tr>
+            <tr><td>Puntos</td><td>${resumenFut.puntos}</td></tr>
+            <tr><td>Puntos por partido</td><td>${resumenFut.puntosPP.toFixed(2)}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Ataque</div>
+          <table class="fut-detail-table">
+            <tr><td>Goles</td><td>${resumenFut.goles}</td></tr>
+            <tr><td>Asistencias</td><td>${resumenFut.asistencias}</td></tr>
+            <tr><td>Goles por partido</td><td>${resumenFut.golesPP.toFixed(2)}</td></tr>
+            <tr><td>Asistencias por partido</td><td>${resumenFut.asistenciasPP.toFixed(2)}</td></tr>
+            <tr><td>MVP</td><td>${resumenFut.mvp}</td></tr>
+            <tr><td>ACE</td><td>${resumenFut.ace}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="fut-radar-container">
+          <div class="fut-radar-title">Defensa</div>
+          <table class="fut-detail-table">
+            <tr><td>Atajadas</td><td>${resumenFut.atajadas}</td></tr>
+            <tr><td>Atajadas por partido</td><td>${resumenFut.atajadasPP.toFixed(2)}</td></tr>
+            <tr><td>Cagadas</td><td>${resumenFut.cagadas}</td></tr>
+            <tr><td>Cagadas en gol</td><td>${resumenFut.cagadasEnGol}</td></tr>
+            <tr><td>G+A</td><td>${resumenFut.goles + resumenFut.asistencias}</td></tr>
+            <tr><td>Rating</td><td>${calcularRatingPerfilFut({ ...datosPerfilJugador, resumenPerfil: resumenFut })}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+  return;
 
   const premiosHtmlFut = premiosFut.length > 0
     ? `<div class="fut-badges-grid">${premiosFut.map(renderizarBadgePerfil).join('')}</div>`
@@ -7817,7 +8265,7 @@ const initApp = () => {
             ticks: {
               color: 'rgba(255, 255, 255, 0.9)',
               callback: function(value) {
-                return value + '/10';
+                return value;
               }
             }
           },
@@ -14599,6 +15047,335 @@ const initApp = () => {
     };
   }
 
+  function obtenerMetadataReviewEventoHistorial(evento) {
+    const metadata = evento?.metadata;
+    if (!metadata) return {};
+    if (typeof metadata === 'object') return metadata;
+    if (typeof metadata !== 'string') return {};
+
+    try {
+      const parsed = JSON.parse(metadata);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function normalizarNumeroReviewHistorial(valor) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
+  function normalizarReviewSegundosHistorial(valor) {
+    const numero = normalizarNumeroReviewHistorial(valor);
+    return numero === null ? null : Math.max(0, Math.round(numero));
+  }
+
+  function obtenerJugadorPartidoHistorial(partido, jugadorId) {
+    if (!jugadorId) return null;
+    return (partido?.jugador_partido || [])
+      .find(jp => String(jp.jugador_id || jp.jugadores?.id || '') === String(jugadorId));
+  }
+
+  function obtenerNombreJugadorHistorialPayload(partido, jugadorId, ...fallbacks) {
+    const desdeFallback = fallbacks.find(nombre => String(nombre || '').trim());
+    if (desdeFallback) return String(desdeFallback).trim();
+
+    const jugadorPartido = obtenerJugadorPartidoHistorial(partido, jugadorId);
+    const nombrePartido = jugadorPartido?.jugadores?.nombre;
+    if (nombrePartido) return nombrePartido;
+
+    const jugadorLocal = todosLosJugadores.find(jugador => String(jugador.id) === String(jugadorId));
+    return jugadorLocal?.nombre || 'Jugador';
+  }
+
+  function serializarJugadorReviewHistorial(partido, jugadorPartido) {
+    const jugadorId = jugadorPartido?.jugador_id || jugadorPartido?.jugadores?.id;
+    if (!jugadorId) return null;
+    return {
+      id: jugadorId,
+      nombre: obtenerNombreJugadorHistorialPayload(partido, jugadorId, jugadorPartido?.jugadores?.nombre),
+      pulmon: jugadorPartido?.pulmon ?? jugadorPartido?.jugadores?.pulmon ?? null
+    };
+  }
+
+  function obtenerInicioReviewHistorial(partido) {
+    const segundos = normalizarReviewSegundosHistorial(partido?.review_inicio_segundos);
+    if (segundos === null) {
+      return {
+        minuto: '',
+        segundo: ''
+      };
+    }
+
+    return {
+      minuto: String(Math.floor(segundos / 60)),
+      segundo: String(segundos % 60)
+    };
+  }
+
+  function ordenarEventosReviewHistorial(eventosReview = []) {
+    return [...eventosReview].sort((a, b) => {
+      const metadataA = obtenerMetadataReviewEventoHistorial(a);
+      const metadataB = obtenerMetadataReviewEventoHistorial(b);
+      const ordenA = normalizarNumeroReviewHistorial(metadataA.orden);
+      const ordenB = normalizarNumeroReviewHistorial(metadataB.orden);
+      if (ordenA !== null && ordenB !== null && ordenA !== ordenB) return ordenA - ordenB;
+      if (ordenA !== null && ordenB === null) return -1;
+      if (ordenA === null && ordenB !== null) return 1;
+
+      const reviewA = normalizarReviewSegundosHistorial(a.review_segundos);
+      const reviewB = normalizarReviewSegundosHistorial(b.review_segundos);
+      if (reviewA !== null && reviewB !== null && reviewA !== reviewB) return reviewA - reviewB;
+      if (reviewA !== null && reviewB === null) return -1;
+      if (reviewA === null && reviewB !== null) return 1;
+
+      const minutoA = normalizarNumeroReviewHistorial(a.minuto_partido ?? metadataA.minuto);
+      const minutoB = normalizarNumeroReviewHistorial(b.minuto_partido ?? metadataB.minuto);
+      if (minutoA !== null && minutoB !== null && minutoA !== minutoB) return minutoA - minutoB;
+
+      return String(a.id || '').localeCompare(String(b.id || ''), undefined, { numeric: true });
+    });
+  }
+
+  function ordenarGolesHistorialParaReview(partido) {
+    return [...(partido?.goles || [])].sort((a, b) => {
+      const minutoA = normalizarNumeroReviewHistorial(a.minuto);
+      const minutoB = normalizarNumeroReviewHistorial(b.minuto);
+      if (minutoA !== null && minutoB !== null && minutoA !== minutoB) return minutoA - minutoB;
+
+      const reviewA = normalizarReviewSegundosHistorial(a.review_segundos);
+      const reviewB = normalizarReviewSegundosHistorial(b.review_segundos);
+      if (reviewA !== null && reviewB !== null && reviewA !== reviewB) return reviewA - reviewB;
+
+      return String(a.id || '').localeCompare(String(b.id || ''), undefined, { numeric: true });
+    });
+  }
+
+  function obtenerReviewEventoGolParaExportar(partido, gol, orden) {
+    if (typeof buscarReviewEventoGolHistorial === 'function') {
+      return buscarReviewEventoGolHistorial(partido, gol, orden);
+    }
+    return null;
+  }
+
+  function crearEventoReviewHistorialDesdeGol(partido, gol, orden) {
+    const reviewEvento = obtenerReviewEventoGolParaExportar(partido, gol, orden);
+    const metadata = obtenerMetadataReviewEventoHistorial(reviewEvento);
+    const goleadorId = gol.goleador_id || metadata.goleador_id || reviewEvento?.jugador_id || null;
+    const asistenciaId = gol.asistidor_id || metadata.asistencia_id || metadata.asistidor_id || null;
+    const cagadaId = gol.cagada_jugador_id || metadata.cagada_id || metadata.cagada_jugador_id || null;
+    const arqueroId = gol.arquero_id || metadata.arquero_id || null;
+    const equipo = Number(gol.equipo ?? metadata.equipo) || 1;
+    const minuto = normalizarNumeroReviewHistorial(gol.minuto ?? reviewEvento?.minuto_partido ?? metadata.minuto);
+    const reviewSegundos = normalizarReviewSegundosHistorial(
+      gol.review_segundos ?? reviewEvento?.review_segundos ?? metadata.review_segundos
+    );
+
+    return {
+      orden,
+      goleador_id: goleadorId,
+      goleador_nombre: obtenerNombreJugadorHistorialPayload(partido, goleadorId, metadata.goleador_nombre),
+      asistencia_id: asistenciaId || null,
+      asistencia_nombre: asistenciaId
+        ? obtenerNombreJugadorHistorialPayload(partido, asistenciaId, metadata.asistencia_nombre, metadata.asistidor_nombre)
+        : null,
+      cagada_id: cagadaId || null,
+      cagada_nombre: cagadaId
+        ? obtenerNombreJugadorHistorialPayload(partido, cagadaId, metadata.cagada_nombre, metadata.cagada_jugador_nombre)
+        : null,
+      arquero_id: arqueroId || null,
+      arquero_nombre: arqueroId
+        ? obtenerNombreJugadorHistorialPayload(partido, arqueroId, metadata.arquero_nombre)
+        : null,
+      equipo: equipo === 2 ? 2 : 1,
+      es_en_contra: !!(gol.es_gol_en_contra ?? metadata.es_gol_en_contra),
+      minuto,
+      review_segundos: reviewSegundos
+    };
+  }
+
+  function crearStatReviewHistorialDesdeEvento(partido, evento, orden) {
+    const metadata = obtenerMetadataReviewEventoHistorial(evento);
+    const jugadorId = evento.jugador_id ||
+      metadata.jugador_id ||
+      metadata.atajadas_jugador_id ||
+      metadata.buena_jugada_jugador_id ||
+      metadata.cagada_jugador_id ||
+      metadata.cagada_id ||
+      null;
+    const cantidad = Number(evento.cantidad) || 1;
+    const minuto = normalizarNumeroReviewHistorial(evento.minuto_partido ?? metadata.minuto);
+    const reviewSegundos = normalizarReviewSegundosHistorial(evento.review_segundos ?? metadata.review_segundos);
+
+    return {
+      orden,
+      jugador_id: jugadorId,
+      jugador_nombre: obtenerNombreJugadorHistorialPayload(
+        partido,
+        jugadorId,
+        evento.jugadores?.nombre,
+        metadata.jugador_nombre,
+        metadata.atajadas_jugador_nombre,
+        metadata.buena_jugada_jugador_nombre,
+        metadata.cagada_jugador_nombre,
+        metadata.cagada_nombre
+      ),
+      cantidad,
+      minuto,
+      review_segundos: reviewSegundos
+    };
+  }
+
+  function crearAtajadasReviewHistorial(partido, reviewEventos) {
+    const eventosAtajadas = ordenarEventosReviewHistorial(reviewEventos.filter(evento => evento.tipo === 'atajadas'));
+    if (eventosAtajadas.length) {
+      return eventosAtajadas
+        .map((evento, index) => crearStatReviewHistorialDesdeEvento(partido, evento, index + 1))
+        .filter(item => item.jugador_id && Number(item.cantidad) > 0);
+    }
+
+    return (partido?.jugador_partido || [])
+      .filter(jp => Number(jp.atajadas) > 0)
+      .map((jp, index) => ({
+        orden: index + 1,
+        jugador_id: jp.jugador_id,
+        jugador_nombre: obtenerNombreJugadorHistorialPayload(partido, jp.jugador_id, jp.jugadores?.nombre),
+        cantidad: Number(jp.atajadas) || 0,
+        minuto: null,
+        review_segundos: null
+      }));
+  }
+
+  function crearCagadasReviewHistorial(partido, reviewEventos) {
+    const eventosCagadas = ordenarEventosReviewHistorial(reviewEventos.filter(evento => evento.tipo === 'cagada'));
+    if (eventosCagadas.length) {
+      return eventosCagadas
+        .map((evento, index) => crearStatReviewHistorialDesdeEvento(partido, evento, index + 1))
+        .filter(item => item.jugador_id && Number(item.cantidad) > 0);
+    }
+
+    return (partido?.jugador_partido || [])
+      .filter(jp => Number(jp.cagadas) > 0)
+      .map((jp, index) => ({
+        orden: index + 1,
+        jugador_id: jp.jugador_id,
+        jugador_nombre: obtenerNombreJugadorHistorialPayload(partido, jp.jugador_id, jp.jugadores?.nombre),
+        cantidad: Number(jp.cagadas) || 0,
+        minuto: null,
+        review_segundos: null
+      }));
+  }
+
+  function crearBuenasJugadasReviewHistorial(partido, reviewEventos) {
+    return ordenarEventosReviewHistorial(reviewEventos.filter(evento => evento.tipo === 'buena_jugada'))
+      .map((evento, index) => ({
+        ...crearStatReviewHistorialDesdeEvento(partido, evento, index + 1),
+        cantidad: 1
+      }))
+      .filter(item => item.jugador_id);
+  }
+
+  function contarJugadoresConStatsReviewHistorial(payload) {
+    const jugadores = new Set();
+    const agregar = jugadorId => {
+      if (jugadorId) jugadores.add(String(jugadorId));
+    };
+
+    (payload.eventos || []).forEach(evento => {
+      agregar(evento.goleador_id);
+      agregar(evento.asistencia_id);
+      agregar(evento.cagada_id);
+    });
+    (payload.atajadas || []).forEach(item => agregar(item.jugador_id));
+    (payload.buenas_jugadas || []).forEach(item => agregar(item.jugador_id));
+    (payload.cagadas || []).forEach(item => agregar(item.jugador_id));
+    agregar(payload.reconocimientos?.mvp_id);
+    agregar(payload.reconocimientos?.ace_id);
+
+    return jugadores.size;
+  }
+
+  function contarClipsCompiladoReviewHistorial(partido) {
+    if (!Array.isArray(partido?.review_eventos) || !partido.review_eventos.length) return 0;
+
+    try {
+      return construirClipsCompiladoDesdeEventos(partido.review_eventos, { atajadasMinimas: 3 }).length;
+    } catch (error) {
+      console.warn('No se pudieron contar clips para el export de review:', error);
+      return 0;
+    }
+  }
+
+  function crearPayloadAnalisisReviewHistorial(partido) {
+    const jugadoresPartido = partido?.jugador_partido || [];
+    const goles = ordenarGolesHistorialParaReview(partido);
+    const reviewEventos = Array.isArray(partido?.review_eventos) ? partido.review_eventos : [];
+    const inicio = obtenerInicioReviewHistorial(partido);
+    const marcador = calcularMarcadorPartidoPortada(partido);
+    const mvp = jugadoresPartido.find(jp => jp.mvp);
+    const ace = jugadoresPartido.find(jp => jp.ace);
+    const opcionesCompilado = { atajadasMinimas: 3 };
+
+    const payload = {
+      formato: 't5-review-sandbox-v1',
+      generado_en: new Date().toISOString(),
+      review_link: normalizarReviewUrl(partido?.youtube_link) || '',
+      partido: {
+        fecha: partido?.fecha || new Date().toISOString().slice(0, 10),
+        cancha: partido?.cancha || '',
+        temporada_id: partido?.temporada_id || '',
+        resultado: partido?.resultado || `${marcador.equipo1}-${marcador.equipo2}`,
+        ganador: partido?.equipo_ganador !== null && partido?.equipo_ganador !== undefined
+          ? String(partido.equipo_ganador)
+          : '',
+        inicio,
+        fin: {
+          minuto: '',
+          segundo: ''
+        }
+      },
+      equipos: {
+        equipo1: jugadoresPartido
+          .filter(jp => Number(jp.equipo) === 1)
+          .map(jp => serializarJugadorReviewHistorial(partido, jp))
+          .filter(Boolean),
+        equipo2: jugadoresPartido
+          .filter(jp => Number(jp.equipo) === 2)
+          .map(jp => serializarJugadorReviewHistorial(partido, jp))
+          .filter(Boolean)
+      },
+      eventos: goles.map((gol, index) => crearEventoReviewHistorialDesdeGol(partido, gol, index + 1)),
+      atajadas: crearAtajadasReviewHistorial(partido, reviewEventos),
+      buenas_jugadas: crearBuenasJugadasReviewHistorial(partido, reviewEventos),
+      cagadas: crearCagadasReviewHistorial(partido, reviewEventos),
+      reconocimientos: {
+        mvp_id: mvp?.jugador_id || null,
+        ace_id: ace?.jugador_id || null
+      },
+      compilado: {
+        atajadas_minimas: opcionesCompilado.atajadasMinimas,
+        youtube_link: obtenerLinkYouTubeReview(partido?.compilado_youtube_link) || null
+      },
+      resumen: {
+        marcador: `${marcador.equipo1}-${marcador.equipo2}`,
+        goles: goles.length,
+        atajadas: 0,
+        buenas_jugadas: 0,
+        cagadas: 0,
+        jugadores_con_stats: 0,
+        clips_compilado: contarClipsCompiladoReviewHistorial(partido)
+      }
+    };
+
+    payload.resumen.atajadas = payload.atajadas.length;
+    payload.resumen.buenas_jugadas = payload.buenas_jugadas.length;
+    payload.resumen.cagadas = payload.eventos.filter(evento => !!evento.cagada_id).length + payload.cagadas.length;
+    payload.resumen.jugadores_con_stats = contarJugadoresConStatsReviewHistorial(payload);
+
+    return payload;
+  }
+
   function exportarAnalisisReviewSandbox() {
     const payload = crearPayloadAnalisisReviewSandbox();
     const fecha = payload.partido?.fecha || new Date().toISOString().slice(0, 10);
@@ -18969,6 +19746,68 @@ const initApp = () => {
         `;
       };
 
+      const renderizarFilaJugadorHistorialCompacta = (jp) => {
+        const { golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+        const puntaje = normalizarPuntajePartido(skill);
+        const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
+        const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
+        const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
+        const nombreJugador = jp.jugadores?.nombre || 'Jugador';
+
+        const stats = [];
+        if (jp.mvp) {
+          stats.push(crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-trophy-fill"></i>', 'MVP'));
+        }
+        if (jp.ace) {
+          stats.push(crearDistintivoJugadorHistorial('ace', '<i class="bi bi-star-fill"></i>', 'ACE'));
+        }
+        if (golesDelJugador.length > 0) {
+          stats.push(generarIconosConLinks(golesDelJugador, youtubeEventosLink, 'gol'));
+        }
+        if (asistenciasDelJugador.length > 0) {
+          stats.push(generarIconosConLinks(asistenciasDelJugador, youtubeEventosLink, 'asistencia'));
+        }
+        if (jp.atajadas > 0) {
+          stats.push(crearChipConteoHistorial('save', obtenerIconoEventoHistorial('save'), jp.atajadas, 'Atajadas'));
+        }
+        if (cagadasJugador > 0) {
+          const cagadasLinks = partido._historial_cagadas_links?.get(String(jp.jugador_id)) || [];
+          stats.push(generarIconosCagadasConLinks(cagadasLinks, youtubeEventosLink, cagadasJugador));
+        }
+        if (buenasJugadasJugador > 0) {
+          stats.push(crearChipConteoHistorial('good', 'BJ', buenasJugadasJugador, 'Buenas jugadas'));
+        }
+
+        const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
+        const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
+        const puntajeLabel = Number.isFinite(puntaje)
+          ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
+              <span class="historial-rating-value">${puntajeTexto}</span>
+              <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
+            </div>`
+          : '';
+
+        return `
+          <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
+            <div class="historial-player-main">
+              ${renderizarAccesoPerfilJugador(jp.jugador_id, nombreJugador, 'text-white fw-semibold text-start align-baseline')}
+              ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
+            </div>
+            <div class="historial-player-score">
+              ${puntajeLabel}
+              <div class="historial-rating-bar ${puntajeClase}" aria-hidden="true">
+                <span style="width:${puntajeAncho}%"></span>
+              </div>
+            </div>
+            ${esAdmin ? `<button class="historial-coin-btn" data-admin-only
+                      title="Forzar pase en Mundialito"
+                      onclick="forzarMonedaDesdeHistorial('${partido.id}', '${jp.jugador_id}', '${nombreJugador.replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${partido.temporada_id ?? ''}')">
+              <i class="bi bi-coin"></i>
+            </button>` : ''}
+          </div>
+        `;
+      };
+
       html += `
         <div class="col-lg-6 col-md-12">
           <div class="glass-effect historial-match-card h-100 ${resultadoClase} partido-card" data-partido-id="${partido.id}">
@@ -18991,6 +19830,9 @@ const initApp = () => {
                     <i class="bi bi-camera-video"></i><span>Review</span>
                   </a>
                 ` : ''}
+                <button type="button" onclick="descargarReviewJsonHistorial('${escaparTextoParaJs(partido.id)}')" class="historial-action" title="Exportar review en JSON">
+                  <i class="bi bi-download"></i><span>JSON</span>
+                </button>
                 ${partido.compilado_youtube_link ? `
                   <a href="${obtenerLinkYouTubeReview(partido.compilado_youtube_link)}" target="_blank" class="historial-action" title="Abrir compilado en YouTube">
                     <i class="bi bi-youtube"></i><span>Compilado</span>
@@ -19022,12 +19864,12 @@ const initApp = () => {
               <div class="col-lg-6">
                 <div class="historial-team-panel is-team-1 ${equipo1Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-scoreboard">
-                    <div class="historial-team-identity">
-                      ${equipo1Info.headerHtml}
-                    </div>
                     <div class="historial-team-score-block">
                       <span>Goles</span>
                       <strong>${golesEquipo1}</strong>
+                    </div>
+                    <div class="historial-team-identity">
+                      ${equipo1Info.headerHtml}
                     </div>
                   </div>
                   <div class="historial-team-meta-row">
@@ -19035,7 +19877,7 @@ const initApp = () => {
                     <span>Prom. <strong>${skillEquipo1.toFixed(1)}</strong></span>
                   </div>
                   <div class="historial-player-list">
-                    ${equipo1.map(jp => renderizarFilaJugadorHistorial(jp)).join('')}
+                    ${equipo1.map(jp => renderizarFilaJugadorHistorialCompacta(jp)).join('')}
                     ${equipo1.length === 0 ? '<div class="historial-team-empty">Sin jugadores registrados</div>' : ''}
                   </div>
                 </div>
@@ -19043,12 +19885,12 @@ const initApp = () => {
               <div class="col-lg-6">
                 <div class="historial-team-panel is-team-2 ${equipo2Ganador ? 'is-winner' : ''}">
                   <div class="historial-team-scoreboard">
+                    <div class="historial-team-identity">
+                      ${equipo2Info.headerHtml}
+                    </div>
                     <div class="historial-team-score-block">
                       <span>Goles</span>
                       <strong>${golesEquipo2}</strong>
-                    </div>
-                    <div class="historial-team-identity">
-                      ${equipo2Info.headerHtml}
                     </div>
                   </div>
                   <div class="historial-team-meta-row">
@@ -19056,12 +19898,31 @@ const initApp = () => {
                     <span>Prom. <strong>${skillEquipo2.toFixed(1)}</strong></span>
                   </div>
                   <div class="historial-player-list">
-                    ${equipo2.map(jp => renderizarFilaJugadorHistorial(jp)).join('')}
+                    ${equipo2.map(jp => renderizarFilaJugadorHistorialCompacta(jp)).join('')}
                     ${equipo2.length === 0 ? '<div class="historial-team-empty">Sin jugadores registrados</div>' : ''}
                   </div>
                 </div>
               </div>
             </div>
+
+            ${(mvpData || aceData) ? `
+              <div class="historial-awards-row">
+                ${mvpData ? `
+                  <span class="historial-award-chip is-mvp">
+                    <i class="bi bi-trophy-fill"></i>
+                    <strong>MVP</strong>
+                    ${mvpData.jugadores?.nombre || 'N/A'}
+                  </span>
+                ` : ''}
+                ${aceData ? `
+                  <span class="historial-award-chip is-ace">
+                    <i class="bi bi-star-fill"></i>
+                    <strong>ACE</strong>
+                    ${aceData.jugadores?.nombre || 'N/A'}
+                  </span>
+                ` : ''}
+              </div>
+            ` : ''}
 
             <!-- Leyenda del Mundialito para este partido -->
             ${typeof generarLeyendaMundialito === 'function' ? generarLeyendaMundialito(partido) : ''}
@@ -19679,10 +20540,14 @@ const initApp = () => {
     return Array.from(mapa.entries())
       .map(([jugadorId, valor]) => {
         const stats = statsPorJugador.get(String(jugadorId));
+        const valorNumerico = Number(valor?.valor ?? valor) || 0;
         return {
           id: stats?.id || jugadorId,
           nombre: stats?.nombre || 'Jugador',
-          valor: Number(valor) || 0
+          valor: valorNumerico,
+          partidoId: valor?.partidoId || null,
+          fecha: valor?.fecha || null,
+          detalle: valor && typeof valor === 'object' ? valor : null
         };
       })
       .filter(item => item.valor >= minimo)
@@ -19725,15 +20590,43 @@ const initApp = () => {
   };
 
   const renderizarCompactMetricResumenTemporada = ({ icono, label, items, formatearValor, color }) => {
-    const principal = (items || [])[0];
+    const lista = (items || []).slice(0, 3);
+    const principal = lista[0];
+    const secundarios = lista.slice(1);
+    const renderJugadorCompacto = (item) => `
+      <span class="season-compact-player-inline">
+        ${renderizarAvatarJugador(item.id, item.nombre, 'xs')}
+        <span>${escaparHtmlPlano(item.nombre || 'Jugador')}</span>
+      </span>
+    `;
+    const renderContenido = (item) => `
+      ${renderJugadorCompacto(item)}
+      <strong>${formatearValor(item.valor)}</strong>
+    `;
+    const principalHtml = principal
+      ? (principal.partidoId
+        ? `<button type="button" class="season-compact-primary" onclick="irAHistorialPartido('${escaparTextoParaJs(principal.partidoId)}')" title="Ver partido del record">${renderContenido(principal)}</button>`
+        : `<button type="button" class="season-compact-primary" onclick="irAPerfilJugador('${escaparTextoParaJs(principal.id)}')" title="Ver perfil">${renderContenido(principal)}</button>`)
+      : '<span class="season-empty season-empty-inline">Sin datos</span>';
+
     return `
       <article class="season-compact-metric" style="--season-accent:${color}">
         <span class="season-compact-icon"><i class="bi ${icono}"></i></span>
         <span class="season-compact-label">${label}</span>
-        ${principal ? `
-          ${renderizarAccesoPerfilJugador(principal.id, principal.nombre, 'season-compact-player')}
-          <strong>${formatearValor(principal.valor)}</strong>
-        ` : '<span class="season-empty season-empty-inline">Sin datos</span>'}
+        <span class="season-compact-content">
+          ${principalHtml}
+          ${secundarios.length ? `
+            <span class="season-compact-runners">
+              ${secundarios.map((item, index) => `
+                <button type="button" class="season-compact-runner" onclick="${item.partidoId ? `irAHistorialPartido('${escaparTextoParaJs(item.partidoId)}')` : `irAPerfilJugador('${escaparTextoParaJs(item.id)}')`}" title="${item.partidoId ? 'Ver partido del record' : 'Ver perfil'}">
+                  <span>${index + 2}.</span>
+                  <span>${escaparHtmlPlano(item.nombre || 'Jugador')}</span>
+                  <strong>${formatearValor(item.valor)}</strong>
+                </button>
+              `).join('')}
+            </span>
+          ` : ''}
+        </span>
       </article>
     `;
   };
@@ -19950,7 +20843,12 @@ const initApp = () => {
         maxAtajadasPartido: new Map(),
         maxCagadasPartido: new Map(),
         maxVictoriasHilo: new Map(),
-        maxDerrotasHilo: new Map()
+        maxDerrotasHilo: new Map(),
+        maxGolesPartidoDetalle: new Map(),
+        maxAsistenciasPartidoDetalle: new Map(),
+        maxAtajadasPartidoDetalle: new Map(),
+        maxCagadasPartidoDetalle: new Map(),
+        mejorActuacionIndividualPartido: new Map()
       }
     };
   };
@@ -20140,23 +21038,30 @@ const initApp = () => {
       {
         icono: 'bi-bullseye',
         label: 'M&aacute;x. goles en 1 partido',
-        items: obtenerTopMapaResumenTemporada(records.maxGolesPartido, statsPorJugador),
+        items: obtenerTopMapaResumenTemporada(records.maxGolesPartidoDetalle || records.maxGolesPartido, statsPorJugador),
         formatearValor: valor => `${valor} en 1 PJ`,
         color: '#22c55e'
       },
       {
         icono: 'bi-bezier2',
         label: 'M&aacute;x. asist. en 1 partido',
-        items: obtenerTopMapaResumenTemporada(records.maxAsistenciasPartido, statsPorJugador),
+        items: obtenerTopMapaResumenTemporada(records.maxAsistenciasPartidoDetalle || records.maxAsistenciasPartido, statsPorJugador),
         formatearValor: valor => `${valor} en 1 PJ`,
         color: '#38bdf8'
       },
       {
         icono: 'bi-shield-fill',
         label: 'M&aacute;x. atajadas en 1 partido',
-        items: obtenerTopMapaResumenTemporada(records.maxAtajadasPartido, statsPorJugador),
+        items: obtenerTopMapaResumenTemporada(records.maxAtajadasPartidoDetalle || records.maxAtajadasPartido, statsPorJugador),
         formatearValor: valor => `${valor} en 1 PJ`,
         color: '#facc15'
+      },
+      {
+        icono: 'bi-lightning-charge-fill',
+        label: 'Mejor actuaci&oacute;n individual',
+        items: obtenerTopMapaResumenTemporada(records.mejorActuacionIndividualPartido, statsPorJugador, { minimo: 0.1, limite: 3 }),
+        formatearValor: valor => `${Number(valor).toFixed(1)} skill`,
+        color: '#a78bfa'
       }
     ].map(renderizarCompactMetricResumenTemporada).join('');
 
@@ -20171,7 +21076,7 @@ const initApp = () => {
       {
         icono: 'bi-exclamation-diamond-fill',
         label: 'Cagador del a&ntilde;o',
-        items: obtenerTopMapaResumenTemporada(records.maxCagadasPartido, statsPorJugador),
+        items: obtenerTopMapaResumenTemporada(records.maxCagadasPartidoDetalle || records.maxCagadasPartido, statsPorJugador),
         formatearValor: valor => `${valor} en 1 PJ`,
         color: '#e24b4a'
       },
@@ -21031,6 +21936,33 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       error
     };
   }
+
+  window.descargarReviewJsonHistorial = async function(partidoId) {
+    const partido = todosLosPartidos.find(item => String(item.id) === String(partidoId));
+    if (!partido) {
+      showToast('No se encontro el partido para exportar.', 'error');
+      return;
+    }
+
+    try {
+      if (!Array.isArray(partido.review_eventos)) {
+        const { data, error, tablaFaltante } = await cargarReviewEventosGuardados(partidoId);
+        if (error && !tablaFaltante) {
+          throw new Error(error.message || 'No se pudieron cargar los eventos de review.');
+        }
+        partido.review_eventos = data || [];
+      }
+
+      const payload = crearPayloadAnalisisReviewHistorial(partido);
+      const fecha = payload.partido?.fecha || partido?.fecha || new Date().toISOString().slice(0, 10);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      descargarBlob(blob, `${normalizarNombreArchivo(`review-t5-${fecha}`)}.json`);
+      showToast('Analisis de review exportado desde historial.', 'success');
+    } catch (error) {
+      console.error('Error exportando review desde historial:', error);
+      showToast(`No se pudo exportar la review: ${obtenerMensajeError(error)}`, 'error');
+    }
+  };
 
   function calcularMarcadorPartidoPortada(partido) {
     const marcador = { equipo1: 0, equipo2: 0 };
@@ -22334,14 +23266,6 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     tabSinergias.addEventListener('shown.bs.tab', () => {
       if (jugadorPerfilActual && datosPerfilJugador) {
         renderizarSinergias();
-      }
-    });
-  }
-
-  const tabRivalidades = document.getElementById('tab-perfil-rivalidades');
-  if (tabRivalidades) {
-    tabRivalidades.addEventListener('shown.bs.tab', () => {
-      if (jugadorPerfilActual && datosPerfilJugador) {
         renderizarRivalidades();
       }
     });
