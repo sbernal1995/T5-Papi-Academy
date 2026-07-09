@@ -2312,6 +2312,24 @@
         text-align: center;
       }
 
+      #autoEquiposModal #parejas-enfrentadas > .d-flex,
+      #autoEquiposModal #parejas-juntas > .d-flex {
+        display: grid !important;
+        grid-template-columns: minmax(130px, 1fr) auto minmax(130px, 1fr) auto;
+        align-items: center;
+      }
+
+      #autoEquiposModal #parejas-enfrentadas select,
+      #autoEquiposModal #parejas-juntas select {
+        min-width: 0;
+      }
+
+      #autoEquiposModal #parejas-enfrentadas .btn,
+      #autoEquiposModal #parejas-juntas .btn {
+        width: 36px;
+        min-width: 36px;
+      }
+
       .matchmaking-result-mode {
         background: rgba(14, 165, 233, 0.12);
         border: 1px solid rgba(56, 189, 248, 0.25);
@@ -2383,6 +2401,39 @@
 
       .matchmaking-trend-note strong {
         color: #ecfdf5;
+      }
+
+      @media (max-width: 575px) {
+        #autoEquiposModal #parejas-enfrentadas > .d-flex,
+        #autoEquiposModal #parejas-juntas > .d-flex {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        #autoEquiposModal #parejas-enfrentadas select:first-of-type,
+        #autoEquiposModal #parejas-juntas select:first-of-type {
+          grid-column: 1 / -1;
+          grid-row: 1;
+        }
+
+        #autoEquiposModal #parejas-enfrentadas span,
+        #autoEquiposModal #parejas-juntas span {
+          grid-column: 1;
+          grid-row: 2;
+          justify-self: start;
+        }
+
+        #autoEquiposModal #parejas-enfrentadas select:nth-of-type(2),
+        #autoEquiposModal #parejas-juntas select:nth-of-type(2) {
+          grid-column: 1 / -1;
+          grid-row: 3;
+        }
+
+        #autoEquiposModal #parejas-enfrentadas .btn,
+        #autoEquiposModal #parejas-juntas .btn {
+          grid-column: 2;
+          grid-row: 2;
+          justify-self: end;
+        }
       }
 
       .player-role-card {
