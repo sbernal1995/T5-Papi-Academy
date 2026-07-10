@@ -1030,9 +1030,61 @@ function renderizarAccesoPerfilJugador(jugadorId, nombre, clases = '') {
   const jugador = obtenerJugadorConFotoPerfil(jugadorId, nombre);
   const clasesFinales = ['btn btn-link p-0 border-0 text-decoration-none player-profile-link', clases].filter(Boolean).join(' ');
   return `
-    <button type="button" class="${clasesFinales}" onclick="irAPerfilJugador('${escaparTextoParaJs(jugadorId)}')">
+    <button type="button" class="${clasesFinales}" onclick="event.stopPropagation(); irAPerfilJugador('${escaparTextoParaJs(jugadorId)}')">
       ${renderizarAvatarJugador(jugador, jugador.nombre, 'xs')}
       <span class="player-profile-name">${escaparHtmlPlano(jugador.nombre || 'Jugador')}</span>
+    </button>
+  `;
+}
+
+function resolverJugadorLinkPerfil(jugadorRef, nombreFallback = '') {
+  const jugadorBase = typeof jugadorRef === 'object' && jugadorRef !== null
+    ? jugadorRef
+    : { id: jugadorRef, nombre: nombreFallback };
+  const jugadorAnidado = jugadorBase.jugadores || {};
+  let jugadorId = jugadorBase.id ?? jugadorBase.jugador_id ?? jugadorBase.jugadorId ?? jugadorAnidado.id ?? null;
+  let nombre = jugadorBase.nombre || jugadorAnidado.nombre || nombreFallback || '';
+
+  const jugadorPorId = jugadorId !== null && jugadorId !== undefined
+    ? todosLosJugadoresGlobal.find(jugador => String(jugador.id) === String(jugadorId))
+    : null;
+
+  if (jugadorPorId) {
+    return {
+      id: jugadorPorId.id,
+      nombre: jugadorPorId.nombre || nombre || 'Jugador'
+    };
+  }
+
+  const nombreNormalizado = normalizarTextoRutaJugador(nombre || (typeof jugadorRef === 'string' ? jugadorRef : ''));
+  const jugadorPorNombre = nombreNormalizado
+    ? todosLosJugadoresGlobal.find(jugador => normalizarTextoRutaJugador(jugador.nombre) === nombreNormalizado)
+    : null;
+
+  if (jugadorPorNombre) {
+    jugadorId = jugadorPorNombre.id;
+    nombre = jugadorPorNombre.nombre;
+  }
+
+  return {
+    id: jugadorId,
+    nombre: nombre || 'Jugador'
+  };
+}
+
+function renderizarNombrePerfilJugador(jugadorRef, nombreFallback = '', clases = '') {
+  const jugador = resolverJugadorLinkPerfil(jugadorRef, nombreFallback);
+  const nombre = jugador.nombre || nombreFallback || 'Jugador';
+
+  if (!jugador.id) {
+    const claseTexto = clases ? ` class="${escaparHtmlPlano(clases)}"` : '';
+    return `<span${claseTexto}>${escaparHtmlPlano(nombre)}</span>`;
+  }
+
+  const clasesFinales = ['player-profile-text-link', clases].filter(Boolean).join(' ');
+  return `
+    <button type="button" class="${escaparHtmlPlano(clasesFinales)}" onclick="event.stopPropagation(); irAPerfilJugador('${escaparTextoParaJs(jugador.id)}')" title="Ver perfil de ${escaparHtmlPlano(nombre)}">
+      ${escaparHtmlPlano(nombre)}
     </button>
   `;
 }
@@ -4178,13 +4230,17 @@ function renderizarListaRankingPerfil({ titulo, subtitulo = '', items = [], empt
   `;
 }
 
-function renderizarFilaRankingPerfil({ indice, nombre, principal, secundario = '', color = 'var(--fut-gold-light)' }) {
+function renderizarFilaRankingPerfil({ indice, nombre, jugadorId = null, principal, secundario = '', color = 'var(--fut-gold-light)' }) {
+  const nombreHtml = jugadorId
+    ? renderizarNombrePerfilJugador(jugadorId, nombre, 'text-white fw-semibold')
+    : escaparHtmlPlano(nombre);
+
   return `
     <div class="fut-list-row">
       <div class="d-flex align-items-center gap-3">
         <div class="fut-form-dot" style="background:${color};color:#111;">${indice}</div>
         <div>
-          <div class="text-white fw-semibold">${nombre}</div>
+          <div class="text-white fw-semibold">${nombreHtml}</div>
           ${secundario ? `<div class="fut-list-row-meta">${secundario}</div>` : ''}
         </div>
       </div>
@@ -5222,6 +5278,11 @@ function obtenerNombreJugadorPorId(jugadorId) {
   return todosLosJugadoresGlobal.find(j => j.id === jugadorId)?.nombre || null;
 }
 
+function obtenerJugadorPerfilPorId(jugadorId) {
+  if (!jugadorId) return null;
+  return todosLosJugadoresGlobal.find(j => String(j.id) === String(jugadorId)) || null;
+}
+
 function resolverVideoEventoPerfil(evento) {
   const videoLink = obtenerLinkYouTubeReview(evento?.video_link);
   const videoSegundosRaw = evento?.video_segundos ?? evento?.compilado_segundos;
@@ -5375,7 +5436,8 @@ function renderizarVideosGoles() {
     iconoLinea: '⚽',
     emptyMessage: 'No hay goles registrados',
     detalleExtraFn: (gol) => {
-      const asistidorNombre = obtenerNombreJugadorPorId(gol.asistidor_id);
+      const asistidor = obtenerJugadorPerfilPorId(gol.asistidor_id);
+      const asistidorNombre = asistidor ? renderizarNombrePerfilJugador(asistidor, asistidor.nombre, 'fw-semibold') : '';
       const detalleAsistencia = asistidorNombre ? `🎯 Asistencia: ${asistidorNombre}` : 'Sin asistencia';
       const enContraBadge = gol.es_gol_en_contra
         ? '<span class="badge bg-warning text-dark mt-1 mb-1">En contra</span>'
@@ -5398,7 +5460,10 @@ function renderizarVideosAsistencias() {
     iconoLinea: '🎯',
     emptyMessage: 'No hay asistencias registradas',
     detalleExtraFn: (gol) => {
-      const goleadorNombre = obtenerNombreJugadorPorId(gol.goleador_id) || 'N/A';
+      const goleador = obtenerJugadorPerfilPorId(gol.goleador_id);
+      const goleadorNombre = goleador
+        ? renderizarNombrePerfilJugador(goleador, goleador.nombre, 'fw-semibold')
+        : escaparHtmlPlano(obtenerNombreJugadorPorId(gol.goleador_id) || 'N/A');
       return `<p class="mb-0 small text-light-emphasis">⚽ Gol de: ${goleadorNombre}</p>`;
     }
   });
@@ -5414,7 +5479,10 @@ function renderizarVideosCagadas() {
     iconoLinea: '💥',
     emptyMessage: 'No hay cagadas en gol registradas',
     detalleExtraFn: (gol) => {
-      const goleadorNombre = obtenerNombreJugadorPorId(gol.goleador_id) || 'N/A';
+      const goleador = obtenerJugadorPerfilPorId(gol.goleador_id);
+      const goleadorNombre = goleador
+        ? renderizarNombrePerfilJugador(goleador, goleador.nombre, 'fw-semibold')
+        : escaparHtmlPlano(obtenerNombreJugadorPorId(gol.goleador_id) || 'N/A');
       return `<p class="mb-0 small text-light-emphasis">⚽ Gol convertido por: ${goleadorNombre}</p>`;
     }
   });
@@ -5488,7 +5556,7 @@ function renderizarSidebarPerfil() {
         <div class="perfil-relation-player">
           ${renderizarAvatarJugador(item.id, item.nombre, 'xs')}
           <div>
-            <strong>${escaparHtmlPlano(item.nombre)}</strong>
+            <strong>${renderizarNombrePerfilJugador(item.id, item.nombre)}</strong>
             <span>${item.partidos} PJ</span>
           </div>
         </div>
@@ -5804,7 +5872,7 @@ function renderizarPartidosRecientesPerfil() {
         <div class="perfil-lineup-player ${actual}">
           <div class="perfil-lineup-name">
             ${renderizarAvatarJugador(jp.jugadores || jp.jugador_id, nombre, 'xs')}
-            <strong>${escaparHtmlPlano(nombre)}</strong>
+            <strong>${renderizarNombrePerfilJugador(jp.jugadores || jp.jugador_id, nombre)}</strong>
           </div>
           <div class="perfil-lineup-stats">${renderStatsLineupPerfil(obtenerStatsJugadorDetalle(partido, jp))}</div>
         </div>
@@ -6096,7 +6164,7 @@ function renderizarPartidosRecientesPerfil() {
         <div class="perfil-lineup-player ${actual}">
           <div class="perfil-lineup-name">
             ${renderizarAvatarJugador(jp.jugadores || jp.jugador_id, nombre, 'xs')}
-            <strong>${escaparHtmlPlano(nombre)}</strong>
+            <strong>${renderizarNombrePerfilJugador(jp.jugadores || jp.jugador_id, nombre)}</strong>
           </div>
           <div class="perfil-lineup-stats">${obtenerStatsJugadorDetalle(jp)}</div>
         </div>
@@ -6809,6 +6877,8 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
 
   const renderizarDetalleGolAsistenciaFut = (sinergia) => {
     const conexionesFut = sinergia?.conexiones || [];
+    const nombreSinergiaLinkFut = renderizarNombrePerfilJugador(sinergia.id, sinergia.nombre, 'fw-semibold');
+    const nombreActualLinkFut = renderizarNombrePerfilJugador(jugadorPerfilActual, nombreJugadorActualFut, 'fw-semibold');
     const pasesDelJugadorActualFut = conexionesFut.filter(c =>
       c.asistidor_id === jugadorPerfilActual && c.goleador_id === sinergia.id
     ).length;
@@ -6818,7 +6888,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
 
     return `
       <div class="fut-radar-container">
-        <div class="fut-radar-title">Dupla con ${sinergia.nombre}</div>
+        <div class="fut-radar-title">Dupla con ${nombreSinergiaLinkFut}</div>
         <div class="row g-3 mb-3">
           <div class="col-md-4">
             <div class="fut-radar-container h-100" style="padding:16px;">
@@ -6828,16 +6898,16 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           </div>
           <div class="col-md-4">
             <div class="fut-radar-container h-100" style="padding:16px;">
-              <div class="fut-radar-title" style="font-size:13px;">${nombreJugadorActualFut} asistio</div>
+              <div class="fut-radar-title" style="font-size:13px;">${nombreActualLinkFut} asistio</div>
               <div class="text-white fw-semibold fs-4">${pasesDelJugadorActualFut}</div>
-              <div class="fut-list-row-meta">a ${sinergia.nombre}</div>
+              <div class="fut-list-row-meta">a ${nombreSinergiaLinkFut}</div>
             </div>
           </div>
           <div class="col-md-4">
             <div class="fut-radar-container h-100" style="padding:16px;">
-              <div class="fut-radar-title" style="font-size:13px;">${sinergia.nombre} asistio</div>
+              <div class="fut-radar-title" style="font-size:13px;">${nombreSinergiaLinkFut} asistio</div>
               <div class="text-white fw-semibold fs-4">${pasesDelCompaneroFut}</div>
-              <div class="fut-list-row-meta">a ${nombreJugadorActualFut}</div>
+              <div class="fut-list-row-meta">a ${nombreActualLinkFut}</div>
             </div>
           </div>
         </div>
@@ -6858,7 +6928,9 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
               return `
                 <div class="fut-list-row">
                   <div>
-                    <div class="text-white fw-semibold">${conexion.asistidor_nombre} asistio a ${conexion.goleador_nombre}</div>
+                    <div class="text-white fw-semibold">
+                      ${renderizarNombrePerfilJugador(conexion.asistidor_id, conexion.asistidor_nombre, 'fw-semibold')} asistio a ${renderizarNombrePerfilJugador(conexion.goleador_id, conexion.goleador_nombre, 'fw-semibold')}
+                    </div>
                     <div class="fut-list-row-meta">${metaFut}</div>
                   </div>
                   <div class="fut-stat-pill">G+A</div>
@@ -6933,7 +7005,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
             <div class="mt-4">
               <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <div>
-                  <div class="text-white fw-semibold fs-4">${jugadorEncontradoFut.nombre}</div>
+                  <div class="text-white fw-semibold fs-4">${renderizarNombrePerfilJugador(jugadorEncontradoFut.id, jugadorEncontradoFut.nombre, 'fw-semibold')}</div>
                   <div class="fut-list-row-meta">${jugadorEncontradoFut.partidos} PJ juntos</div>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
@@ -6960,6 +7032,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           renderRow: (sinergia, index) => renderizarFilaRankingPerfil({
             indice: index + 1,
             nombre: sinergia.nombre,
+            jugadorId: sinergia.id,
             principal: `${sinergia.winrate}%`,
             secundario: `${sinergia.partidos} PJ`,
             color: 'var(--fut-green)'
@@ -6975,6 +7048,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           renderRow: (sinergia, index) => renderizarFilaRankingPerfil({
             indice: index + 1,
             nombre: sinergia.nombre,
+            jugadorId: sinergia.id,
             principal: `${sinergia.winrate}%`,
             secundario: `${sinergia.partidos} PJ`,
             color: 'var(--fut-red)'
@@ -6990,6 +7064,7 @@ function renderizarSinergiasUI(jugadorBuscado = null) {
           renderRow: (sinergia, index) => renderizarFilaRankingPerfil({
             indice: index + 1,
             nombre: sinergia.nombre,
+            jugadorId: sinergia.id,
             principal: `${sinergia.golesAsistencias} G+A`,
             secundario: `${sinergia.partidos} PJ`,
             color: 'var(--fut-cyan)'
@@ -7430,7 +7505,7 @@ function renderizarRivalidadesUI(jugadorBuscado = null) {
       <div class="fut-radar-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
           <div>
-            <div class="text-white fw-semibold fs-4">${jugadorEncontradoFut.nombre}</div>
+            <div class="text-white fw-semibold fs-4">${renderizarNombrePerfilJugador(jugadorEncontradoFut.id, jugadorEncontradoFut.nombre, 'fw-semibold')}</div>
             <div class="fut-list-row-meta">${jugadorEncontradoFut.partidos} enfrentamientos</div>
           </div>
           <div class="d-flex flex-wrap gap-2">
@@ -7497,6 +7572,7 @@ function renderizarRivalidadesUI(jugadorBuscado = null) {
           renderRow: (rival, index) => renderizarFilaRankingPerfil({
             indice: index + 1,
             nombre: rival.nombre,
+            jugadorId: rival.id,
             principal: `${rival.winrate}%`,
             secundario: `${rival.victorias}W-${rival.derrotas}L`,
             color: 'var(--fut-red)'
@@ -7512,6 +7588,7 @@ function renderizarRivalidadesUI(jugadorBuscado = null) {
           renderRow: (rival, index) => renderizarFilaRankingPerfil({
             indice: index + 1,
             nombre: rival.nombre,
+            jugadorId: rival.id,
             principal: `${rival.winrate}%`,
             secundario: `${rival.victorias}W-${rival.derrotas}L`,
             color: 'var(--fut-green)'
@@ -7527,6 +7604,7 @@ function renderizarRivalidadesUI(jugadorBuscado = null) {
           renderRow: (rival, index) => renderizarFilaRankingPerfil({
             indice: index + 1,
             nombre: rival.nombre,
+            jugadorId: rival.id,
             principal: `${rival.golesConvertidos} goles`,
             secundario: `${rival.partidos} PJ`,
             color: 'var(--fut-orange)'
@@ -8566,11 +8644,13 @@ const initApp = () => {
         if (racha && racha.cantidad >= 2) {
           if (racha.tipo === 'win') {
             jugadoresEnRachaVictoria.push({
+              id: jugador.id,
               nombre: jugador.nombre,
               cantidad: racha.cantidad
             });
           } else if (racha.tipo === 'defeat') {
             jugadoresEnRachaDerrota.push({
+              id: jugador.id,
               nombre: jugador.nombre,
               cantidad: racha.cantidad
             });
@@ -8594,10 +8674,10 @@ const initApp = () => {
         html += '<i class="bi bi-fire me-2" style="color: #f59e0b;"></i>';
         if (rachas.victorias.length === 1) {
           const jugador = rachas.victorias[0];
-          html += `<strong>${jugador.nombre}</strong> viene en racha de <strong>${jugador.cantidad} victorias</strong> 🔥`;
+          html += `<strong>${renderizarNombrePerfilJugador(jugador.id, jugador.nombre)}</strong> viene en racha de <strong>${jugador.cantidad} victorias</strong> 🔥`;
         } else {
           html += `<strong>${rachas.victorias.length} jugadores</strong> vienen en racha de victorias: `;
-          html += rachas.victorias.map(j => `<strong>${j.nombre}</strong> (${j.cantidad})`).join(', ');
+          html += rachas.victorias.map(j => `<strong>${renderizarNombrePerfilJugador(j.id, j.nombre)}</strong> (${j.cantidad})`).join(', ');
           html += ' 🔥';
         }
         html += '</div>';
@@ -8609,10 +8689,10 @@ const initApp = () => {
         html += '<i class="bi bi-snow me-2" style="color: #06b6d4;"></i>';
         if (rachas.derrotas.length === 1) {
           const jugador = rachas.derrotas[0];
-          html += `<strong>${jugador.nombre}</strong> viene en racha de <strong>${jugador.cantidad} derrotas</strong> ❄️`;
+          html += `<strong>${renderizarNombrePerfilJugador(jugador.id, jugador.nombre)}</strong> viene en racha de <strong>${jugador.cantidad} derrotas</strong> ❄️`;
         } else {
           html += `<strong>${rachas.derrotas.length} jugadores</strong> vienen en racha de derrotas: `;
-          html += rachas.derrotas.map(j => `<strong>${j.nombre}</strong> (${j.cantidad})`).join(', ');
+          html += rachas.derrotas.map(j => `<strong>${renderizarNombrePerfilJugador(j.id, j.nombre)}</strong> (${j.cantidad})`).join(', ');
           html += ' ❄️';
         }
         html += '</div>';
@@ -8805,7 +8885,7 @@ const initApp = () => {
           playerEl.innerHTML = `
             <div class="d-flex align-items-center">
               <i class="bi bi-grip-vertical text-muted me-2" style="cursor: grab;"></i>
-              <span class="text-white fw-medium me-2">${jugador.nombre}</span>
+              <span class="text-white fw-medium me-2">${renderizarNombrePerfilJugador(jugador.id, jugador.nombre)}</span>
               ${mostrarPosicionesJugador(jugador.jugador_posicion)}
             </div>
             <button onclick="quitarJugador('${containerId.includes('1') ? 'equipo1' : 'equipo2'}', ${index})" class="btn btn-sm btn-outline-danger">
@@ -13434,7 +13514,7 @@ const initApp = () => {
     const filas = jugadores.length
       ? jugadores.map(item => `
         <div class="review-personal-row">
-          <span class="review-personal-name text-truncate">${escaparHtmlPlano(item.nombre)}</span>
+          <span class="review-personal-name text-truncate">${renderizarNombrePerfilJugador(item.id || item.jugador_id || item.jugadorId, item.nombre)}</span>
           <span class="review-personal-stats">${escaparHtmlPlano(obtenerTextoResumenPersonalReview(item))}</span>
         </div>
       `).join('')
@@ -16508,7 +16588,7 @@ const initApp = () => {
 
     container.innerHTML = jugadores.map((jugador, index) => `
       <div class="review-player-row">
-        <span class="text-truncate">${escaparHtmlPlano(jugador.nombre)}</span>
+        <span class="text-truncate">${renderizarNombrePerfilJugador(jugador.id, jugador.nombre)}</span>
         <button type="button" class="btn btn-sm btn-outline-danger" data-review-remove-player="${index}" data-review-team="${equipoNombre}" title="Quitar">
           <i class="bi bi-x"></i>
         </button>
@@ -19442,6 +19522,7 @@ const initApp = () => {
 
         if (partidosJugador.length === 0) {
           rachasHistoricas[jugadorId] = {
+            id: jugadorId,
             mejorRachaVictorias: 0,
             mejorRachaDerrota: 0,
             nombre: jugadorData.jugadores.nombre
@@ -19480,6 +19561,7 @@ const initApp = () => {
         }
 
         rachasHistoricas[jugadorId] = {
+          id: jugadorId,
           mejorRachaVictorias,
           mejorRachaDerrota,
           nombre: jugadorData.jugadores?.nombre || jugadorData.nombre || 'Jugador Desconocido'
@@ -19495,6 +19577,7 @@ const initApp = () => {
         if (racha.mejorRachaVictorias > maxRachaVictorias) {
           maxRachaVictorias = racha.mejorRachaVictorias;
           mejorRachaVictorias = {
+            id: racha.id || jugadorId,
             nombre: racha.nombre || 'Jugador Sin Nombre',
             racha: racha.mejorRachaVictorias
           };
@@ -19588,7 +19671,7 @@ const initApp = () => {
       {
         categoria: 'Racha de Victorias Más Larga',
         icon: '🔥',
-        jugador: mejorRachaVictorias ? mejorRachaVictorias.nombre : null,
+        jugador: mejorRachaVictorias,
         valor: mejorRachaVictorias ? mejorRachaVictorias.racha || 0 : 0,
         sufijo: '',
         clase: 'racha-victorias'
@@ -19615,7 +19698,7 @@ const initApp = () => {
           <div class="destacado-card ${destacado.clase} rounded-3 p-3 text-center">
             <span class="destacado-icon">${destacado.icon}</span>
             <div class="destacado-valor">${destacado.valor}${destacado.sufijo}</div>
-            <div class="destacado-nombre text-white">${destacado.jugador.nombre || destacado.jugador.jugadores?.nombre || destacado.jugador || 'Jugador'}</div>
+            <div class="destacado-nombre text-white">${renderizarNombrePerfilJugador(destacado.jugador.jugadores || destacado.jugador.id || destacado.jugador, destacado.jugador.nombre || destacado.jugador.jugadores?.nombre || destacado.jugador || 'Jugador')}</div>
             <div class="destacado-categoria text-light-emphasis">${destacado.categoria}</div>
             ${destacado.requisito ? `<div class="text-muted small mt-1">${destacado.requisito}</div>` : ''}
           </div>
@@ -19828,7 +19911,7 @@ const initApp = () => {
           <div class="mejor-puesto-card ${puesto.clase} rounded-3 p-3 text-center">
             <span class="puesto-icon">${puesto.icon}</span>
             <div class="puesto-posicion text-light-emphasis">${puesto.posicion}</div>
-            <div class="puesto-nombre text-white">${puesto.jugador.jugadores?.nombre || puesto.jugador.nombre}</div>
+            <div class="puesto-nombre text-white">${renderizarNombrePerfilJugador(puesto.jugador.jugadores || puesto.jugador, puesto.jugador.jugadores?.nombre || puesto.jugador.nombre || 'Jugador')}</div>
             <div class="puesto-stats text-light">
               ${puesto.stats.map(stat => `
                 <div class="mb-1">
@@ -22661,6 +22744,7 @@ const initApp = () => {
       if (!jugadoresConPuntaje.length) {
         return {
           resultado: 'equipo sin jugadores',
+          resultadoHtml: 'equipo sin jugadores',
           headerHtml: `
             <div class="historial-team-award-card is-empty">
               <div class="historial-team-empty">Sin jugadores registrados</div>
@@ -22730,6 +22814,7 @@ const initApp = () => {
 
       return {
         resultado: `el equipo de ${destacado.nombre}`,
+        resultadoHtml: `el equipo de ${renderizarNombrePerfilJugador(destacado.jugador.jugador_id, destacado.nombre, 'fw-semibold')}`,
         headerHtml,
         completo: nombresOrdenados.join(' · ')
       };
@@ -22884,7 +22969,7 @@ const initApp = () => {
       const equipo1Info = obtenerInfoEquipoHistorial(equipo1Ordenado, obtenerPuntajeJugadorHistorial);
       const equipo2Info = obtenerInfoEquipoHistorial(equipo2Ordenado, obtenerPuntajeJugadorHistorial);
       const resultadoClase = equipo1Ganador ? 'is-winner-team-1' : (equipo2Ganador ? 'is-winner-team-2' : 'is-draw');
-      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.resultado : equipo2Info.resultado}`;
+      const resultadoTexto = esEmpate ? 'Empate' : `Gana ${equipo1Ganador ? equipo1Info.resultadoHtml : equipo2Info.resultadoHtml}`;
       const resumenPartido = [
         `<span><strong>${totalGoles}</strong> goles</span>`,
         totalAtajadas > 0 ? `<span><strong>${totalAtajadas}</strong> atajadas</span>` : '',
@@ -23905,7 +23990,7 @@ const initApp = () => {
       ? secundarios.filter(item => Number(item.valor) === Number(principal.valor))
       : [];
     const detalleSecundario = empatadosConPrincipal.length
-      ? `Empatado con ${empatadosConPrincipal.map(item => item.nombre || 'Jugador').join(', ')}`
+      ? `Empatado con ${empatadosConPrincipal.map(item => renderizarNombrePerfilJugador(item.id, item.nombre || 'Jugador')).join(', ')}`
       : '';
     const tooltip = lista.length
       ? lista.map((item, index) => `${index + 1}. ${item.nombre || 'Jugador'} - ${formatearValor(item.valor)}`).join('\n')
@@ -23942,7 +24027,7 @@ const initApp = () => {
         </div>
         <div class="season-compact-content">
           ${principalHtml}
-          ${detalleSecundario ? `<span class="season-compact-subline">${escaparHtmlPlano(detalleSecundario)}</span>` : ''}
+          ${detalleSecundario ? `<span class="season-compact-subline">${detalleSecundario}</span>` : ''}
           ${secundarios.length ? `
             <div class="season-compact-detail" aria-label="Detalle del record">
               ${secundarios.map((item, index) => `
@@ -25089,7 +25174,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                 <span class="position-badge ${positionClass}">${index + 1}</span>
               </td>
               <td>
-                <strong class="text-white">${jugador.jugadores?.nombre || 'Jugador'}</strong>
+                <strong class="text-white">${renderizarNombrePerfilJugador(jugador.jugadores || jugador.jugador_id || jugador.id, jugador.jugadores?.nombre || 'Jugador')}</strong>
               </td>
               <td class="text-center text-light">${jugador.pj || 0}</td>
               <td class="text-center">
@@ -25128,7 +25213,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
             </div>
             <div class="col-md-3">
               <div class="small text-light-emphasis">Líder en Skill</div>
-              <div class="text-warning fw-bold">${ranking[0]?.jugadores?.nombre || 'N/A'}</div>
+              <div class="text-warning fw-bold">${ranking[0] ? renderizarNombrePerfilJugador(ranking[0].jugadores || ranking[0].jugador_id || ranking[0].id, ranking[0]?.jugadores?.nombre || 'N/A') : 'N/A'}</div>
             </div>
             <div class="col-md-3">
               <div class="small text-light-emphasis">Skill Líder</div>
@@ -26230,7 +26315,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       container1.innerHTML = equipo1.length > 0
         ? equipo1.map(jp => `
             <div class="badge bg-primary bg-opacity-25 text-primary me-1 mb-1 p-2">
-              ${jp.jugadores?.nombre || 'Jugador'}
+              ${renderizarNombrePerfilJugador(jp.jugadores || jp.jugador_id, jp.jugadores?.nombre || 'Jugador')}
               ${jp.atajadas > 0 ? `<span class="ms-1">🥅${jp.atajadas}</span>` : ''}
               ${jp.cagadas > 0 ? `<span class="ms-1">💥${jp.cagadas}</span>` : ''}
             </div>
@@ -26242,7 +26327,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       container2.innerHTML = equipo2.length > 0
         ? equipo2.map(jp => `
             <div class="badge bg-danger bg-opacity-25 text-danger me-1 mb-1 p-2">
-              ${jp.jugadores?.nombre || 'Jugador'}
+              ${renderizarNombrePerfilJugador(jp.jugadores || jp.jugador_id, jp.jugadores?.nombre || 'Jugador')}
               ${jp.atajadas > 0 ? `<span class="ms-1">🥅${jp.atajadas}</span>` : ''}
               ${jp.cagadas > 0 ? `<span class="ms-1">💥${jp.cagadas}</span>` : ''}
             </div>
@@ -27105,6 +27190,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     historialFases: []
   });
 
+  const renderizarNombreParejaMundial = (pareja, clases = '') => {
+    if (!pareja) return '';
+    if (!pareja.jugador1Id || !pareja.jugador2Id) {
+      return escaparHtmlPlano(pareja.nombre || 'Pareja');
+    }
+
+    return [
+      renderizarNombrePerfilJugador(pareja.jugador1Id, pareja.jugador1Nombre || 'Jugador', clases),
+      '<span class="text-light-emphasis">+</span>',
+      renderizarNombrePerfilJugador(pareja.jugador2Id, pareja.jugador2Nombre || 'Jugador', clases)
+    ].join(' ');
+  };
+
   const normalizarJugadoresPareja = (jugadorA, jugadorB) => {
     const jugadores = [jugadorA, jugadorB].sort((a, b) => String(a.id).localeCompare(String(b.id)));
     return jugadores;
@@ -27353,7 +27451,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                 `}
               </div>
               <h3 class="text-white fw-bold mb-3">
-                ${ultimoCampeon.nombre} ⭐
+                ${renderizarNombrePerfilJugador(ultimoCampeon.id, ultimoCampeon.nombre, 'text-white fw-bold')} ⭐
               </h3>
               <p class="text-light-emphasis mb-3 fs-5">
                 <i class="bi bi-calendar me-2"></i>
@@ -27461,7 +27559,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                   </div>
                 `}
                 <h5 class="text-warning fw-bold mb-2">
-                  ${campeon.nombre} ⭐
+                  ${renderizarNombrePerfilJugador(campeon.id, campeon.nombre, 'text-warning fw-bold')} ⭐
                 </h5>
                 <p class="text-light-emphasis mb-2">
                   <i class="bi bi-calendar me-1"></i>
@@ -28400,7 +28498,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
                       <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold text-white">${jugador.nombre} ⭐</span>
+                        <span class="fw-bold text-white">${renderizarNombrePerfilJugador(jugador.id, jugador.nombre, 'text-white fw-bold')} ⭐</span>
                         ${index === 0 ? '<i class="bi bi-trophy text-warning"></i>' : ''}
                       </div>
                       <span class="badge ${badge.badge} mb-1">${badge.text}</span>
@@ -28443,7 +28541,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
-                      <div class="fw-bold text-white mb-2">${jugador.nombre}</div>
+                      <div class="fw-bold text-white mb-2">${renderizarNombrePerfilJugador(jugador.id, jugador.nombre, 'text-white fw-bold')}</div>
                       <span class="badge ${badge.badge} mb-1">${badge.text}</span>
                       <div class="small text-light-emphasis">${badge.descripcion}</div>
                       <div class="small text-light-emphasis mt-1">
@@ -28643,7 +28741,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
-                      <div class="fw-bold text-white mb-2">${pareja.nombre}</div>
+                      <div class="fw-bold text-white mb-2">${renderizarNombreParejaMundial(pareja, 'text-white fw-bold')}</div>
                       <span class="badge ${badge.badge} mb-1">${badge.text}</span>
                       <div class="small text-light-emphasis">${badge.descripcion}</div>
                       <div class="small text-light-emphasis mt-1">Run: ${pareja.victoriasRun}V - ${pareja.empatesRun}E - ${pareja.derrotasRun}D</div>
@@ -28673,7 +28771,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                        data-bs-html="true"
                        data-bs-title="${tooltipContent.replace(/"/g, '&quot;')}">
                     <div class="card-body p-3">
-                      <div class="fw-bold text-white mb-2">${pareja.nombre}</div>
+                      <div class="fw-bold text-white mb-2">${renderizarNombreParejaMundial(pareja, 'text-white fw-bold')}</div>
                       <span class="badge bg-secondary mb-1">Congelada en ${badge.text}</span>
                       <div class="small text-light-emphasis">${pareja.motivoCongelada || 'No ocupa jugadores activos'}</div>
                       <div class="small text-light-emphasis mt-1">Run: ${pareja.victoriasRun}V - ${pareja.empatesRun}E - ${pareja.derrotasRun}D</div>

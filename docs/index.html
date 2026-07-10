@@ -488,6 +488,35 @@
         vertical-align: middle;
       }
 
+      .player-profile-text-link {
+        appearance: none;
+        background: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        display: inline;
+        font: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        padding: 0;
+        text-align: inherit;
+        text-decoration: none;
+        text-overflow: ellipsis;
+        vertical-align: baseline;
+        white-space: nowrap;
+      }
+
+      .player-profile-text-link:hover,
+      .player-profile-text-link:focus-visible {
+        color: #93c5fd;
+        outline: 0;
+        text-decoration: underline;
+        text-underline-offset: 0.16em;
+      }
+
       .player-avatar {
         --player-avatar-size: 28px;
         align-items: center;
@@ -10486,7 +10515,7 @@
     <!-- Nuestro script JS -->
     <script type="module" src="./app.js?v=historial-conservative-detail-2026-07-09"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
-    <script src="./tracking-integration.js?v=tracking-0.1.6" defer></script>
+    <script src="./tracking-integration.js?v=tracking-0.1.7" defer></script>
     <!-- Funcionalidad de Paternidades -->
     <script>
     // ===============================
