@@ -2156,6 +2156,409 @@
         margin-bottom: 0.35rem;
       }
 
+      .season-achievements-section {
+        background:
+          linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(15, 23, 42, 0.62)),
+          rgba(15, 23, 42, 0.48);
+        border: 1px solid rgba(245, 158, 11, 0.16);
+        border-radius: 10px;
+        margin-top: 0.15rem;
+        padding: 0.92rem;
+      }
+
+      .season-achievements-head {
+        align-items: center;
+        display: flex;
+        gap: 0.8rem;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .season-achievements-subtitle {
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.22);
+        border-radius: 999px;
+        color: #fde68a;
+        flex: 0 0 auto;
+        font-size: 0.74rem;
+        font-weight: 900;
+        line-height: 1;
+        padding: 0.4rem 0.58rem;
+      }
+
+      .season-achievements-grid {
+        margin-top: 0.2rem;
+      }
+
+      .season-achievement-record .palmares-card {
+        min-height: 92px;
+      }
+
+      .palmares-page-shell {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .palmares-summary-shell {
+        background:
+          linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(24, 18, 8, 0.88)),
+          #0b1018;
+        border: 1px solid rgba(245, 158, 11, 0.18);
+        border-radius: 12px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+        overflow: hidden;
+      }
+
+      .palmares-board {
+        display: grid;
+        gap: 1rem;
+        padding: 1.25rem;
+      }
+
+      .palmares-board-head {
+        align-items: end;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.14);
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        padding-bottom: 0.85rem;
+      }
+
+      .palmares-board-title {
+        color: #f8fafc;
+        font-size: 1.28rem;
+        font-weight: 950;
+        line-height: 1.1;
+        margin: 0;
+      }
+
+      .palmares-board-copy {
+        color: #a7b3c4;
+        font-size: 0.88rem;
+        margin: 0.3rem 0 0;
+      }
+
+      .palmares-count-pill {
+        align-items: center;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.28);
+        border-radius: 999px;
+        color: #fde68a;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 0.78rem;
+        font-weight: 900;
+        gap: 0.36rem;
+        padding: 0.42rem 0.68rem;
+      }
+
+      .palmares-grid {
+        align-items: start;
+        display: grid;
+        gap: 0.86rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .palmares-record {
+        display: grid;
+        gap: 0.55rem;
+        min-width: 0;
+      }
+
+      .palmares-card {
+        align-items: center;
+        appearance: none;
+        background:
+          linear-gradient(135deg, color-mix(in srgb, var(--palmares-accent, #f59e0b) 14%, transparent), rgba(15, 23, 42, 0.88)),
+          rgba(15, 23, 42, 0.76);
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 26%, rgba(148, 163, 184, 0.12));
+        border-left: 4px solid var(--palmares-accent, #f59e0b);
+        border-radius: 10px;
+        color: #f8fafc;
+        cursor: pointer;
+        display: grid;
+        font: inherit;
+        gap: 0.82rem;
+        grid-template-columns: 3.15rem minmax(0, 1fr) minmax(4.25rem, auto);
+        min-height: 112px;
+        padding: 0.9rem;
+        text-align: left;
+        transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+        width: 100%;
+      }
+
+      .palmares-card:hover,
+      .palmares-card:focus-visible {
+        background:
+          linear-gradient(135deg, color-mix(in srgb, var(--palmares-accent, #f59e0b) 20%, transparent), rgba(15, 23, 42, 0.92)),
+          rgba(15, 23, 42, 0.86);
+        border-color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 70%, #ffffff);
+        color: #ffffff;
+        outline: 0;
+        transform: translateY(-1px);
+      }
+
+      .palmares-card-icon {
+        align-items: center;
+        align-self: start;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--palmares-accent, #f59e0b) 24%, rgba(255, 255, 255, 0.08)), rgba(2, 6, 23, 0.74));
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 48%, transparent);
+        border-radius: 10px;
+        color: var(--palmares-accent, #f59e0b);
+        display: inline-flex;
+        font-size: 1.24rem;
+        height: 3.15rem;
+        justify-content: center;
+        width: 3.15rem;
+      }
+
+      .palmares-card-icon .event-icon {
+        --event-icon-size: 24px;
+      }
+
+      .palmares-card-body {
+        align-content: start;
+        display: grid;
+        gap: 0.34rem;
+        min-width: 0;
+      }
+
+      .palmares-card-title {
+        color: #f8fafc;
+        display: -webkit-box;
+        font-size: 0.98rem;
+        font-weight: 950;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-height: 1.12;
+        overflow: hidden;
+        white-space: normal;
+      }
+
+      .palmares-card-detail {
+        color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 58%, #f8fafc);
+        font-size: 0.74rem;
+        font-weight: 950;
+        letter-spacing: 0;
+        line-height: 1.24;
+        text-transform: uppercase;
+      }
+
+      .palmares-card-story {
+        color: #d8e0ea;
+        font-size: 0.86rem;
+        font-weight: 650;
+        line-height: 1.42;
+      }
+
+      .palmares-card-meta {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 750;
+        line-height: 1.2;
+      }
+
+      .palmares-card-value {
+        align-items: center;
+        align-self: center;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--palmares-accent, #f59e0b) 16%, transparent), rgba(2, 6, 23, 0.58));
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 30%, rgba(255, 255, 255, 0.08));
+        border-radius: 8px;
+        color: var(--palmares-accent, #f59e0b);
+        display: grid;
+        font-size: 1.12rem;
+        font-weight: 900;
+        gap: 0.18rem;
+        justify-content: center;
+        line-height: 1;
+        min-height: 4.25rem;
+        min-width: 4.25rem;
+        padding: 0.55rem 0.58rem;
+        place-items: center;
+        white-space: nowrap;
+      }
+
+      .palmares-card-value strong {
+        color: var(--palmares-accent, #f59e0b);
+        font-size: 1.3rem;
+        font-weight: 950;
+      }
+
+      .palmares-card-value small {
+        color: #cbd5e1;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .palmares-tie-list {
+        align-items: start;
+        background: rgba(2, 6, 23, 0.38);
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 18%, rgba(148, 163, 184, 0.12));
+        border-radius: 10px;
+        display: grid;
+        gap: 0.45rem;
+        padding: 0.62rem;
+      }
+
+      .palmares-tie-label {
+        color: #94a3b8;
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .palmares-tie-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+      }
+
+      .palmares-tie-link {
+        appearance: none;
+        background: color-mix(in srgb, var(--palmares-accent, #f59e0b) 10%, rgba(15, 23, 42, 0.92));
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 26%, rgba(148, 163, 184, 0.14));
+        border-radius: 8px;
+        color: #f8fafc;
+        cursor: pointer;
+        display: grid;
+        font: inherit;
+        gap: 0.12rem;
+        min-width: 9rem;
+        padding: 0.46rem 0.58rem;
+        text-align: left;
+      }
+
+      .palmares-tie-link:hover,
+      .palmares-tie-link:focus-visible {
+        border-color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 64%, #ffffff);
+        outline: 0;
+      }
+
+      .palmares-tie-link span {
+        color: #cbd5e1;
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .palmares-tie-link strong {
+        color: #ffffff;
+        font-size: 0.76rem;
+        font-weight: 900;
+        line-height: 1.16;
+      }
+
+      .palmares-video-shell {
+        display: grid;
+        gap: 0.52rem;
+      }
+
+      .palmares-video-toggle {
+        align-items: center;
+        appearance: none;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 24%, rgba(148, 163, 184, 0.18));
+        border-radius: 10px;
+        color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 72%, #ffffff);
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 900;
+        gap: 0.42rem;
+        justify-content: center;
+        min-height: 2.5rem;
+        padding: 0.5rem 0.72rem;
+        transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+        width: 100%;
+      }
+
+      .palmares-video-toggle:hover,
+      .palmares-video-toggle:focus-visible {
+        background: color-mix(in srgb, var(--palmares-accent, #f59e0b) 10%, rgba(15, 23, 42, 0.88));
+        border-color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 58%, rgba(255, 255, 255, 0.18));
+        color: #ffffff;
+        outline: 0;
+      }
+
+      .palmares-video-panel[hidden] {
+        display: none !important;
+      }
+
+      .palmares-video-panel {
+        background:
+          linear-gradient(135deg, rgba(2, 6, 23, 0.78), color-mix(in srgb, var(--palmares-accent, #f59e0b) 8%, rgba(15, 23, 42, 0.82)));
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 22%, rgba(148, 163, 184, 0.14));
+        border-radius: 10px;
+        padding: 0.62rem;
+      }
+
+      .palmares-video-list {
+        display: grid;
+        gap: 0.72rem;
+      }
+
+      .palmares-video-item {
+        display: grid;
+        gap: 0.42rem;
+      }
+
+      .palmares-video-caption {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+        justify-content: space-between;
+      }
+
+      .palmares-video-caption strong {
+        color: #f8fafc;
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+
+      .palmares-video-caption span {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .palmares-video {
+        background: rgba(2, 6, 23, 0.72);
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 24%, rgba(148, 163, 184, 0.18));
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .palmares-video-frame {
+        aspect-ratio: 16 / 9;
+        background: #020617;
+        border: 0;
+        display: block;
+        width: 100%;
+      }
+
+      .palmares-card.is-goals,
+      .palmares-record.is-goals { --palmares-accent: #22c55e; }
+      .palmares-card.is-assists,
+      .palmares-record.is-assists { --palmares-accent: #60a5fa; }
+      .palmares-card.is-saves,
+      .palmares-record.is-saves { --palmares-accent: #2dd4bf; }
+      .palmares-card.is-mistakes,
+      .palmares-record.is-mistakes { --palmares-accent: #fb7185; }
+      .palmares-card.is-drama,
+      .palmares-record.is-drama { --palmares-accent: #f59e0b; }
+      .palmares-card.is-comeback,
+      .palmares-record.is-comeback { --palmares-accent: #a78bfa; }
+      .palmares-card.is-skill,
+      .palmares-record.is-skill { --palmares-accent: #facc15; }
+
       @media (max-width: 1200px) {
         .season-kpi-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2172,6 +2575,10 @@
 
         .season-insight-side {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .palmares-grid {
+          grid-template-columns: 1fr;
         }
       }
 
@@ -2221,6 +2628,30 @@
         .season-hero-meter {
           grid-template-columns: auto minmax(0, 1fr);
         }
+
+        .palmares-board-head {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .season-achievements-head {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .palmares-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .palmares-card {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .palmares-card-value {
+          align-self: start;
+          grid-column: 2;
+          justify-self: start;
+        }
       }
 
       @media (max-width: 480px) {
@@ -2231,7 +2662,8 @@
         .season-hero,
         .season-insight-card,
         .season-leader-card,
-        .season-compact-metric {
+        .season-compact-metric,
+        .season-achievements-section {
           padding: 0.75rem;
         }
 
@@ -2255,6 +2687,454 @@
 
         .season-hero-meter {
           grid-template-columns: 1fr;
+        }
+
+        .palmares-board {
+          padding: 0.75rem;
+        }
+
+        .palmares-card {
+          padding: 0.72rem;
+        }
+      }
+
+      .palmares-page-shell {
+        background: #0a0e16;
+        gap: 1.55rem;
+      }
+
+      .palmares-hero {
+        align-items: end;
+        display: flex;
+        justify-content: space-between;
+        margin: 0 auto;
+        max-width: 1400px;
+        width: 100%;
+      }
+
+      .palmares-hero .season-page-title {
+        align-items: center;
+        color: #f4f7fb;
+        display: flex;
+        font-family: "Barlow Condensed", "Arial Narrow", var(--bs-font-sans-serif);
+        font-size: 2.18rem;
+        font-weight: 800;
+        gap: 0.78rem;
+        letter-spacing: 0;
+        line-height: 1;
+        margin: 0;
+        text-transform: uppercase;
+      }
+
+      .palmares-hero .season-page-title i {
+        align-items: center;
+        background: linear-gradient(135deg, #d4a53a, #8a6a1e);
+        border-radius: 10px;
+        color: #fff6d7;
+        display: inline-flex;
+        font-size: 1.08rem;
+        height: 40px;
+        justify-content: center;
+        margin: 0 !important;
+        width: 40px;
+      }
+
+      .palmares-hero .season-page-copy {
+        color: #8b94a7;
+        font-size: 0.96rem;
+        margin-top: 0.55rem;
+      }
+
+      .palmares-history-pill {
+        align-items: center;
+        background: rgba(212, 165, 58, 0.08);
+        border: 1px solid rgba(212, 165, 58, 0.45);
+        border-radius: 999px;
+        color: #e9c869;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 0.86rem;
+        font-weight: 850;
+        gap: 0.45rem;
+        line-height: 1;
+        padding: 0.72rem 1.1rem;
+        white-space: nowrap;
+      }
+
+      .palmares-summary-shell {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0 auto;
+        max-width: 1400px;
+        overflow: visible;
+        width: 100%;
+      }
+
+      .palmares-board {
+        display: grid;
+        gap: 1.4rem;
+        padding: 0;
+      }
+
+      .palmares-board-head {
+        align-items: baseline;
+        border: 0;
+        display: flex;
+        gap: 1rem;
+        padding: 0;
+      }
+
+      .palmares-board-head::after {
+        background: linear-gradient(90deg, rgba(139, 148, 167, 0.38), transparent);
+        content: "";
+        flex: 1 1 auto;
+        height: 1px;
+        min-width: 4rem;
+      }
+
+      .palmares-board-title {
+        color: #d8e2f3;
+        font-family: "Barlow Condensed", "Arial Narrow", var(--bs-font-sans-serif);
+        font-size: 1.45rem;
+        font-weight: 760;
+        letter-spacing: 0;
+        line-height: 1.05;
+        margin: 0;
+        text-transform: uppercase;
+      }
+
+      .palmares-board-copy {
+        color: #6d7689;
+        font-size: 0.86rem;
+        margin-top: 0.42rem;
+      }
+
+      .palmares-grid {
+        align-items: start;
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .palmares-record {
+        display: block;
+        min-width: 0;
+      }
+
+      .palmares-card {
+        align-items: stretch;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+          rgba(12, 17, 26, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 14px;
+        border-left: 0;
+        color: #e8ecf4;
+        cursor: default;
+        display: flex;
+        flex-direction: column;
+        font: inherit;
+        gap: 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0;
+        position: relative;
+        text-align: left;
+        transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+        width: 100%;
+      }
+
+      .palmares-card::before {
+        background: var(--palmares-accent, #f59e0b);
+        content: "";
+        display: block;
+        height: 3px;
+        opacity: 0.88;
+        width: 100%;
+      }
+
+      .palmares-card:hover {
+        border-color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 28%, rgba(255, 255, 255, 0.12));
+        transform: translateY(-1px);
+      }
+
+      .palmares-card-main {
+        align-items: center;
+        appearance: none;
+        background: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        display: flex;
+        font: inherit;
+        gap: 1.18rem;
+        min-height: 13.1rem;
+        padding: 1.35rem 1.35rem 1.05rem;
+        text-align: left;
+        width: 100%;
+      }
+
+      .palmares-card-main:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 72%, #ffffff);
+        outline-offset: -5px;
+      }
+
+      .palmares-card-value {
+        align-items: center;
+        align-self: center;
+        background: color-mix(in srgb, var(--palmares-accent, #f59e0b) 7%, rgba(2, 6, 23, 0.6));
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 25%, transparent);
+        border-radius: 12px;
+        display: flex;
+        flex: 0 0 92px;
+        flex-direction: column;
+        gap: 0.45rem;
+        justify-content: center;
+        min-height: 9.55rem;
+        min-width: 92px;
+        padding: 0.8rem 0.62rem;
+      }
+
+      .palmares-card-value strong {
+        color: var(--palmares-accent, #f59e0b);
+        font-family: "Barlow Condensed", "Arial Narrow", var(--bs-font-sans-serif);
+        font-size: clamp(2.25rem, 5vw, 2.78rem);
+        font-weight: 820;
+        letter-spacing: 0;
+        line-height: 0.95;
+      }
+
+      .palmares-card-value small {
+        color: #9ba7bd;
+        font-size: 0.68rem;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .palmares-card-body {
+        align-content: center;
+        display: grid;
+        gap: 0.48rem;
+        min-width: 0;
+      }
+
+      .palmares-card-detail {
+        color: var(--palmares-accent, #f59e0b);
+        font-size: 0.72rem;
+        font-weight: 920;
+        letter-spacing: 0.12em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .palmares-card-title {
+        color: #f0f3f9;
+        display: block;
+        font-family: "Barlow Condensed", "Arial Narrow", var(--bs-font-sans-serif);
+        font-size: 1.42rem;
+        font-weight: 760;
+        letter-spacing: 0;
+        line-height: 1.12;
+        overflow: visible;
+      }
+
+      .palmares-card-story {
+        color: #9aa7bc;
+        font-size: 0.88rem;
+        font-weight: 520;
+        line-height: 1.52;
+      }
+
+      .palmares-card-footer {
+        align-items: center;
+        background: rgba(0, 0, 0, 0.18);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.62rem;
+        min-height: 3.9rem;
+        padding: 0.72rem 1.35rem;
+        width: 100%;
+      }
+
+      .palmares-card-meta {
+        color: #71809a;
+        font-size: 0.79rem;
+        font-weight: 650;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .palmares-footer-spacer {
+        flex: 1 1 auto;
+      }
+
+      .palmares-tie-link {
+        align-items: center;
+        appearance: none;
+        background: transparent;
+        border: 1px dashed rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        color: #8b94a7;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 0.74rem;
+        font-weight: 700;
+        gap: 0.42rem;
+        min-width: 0;
+        padding: 0.24rem 0.64rem;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      .palmares-tie-link:hover,
+      .palmares-tie-link:focus-visible {
+        border-color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 44%, rgba(255, 255, 255, 0.18));
+        color: #c6cedd;
+        outline: 0;
+      }
+
+      .palmares-tie-link span {
+        color: #aab3c5;
+        font-size: 0.78rem;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .palmares-video-shell {
+        display: contents;
+      }
+
+      .palmares-video-toggle {
+        align-items: center;
+        appearance: none;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 30%, rgba(255, 255, 255, 0.1));
+        border-radius: 999px;
+        color: var(--palmares-accent, #f59e0b);
+        cursor: pointer;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 850;
+        gap: 0.42rem;
+        justify-content: center;
+        min-height: 2rem;
+        padding: 0.36rem 0.86rem;
+        white-space: nowrap;
+        width: auto;
+      }
+
+      .palmares-video-toggle:hover,
+      .palmares-video-toggle:focus-visible {
+        background: color-mix(in srgb, var(--palmares-accent, #f59e0b) 8%, transparent);
+        border-color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 55%, rgba(255, 255, 255, 0.12));
+        color: color-mix(in srgb, var(--palmares-accent, #f59e0b) 82%, #ffffff);
+        outline: 0;
+      }
+
+      .palmares-video-panel[hidden] {
+        display: none !important;
+      }
+
+      .palmares-video-panel {
+        background: rgba(2, 6, 23, 0.72);
+        border: 1px solid color-mix(in srgb, var(--palmares-accent, #f59e0b) 18%, rgba(255, 255, 255, 0.09));
+        border-radius: 12px;
+        flex: 1 0 100%;
+        margin-top: 0.34rem;
+        padding: 0.72rem;
+        width: 100%;
+      }
+
+      .palmares-video-caption {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+        justify-content: space-between;
+      }
+
+      .palmares-video-caption strong {
+        color: #e8ecf4;
+        font-size: 0.78rem;
+        font-weight: 850;
+      }
+
+      .palmares-video-caption span {
+        color: #7d8aa2;
+        font-size: 0.74rem;
+        font-weight: 700;
+      }
+
+      @media (max-width: 1100px) {
+        .palmares-hero {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .palmares-history-pill {
+          align-self: start;
+        }
+
+        .palmares-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .palmares-page-shell {
+          gap: 1.1rem;
+        }
+
+        .palmares-hero .season-page-title {
+          font-size: 1.72rem;
+        }
+
+        .palmares-board-head {
+          align-items: start;
+          display: grid;
+        }
+
+        .palmares-board-head::after {
+          display: none;
+        }
+
+        .palmares-card-main {
+          align-items: stretch;
+          display: grid;
+          gap: 0.9rem;
+          min-height: 0;
+          padding: 1rem;
+        }
+
+        .palmares-card-value {
+          align-self: start;
+          flex: none;
+          min-height: 5.9rem;
+          min-width: 7.1rem;
+        }
+
+        .palmares-card-footer {
+          align-items: stretch;
+          padding: 0.75rem 1rem;
+        }
+
+        .palmares-card-meta,
+        .palmares-tie-link,
+        .palmares-video-toggle {
+          white-space: normal;
+        }
+
+        .palmares-footer-spacer {
+          display: none;
         }
       }
 
@@ -5311,9 +6191,23 @@
 
       .perfil-modern-achievement {
         background: rgba(255, 255, 255, 0.075);
+        border: 0;
         color: rgba(248, 250, 252, 0.86);
         font-size: 0.75rem;
         padding: 0.34rem 0.52rem;
+      }
+
+      button.perfil-modern-achievement {
+        appearance: none;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .perfil-modern-achievement.is-clickable:hover,
+      .perfil-modern-achievement.is-clickable:focus-visible {
+        box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.18);
+        color: #ffffff;
+        transform: translateY(-1px);
       }
 
       .perfil-modern-stats {
@@ -5956,6 +6850,19 @@
         border: 1px solid transparent;
         font-size: 0.86rem;
         padding: 0.42rem 0.72rem;
+      }
+
+      button.perfil-modern-achievement {
+        appearance: none;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .perfil-modern-achievement.is-clickable:hover,
+      .perfil-modern-achievement.is-clickable:focus-visible {
+        box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.18);
+        color: #ffffff;
+        transform: translateY(-1px);
       }
 
       .perfil-modern-achievement.is-fire {
@@ -7023,6 +7930,11 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="ranking-skill-tab" data-bs-toggle="tab" data-bs-target="#ranking-skill-content" type="button" role="tab" aria-controls="ranking-skill-content" aria-selected="false" onclick="cargarRankingSkill()">
             <i class="bi bi-lightning-charge me-2"></i>Ranking de Skill Individual
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="palmares-tab" data-bs-toggle="tab" data-bs-target="#palmares-content" type="button" role="tab" aria-controls="palmares-content" aria-selected="false" onclick="cargarPalmares()">
+            <i class="bi bi-award-fill me-2"></i>Palmar&eacute;s
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -8303,6 +9215,34 @@
         </div>
       </div>
       <!-- End Temporadas Tab -->
+
+      <!-- Palmares Tab -->
+      <div class="tab-pane fade" id="palmares-content" role="tabpanel" aria-labelledby="palmares-tab">
+        <div class="container-fluid py-4 palmares-page-shell">
+          <div class="season-page-header palmares-hero">
+            <div>
+              <h2 class="season-page-title">
+                <i class="bi bi-award-fill me-2"></i>Palmar&eacute;s
+              </h2>
+              <p class="season-page-copy">Partidos y momentos que hoy son m&aacute;ximos hist&oacute;ricos de la academia.</p>
+            </div>
+            <span class="palmares-history-pill">
+              <i class="bi bi-trophy-fill"></i>
+              Hall de la historia
+            </span>
+          </div>
+
+          <div id="palmares-container" class="palmares-summary-shell">
+            <div class="season-state">
+              <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="text-light-emphasis mt-2 mb-0">Calculando m&aacute;ximos hist&oacute;ricos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End Palmares Tab -->
 
       <!-- Paternidades Tab -->
       <div class="tab-pane fade" id="paternidades-content" role="tabpanel" aria-labelledby="paternidades-tab">

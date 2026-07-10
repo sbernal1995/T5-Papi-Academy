@@ -1593,6 +1593,7 @@ function normalizarInsigniaRecordPartidoPerfil(row, metadatosTemporadas) {
     tipo: `record:${row.tipo}`,
     recordKey: row.record_key || '',
     partidoId: row.partido_id || null,
+    temporadaId: row.temporada_id || null,
     iconHtml: config.iconHtml,
     name: row.titulo,
     desc: [detalle, temporadaTexto].filter(Boolean).join(' · '),
@@ -2326,6 +2327,18 @@ function inyectarEstilosPerfilFut() {
       color: var(--fut-text);
       transition: all 0.2s ease;
       min-width: 220px;
+    }
+    button.fut-badge {
+      appearance: none;
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+    }
+    .fut-badge.is-clickable:hover,
+    .fut-badge.is-clickable:focus-visible {
+      border-color: rgba(212,168,67,0.54);
+      box-shadow: 0 0 0 2px rgba(212,168,67,0.18), 0 10px 24px rgba(0,0,0,0.22);
+      transform: translateY(-1px);
     }
     .fut-badge.fut-badge-unlocked {
       border-color: var(--fut-card-border);
@@ -3106,7 +3119,6 @@ function calcularInsigniasPerfil(datos = datosPerfilJugador) {
     { iconHtml: '<i class="bi bi-graph-up-arrow"></i>', name: 'Winrate elite', desc: '60%+ winrate con 10+ PJ', unlocked: resumen.pj >= 10 && resumen.winrate >= 60 },
     { iconHtml: '<i class="bi bi-crosshair"></i>', name: 'Clutch', desc: '3+ goles clave', unlocked: resumen.golesClave >= 3 },
     { iconHtml: '<i class="bi bi-arrow-repeat"></i>', name: 'Remontador', desc: '5+ goles en desventaja', unlocked: resumen.golesRemontando >= 5 },
-    { iconHtml: '<i class="bi bi-lightning-charge-fill"></i>', name: 'Rafaga', desc: 'Doblete en menos de 3 min', unlocked: resumen.dobleteMasRapidoSegundos !== null && resumen.dobleteMasRapidoSegundos <= 180 },
     { iconHtml: '<i class="bi bi-unlock-fill"></i>', name: 'Abridor', desc: 'Abre el marcador en 30%+ de sus PJ', unlocked: resumen.pj >= 3 && resumen.pctAbridor >= 30 },
     { iconHtml: '<i class="bi bi-snow2"></i>', name: 'Frio', desc: 'Gol clave en los ultimos 5 min', unlocked: resumen.golesClaveUltimos5 >= 1 },
     { iconHtml: '<i class="bi bi-shield-check"></i>', name: 'Disciplinado', desc: '0 cagadas con 5+ PJ', unlocked: resumen.pj >= 5 && resumen.cagadas === 0 },
@@ -3183,13 +3195,13 @@ function generarTaglinePerfil(resumen = {}) {
   const golesRemontando = Number(resumen.golesRemontando) || 0;
   const pctAbridor = Number(resumen.pctAbridor) || 0;
   const golesTotales = Number(resumen.goles) || 0;
+  const pctGolesRemontando = golesTotales > 0 ? (golesRemontando / golesTotales) * 100 : 0;
   const distribucionTramos = resumen.distribucionTramos || {};
   const golesUltimoTramo = Number(distribucionTramos.t45_plus) || 0;
 
   if (golesClave >= 3) return `Clutch de vestuario &middot; ${golesClave} goles clave`;
-  if (golesRemontando >= 5) return `Aparece cuando arde &middot; ${golesRemontando} goles remontando`;
-  if (Number.isFinite(resumen.dobleteMasRapidoSegundos) && resumen.dobleteMasRapidoSegundos <= 180) {
-    return `Rafaga corta &middot; doblete en ${formatearTiempoPartidoSegundos(resumen.dobleteMasRapidoSegundos)}`;
+  if (pj >= 5 && golesRemontando >= 8 && pctGolesRemontando >= 35) {
+    return `Aparece cuando arde &middot; ${golesRemontando} goles remontando`;
   }
   if (golesTotales >= 5 && golesUltimoTramo >= golesTotales * 0.6) return `Cierra asesino &middot; ${golesUltimoTramo} goles tarde`;
   if (pctAbridor >= 30 && pj >= 3) return `Abre partidos &middot; ${pctAbridor.toFixed(0)}% de sus PJ`;
@@ -3199,6 +3211,9 @@ function generarTaglinePerfil(resumen = {}) {
   if (asistenciasPP >= 1.2) return `Socio premium &middot; ${asistenciasPP.toFixed(1)} asistencias por partido`;
   if (mvpPP >= 0.25) return `Jugador franquicia &middot; ${resumen.mvp} MVP`;
   if (acePP >= 0.25) return `Rompe partidos &middot; ${resumen.ace} ACE`;
+  if (golesRemontando >= 5 && pctGolesRemontando >= 25) {
+    return `Empuja la reaccion &middot; ${golesRemontando} goles remontando`;
+  }
   if (wr >= 60 && pj >= 5) return `Talisman del equipo &middot; ${wr.toFixed(0)}% WR`;
   if (golesPP >= 0.8) return `Amenaza constante &middot; ${golesPP.toFixed(1)} goles por partido`;
   return `Jugador de sistema &middot; ${pj} partidos`;
@@ -3984,7 +3999,7 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
       });
     };
 
-    const registrarRecordSiCorresponde = (tipo, mapaValores, metaTemporada, detalleFn) => {
+    const registrarRecordSiCorresponde = (tipo, mapaValores, metaTemporada, detalleFn, mapaDetalles = null) => {
       if (!(mapaValores instanceof Map) || mapaValores.size === 0) {
         return;
       }
@@ -3999,11 +4014,14 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
       }
 
       const config = PREMIOS_PERFIL_CONFIG[tipo];
+      const detalleRecord = mapaDetalles instanceof Map ? mapaDetalles.get(jugadorId) : null;
       premios.push({
         tipo,
         iconHtml: config.iconHtml,
         name: config.nombre,
         desc: `${metaTemporada.nombre} · ${detalleFn(maximo)}`,
+        partidoId: detalleRecord?.partidoId || null,
+        temporadaId: detalleRecord?.temporadaId || metaTemporada.id || null,
         unlocked: true,
         ordenTemporada: metaTemporada.orden,
         prioridad: config.prioridad
@@ -4041,7 +4059,8 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
         'max_goles_partido',
         records.maxGolesPartido,
         metaTemporada,
-        valor => `${valor} ${pluralizarPerfil(valor, 'gol', 'goles')} en un partido`
+        valor => `${valor} ${pluralizarPerfil(valor, 'gol', 'goles')} en un partido`,
+        records.maxGolesPartidoDetalle
       );
       registrarRecordSiCorresponde(
         'max_asistencias_partido',
@@ -4081,8 +4100,52 @@ async function cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaIdActual
   }
 }
 
+function esLogroDeGolPerfil(logro = {}) {
+  const texto = [
+    logro.tipo,
+    logro.name,
+    logro.nombre
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return texto.includes('gol');
+}
+
+function obtenerNavegacionLogroGolPerfil(logro = {}) {
+  if (!logro || logro.unlocked === false || !esLogroDeGolPerfil(logro)) return null;
+
+  const partidoId = logro.partidoId || logro.partido_id || logro.partido?.id || null;
+  if (!partidoId) return null;
+
+  const temporadaId = logro.temporadaId ?? logro.temporada_id ?? '';
+  const partidoJs = escaparTextoParaJs(partidoId);
+  const temporadaJs = temporadaId !== null && temporadaId !== undefined && String(temporadaId) !== ''
+    ? escaparTextoParaJs(temporadaId)
+    : '';
+
+  return {
+    onclick: `irAHistorialPartido('${partidoJs}'${temporadaJs ? `, '${temporadaJs}'` : ''})`,
+    title: 'Ver partido donde ocurrio este logro'
+  };
+}
+
 function renderizarBadgePerfil(logro) {
   const claseEstado = logro.unlocked ? 'fut-badge-unlocked' : 'fut-badge-locked';
+  const navegacionGol = obtenerNavegacionLogroGolPerfil(logro);
+
+  if (navegacionGol) {
+    const iconoGol = logro.iconHtml || logro.icon || '<i class="bi bi-award-fill"></i>';
+    const nombreGol = logro.name || logro.nombre || 'Logro';
+    const descGol = logro.desc || logro.descripcion || '';
+    return `
+      <button type="button" class="fut-badge ${claseEstado} is-clickable" onclick="${navegacionGol.onclick}" title="${navegacionGol.title}">
+        <span class="fut-badge-icon">${iconoGol}</span>
+        <div class="fut-badge-info">
+          <span class="fut-badge-name">${escaparHtmlPlano(nombreGol)}</span>
+          <span class="fut-badge-desc">${escaparHtmlPlano(descGol)}</span>
+        </div>
+      </button>
+    `;
+  }
   const icono = logro.iconHtml || logro.icon || '🏅';
 
   return `
@@ -4801,10 +4864,25 @@ function renderizarPerfilBasico() {
   const logrosHtmlPerfil = logrosDestacadosPerfil.map(logro => {
     const nombre = logro.name || logro.nombre || 'Logro';
     const desc = logro.desc || logro.descripcion || '';
-    return `
-    <span class="perfil-modern-achievement ${obtenerClaseLogroPerfil(nombre)}" title="${escaparHtmlPlano(nombre)}${desc ? `: ${escaparHtmlPlano(desc)}` : ''}">
+    const navegacionGol = obtenerNavegacionLogroGolPerfil(logro);
+    const clase = `perfil-modern-achievement ${obtenerClaseLogroPerfil(nombre)}${navegacionGol ? ' is-clickable' : ''}`;
+    const title = navegacionGol?.title || `${nombre}${desc ? `: ${desc}` : ''}`;
+    const contenido = `
       ${obtenerIconoLogroPerfil({ ...logro, name: nombre })}
       <span>${escaparHtmlPlano(nombre)}</span>
+    `;
+
+    if (navegacionGol) {
+      return `
+    <button type="button" class="${clase}" title="${escaparHtmlPlano(title)}" onclick="${navegacionGol.onclick}">
+      ${contenido}
+    </button>
+  `;
+    }
+
+    return `
+    <span class="${clase}" title="${escaparHtmlPlano(title)}">
+      ${contenido}
     </span>
   `;
   }).join('');
@@ -20891,10 +20969,17 @@ const initApp = () => {
   }
 
   async function consultarPartidosParaRecordsHistorial(temporadaId = '', opciones = {}) {
-    const selectConArquero = `
+    const selectQuery = `
       id,
       fecha,
       temporada_id,
+      equipo_ganador,
+      youtube_link,
+      compilado_youtube_link,
+      temporadas (
+        id,
+        nombre
+      ),
       jugador_partido (
         jugador_id,
         equipo,
@@ -20915,7 +21000,6 @@ const initApp = () => {
         goleador_id,
         asistidor_id,
         cagada_jugador_id,
-        arquero_id,
         equipo,
         minuto,
         es_gol_en_contra,
@@ -20923,31 +21007,18 @@ const initApp = () => {
       )
     `;
 
-    const selectSinArquero = selectConArquero.replace(/,\s*arquero_id/g, '');
-
     const incluirTodasLasTemporadas = opciones.incluirTodasLasTemporadas === true;
 
-    const ejecutarConsulta = async (selectQuery) => {
-      let query = supabase
-        .from('partidos')
-        .select(selectQuery)
-        .order('fecha', { ascending: true });
+    let query = supabase
+      .from('partidos')
+      .select(selectQuery)
+      .order('fecha', { ascending: true });
 
-      if (temporadaId && !incluirTodasLasTemporadas) {
-        query = query.eq('temporada_id', temporadaId);
-      }
-
-      return query;
-    };
-
-    let { data, error } = await ejecutarConsulta(selectConArquero);
-
-    if (error && esErrorColumnaFaltante(error, 'arquero_id')) {
-      const reintento = await ejecutarConsulta(selectSinArquero);
-      data = reintento.data;
-      error = reintento.error;
+    if (temporadaId && !incluirTodasLasTemporadas) {
+      query = query.eq('temporada_id', temporadaId);
     }
 
+    const { data, error } = await query;
     if (error) throw error;
 
     const partidos = Array.isArray(data) ? data : [];
@@ -20966,6 +21037,647 @@ const initApp = () => {
       return consultarRecordsPersistidosHistorial(temporadaId);
     }
   }
+
+  const formatearFechaPalmares = (fecha) => {
+    if (!fecha) return 'Sin fecha';
+    const date = new Date(`${fecha}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return String(fecha);
+    return date.toLocaleDateString('es-AR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }).replace(/\./g, '');
+  };
+
+  const obtenerNombreTemporadaPalmares = (partido) => {
+    if (partido?.temporadas?.nombre) return partido.temporadas.nombre;
+    if (partido?.temporada_id) return obtenerNombreTemporadaResumen(partido.temporada_id);
+    return 'Sin temporada';
+  };
+
+  const obtenerVideoPalmares = (partido) => {
+    const compiladoLink = obtenerLinkYouTubeReview(partido?.compilado_youtube_link);
+    const reviewLink = obtenerLinkYouTubeReview(partido?.youtube_link);
+    const link = compiladoLink || reviewLink;
+    const videoId = extraerVideoId(link);
+
+    if (!videoId) return null;
+
+    return {
+      tipo: compiladoLink ? 'Compilado' : 'Review',
+      link,
+      embedUrl: `https://www.youtube.com/embed/${encodeURIComponent(videoId)}`
+    };
+  };
+
+  const construirBasePartidoPalmares = (partido, metricas, mundialitoPorPartido = null) => {
+    const final = metricas?.dinamica?.final || {
+      1: metricas?.golesEquipo1 || 0,
+      2: metricas?.golesEquipo2 || 0
+    };
+    const golesEquipo1 = Number(final[1]) || 0;
+    const golesEquipo2 = Number(final[2]) || 0;
+
+    return {
+      partidoId: partido?.id || null,
+      temporadaId: partido?.temporada_id || partido?.temporadas?.id || null,
+      fecha: partido?.fecha || null,
+      fechaTexto: formatearFechaPalmares(partido?.fecha),
+      temporadaNombre: obtenerNombreTemporadaPalmares(partido),
+      marcadorTexto: `${golesEquipo1}-${golesEquipo2}`,
+      mundialitoMomentos: mundialitoPorPartido?.get(String(partido?.id || '')) || [],
+      video: obtenerVideoPalmares(partido)
+    };
+  };
+
+  const obtenerMaximosVigentesPalmares = (candidatos = [], modo = 'max') => {
+    const candidatosValidos = candidatos.filter(candidato => {
+      const valor = Number(candidato?.valor);
+      if (!Number.isFinite(valor)) return false;
+      return modo === 'min' ? valor >= 0 : valor > 0;
+    });
+
+    if (!candidatosValidos.length) return [];
+
+    const mejorValor = candidatosValidos.reduce((mejor, candidato) => {
+      const valor = Number(candidato.valor);
+      if (!Number.isFinite(mejor)) return valor;
+      return modo === 'min' ? Math.min(mejor, valor) : Math.max(mejor, valor);
+    }, modo === 'min' ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+
+    return candidatosValidos
+      .filter(candidato => Math.abs(Number(candidato.valor) - mejorValor) < 0.0001)
+      .sort((a, b) => {
+        const fechaA = Date.parse(a.fecha || '') || 0;
+        const fechaB = Date.parse(b.fecha || '') || 0;
+        if (fechaB !== fechaA) return fechaB - fechaA;
+        return String(a.partidoId || '').localeCompare(String(b.partidoId || ''), undefined, { numeric: true });
+      });
+  };
+
+  const obtenerEtiquetaValorPalmares = (record = {}) => {
+    const tipo = String(record.tipo || '');
+    const detalle = String(record.detalleTexto || '').toLowerCase();
+
+    if (record.valorEtiqueta) return record.valorEtiqueta;
+    if (tipo.includes('gol-rapido') || tipo.includes('gol-agonico')) return 'tiempo';
+    if (tipo.includes('remontada')) return 'goles';
+    if (tipo.includes('actuacion')) return 'skill';
+    if (tipo.includes('asist') || detalle.includes('asist')) return 'asist.';
+    if (tipo.includes('ataj') || detalle.includes('ataj')) return 'ataj.';
+    if (tipo.includes('cag') || detalle.includes('cag')) return 'cag.';
+    return 'goles';
+  };
+
+  const obtenerKickerPalmares = (record = {}) => {
+    const tipo = String(record.tipo || '');
+    if (tipo.includes('partido-goles')) return 'Record ofensivo';
+    if (tipo.includes('partido-asistencias')) return 'Record asociativo';
+    if (tipo.includes('partido-atajadas')) return 'Record defensivo';
+    if (tipo.includes('partido-cagadas')) return 'Record que duele';
+    if (tipo.includes('gol-rapido')) return record.jugadorNombre || 'Gol tempranero';
+    if (tipo.includes('gol-agonico')) return record.detalleTexto || 'Gol clave';
+    if (tipo.includes('remontada')) return 'Remontada historica';
+    if (tipo.includes('actuacion')) return record.jugadorNombre || 'Pico individual';
+    return 'Record historico';
+  };
+
+  const obtenerTemporadaCortaPalmares = (record = {}) => {
+    const nombre = String(record.temporadaNombre || '').trim();
+    const match = nombre.match(/temporada\s+(\d+)/i);
+    if (match) return `T${match[1]}`;
+    return nombre || 'Temporada';
+  };
+
+  const obtenerEtiquetaFasePalmares = (fase) => {
+    const key = String(fase || '').toLowerCase();
+    const etiquetas = {
+      '4tos': 'Cuartos',
+      semis: 'Semifinal',
+      final: 'Final',
+      campeon: 'Campeon'
+    };
+    return etiquetas[key] || fase;
+  };
+
+  const construirIndiceMundialitoPalmares = (partidos = []) => {
+    const indice = new Map();
+
+    try {
+      if (typeof procesarPartidoMundialTemp !== 'function') return indice;
+
+      const partidosPorTemporada = new Map();
+      partidos.forEach(partido => {
+        const temporadaId = String(partido?.temporada_id || '__sin_temporada__');
+        if (!partidosPorTemporada.has(temporadaId)) partidosPorTemporada.set(temporadaId, []);
+        partidosPorTemporada.get(temporadaId).push(partido);
+      });
+
+      const fasesClasificacion = new Set(['4tos', 'semis', 'final', 'campeon']);
+      const fasesEliminacion = new Set(['4tos', 'semis', 'final']);
+
+      partidosPorTemporada.forEach(partidosTemporada => {
+        const jugadoresTemp = new Map();
+        const ordenados = [...partidosTemporada].sort((a, b) => {
+          const fechaA = Date.parse(`${a?.fecha || ''}T12:00:00`) || 0;
+          const fechaB = Date.parse(`${b?.fecha || ''}T12:00:00`) || 0;
+          if (fechaA !== fechaB) return fechaA - fechaB;
+          return String(a?.id || '').localeCompare(String(b?.id || ''), undefined, { numeric: true });
+        });
+
+        ordenados.forEach(partido => {
+          const cambios = procesarPartidoMundialTemp(partido, jugadoresTemp) || [];
+          const relevantes = cambios
+            .filter(cambio => {
+              const fase = String(cambio?.fase || '').toLowerCase();
+              if (cambio?.tipo === 'clasificado') return fasesClasificacion.has(fase);
+              if (cambio?.tipo === 'eliminado') return fasesEliminacion.has(fase);
+              return false;
+            })
+            .map(cambio => ({
+              jugador: cambio.jugador || 'Jugador',
+              tipo: cambio.tipo,
+              fase: String(cambio.fase || ''),
+              faseTexto: obtenerEtiquetaFasePalmares(cambio.fase),
+              razon: cambio.razon || ''
+            }));
+
+          if (relevantes.length) {
+            indice.set(String(partido.id), relevantes);
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('No se pudo calcular contexto Mundialito para Palmares:', error);
+    }
+
+    return indice;
+  };
+
+  const construirTextoMundialitoPalmares = (record = {}) => {
+    const momentos = Array.isArray(record.mundialitoMomentos) ? record.mundialitoMomentos : [];
+    if (!momentos.length) return '';
+
+    const formatearListaJugadores = (jugadores = []) => {
+      const nombres = jugadores.filter(Boolean);
+      if (nombres.length <= 1) return nombres[0] || 'Jugador';
+      if (nombres.length === 2) return `${nombres[0]} y ${nombres[1]}`;
+      return `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
+    };
+
+    const grupos = new Map();
+    momentos.forEach(momento => {
+      const key = `${momento.tipo || ''}:${momento.fase || ''}`;
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          tipo: momento.tipo,
+          faseTexto: momento.faseTexto || obtenerEtiquetaFasePalmares(momento.fase),
+          jugadores: []
+        });
+      }
+      const nombreJugador = momento.jugador || 'Jugador';
+      const grupo = grupos.get(key);
+      if (!grupo.jugadores.includes(nombreJugador)) {
+        grupo.jugadores.push(nombreJugador);
+      }
+    });
+
+    const frases = Array.from(grupos.values()).map(grupo => {
+      const jugadoresVisibles = grupo.jugadores.slice(0, 3);
+      const jugadores = formatearListaJugadores(jugadoresVisibles);
+      const extra = grupo.jugadores.length > 3 ? ` +${grupo.jugadores.length - 3}` : '';
+      const plural = grupo.jugadores.length > 1;
+      if (grupo.tipo === 'clasificado') {
+        return `${jugadores}${extra} ${plural ? 'avanzaron' : 'avanzo'} a ${grupo.faseTexto}`;
+      }
+      return `${jugadores}${extra} ${plural ? 'quedaron' : 'quedo'} afuera en ${grupo.faseTexto}`;
+    });
+
+    return frases.length ? ` Ademas, ${frases.join('; ')}.` : '';
+  };
+
+  const construirRelatoPalmares = (record = {}) => {
+    const tipo = String(record.tipo || '');
+    const fecha = record.fechaTexto || 'Esa fecha';
+    const temporada = record.temporadaNombre || 'la temporada';
+    const marcador = record.marcadorTexto || 'marcador cerrado';
+    const valor = record.valorTexto || String(record.valor || '');
+    const jugador = record.jugadorNombre || 'El protagonista';
+    let relato = '';
+
+    if (tipo.includes('gol-rapido')) {
+      relato = `${jugador} golpeo apenas arranco: a los ${valor} ya habia cambiado el partido, que termino ${marcador}.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('gol-agonico')) {
+      const marcadorMomento = record.marcadorMomento || marcador;
+      relato = `Cuando el reloj ya pesaba, ${jugador} encontro el gol clave a los ${valor} y dejo la jugada marcada en el ${marcadorMomento}.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('remontada')) {
+      const desde = record.remontadaDesde || record.detalleTexto || 'un resultado adverso';
+      relato = `Parecia enterrado desde ${desde}, pero el partido giro completo hasta el ${marcador}. Esa vuelta quedo como la remontada mas grande.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('actuacion')) {
+      relato = `${jugador} firmo una noche aparte: ${valor} de skill en un ${marcador}, el pico individual mas alto registrado.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('asist')) {
+      relato = `El ${fecha}, en ${temporada}, el partido se armo a puro pase: ${valor} asistencias y un ${marcador} que quedo como la noche mas asociativa.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('ataj')) {
+      relato = `Fue una batalla bajo los tres palos: ${valor} atajadas sostuvieron un ${marcador} que quedo como la marca defensiva de la historia.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('cag')) {
+      relato = `Tambien hay records que duelen: ${valor} cagadas en un ${marcador}, el partido mas caotico del registro.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    relato = `El ${fecha}, en ${temporada}, el partido se desato: ${marcador} y ${valor} goles para dejar la marca ofensiva mas alta.`;
+    return `${relato}${construirTextoMundialitoPalmares(record)}`;
+  };
+
+  const agruparEmpatesPalmares = (records = []) => {
+    const grupos = new Map();
+
+    records.forEach(record => {
+      const valor = Number(record.valor);
+      const key = `${record.tipo || ''}:${Number.isFinite(valor) ? valor.toFixed(4) : record.valorTexto}`;
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key).push(record);
+    });
+
+    return Array.from(grupos.values()).map(items => {
+      const ordenados = [...items].sort((a, b) => {
+        const fechaA = Date.parse(a.fecha || '') || 0;
+        const fechaB = Date.parse(b.fecha || '') || 0;
+        if (fechaB !== fechaA) return fechaB - fechaA;
+        return String(a.partidoId || '').localeCompare(String(b.partidoId || ''), undefined, { numeric: true });
+      });
+      const [principal, ...empates] = ordenados;
+      return {
+        ...principal,
+        empates
+      };
+    });
+  };
+
+  function calcularPalmaresHistoricos(partidos = []) {
+    const categorias = [
+      ...obtenerRecordsPartidoConfigHistorial().map((config, index) => ({
+        tipo: config.tipo,
+        modo: 'max',
+        orden: index + 1,
+        titulo: `${config.titulo} de la historia`,
+        clase: config.clase,
+        iconoHtml: config.iconoHtml,
+        candidatos: []
+      })),
+      {
+        tipo: 'partido-gol-rapido',
+        modo: 'min',
+        orden: 20,
+        titulo: 'Gol mas rapido de la historia',
+        clase: 'is-drama',
+        iconoHtml: '<i class="bi bi-stopwatch-fill"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'partido-gol-agonico',
+        modo: 'max',
+        orden: 21,
+        titulo: 'Gol mas agonico de la historia',
+        clase: 'is-drama',
+        iconoHtml: '<i class="bi bi-hourglass-split"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'partido-remontada-grande',
+        modo: 'max',
+        orden: 22,
+        titulo: 'Remontada mas grande de la historia',
+        clase: 'is-comeback',
+        iconoHtml: '<i class="bi bi-arrow-repeat"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'mejor-actuacion-individual',
+        modo: 'max',
+        orden: 23,
+        titulo: 'Mejor actuacion individual de la historia',
+        clase: 'is-skill',
+        iconoHtml: '<i class="bi bi-lightning-charge-fill"></i>',
+        candidatos: []
+      }
+    ];
+    const categoriaPorTipo = new Map(categorias.map(categoria => [categoria.tipo, categoria]));
+    const metricasPorPartidoConfig = obtenerRecordsPartidoConfigHistorial();
+    const mundialitoPorPartido = construirIndiceMundialitoPalmares(partidos);
+
+    partidos.forEach(partido => {
+      const metricas = calcularMetricasRecordsPartidoHistorial(partido);
+      const base = construirBasePartidoPalmares(partido, metricas, mundialitoPorPartido);
+      if (!base.partidoId) return;
+
+      metricasPorPartidoConfig.forEach(config => {
+        const valor = Number(metricas[config.key]) || 0;
+        categoriaPorTipo.get(config.tipo)?.candidatos.push({
+          ...base,
+          valor,
+          valorTexto: String(valor),
+          valorEtiqueta: config.detalle.replace(' totales', ''),
+          detalleTexto: `${valor} ${config.detalle}`
+        });
+      });
+
+      const eventosGoles = (metricas.dinamica?.eventos || [])
+        .filter(evento => Number.isFinite(evento.segundos) && !evento.gol?.es_gol_en_contra);
+      eventosGoles.forEach(evento => {
+        const nombreJugador = obtenerNombreJugadorEnPartido(partido.jugador_partido || [], evento.gol?.goleador_id);
+        categoriaPorTipo.get('partido-gol-rapido')?.candidatos.push({
+          ...base,
+          valor: evento.segundos,
+          valorTexto: formatearTiempoPartidoSegundos(evento.segundos),
+          valorEtiqueta: 'tiempo',
+          jugadorNombre: nombreJugador,
+          tiempoTexto: formatearTiempoPartidoSegundos(evento.segundos),
+          detalleTexto: `${nombreJugador} - ${formatearTiempoPartidoSegundos(evento.segundos)}`
+        });
+      });
+
+      const golClave = metricas.dinamica?.golClave;
+      if (golClave && Number.isFinite(golClave.segundos) && !golClave.gol?.es_gol_en_contra) {
+        const nombreJugador = obtenerNombreJugadorEnPartido(partido.jugador_partido || [], golClave.gol?.goleador_id);
+        categoriaPorTipo.get('partido-gol-agonico')?.candidatos.push({
+          ...base,
+          valor: golClave.segundos,
+          valorTexto: formatearTiempoPartidoSegundos(golClave.segundos),
+          valorEtiqueta: 'tiempo',
+          jugadorNombre: nombreJugador,
+          tiempoTexto: formatearTiempoPartidoSegundos(golClave.segundos),
+          marcadorMomento: golClave.marcadorDespuesTexto || base.marcadorTexto,
+          detalleTexto: `${nombreJugador} puso el ${golClave.marcadorDespuesTexto || base.marcadorTexto}`
+        });
+      }
+
+      const remontada = metricas.dinamica?.remontada;
+      if (remontada && Number(remontada.deficit) > 0) {
+        categoriaPorTipo.get('partido-remontada-grande')?.candidatos.push({
+          ...base,
+          valor: Number(remontada.deficit) || 0,
+          valorTexto: `${Number(remontada.deficit) || 0}`,
+          valorEtiqueta: 'goles',
+          remontadaDesde: remontada.desde || 'resultado adverso',
+          detalleTexto: `Desde ${remontada.desde || 'resultado adverso'} hasta ${base.marcadorTexto}`
+        });
+      }
+
+      const golesPorJugador = new Map();
+      const asistenciasPorJugador = new Map();
+      (partido.goles || []).forEach(gol => {
+        if (!gol.es_gol_en_contra && gol.goleador_id) {
+          incrementarMapaPerfil(golesPorJugador, String(gol.goleador_id));
+        }
+        if (!gol.es_gol_en_contra && gol.asistidor_id) {
+          incrementarMapaPerfil(asistenciasPorJugador, String(gol.asistidor_id));
+        }
+      });
+
+      (partido.jugador_partido || []).forEach(jp => {
+        const jugadorId = String(jp.jugador_id || '');
+        if (!jugadorId) return;
+        const equipoJugador = Number(jp.equipo);
+        const ganador = Number(metricas.dinamica?.ganador) || 0;
+        const puntos = ganador === equipoJugador ? 3 : (ganador === 1 || ganador === 2 ? 0 : 1);
+        const goles = golesPorJugador.get(jugadorId) || 0;
+        const asistencias = asistenciasPorJugador.get(jugadorId) || 0;
+        const cagadas = obtenerCagadasJugadorRecordsHistorial(partido, jp);
+        const atajadas = Number(jp.atajadas) || 0;
+        const skill = calcularSkillPartidoPerfil({
+          goles,
+          asistencias,
+          mvp: jp.mvp ? 1 : 0,
+          ace: jp.ace ? 1 : 0,
+          cagadas,
+          puntos,
+          atajadas
+        });
+        const nombreJugador = jp.jugadores?.nombre || 'Jugador';
+
+        categoriaPorTipo.get('mejor-actuacion-individual')?.candidatos.push({
+          ...base,
+          valor: skill,
+          valorTexto: skill.toFixed(1),
+          valorEtiqueta: 'skill',
+          jugadorNombre: nombreJugador,
+          skillTexto: skill.toFixed(1),
+          detalleTexto: `${nombreJugador} - ${skill.toFixed(1)} skill`
+        });
+      });
+    });
+
+    const records = categorias
+      .flatMap(categoria => obtenerMaximosVigentesPalmares(categoria.candidatos, categoria.modo)
+        .map(candidato => ({
+          ...candidato,
+          tipo: categoria.tipo,
+          orden: categoria.orden,
+          titulo: categoria.titulo,
+          clase: categoria.clase,
+          iconoHtml: categoria.iconoHtml
+        })));
+
+    return agruparEmpatesPalmares(records)
+      .sort((a, b) => {
+        if (a.orden !== b.orden) return a.orden - b.orden;
+        const fechaA = Date.parse(a.fecha || '') || 0;
+        const fechaB = Date.parse(b.fecha || '') || 0;
+        return fechaB - fechaA;
+      });
+  }
+
+  function renderizarPalmaresHistorico(records = []) {
+    if (!records.length) {
+      return `
+        <div class="season-state">
+          <i class="bi bi-award"></i>
+          <h5>Sin palmares todavia</h5>
+          <p class="mb-0">No hay partidos suficientes para calcular maximos historicos.</p>
+        </div>
+      `;
+    }
+
+    const cards = records.map((record, index) => {
+      const partidoId = escaparTextoParaJs(record.partidoId);
+      const temporadaArg = record.temporadaId ? `, '${escaparTextoParaJs(record.temporadaId)}'` : '';
+      const relato = construirRelatoPalmares(record);
+      const valorEtiqueta = obtenerEtiquetaValorPalmares(record);
+      const kicker = obtenerKickerPalmares(record);
+      const empates = Array.isArray(record.empates) ? record.empates : [];
+      const ariaEmpates = empates.length ? `. Marca igualada en ${empates.length} partido${empates.length === 1 ? '' : 's'} mas` : '';
+      const ariaLabel = `${record.titulo}. ${record.detalleTexto}. ${relato}. ${record.fechaTexto}. ${record.temporadaNombre}. Resultado ${record.marcadorTexto}${ariaEmpates}`;
+      const empatesHtml = empates.length ? `
+        ${empates.map(empate => {
+          const empatePartidoId = escaparTextoParaJs(empate.partidoId);
+          const empateTemporadaArg = empate.temporadaId ? `, '${escaparTextoParaJs(empate.temporadaId)}'` : '';
+          return `
+            <button type="button" class="palmares-tie-link" onclick="irAHistorialPartido('${empatePartidoId}'${empateTemporadaArg})" title="Ver partido que igualo este record">
+              <span>=</span>
+              ${escaparHtmlPlano(empate.fechaTexto)} &middot; ${escaparHtmlPlano(obtenerTemporadaCortaPalmares(empate))} &middot; ${escaparHtmlPlano(empate.marcadorTexto)}
+            </button>
+          `;
+        }).join('')}
+      ` : '';
+      const videoRecords = [record, ...empates].filter(item => item?.video?.embedUrl);
+      const videoPanelId = `palmares-video-${index}-${String(record.partidoId || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      const closedLabel = videoRecords.length === 1 ? 'Ver video' : `Ver videos (${videoRecords.length})`;
+      const openLabel = videoRecords.length === 1 ? 'Ocultar video' : 'Ocultar videos';
+      const videoHtml = videoRecords.length ? `
+        <div class="palmares-video-shell">
+          <button
+            type="button"
+            class="palmares-video-toggle"
+            onclick="togglePalmaresVideo('${escaparTextoParaJs(videoPanelId)}', this)"
+            aria-expanded="false"
+            aria-controls="${escaparAtributoHtml(videoPanelId)}"
+            data-closed-label="${escaparAtributoHtml(closedLabel)}"
+            data-open-label="${escaparAtributoHtml(openLabel)}"
+          >
+            <i class="bi bi-play-circle-fill"></i>
+            <span data-video-toggle-label>${escaparHtmlPlano(closedLabel)}</span>
+          </button>
+          <div id="${escaparAtributoHtml(videoPanelId)}" class="palmares-video-panel" hidden>
+            <div class="palmares-video-list">
+              ${videoRecords.map(item => `
+                <div class="palmares-video-item">
+                  <div class="palmares-video-caption">
+                    <strong>${escaparHtmlPlano(item.video.tipo)} · ${escaparHtmlPlano(item.fechaTexto)}</strong>
+                    <span>${escaparHtmlPlano(item.temporadaNombre)} · ${escaparHtmlPlano(item.marcadorTexto)}</span>
+                  </div>
+                  <div class="palmares-video">
+                    <iframe
+                      class="palmares-video-frame"
+                      data-src="${escaparAtributoHtml(item.video.embedUrl)}"
+                      title="${escaparAtributoHtml(`${item.video.tipo} - ${item.titulo || record.titulo}`)}"
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <article class="palmares-record ${record.clase || 'is-drama'}">
+          <div class="palmares-card ${record.clase || 'is-drama'}">
+            <button type="button" class="palmares-card-main" onclick="irAHistorialPartido('${partidoId}'${temporadaArg})" aria-label="${escaparAtributoHtml(ariaLabel)}">
+              <span class="palmares-card-value">
+                <strong>${escaparHtmlPlano(record.valorTexto)}</strong>
+                <small>${escaparHtmlPlano(valorEtiqueta)}</small>
+              </span>
+              <span class="palmares-card-body">
+                <span class="palmares-card-detail">${escaparHtmlPlano(kicker)}</span>
+                <span class="palmares-card-title">${escaparHtmlPlano(record.titulo)}</span>
+                <span class="palmares-card-story">${escaparHtmlPlano(relato)}</span>
+              </span>
+            </button>
+            <div class="palmares-card-footer">
+              <span class="palmares-card-meta">${escaparHtmlPlano(record.fechaTexto)} &middot; ${escaparHtmlPlano(record.temporadaNombre)} &middot; ${escaparHtmlPlano(record.marcadorTexto)}</span>
+              ${empatesHtml}
+              <span class="palmares-footer-spacer"></span>
+              ${videoHtml}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    return `
+      <section class="palmares-board">
+        <div class="palmares-board-head">
+          <div>
+            <h3 class="palmares-board-title">Maximos historicos vigentes</h3>
+            <p class="palmares-board-copy">Records vigentes de todas las temporadas, contados como momentos del historial.</p>
+          </div>
+        </div>
+        <div class="palmares-grid">
+          ${cards}
+        </div>
+      </section>
+    `;
+  }
+
+  let palmaresRequestId = 0;
+
+  window.togglePalmaresVideo = function(panelId, button) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+
+    const estaAbierto = !panel.hasAttribute('hidden');
+    if (estaAbierto) {
+      panel.setAttribute('hidden', '');
+    } else {
+      panel.removeAttribute('hidden');
+      panel.querySelectorAll('iframe[data-src]:not([src])').forEach(iframe => {
+        iframe.setAttribute('src', iframe.getAttribute('data-src'));
+      });
+    }
+
+    if (button) {
+      button.setAttribute('aria-expanded', estaAbierto ? 'false' : 'true');
+      const label = button.querySelector('[data-video-toggle-label]');
+      if (label) {
+        label.textContent = estaAbierto
+          ? (button.dataset.closedLabel || 'Ver video')
+          : (button.dataset.openLabel || 'Ocultar video');
+      }
+    }
+  };
+
+  window.cargarPalmares = async function() {
+    const container = document.getElementById('palmares-container');
+    if (!container) return;
+
+    const requestId = ++palmaresRequestId;
+    container.innerHTML = `
+      <div class="season-state">
+        <div class="spinner-border text-warning" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="text-light-emphasis mt-2 mb-0">Calculando maximos historicos...</p>
+      </div>
+    `;
+
+    try {
+      const partidos = await consultarPartidosParaRecordsHistorial('', { incluirTodasLasTemporadas: true });
+      if (requestId !== palmaresRequestId) return;
+      const records = calcularPalmaresHistoricos(partidos);
+      container.innerHTML = renderizarPalmaresHistorico(records);
+    } catch (error) {
+      if (requestId !== palmaresRequestId) return;
+      console.error('Error al cargar palmares:', error);
+      container.innerHTML = `
+        <div class="season-state">
+          <i class="bi bi-exclamation-triangle"></i>
+          <h5>No se pudo cargar el palmares</h5>
+          <p class="mb-0">${escaparHtmlPlano(error.message || 'Error desconocido')}</p>
+        </div>
+      `;
+    }
+  };
 
   async function cargarHistorialPartidos() {
     const container = document.getElementById('historial-partidos-container');
@@ -23247,12 +23959,283 @@ const initApp = () => {
     `;
   };
 
+  const calcularLogrosVideosTemporadaResumen = (partidos = []) => {
+    const categorias = [
+      ...obtenerRecordsPartidoConfigHistorial().map((config, index) => ({
+        tipo: `temporada-${config.tipo}`,
+        modo: 'max',
+        orden: index + 1,
+        titulo: `${config.titulo} de la temporada`,
+        clase: config.clase,
+        iconoHtml: config.iconoHtml,
+        candidatos: []
+      })),
+      {
+        tipo: 'temporada-jugador-goles',
+        modo: 'max',
+        orden: 10,
+        titulo: 'Max. goles de un jugador en 1 partido',
+        clase: 'is-goals',
+        iconoHtml: obtenerIconoEventoHistorial('goal'),
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-jugador-asistencias',
+        modo: 'max',
+        orden: 11,
+        titulo: 'Max. asistencias de un jugador en 1 partido',
+        clase: 'is-assists',
+        iconoHtml: obtenerIconoEventoHistorial('assist'),
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-jugador-atajadas',
+        modo: 'max',
+        orden: 12,
+        titulo: 'Max. atajadas de un jugador en 1 partido',
+        clase: 'is-saves',
+        iconoHtml: obtenerIconoEventoHistorial('save'),
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-jugador-cagadas',
+        modo: 'max',
+        orden: 13,
+        titulo: 'Max. cagadas de un jugador en 1 partido',
+        clase: 'is-mistakes',
+        iconoHtml: '<i class="bi bi-exclamation-triangle-fill"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-gol-rapido',
+        modo: 'min',
+        orden: 20,
+        titulo: 'Gol mas rapido de la temporada',
+        clase: 'is-drama',
+        iconoHtml: '<i class="bi bi-stopwatch-fill"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-gol-agonico',
+        modo: 'max',
+        orden: 21,
+        titulo: 'Gol mas agonico de la temporada',
+        clase: 'is-drama',
+        iconoHtml: '<i class="bi bi-hourglass-split"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-remontada',
+        modo: 'max',
+        orden: 22,
+        titulo: 'Remontada mas grande de la temporada',
+        clase: 'is-comeback',
+        iconoHtml: '<i class="bi bi-arrow-repeat"></i>',
+        candidatos: []
+      },
+      {
+        tipo: 'temporada-mejor-actuacion',
+        modo: 'max',
+        orden: 23,
+        titulo: 'Mejor actuacion individual de la temporada',
+        clase: 'is-skill',
+        iconoHtml: '<i class="bi bi-lightning-charge-fill"></i>',
+        candidatos: []
+      }
+    ];
+    const categoriaPorTipo = new Map(categorias.map(categoria => [categoria.tipo, categoria]));
+    const metricasPorPartidoConfig = obtenerRecordsPartidoConfigHistorial();
+
+    partidos.forEach(partido => {
+      const metricas = calcularMetricasRecordsPartidoHistorial(partido);
+      const base = construirBasePartidoPalmares(partido, metricas);
+      if (!base.partidoId) return;
+
+      metricasPorPartidoConfig.forEach(config => {
+        const valor = Number(metricas[config.key]) || 0;
+        categoriaPorTipo.get(`temporada-${config.tipo}`)?.candidatos.push({
+          ...base,
+          valor,
+          valorTexto: String(valor),
+          detalleTexto: `${valor} ${config.detalle}`
+        });
+      });
+
+      const golesPorJugador = new Map();
+      const asistenciasPorJugador = new Map();
+      (partido.goles || []).forEach(gol => {
+        if (!gol.es_gol_en_contra && gol.goleador_id) {
+          incrementarMapaPerfil(golesPorJugador, String(gol.goleador_id));
+        }
+        if (!gol.es_gol_en_contra && gol.asistidor_id) {
+          incrementarMapaPerfil(asistenciasPorJugador, String(gol.asistidor_id));
+        }
+      });
+
+      (partido.jugador_partido || []).forEach(jp => {
+        const jugadorId = String(jp.jugador_id || '');
+        if (!jugadorId) return;
+
+        const nombreJugador = jp.jugadores?.nombre || 'Jugador';
+        const equipoJugador = Number(jp.equipo);
+        const ganador = Number(metricas.dinamica?.ganador) || 0;
+        const puntos = ganador === equipoJugador ? 3 : (ganador === 1 || ganador === 2 ? 0 : 1);
+        const goles = golesPorJugador.get(jugadorId) || 0;
+        const asistencias = asistenciasPorJugador.get(jugadorId) || 0;
+        const atajadas = Number(jp.atajadas) || 0;
+        const cagadas = obtenerCagadasJugadorRecordsHistorial(partido, jp);
+        const skill = calcularSkillPartidoPerfil({
+          goles,
+          asistencias,
+          mvp: jp.mvp ? 1 : 0,
+          ace: jp.ace ? 1 : 0,
+          cagadas,
+          puntos,
+          atajadas
+        });
+
+        categoriaPorTipo.get('temporada-jugador-goles')?.candidatos.push({
+          ...base,
+          valor: goles,
+          valorTexto: String(goles),
+          detalleTexto: `${nombreJugador} - ${goles} goles`
+        });
+        categoriaPorTipo.get('temporada-jugador-asistencias')?.candidatos.push({
+          ...base,
+          valor: asistencias,
+          valorTexto: String(asistencias),
+          detalleTexto: `${nombreJugador} - ${asistencias} asistencias`
+        });
+        categoriaPorTipo.get('temporada-jugador-atajadas')?.candidatos.push({
+          ...base,
+          valor: atajadas,
+          valorTexto: String(atajadas),
+          detalleTexto: `${nombreJugador} - ${atajadas} atajadas`
+        });
+        categoriaPorTipo.get('temporada-jugador-cagadas')?.candidatos.push({
+          ...base,
+          valor: cagadas,
+          valorTexto: String(cagadas),
+          detalleTexto: `${nombreJugador} - ${cagadas} cagadas`
+        });
+        categoriaPorTipo.get('temporada-mejor-actuacion')?.candidatos.push({
+          ...base,
+          valor: skill,
+          valorTexto: skill.toFixed(1),
+          detalleTexto: `${nombreJugador} - ${skill.toFixed(1)} skill`
+        });
+      });
+
+      const eventosGoles = (metricas.dinamica?.eventos || [])
+        .filter(evento => Number.isFinite(evento.segundos) && !evento.gol?.es_gol_en_contra);
+      eventosGoles.forEach(evento => {
+        const nombreJugador = obtenerNombreJugadorEnPartido(partido.jugador_partido || [], evento.gol?.goleador_id);
+        categoriaPorTipo.get('temporada-gol-rapido')?.candidatos.push({
+          ...base,
+          valor: evento.segundos,
+          valorTexto: formatearTiempoPartidoSegundos(evento.segundos),
+          detalleTexto: `${nombreJugador} - ${formatearTiempoPartidoSegundos(evento.segundos)}`
+        });
+      });
+
+      const golClave = metricas.dinamica?.golClave;
+      if (golClave && Number.isFinite(golClave.segundos) && !golClave.gol?.es_gol_en_contra) {
+        const nombreJugador = obtenerNombreJugadorEnPartido(partido.jugador_partido || [], golClave.gol?.goleador_id);
+        categoriaPorTipo.get('temporada-gol-agonico')?.candidatos.push({
+          ...base,
+          valor: golClave.segundos,
+          valorTexto: formatearTiempoPartidoSegundos(golClave.segundos),
+          detalleTexto: `${nombreJugador} puso el ${golClave.marcadorDespuesTexto || base.marcadorTexto}`
+        });
+      }
+
+      const remontada = metricas.dinamica?.remontada;
+      if (remontada && Number(remontada.deficit) > 0) {
+        categoriaPorTipo.get('temporada-remontada')?.candidatos.push({
+          ...base,
+          valor: Number(remontada.deficit) || 0,
+          valorTexto: `${Number(remontada.deficit) || 0}`,
+          detalleTexto: `Desde ${remontada.desde || 'resultado adverso'} hasta ${base.marcadorTexto}`
+        });
+      }
+    });
+
+    return categorias
+      .flatMap(categoria => obtenerMaximosVigentesPalmares(categoria.candidatos, categoria.modo)
+        .map(candidato => ({
+          ...candidato,
+          tipo: categoria.tipo,
+          orden: categoria.orden,
+          titulo: categoria.titulo,
+          clase: categoria.clase,
+          iconoHtml: categoria.iconoHtml
+        })))
+      .sort((a, b) => {
+        if (a.orden !== b.orden) return a.orden - b.orden;
+        const fechaA = Date.parse(a.fecha || '') || 0;
+        const fechaB = Date.parse(b.fecha || '') || 0;
+        return fechaB - fechaA;
+      });
+  };
+
+  const renderizarLogrosVideosTemporadaResumen = (logros = [], temporadaNombre = '') => {
+    if (!logros.length) return '';
+
+    const cards = logros.map(record => {
+      const partidoId = escaparTextoParaJs(record.partidoId);
+      const temporadaArg = record.temporadaId ? `, '${escaparTextoParaJs(record.temporadaId)}'` : '';
+      const ariaLabel = `${record.titulo}. ${record.detalleTexto}. ${record.fechaTexto}. ${record.temporadaNombre}. Resultado ${record.marcadorTexto}`;
+      const video = record.video;
+      const videoHtml = video ? `
+        <div class="palmares-video">
+          <iframe
+            class="palmares-video-frame"
+            src="${escaparAtributoHtml(video.embedUrl)}"
+            title="${escaparAtributoHtml(`${video.tipo} - ${record.titulo}`)}"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+        </div>
+      ` : '';
+
+      return `
+        <article class="palmares-record season-achievement-record ${record.clase || 'is-drama'}">
+          <button type="button" class="palmares-card ${record.clase || 'is-drama'}" onclick="irAHistorialPartido('${partidoId}'${temporadaArg})" aria-label="${escaparAtributoHtml(ariaLabel)}">
+            <span class="palmares-card-icon">${record.iconoHtml}</span>
+            <span class="palmares-card-body">
+              <span class="palmares-card-title">${escaparHtmlPlano(record.titulo)}</span>
+              <span class="palmares-card-detail">${escaparHtmlPlano(record.detalleTexto)}</span>
+              <span class="palmares-card-meta">${escaparHtmlPlano(record.fechaTexto)} &middot; ${escaparHtmlPlano(record.temporadaNombre)} &middot; ${escaparHtmlPlano(record.marcadorTexto)}</span>
+            </span>
+            <span class="palmares-card-value">${escaparHtmlPlano(record.valorTexto)}</span>
+          </button>
+          ${videoHtml}
+        </article>
+      `;
+    }).join('');
+
+    return `
+      <section class="season-dashboard-section season-achievements-section" style="--season-accent:#f59e0b">
+        <div class="season-achievements-head">
+          <h4 class="season-section-title"><i class="bi bi-award-fill"></i>Logros de ${escaparHtmlPlano(temporadaNombre)}</h4>
+          <span class="season-achievements-subtitle">${logros.length} logro${logros.length === 1 ? '' : 's'}</span>
+        </div>
+        <div class="palmares-grid season-achievements-grid">
+          ${cards}
+        </div>
+      </section>
+    `;
+  };
+
   const consultarPartidosResumenTemporada = async (temporadaId) => {
     const selectConCagada = `
       id,
       fecha,
       equipo_ganador,
       temporada_id,
+      youtube_link,
+      compilado_youtube_link,
       temporadas (
         id,
         nombre
@@ -23275,7 +24258,9 @@ const initApp = () => {
         asistidor_id,
         equipo,
         es_gol_en_contra,
-        cagada_jugador_id
+        cagada_jugador_id,
+        minuto,
+        review_segundos
       )
     `;
 
@@ -23284,6 +24269,8 @@ const initApp = () => {
       fecha,
       equipo_ganador,
       temporada_id,
+      youtube_link,
+      compilado_youtube_link,
       temporadas (
         id,
         nombre
@@ -23305,7 +24292,9 @@ const initApp = () => {
         goleador_id,
         asistidor_id,
         equipo,
-        es_gol_en_contra
+        es_gol_en_contra,
+        minuto,
+        review_segundos
       )
     `;
 
@@ -23329,7 +24318,9 @@ const initApp = () => {
       throw consulta.error;
     }
 
-    return consulta.data || [];
+    const partidos = consulta.data || [];
+    await anexarReviewEventosHistorial(partidos);
+    return partidos;
   };
 
   const consultarEstadisticasAgregadasResumenTemporada = async (temporadaId) => {
@@ -23453,6 +24444,7 @@ const initApp = () => {
       statsPorJugador,
       totales,
       origen: 'agregado',
+      partidos: [],
       records: {
         maxGolesPartido: new Map(),
         maxAsistenciasPartido: new Map(),
@@ -23573,12 +24565,13 @@ const initApp = () => {
       jugadores,
       statsPorJugador,
       totales,
+      partidos,
       records: calcularRecordsTemporadaPerfil(partidos)
     };
   };
 
   const renderizarResumenTemporada = (temporadaNombre, resumen) => {
-    const { jugadores, statsPorJugador, totales, records } = resumen;
+    const { jugadores, statsPorJugador, totales, records, partidos = [] } = resumen;
     const promedioGoles = totales.partidos > 0 ? (totales.goles / totales.partidos).toFixed(1) : '0.0';
     const candidatosWinrate = jugadores.filter(jugador => jugador.pj >= 3);
     const baseWinrate = candidatosWinrate.length > 0 ? candidatosWinrate : jugadores;
@@ -23731,6 +24724,10 @@ const initApp = () => {
         </tr>
       `;
     }).join('');
+    const logrosTemporadaHtml = renderizarLogrosVideosTemporadaResumen(
+      calcularLogrosVideosTemporadaResumen(partidos),
+      temporadaNombre
+    );
 
     return `
       <div class="season-summary">
@@ -23798,6 +24795,8 @@ const initApp = () => {
             </table>
           </div>
         </section>
+
+        ${logrosTemporadaHtml}
       </div>
     `;
   };
