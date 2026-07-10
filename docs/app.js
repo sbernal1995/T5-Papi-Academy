@@ -322,9 +322,13 @@ const ICONOS_EVENTO_HISTORIAL = {
   goal: `
     <span class="historial-event-mark is-ball" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
-        <circle class="icon-ball-base" cx="12" cy="12" r="9.6"></circle>
-        <path class="icon-ball-pentagon" d="M12 6.55 15.55 9.1 14.2 13.25H9.8L8.45 9.1 12 6.55Z"></path>
-        <path class="icon-ball-panel" d="m8.45 9.1-3.25-.9M15.55 9.1l3.25-.9M9.8 13.25 7.9 17M14.2 13.25 16.1 17M5.2 8.2A9.55 9.55 0 0 0 3.4 12M18.8 8.2A9.55 9.55 0 0 1 20.6 12M7.9 17l-2.3.35M16.1 17l2.3.35"></path>
+        <circle class="icon-ball-base" cx="12" cy="12" r="10"></circle>
+        <path class="icon-ball-patch" d="M12 6.25 15.7 8.95 14.25 13.3h-4.5L8.3 8.95 12 6.25Z"></path>
+        <path class="icon-ball-patch" d="M7.35 3.85 9.45 5.2 8.05 7.8l-3.2-.65a9.35 9.35 0 0 1 2.5-3.3Z"></path>
+        <path class="icon-ball-patch" d="M16.65 3.85a9.35 9.35 0 0 1 2.5 3.3l-3.2.65-1.4-2.6 2.1-1.35Z"></path>
+        <path class="icon-ball-patch" d="M3.05 13.05 6.6 13.7l1.18 3.18-2.35 2.02a9.72 9.72 0 0 1-2.38-5.85Z"></path>
+        <path class="icon-ball-patch" d="M20.95 13.05a9.72 9.72 0 0 1-2.38 5.85l-2.35-2.02 1.18-3.18 3.55-.65Z"></path>
+        <path class="icon-ball-panel" d="M9.45 5.2 8.3 8.95M14.55 5.2l1.15 3.75M9.75 13.3l-1.97 3.58M14.25 13.3l1.97 3.58M4.85 7.15l3.2.65M19.15 7.15l-3.2.65M6.6 13.7l3.15-.4M17.4 13.7l-3.15-.4"></path>
       </svg>
     </span>
   `,
@@ -3576,6 +3580,73 @@ function procesarPartidoMundialPerfilTemp(partido, jugadoresMap) {
   });
 }
 
+function obtenerEtiquetaFaseMundialitoPerfil(fase) {
+  const key = String(fase || 'grupos').toLowerCase();
+  const labels = {
+    grupos: 'Grupos',
+    '8vos': '8vos',
+    '4tos': '4tos',
+    semis: 'Semifinal',
+    final: 'Final'
+  };
+  return labels[key] || '';
+}
+
+function obtenerBadgesMundialitoPerfilPorPartido(participaciones = [], jugadorId = '') {
+  const fasesPorPartido = new Map();
+  if (!jugadorId || !Array.isArray(participaciones) || participaciones.length === 0) return fasesPorPartido;
+
+  const estadosPorTemporada = new Map();
+  const ordenarParticipaciones = (a, b) => {
+    const temporadaA = extraerNumeroTemporadaPerfil(a?.partidos?.temporadas || { id: a?.partidos?.temporada_id }, 0);
+    const temporadaB = extraerNumeroTemporadaPerfil(b?.partidos?.temporadas || { id: b?.partidos?.temporada_id }, 0);
+    if (temporadaA !== temporadaB) return temporadaA - temporadaB;
+
+    const fechaA = new Date(`${a?.partidos?.fecha || '1900-01-01'}T12:00:00`).getTime();
+    const fechaB = new Date(`${b?.partidos?.fecha || '1900-01-01'}T12:00:00`).getTime();
+    if (fechaA !== fechaB) return fechaA - fechaB;
+
+    return String(a?.partidos?.id || '').localeCompare(String(b?.partidos?.id || ''), undefined, { numeric: true });
+  };
+
+  [...participaciones]
+    .filter(participacion => participacion?.partidos)
+    .sort(ordenarParticipaciones)
+    .forEach(participacion => {
+      const partido = participacion.partidos;
+      const partidoId = String(partido?.id || participacion.partido_id || '');
+      if (!partidoId) return;
+
+      const temporadaKey = String(partido.temporada_id ?? partido.temporadas?.id ?? 'sin-temporada');
+      if (!estadosPorTemporada.has(temporadaKey)) {
+        estadosPorTemporada.set(temporadaKey, new Map());
+      }
+
+      const jugadoresMap = estadosPorTemporada.get(temporadaKey);
+      let jugador = jugadoresMap.get(jugadorId);
+      if (!jugador) {
+        jugador = crearJugadorMundialPerfilTemp({
+          id: jugadorId,
+          nombre: datosPerfilJugador?.jugador?.nombre || 'Jugador'
+        });
+        jugadoresMap.set(jugadorId, jugador);
+      }
+
+      if (jugador.fase === 'campeon') {
+        resetearAGruposPerfilTemp(jugador);
+      }
+
+      fasesPorPartido.set(partidoId, {
+        fase: jugador.fase || 'grupos',
+        label: obtenerEtiquetaFaseMundialitoPerfil(jugador.fase || 'grupos')
+      });
+
+      procesarPartidoMundialPerfilTemp(partido, jugadoresMap);
+    });
+
+  return fasesPorPartido;
+}
+
 function incrementarMapaPerfil(mapa, clave, incremento = 1) {
   if (!clave) return;
   mapa.set(clave, (mapa.get(clave) || 0) + incremento);
@@ -5553,6 +5624,7 @@ function renderizarPartidosRecientesPerfil() {
     const participacionesHistoricas = [...(datosPerfilJugador.participacionesTodas || datosPerfilJugador.participaciones || [])]
       .filter(participacion => participacion.partidos)
       .sort((a, b) => new Date(a.partidos?.fecha || 0) - new Date(b.partidos?.fecha || 0));
+    const fasesMundialitoPorPartido = obtenerBadgesMundialitoPerfilPorPartido(participacionesHistoricas, jugadorId);
     const idsVisibles = new Set(participaciones.map(participacion => String(participacion.partido_id || participacion.partidos?.id || '')));
     const momentosPorPartido = new Map();
     const golesClavePorPartido = new Map();
@@ -5696,6 +5768,17 @@ function renderizarPartidosRecientesPerfil() {
       const rivalEquipo = jps.filter(jp => Number(jp.equipo) !== equipoJugador);
       const detailId = `perfil-match-${String(partido.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
       const partidoIdJs = escaparTextoParaJs(partido.id);
+      const faseMundialito = fasesMundialitoPorPartido.get(String(partido.id));
+      const faseMundialitoClase = {
+        grupos: 'is-groups',
+        '8vos': 'is-round16',
+        '4tos': 'is-quarter',
+        semis: 'is-semi',
+        final: 'is-final'
+      }[faseMundialito?.fase] || 'is-groups';
+      const faseMundialitoHtml = faseMundialito?.label
+        ? `<span class="perfil-mundialito-stage ${faseMundialitoClase}" title="Instancia del Mundialito T5">${escaparHtmlPlano(faseMundialito.label)}</span>`
+        : '';
       const golClave = obtenerGolClaveJugadorPerfil(partido);
       const minutoGolClave = golClave ? formatearMinutoPartidoNormalizado(golClave.minuto) : '';
       const momentos = momentosPorPartido.get(String(partido.id)) || [];
@@ -5705,7 +5788,10 @@ function renderizarPartidosRecientesPerfil() {
         <article class="perfil-match-item ${resultado.clase} ${destacado ? 'is-highlight' : ''}">
           <div class="perfil-match-row">
             <span class="perfil-result-pill ${resultado.clase}" title="${resultado.texto}">${resultado.letra}</span>
-            <span class="perfil-match-scoreline" title="Resultado del partido">${marcadorTexto}</span>
+            <div class="perfil-match-score-wrap">
+              <span class="perfil-match-scoreline" title="Resultado del partido">${marcadorTexto}</span>
+              ${faseMundialitoHtml}
+            </div>
             <div class="perfil-match-where">
               <strong>${escaparHtmlPlano(formatearFechaCortaPerfil(partido.fecha))}</strong>
               <span>${escaparHtmlPlano(cancha)}</span>
