@@ -56,6 +56,14 @@ create table if not exists public.tracking_player_stats (
   dispersion_m numeric,
   coverage_pct numeric,
   pulmon_tracking numeric,
+  defense_score numeric,
+  defense_score_method text,
+  advanced_defense_score numeric,
+  advanced_defense_axes jsonb not null default '{}'::jsonb,
+  fis_valor numeric,
+  fis_version text,
+  physical_profile jsonb not null default '{}'::jsonb,
+  goal_locations jsonb not null default '[]'::jsonb,
   metrics jsonb not null default '{}'::jsonb,
   highlights jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -137,6 +145,14 @@ alter table public.tracking_player_stats add column if not exists avg_y_m numeri
 alter table public.tracking_player_stats add column if not exists dispersion_m numeric;
 alter table public.tracking_player_stats add column if not exists coverage_pct numeric;
 alter table public.tracking_player_stats add column if not exists pulmon_tracking numeric;
+alter table public.tracking_player_stats add column if not exists defense_score numeric;
+alter table public.tracking_player_stats add column if not exists defense_score_method text;
+alter table public.tracking_player_stats add column if not exists advanced_defense_score numeric;
+alter table public.tracking_player_stats add column if not exists advanced_defense_axes jsonb not null default '{}'::jsonb;
+alter table public.tracking_player_stats add column if not exists fis_valor numeric;
+alter table public.tracking_player_stats add column if not exists fis_version text;
+alter table public.tracking_player_stats add column if not exists physical_profile jsonb not null default '{}'::jsonb;
+alter table public.tracking_player_stats add column if not exists goal_locations jsonb not null default '[]'::jsonb;
 alter table public.tracking_player_stats add column if not exists metrics jsonb not null default '{}'::jsonb;
 alter table public.tracking_player_stats add column if not exists highlights jsonb not null default '{}'::jsonb;
 alter table public.tracking_player_stats add column if not exists created_at timestamptz not null default now();

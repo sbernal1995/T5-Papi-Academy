@@ -21214,10 +21214,15 @@ const initApp = () => {
 
   const obtenerKickerPalmares = (record = {}) => {
     const tipo = String(record.tipo || '');
+    if (record.kicker) return record.kicker;
     if (tipo.includes('partido-goles')) return 'Record ofensivo';
     if (tipo.includes('partido-asistencias')) return 'Record asociativo';
     if (tipo.includes('partido-atajadas')) return 'Record defensivo';
     if (tipo.includes('partido-cagadas')) return 'Record que duele';
+    if (tipo.includes('jugador-goles')) return record.jugadorNombre || 'Pico goleador';
+    if (tipo.includes('jugador-asistencias')) return record.jugadorNombre || 'Pico asistidor';
+    if (tipo.includes('jugador-atajadas')) return record.jugadorNombre || 'Pico de arquero';
+    if (tipo.includes('jugador-cagadas')) return record.jugadorNombre || 'Noche complicada';
     if (tipo.includes('gol-rapido')) return record.jugadorNombre || 'Gol tempranero';
     if (tipo.includes('gol-agonico')) return record.detalleTexto || 'Gol clave';
     if (tipo.includes('remontada')) return 'Remontada historica';
@@ -21367,6 +21372,26 @@ const initApp = () => {
 
     if (tipo.includes('actuacion')) {
       relato = `${jugador} firmo una noche aparte: ${valor} de skill en un ${marcador}, el pico individual mas alto registrado.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('jugador-goles')) {
+      relato = `${jugador} se despacho con ${valor} goles en un ${marcador}, la marca goleadora individual mas alta de ${temporada}.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('jugador-asistencias')) {
+      relato = `${jugador} manejo los hilos con ${valor} asistencias en un ${marcador}, el pico creativo de ${temporada}.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('jugador-atajadas')) {
+      relato = `${jugador} sostuvo el arco con ${valor} atajadas en un ${marcador}, la mejor marca bajo los tres palos de ${temporada}.`;
+      return `${relato}${construirTextoMundialitoPalmares(record)}`;
+    }
+
+    if (tipo.includes('jugador-cagadas')) {
+      relato = `${jugador} cargo con ${valor} cagadas en un ${marcador}, la marca mas pesada de ${temporada}.`;
       return `${relato}${construirTextoMundialitoPalmares(record)}`;
     }
 
@@ -21588,13 +21613,21 @@ const initApp = () => {
       });
   }
 
-  function renderizarPalmaresHistorico(records = []) {
+  function renderizarPalmaresHistorico(records = [], opciones = {}) {
+    const titulo = opciones.titulo || 'Maximos historicos vigentes';
+    const descripcion = opciones.descripcion || 'Records vigentes de todas las temporadas, contados como momentos del historial.';
+    const sectionClass = opciones.sectionClass ? ` ${opciones.sectionClass}` : '';
+    const gridClass = opciones.gridClass ? ` ${opciones.gridClass}` : '';
+    const idPrefix = opciones.idPrefix || 'palmares-video';
+    const emptyTitle = opciones.emptyTitle || 'Sin palmares todavia';
+    const emptyCopy = opciones.emptyCopy || 'No hay partidos suficientes para calcular maximos historicos.';
+
     if (!records.length) {
       return `
         <div class="season-state">
           <i class="bi bi-award"></i>
-          <h5>Sin palmares todavia</h5>
-          <p class="mb-0">No hay partidos suficientes para calcular maximos historicos.</p>
+          <h5>${escaparHtmlPlano(emptyTitle)}</h5>
+          <p class="mb-0">${escaparHtmlPlano(emptyCopy)}</p>
         </div>
       `;
     }
@@ -21621,7 +21654,7 @@ const initApp = () => {
         }).join('')}
       ` : '';
       const videoRecords = [record, ...empates].filter(item => item?.video?.embedUrl);
-      const videoPanelId = `palmares-video-${index}-${String(record.partidoId || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      const videoPanelId = `${idPrefix}-${index}-${String(record.partidoId || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
       const closedLabel = videoRecords.length === 1 ? 'Ver video' : `Ver videos (${videoRecords.length})`;
       const openLabel = videoRecords.length === 1 ? 'Ocultar video' : 'Ocultar videos';
       const videoHtml = videoRecords.length ? `
@@ -21689,14 +21722,14 @@ const initApp = () => {
     }).join('');
 
     return `
-      <section class="palmares-board">
+      <section class="palmares-board${sectionClass}">
         <div class="palmares-board-head">
           <div>
-            <h3 class="palmares-board-title">Maximos historicos vigentes</h3>
-            <p class="palmares-board-copy">Records vigentes de todas las temporadas, contados como momentos del historial.</p>
+            <h3 class="palmares-board-title">${escaparHtmlPlano(titulo)}</h3>
+            <p class="palmares-board-copy">${escaparHtmlPlano(descripcion)}</p>
           </div>
         </div>
-        <div class="palmares-grid">
+        <div class="palmares-grid${gridClass}">
           ${cards}
         </div>
       </section>
@@ -24142,6 +24175,7 @@ const initApp = () => {
           ...base,
           valor,
           valorTexto: String(valor),
+          valorEtiqueta: config.detalle.replace(' totales', ''),
           detalleTexto: `${valor} ${config.detalle}`
         });
       });
@@ -24183,30 +24217,40 @@ const initApp = () => {
           ...base,
           valor: goles,
           valorTexto: String(goles),
+          valorEtiqueta: 'goles',
+          jugadorNombre: nombreJugador,
           detalleTexto: `${nombreJugador} - ${goles} goles`
         });
         categoriaPorTipo.get('temporada-jugador-asistencias')?.candidatos.push({
           ...base,
           valor: asistencias,
           valorTexto: String(asistencias),
+          valorEtiqueta: 'asist.',
+          jugadorNombre: nombreJugador,
           detalleTexto: `${nombreJugador} - ${asistencias} asistencias`
         });
         categoriaPorTipo.get('temporada-jugador-atajadas')?.candidatos.push({
           ...base,
           valor: atajadas,
           valorTexto: String(atajadas),
+          valorEtiqueta: 'ataj.',
+          jugadorNombre: nombreJugador,
           detalleTexto: `${nombreJugador} - ${atajadas} atajadas`
         });
         categoriaPorTipo.get('temporada-jugador-cagadas')?.candidatos.push({
           ...base,
           valor: cagadas,
           valorTexto: String(cagadas),
+          valorEtiqueta: 'cag.',
+          jugadorNombre: nombreJugador,
           detalleTexto: `${nombreJugador} - ${cagadas} cagadas`
         });
         categoriaPorTipo.get('temporada-mejor-actuacion')?.candidatos.push({
           ...base,
           valor: skill,
           valorTexto: skill.toFixed(1),
+          valorEtiqueta: 'skill',
+          jugadorNombre: nombreJugador,
           detalleTexto: `${nombreJugador} - ${skill.toFixed(1)} skill`
         });
       });
@@ -24219,6 +24263,8 @@ const initApp = () => {
           ...base,
           valor: evento.segundos,
           valorTexto: formatearTiempoPartidoSegundos(evento.segundos),
+          valorEtiqueta: 'tiempo',
+          jugadorNombre: nombreJugador,
           detalleTexto: `${nombreJugador} - ${formatearTiempoPartidoSegundos(evento.segundos)}`
         });
       });
@@ -24230,6 +24276,9 @@ const initApp = () => {
           ...base,
           valor: golClave.segundos,
           valorTexto: formatearTiempoPartidoSegundos(golClave.segundos),
+          valorEtiqueta: 'tiempo',
+          jugadorNombre: nombreJugador,
+          marcadorMomento: golClave.marcadorDespuesTexto || base.marcadorTexto,
           detalleTexto: `${nombreJugador} puso el ${golClave.marcadorDespuesTexto || base.marcadorTexto}`
         });
       }
@@ -24240,12 +24289,14 @@ const initApp = () => {
           ...base,
           valor: Number(remontada.deficit) || 0,
           valorTexto: `${Number(remontada.deficit) || 0}`,
+          valorEtiqueta: 'goles',
+          remontadaDesde: remontada.desde || 'resultado adverso',
           detalleTexto: `Desde ${remontada.desde || 'resultado adverso'} hasta ${base.marcadorTexto}`
         });
       }
     });
 
-    return categorias
+    const records = categorias
       .flatMap(categoria => obtenerMaximosVigentesPalmares(categoria.candidatos, categoria.modo)
         .map(candidato => ({
           ...candidato,
@@ -24254,7 +24305,9 @@ const initApp = () => {
           titulo: categoria.titulo,
           clase: categoria.clase,
           iconoHtml: categoria.iconoHtml
-        })))
+        })));
+
+    return agruparEmpatesPalmares(records)
       .sort((a, b) => {
         if (a.orden !== b.orden) return a.orden - b.orden;
         const fechaA = Date.parse(a.fecha || '') || 0;
@@ -24266,50 +24319,14 @@ const initApp = () => {
   const renderizarLogrosVideosTemporadaResumen = (logros = [], temporadaNombre = '') => {
     if (!logros.length) return '';
 
-    const cards = logros.map(record => {
-      const partidoId = escaparTextoParaJs(record.partidoId);
-      const temporadaArg = record.temporadaId ? `, '${escaparTextoParaJs(record.temporadaId)}'` : '';
-      const ariaLabel = `${record.titulo}. ${record.detalleTexto}. ${record.fechaTexto}. ${record.temporadaNombre}. Resultado ${record.marcadorTexto}`;
-      const video = record.video;
-      const videoHtml = video ? `
-        <div class="palmares-video">
-          <iframe
-            class="palmares-video-frame"
-            src="${escaparAtributoHtml(video.embedUrl)}"
-            title="${escaparAtributoHtml(`${video.tipo} - ${record.titulo}`)}"
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen
-          ></iframe>
-        </div>
-      ` : '';
-
-      return `
-        <article class="palmares-record season-achievement-record ${record.clase || 'is-drama'}">
-          <button type="button" class="palmares-card ${record.clase || 'is-drama'}" onclick="irAHistorialPartido('${partidoId}'${temporadaArg})" aria-label="${escaparAtributoHtml(ariaLabel)}">
-            <span class="palmares-card-icon">${record.iconoHtml}</span>
-            <span class="palmares-card-body">
-              <span class="palmares-card-title">${escaparHtmlPlano(record.titulo)}</span>
-              <span class="palmares-card-detail">${escaparHtmlPlano(record.detalleTexto)}</span>
-              <span class="palmares-card-meta">${escaparHtmlPlano(record.fechaTexto)} &middot; ${escaparHtmlPlano(record.temporadaNombre)} &middot; ${escaparHtmlPlano(record.marcadorTexto)}</span>
-            </span>
-            <span class="palmares-card-value">${escaparHtmlPlano(record.valorTexto)}</span>
-          </button>
-          ${videoHtml}
-        </article>
-      `;
-    }).join('');
-
     return `
-      <section class="season-dashboard-section season-achievements-section" style="--season-accent:#f59e0b">
-        <div class="season-achievements-head">
-          <h4 class="season-section-title"><i class="bi bi-award-fill"></i>Logros de ${escaparHtmlPlano(temporadaNombre)}</h4>
-          <span class="season-achievements-subtitle">${logros.length} logro${logros.length === 1 ? '' : 's'}</span>
-        </div>
-        <div class="palmares-grid season-achievements-grid">
-          ${cards}
-        </div>
-      </section>
+      <div class="season-palmares-shell">
+        ${renderizarPalmaresHistorico(logros, {
+          titulo: `Palmares de ${temporadaNombre || 'la temporada'}`,
+          descripcion: `Records vigentes de ${temporadaNombre || 'esta temporada'}, contados como momentos del historial.`,
+          idPrefix: 'season-palmares-video'
+        })}
+      </div>
     `;
   };
 
@@ -26439,7 +26456,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               </div>
               <div class="col-lg-2 col-md-6">
                 <label class="form-label text-light small mb-1">Arquero</label>
-                <select class="form-select form-select-sm gol-arquero"
+                <select class="form-select form-select-sm gol-arquero${edicionArqueroHabilitada ? ' searchable-select' : ''}"
                         data-gol-id="${gol.id}"
                         ${edicionArqueroHabilitada ? '' : 'disabled'}>
                   <option value="">Sin arquero</option>
@@ -26476,6 +26493,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         </div>
       `;
     }).join('');
+
+    initializeSearchableSelects(container);
   }
 
   // Función para actualizar los datos editables de los goles

@@ -29,7 +29,18 @@
     interactions: 'tracking_interactions'
   };
   const OPTIONAL_COLUMNS_BY_TABLE = {
-    tracking_analyses: ['source_version', 'duration_seconds', 'pitch_width_m', 'pitch_height_m', 'raw_json', 'summary']
+    tracking_analyses: ['source_version', 'duration_seconds', 'pitch_width_m', 'pitch_height_m', 'raw_json', 'summary'],
+    tracking_player_stats: [
+      'defense_score',
+      'defense_score_method',
+      'advanced_defense_score',
+      'advanced_defense_axes',
+      'fis_valor',
+      'fis_version',
+      'physical_profile',
+      'goal_locations'
+    ],
+    tracking_player_heatmaps: ['player_id']
   };
 
   function escapeHtml(value) {
@@ -165,6 +176,65 @@
     throw new Error('No se pudo guardar tracking por columnas faltantes en tracking_analyses.');
   }
 
+  function buildTrackingPlayerStatsRows(normalized, mappings = new Map(), analysisId = null) {
+    return (normalized?.players || []).map(player => {
+      const mapping = mappings.get(player.player_id) || {};
+      const jugadorId = mapping.jugador_id || null;
+      return {
+        analysis_id: analysisId,
+        player_id: player.player_id,
+        jugador_id: jugadorId,
+        detected_name: player.detected_name,
+        team: player.team || null,
+        distance_km: player.distance_km,
+        avg_speed_kmh: player.avg_speed_kmh,
+        max_speed_kmh: player.max_speed_kmh,
+        raw_max_speed_kmh: player.raw_max_speed_kmh,
+        speed_distribution: player.speed_distribution,
+        sprints: player.sprints,
+        high_intensity_seconds: player.high_intensity_seconds,
+        accel_max_mps2: player.accel_max_mps2,
+        decel_max_mps2: player.decel_max_mps2,
+        turns_gt_90: player.turns_gt_90,
+        metabolic_load_index: player.metabolic_load_index,
+        goalkeeper_seconds: player.goalkeeper_seconds,
+        goalkeeper_episodes: player.goalkeeper_episodes,
+        own_half_pct: player.own_half_pct,
+        rival_half_pct: player.rival_half_pct,
+        avg_x_m: player.avg_x_m,
+        avg_y_m: player.avg_y_m,
+        dispersion_m: player.dispersion_m,
+        coverage_pct: player.coverage_pct,
+        pulmon_tracking: player.pulmon_tracking,
+        defense_score: player.defense_score,
+        defense_score_method: player.defense_score_method || null,
+        advanced_defense_score: player.advanced_defense_score,
+        advanced_defense_axes: player.advanced_defense_axes || {},
+        fis_valor: player.fis_valor ?? player.pulmon_tracking,
+        fis_version: player.fis_version || null,
+        physical_profile: player.physical_profile || {},
+        goal_locations: player.goal_locations || [],
+        metrics: {
+          fatigue: player.fatigue,
+          recovery: player.recovery,
+          windows: player.windows,
+          directionality: player.directionality,
+          lane_distribution: player.lane_distribution,
+          defense: player.defense,
+          advanced_defense: player.advanced_defense,
+          physical_profile: player.physical_profile,
+          pulmon: player.pulmon,
+          fis_valor: player.fis_valor ?? player.pulmon_tracking,
+          fis_version: player.fis_version || null,
+          goal_locations: player.goal_locations || [],
+          own_side: player.own_side,
+          rival_side: player.rival_side
+        },
+        highlights: player.highlights
+      };
+    });
+  }
+
   function levenshtein(a, b) {
     const left = normalizeName(a);
     const right = normalizeName(b);
@@ -275,6 +345,17 @@
     return { x_bins: xBins, y_bins: yBins, counts };
   }
 
+  function averageHeatmaps(heatmaps) {
+    const normalized = heatmaps.map(normalizeHeatmap).filter(h => h.counts.length > 0);
+    const combined = combineHeatmaps(heatmaps);
+    if (!combined || !normalized.length) return null;
+    return {
+      x_bins: combined.x_bins,
+      y_bins: combined.y_bins,
+      counts: combined.counts.map(row => row.map(value => round(value / normalized.length, 3)))
+    };
+  }
+
   function heatmapCoveragePct(heatmap, thresholdRatio = 0.01) {
     const normalized = normalizeHeatmap(heatmap);
     if (!normalized.total || !normalized.flat.length) return 0;
@@ -316,6 +397,64 @@
       || {};
   }
 
+  function goalLocationEventsFromRaw(raw) {
+    const candidates = [
+      raw?.shot_map?.events,
+      raw?.review_analysis?.shot_map?.events,
+      raw?.shot_map?.goals,
+      raw?.review_analysis?.shot_map?.goals
+    ];
+    const events = candidates.flatMap(items => Array.isArray(items) ? items : []);
+    const seen = new Set();
+    return events
+      .filter(event => {
+        const type = normalizeName(event?.type || event?.event_type || '');
+        const outcome = normalizeName(event?.outcome || event?.result || '');
+        return type === 'goal' || outcome === 'goal' || type.includes('gol') || outcome.includes('gol');
+      })
+      .filter(event => {
+        const key = [
+          event.player_id || event.player?.player_id || event.shooter?.player_id || normalizeName(event.name || event.player?.name || event.shooter?.name || ''),
+          event.order ?? event.goal_number ?? event.index ?? '',
+          event.match_seconds ?? event.review_seconds ?? event.sam3_seconds ?? event.seconds ?? '',
+          event.x ?? event.position?.x ?? event.location?.x ?? '',
+          event.y ?? event.position?.y ?? event.location?.y ?? ''
+        ].join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function goalLocationsForPlayer(rawPlayer, raw) {
+    const playerId = String(rawPlayer?.player_id || rawPlayer?.id || '');
+    const nameKey = normalizeName(rawPlayer?.name || rawPlayer?.detected_name || '');
+    return goalLocationEventsFromRaw(raw)
+      .filter(event => {
+        const eventPlayerId = String(event.player_id || event.player?.player_id || event.shooter?.player_id || '');
+        const eventName = normalizeName(event.name || event.player?.name || event.shooter?.name || '');
+        return (playerId && eventPlayerId === playerId) || (nameKey && eventName === nameKey);
+      })
+      .map(event => {
+        const rawX = event.x ?? event.position?.x ?? event.location?.x;
+        const rawY = event.y ?? event.position?.y ?? event.location?.y;
+        const x = Number(rawX);
+        const y = Number(rawY);
+        return {
+          order: event.order ?? event.goal_number ?? event.index ?? null,
+          seconds: toNumber(event.match_seconds ?? event.review_seconds ?? event.sam3_seconds ?? event.seconds, 0),
+          x: Number.isFinite(x) ? round(x, 3) : NaN,
+          y: Number.isFinite(y) ? round(y, 3) : NaN,
+          team: event.team || event.player?.team || event.shooter?.team || '',
+          goalkeeper: event.active_goalkeeper || event.goalkeeper || null,
+          source: event.position_source || event.source || '',
+          linked: Boolean(event.linked),
+          estimated: Boolean(event.estimated)
+        };
+      })
+      .filter(event => Number.isFinite(event.x) && Number.isFinite(event.y));
+  }
+
   function normalizePlayer(rawPlayer, raw) {
     const field = rawPlayer.field_role || rawPlayer;
     const goalkeeper = rawPlayer.goalkeeper_role || {};
@@ -334,11 +473,13 @@
       pulmonVector.fis ?? pulmonVector.fis_v1 ?? physicalProfile.fis,
       computedPulmon
     );
+    const fisVersion = pulmonVector.fis_version || physicalProfile.fis_version || rawPlayer.fis_version || '';
     const robustSpeedMps = toNumber(
       field.speed_peak_mps ?? field.speed_max_mps ?? rawPlayer.speed_peak_mps ?? rawPlayer.speed_p95_mps,
       0
     );
     const avgPosition = field.avg_position || rawPlayer.avg_position || {};
+    const goalLocations = goalLocationsForPlayer(rawPlayer, raw);
 
     return {
       player_id: String(rawPlayer.player_id || rawPlayer.id || rawPlayer.name || ''),
@@ -382,7 +523,10 @@
       advanced_defense_axes: advancedDefense.axes || {},
       physical_profile: physicalProfile,
       pulmon: pulmonVector,
-      pulmon_tracking: pulmonTracking
+      fis_valor: pulmonTracking,
+      fis_version: fisVersion,
+      pulmon_tracking: pulmonTracking,
+      goal_locations: goalLocations
     };
   }
 
@@ -530,6 +674,17 @@
       #vista-perfil-jugador #perfil-tabs .nav-link.active { color: #fff; background: #51526b; box-shadow: inset 0 -2px 0 #5b8cff; }
       .tracking-profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .85fr); gap: 1rem; }
       .tracking-profile-card { background: rgba(37, 39, 52, .92); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 1rem; }
+      .tracking-profile-card.is-wide { grid-column: 1 / -1; }
+      .tracking-profile-section-title { color: #fff; font-weight: 850; font-size: .95rem; margin: 0 0 .65rem; }
+      .tracking-metric-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .65rem; margin-top: .85rem; }
+      .tracking-metric-pill { background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.105); border-radius: 8px; padding: .65rem .7rem; min-width: 0; }
+      .tracking-metric-pill strong { display: block; color: #fff; font-size: 1rem; line-height: 1.1; }
+      .tracking-metric-pill span { display: block; color: #a7acc7; font-size: .72rem; margin-top: .25rem; }
+      .tracking-axis-list { display: grid; gap: .55rem; }
+      .tracking-axis-row { display: grid; grid-template-columns: minmax(88px, .7fr) minmax(0, 1fr) 42px; gap: .55rem; align-items: center; color: #cbd2ef; font-size: .8rem; }
+      .tracking-axis-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.11); overflow: hidden; }
+      .tracking-axis-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22d3ee, #60a5fa); }
+      .tracking-goal-note { color: #a7acc7; font-size: .8rem; margin-top: .45rem; }
       .tracking-profile-dashboard { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: .75rem; color: #eef2ff; }
       .tracking-profile-panel { background: #2f3040; border: 1px solid rgba(255,255,255,.10); border-radius: 8px; overflow: hidden; box-shadow: 0 14px 34px rgba(0,0,0,.22); }
       .tracking-profile-panel-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 1rem; border-bottom: 1px solid rgba(0,0,0,.28); background: rgba(255,255,255,.025); }
@@ -1010,50 +1165,7 @@
         confidence: state.mappings.get(player.player_id)?.confidence || null
       }));
 
-      const statsRows = normalized.players.map(player => {
-        const jugadorId = state.mappings.get(player.player_id)?.jugador_id || null;
-        return {
-          analysis_id: analysisId,
-          player_id: player.player_id,
-          jugador_id: jugadorId,
-          detected_name: player.detected_name,
-          team: player.team || null,
-          distance_km: player.distance_km,
-          avg_speed_kmh: player.avg_speed_kmh,
-          max_speed_kmh: player.max_speed_kmh,
-          raw_max_speed_kmh: player.raw_max_speed_kmh,
-          speed_distribution: player.speed_distribution,
-          sprints: player.sprints,
-          high_intensity_seconds: player.high_intensity_seconds,
-          accel_max_mps2: player.accel_max_mps2,
-          decel_max_mps2: player.decel_max_mps2,
-          turns_gt_90: player.turns_gt_90,
-          metabolic_load_index: player.metabolic_load_index,
-          goalkeeper_seconds: player.goalkeeper_seconds,
-          goalkeeper_episodes: player.goalkeeper_episodes,
-          own_half_pct: player.own_half_pct,
-          rival_half_pct: player.rival_half_pct,
-          avg_x_m: player.avg_x_m,
-          avg_y_m: player.avg_y_m,
-          dispersion_m: player.dispersion_m,
-          coverage_pct: player.coverage_pct,
-          pulmon_tracking: player.pulmon_tracking,
-          metrics: {
-            fatigue: player.fatigue,
-            recovery: player.recovery,
-            windows: player.windows,
-            directionality: player.directionality,
-            lane_distribution: player.lane_distribution,
-            defense: player.defense,
-            advanced_defense: player.advanced_defense,
-            physical_profile: player.physical_profile,
-            pulmon: player.pulmon,
-            own_side: player.own_side,
-            rival_side: player.rival_side
-          },
-          highlights: player.highlights
-        };
-      });
+      const statsRows = buildTrackingPlayerStatsRows(normalized, state.mappings, analysisId);
 
       const heatmapRows = normalized.players.map(player => ({
         analysis_id: analysisId,
@@ -1099,11 +1211,17 @@
         payload: item.payload || {}
       }));
 
-      await insertRows(client, TRACKING_TABLES.mapping, mappingRows);
-      await insertRows(client, TRACKING_TABLES.stats, statsRows);
-      await insertRows(client, TRACKING_TABLES.heatmaps, heatmapRows);
-      await insertRows(client, TRACKING_TABLES.teams, teamRows);
-      await insertRows(client, TRACKING_TABLES.interactions, interactionRows);
+      const insertResults = [
+        await insertRows(client, TRACKING_TABLES.mapping, mappingRows),
+        await insertRows(client, TRACKING_TABLES.stats, statsRows),
+        await insertRows(client, TRACKING_TABLES.heatmaps, heatmapRows),
+        await insertRows(client, TRACKING_TABLES.teams, teamRows),
+        await insertRows(client, TRACKING_TABLES.interactions, interactionRows)
+      ];
+      const omittedColumns = [
+        ...analysisResult.omittedColumns,
+        ...insertResults.flatMap(result => result?.omittedColumns || [])
+      ];
 
       APP.analysisByMatch.set(String(state.partidoId), analysis);
       APP.detailsByAnalysis.delete(String(analysisId));
@@ -1113,8 +1231,8 @@
 
       const modal = bootstrap.Modal.getInstance(document.getElementById('trackingImportModal'));
       modal?.hide();
-      if (analysisResult.omittedColumns.length) {
-        showToast(`Tracking guardado. Supabase no tiene columnas opcionales: ${analysisResult.omittedColumns.join(', ')}. Conviene correr tracking_schema.sql.`, 'warning');
+      if (omittedColumns.length) {
+        showToast(`Tracking guardado. Supabase no tiene columnas opcionales: ${[...new Set(omittedColumns)].join(', ')}. Conviene correr tracking_schema.sql.`, 'warning');
       } else {
         showToast('Tracking guardado para el partido', 'success');
       }
@@ -1143,20 +1261,26 @@
   }
 
   async function insertRows(client, table, rows) {
-    if (!rows || rows.length === 0) return;
-    const { error } = await client.from(table).insert(rows);
-    if (!error) return;
-    const text = `${error.message || ''} ${error.details || ''}`.toLowerCase();
-    if (table === TRACKING_TABLES.heatmaps && text.includes('player_id')) {
-      const fallbackRows = rows.map(row => {
-        const { player_id, ...rest } = row;
-        return rest;
-      });
-      const retry = await client.from(table).insert(fallbackRows);
-      if (!retry.error) return;
-      throw retry.error;
+    if (!rows || rows.length === 0) return { omittedColumns: [] };
+    const optionalColumns = OPTIONAL_COLUMNS_BY_TABLE[table] || [];
+    let currentRows = rows.map(row => ({ ...row }));
+    const omittedColumns = [];
+
+    for (let attempt = 0; attempt <= optionalColumns.length; attempt += 1) {
+      const { error } = await client.from(table).insert(currentRows);
+      if (!error) return { omittedColumns };
+
+      const missingColumn = schemaMissingColumn(error);
+      if (missingColumn && optionalColumns.includes(missingColumn) && currentRows.some(row => Object.prototype.hasOwnProperty.call(row, missingColumn))) {
+        currentRows = currentRows.map(row => omitColumn(row, missingColumn));
+        omittedColumns.push(missingColumn);
+        continue;
+      }
+
+      throw error;
     }
-    throw error;
+
+    throw new Error(`No se pudo guardar tracking por columnas faltantes en ${table}.`);
   }
 
   async function fetchAnalysisDetails(analysisId) {
@@ -1220,8 +1344,11 @@
       const metrics = row.metrics || {};
       const defense = metrics.defense || rawPlayer.defense || {};
       const advancedDefense = metrics.advanced_defense || rawPlayer.advanced_defense || {};
-      const physicalProfile = metrics.physical_profile || rawPlayer.physical_profile || {};
+      const physicalProfile = row.physical_profile || metrics.physical_profile || rawPlayer.physical_profile || {};
       const pulmon = metrics.pulmon || rawPlayer.pulmon || {};
+      const goalLocations = row.goal_locations || metrics.goal_locations || rawPlayer.goal_locations || [];
+      const fisValor = row.fis_valor ?? metrics.fis_valor ?? rawPlayer.fis_valor ?? physicalProfile.fis ?? pulmon.fis ?? rawPlayer.pulmon_tracking;
+      const fisVersion = row.fis_version || metrics.fis_version || rawPlayer.fis_version || physicalProfile.fis_version || pulmon.fis_version || '';
       return {
         ...row,
         name: rawPlayer.detected_name || mapping.detected_name || row.detected_name || mapping.jugadores?.nombre || row.player_id,
@@ -1245,13 +1372,16 @@
         pulmon_tracking: preferRawWhenMissing(row.pulmon_tracking, rawPlayer.pulmon_tracking),
         speed_distribution: row.speed_distribution || rawPlayer.speed_distribution || {},
         defense,
-        defense_score: defense.defense_score !== undefined ? toNumber(defense.defense_score, 0) : rawPlayer.defense_score,
-        defense_score_method: defense.defense_score_method || rawPlayer.defense_score_method || defense.method || '',
+        defense_score: row.defense_score ?? (defense.defense_score !== undefined ? toNumber(defense.defense_score, 0) : rawPlayer.defense_score),
+        defense_score_method: row.defense_score_method || defense.defense_score_method || rawPlayer.defense_score_method || defense.method || '',
         advanced_defense: advancedDefense,
-        advanced_defense_score: advancedDefense.score !== undefined ? toNumber(advancedDefense.score, 0) : rawPlayer.advanced_defense_score,
-        advanced_defense_axes: advancedDefense.axes || rawPlayer.advanced_defense_axes || {},
+        advanced_defense_score: row.advanced_defense_score ?? (advancedDefense.score !== undefined ? toNumber(advancedDefense.score, 0) : rawPlayer.advanced_defense_score),
+        advanced_defense_axes: row.advanced_defense_axes || advancedDefense.axes || rawPlayer.advanced_defense_axes || {},
         physical_profile: physicalProfile,
+        fis_valor: fisValor,
+        fis_version: fisVersion,
         pulmon,
+        goal_locations: goalLocations,
         metrics: {
           ...metrics,
           windows: metrics.windows || rawPlayer.windows || [],
@@ -1262,7 +1392,10 @@
           defense,
           advanced_defense: advancedDefense,
           physical_profile: physicalProfile,
-          pulmon
+          pulmon,
+          fis_valor: fisValor,
+          fis_version: fisVersion,
+          goal_locations: goalLocations
         },
         highlights: row.highlights || rawPlayer.highlights || {},
         heatmap: heatmapRow.heatmap || rawPlayer.heatmap,
@@ -1437,6 +1570,75 @@
             `).join('')}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  function trackingDimensionLabel(key) {
+    const labels = {
+      motor: 'Motor',
+      turbo: 'Turbo',
+      chispa: 'Chispa',
+      frenos: 'Frenos',
+      giros: 'Giros',
+      tanque: 'Tanque',
+      recuperacion: 'Recuperacion'
+    };
+    return labels[key] || key.replace(/_/g, ' ');
+  }
+
+  function trackingDefenseAxisLabel(key) {
+    const labels = {
+      duel: 'Duelo',
+      sacrifice: 'Sacrificio',
+      order: 'Orden',
+      responsibility: 'Resp.',
+      ball_pressure: 'Presion',
+      recovery: 'Vuelta'
+    };
+    return labels[key] || key.replace(/_/g, ' ');
+  }
+
+  function renderTrackingMetricPills(dimensions) {
+    const entries = Object.entries(dimensions || {})
+      .filter(([, value]) => Number.isFinite(Number(value)))
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 7);
+    if (!entries.length) {
+      return '<div class="tracking-goal-note">El JSON no trajo dimensiones fisicas desglosadas para este jugador.</div>';
+    }
+    return `
+      <div class="tracking-metric-band">
+        ${entries.map(([key, value]) => `
+          <div class="tracking-metric-pill">
+            <strong>${round(value, 1)}</strong>
+            <span>${escapeHtml(trackingDimensionLabel(key))}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderTrackingAxisList(axes) {
+    const entries = Object.entries(axes || {})
+      .filter(([, value]) => Number.isFinite(Number(value)))
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 6);
+    if (!entries.length) {
+      return '<div class="text-light-emphasis small">Sin ejes defensivos en el JSON importado.</div>';
+    }
+    return `
+      <div class="tracking-axis-list">
+        ${entries.map(([key, value]) => {
+          const pct = Math.max(0, Math.min(100, toNumber(value)));
+          return `
+            <div class="tracking-axis-row">
+              <span>${escapeHtml(trackingDefenseAxisLabel(key))}</span>
+              <div class="tracking-axis-track"><div class="tracking-axis-fill" style="width:${pct}%"></div></div>
+              <strong>${round(value, 0)}</strong>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   }
@@ -1889,6 +2091,7 @@
   }
 
   function drawHeatmap(canvas, pitch, heatmap, players = []) {
+    if (!canvas) return;
     const { ctx, width, height } = setupCanvas(canvas);
     drawBasePitch(ctx, width, height);
     const normalized = normalizeHeatmap(heatmap);
@@ -1919,6 +2122,41 @@
       ctx.fill();
       ctx.stroke();
     });
+  }
+
+  function drawGoalLocations(canvas, pitch, goals = []) {
+    if (!canvas) return;
+    const { ctx, width, height } = setupCanvas(canvas);
+    drawBasePitch(ctx, width, height);
+    const validGoals = (goals || []).filter(goal => Number.isFinite(Number(goal.x)) && Number.isFinite(Number(goal.y)));
+    if (!validGoals.length) {
+      ctx.fillStyle = 'rgba(255,255,255,.74)';
+      ctx.font = `${Math.max(13, width * 0.022)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Sin goles con ubicacion importada', width / 2, height / 2);
+      ctx.textAlign = 'start';
+      return;
+    }
+
+    validGoals.forEach((goal, index) => {
+      const p = pitchToCanvas(goal, pitch, width, height);
+      const radius = Math.max(8, width * 0.015);
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(250, 204, 21, .92)';
+      ctx.strokeStyle = 'rgba(17, 24, 39, .92)';
+      ctx.lineWidth = Math.max(2, width / 360);
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#111827';
+      ctx.font = `800 ${Math.max(9, width * 0.014)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(goal.order || index + 1), p.x, p.y + 0.5);
+    });
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'alphabetic';
   }
 
   async function refreshTrackingCaches(force = false) {
@@ -1954,6 +2192,7 @@
         }
         const enriched = {
           ...row,
+          metrics: row.metrics || {},
           distance_km: row.distance_km ?? rawPlayer?.distance_km,
           avg_speed_kmh: row.avg_speed_kmh ?? rawPlayer?.avg_speed_kmh,
           max_speed_kmh: row.max_speed_kmh ?? rawPlayer?.max_speed_kmh,
@@ -1962,6 +2201,17 @@
           goalkeeper_seconds: row.goalkeeper_seconds ?? rawPlayer?.goalkeeper_seconds,
           coverage_pct: row.coverage_pct ?? rawPlayer?.coverage_pct,
           pulmon_tracking: row.pulmon_tracking ?? rawPlayer?.pulmon_tracking,
+          defense: row.metrics?.defense || rawPlayer?.defense || {},
+          defense_score: row.defense_score ?? row.metrics?.defense?.defense_score ?? rawPlayer?.defense_score,
+          defense_score_method: row.defense_score_method || row.metrics?.defense?.defense_score_method || rawPlayer?.defense_score_method || '',
+          advanced_defense: row.metrics?.advanced_defense || rawPlayer?.advanced_defense || {},
+          advanced_defense_score: row.advanced_defense_score ?? row.metrics?.advanced_defense?.score ?? rawPlayer?.advanced_defense_score,
+          advanced_defense_axes: row.advanced_defense_axes || row.metrics?.advanced_defense?.axes || rawPlayer?.advanced_defense_axes || {},
+          physical_profile: row.physical_profile || row.metrics?.physical_profile || rawPlayer?.physical_profile || {},
+          pulmon: row.metrics?.pulmon || rawPlayer?.pulmon || {},
+          fis_valor: row.fis_valor ?? row.metrics?.fis_valor ?? rawPlayer?.fis_valor ?? row.metrics?.pulmon?.fis ?? rawPlayer?.pulmon?.fis,
+          fis_version: row.fis_version || row.metrics?.fis_version || rawPlayer?.fis_version || row.metrics?.pulmon?.fis_version || rawPlayer?.pulmon?.fis_version || '',
+          goal_locations: row.goal_locations || row.metrics?.goal_locations || rawPlayer?.goal_locations || [],
           heatmap: heatmap?.heatmap || rawPlayer?.heatmap,
           heatmap_windows: heatmap?.heatmap_windows || rawPlayer?.heatmap_windows
         };
@@ -2062,12 +2312,54 @@
     return numeric === 2 ? 2 : 1;
   }
 
+  function averagePresent(rows, getter) {
+    const values = (rows || [])
+      .map(getter)
+      .map(value => Number(value))
+      .filter(value => Number.isFinite(value));
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  function averageObjectValues(rows, getter) {
+    const buckets = new Map();
+    (rows || []).forEach(row => {
+      const source = getter(row) || {};
+      Object.entries(source).forEach(([key, value]) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(n);
+      });
+    });
+    return [...buckets.entries()].reduce((acc, [key, values]) => {
+      acc[key] = round(values.reduce((sum, value) => sum + value, 0) / values.length, 1);
+      return acc;
+    }, {});
+  }
+
+  function physicalDimensionsForRow(row) {
+    return row.physical_profile?.dimensions || row.pulmon?.dimensions || row.metrics?.physical_profile?.dimensions || row.metrics?.pulmon?.dimensions || {};
+  }
+
+  function defenseAxesForRow(row) {
+    return row.advanced_defense_axes || row.advanced_defense?.axes || row.metrics?.advanced_defense?.axes || {};
+  }
+
   function aggregatePlayerRows(rows) {
     const safeRows = rows || [];
     if (!safeRows.length) return null;
     const sum = (field) => safeRows.reduce((total, row) => total + toNumber(row[field]), 0);
     const avg = (field) => sum(field) / safeRows.length;
-    const combinedHeatmap = combineHeatmaps(safeRows.map(row => row.heatmap).filter(Boolean));
+    const averageHeatmap = averageHeatmaps(safeRows.map(row => row.heatmap).filter(Boolean));
+    const goalLocations = safeRows.flatMap(row => (row.goal_locations || row.metrics?.goal_locations || []).map(goal => ({
+      ...goal,
+      match_id: row.tracking_analyses?.partido_id || row.partido_id || null,
+      date: row.tracking_analyses?.partidos?.fecha || null
+    })));
+    const fisAverage = averagePresent(safeRows, row => row.fis_valor ?? row.pulmon_tracking ?? row.physical_profile?.fis ?? row.pulmon?.fis);
+    const defenseAverage = averagePresent(safeRows, row => row.defense_score ?? row.defense?.defense_score);
+    const advancedDefenseAverage = averagePresent(safeRows, row => row.advanced_defense_score ?? row.advanced_defense?.score);
     return {
       matches: safeRows.length,
       distance_km_avg: round(avg('distance_km'), 2),
@@ -2076,10 +2368,16 @@
       max_speed_kmh: round(Math.max(...safeRows.map(row => toNumber(row.max_speed_kmh))), 1),
       sprints_avg: round(avg('sprints'), 1),
       pulmon_tracking: round(avg('pulmon_tracking'), 1),
+      fis_valor: fisAverage === null ? null : round(fisAverage, 1),
+      defense_score: defenseAverage === null ? null : round(defenseAverage, 1),
+      advanced_defense_score: advancedDefenseAverage === null ? null : round(advancedDefenseAverage, 1),
+      physical_dimensions: averageObjectValues(safeRows, physicalDimensionsForRow),
+      advanced_defense_axes: averageObjectValues(safeRows, defenseAxesForRow),
       high_intensity_seconds_avg: round(avg('high_intensity_seconds'), 1),
       coverage_pct: round(avg('coverage_pct'), 1),
       goalkeeper_seconds: round(avg('goalkeeper_seconds'), 1),
-      heatmap: combinedHeatmap,
+      heatmap: averageHeatmap,
+      goal_locations: goalLocations,
       latest: safeRows[0]
     };
   }
@@ -2185,23 +2483,36 @@
       summaryContainer.innerHTML = `
         <div class="tracking-profile-grid">
           <div class="tracking-profile-card">
-            <h5 class="text-white mb-3">Perfil fisico tracking</h5>
+            <h5 class="text-white mb-3">Perfil tracking</h5>
             <div class="tracking-kpi-grid">
               ${kpi('Partidos con tracking', aggregate.matches)}
-              ${kpi('Pulmon tracking', `${aggregate.pulmon_tracking}/100`)}
+              ${kpi('Pulmon FIS', `${aggregate.fis_valor ?? aggregate.pulmon_tracking}/100`)}
+              ${kpi('Score defensivo', aggregate.defense_score === null ? '-' : `${aggregate.defense_score}/100`)}
+              ${kpi('Defensa avanzada', aggregate.advanced_defense_score === null ? '-' : `${aggregate.advanced_defense_score}/100`)}
               ${kpi('KM prom.', `${aggregate.distance_km_avg} km`)}
-              ${kpi('Vel. prom.', `${aggregate.avg_speed_kmh} km/h`)}
-              ${kpi('Vel. max', `${aggregate.max_speed_kmh} km/h`)}
-              ${kpi('Cobertura', `${aggregate.coverage_pct}%`)}
+              ${kpi('Goles con mapa', aggregate.goal_locations.length)}
             </div>
+            ${renderTrackingMetricPills(aggregate.physical_dimensions)}
           </div>
           <div class="tracking-profile-card">
-            <h6 class="text-white">Mapa de calor acumulado</h6>
+            <h6 class="tracking-profile-section-title">Defensa avanzada</h6>
+            ${renderTrackingAxisList(aggregate.advanced_defense_axes)}
+          </div>
+          <div class="tracking-profile-card">
+            <h6 class="tracking-profile-section-title">Mapa de calor promedio</h6>
             <canvas class="tracking-canvas" id="perfil-tracking-heatmap-canvas"></canvas>
+          </div>
+          <div class="tracking-profile-card">
+            <h6 class="tracking-profile-section-title">Desde donde convierte goles</h6>
+            <canvas class="tracking-canvas" id="perfil-tracking-goals-canvas"></canvas>
+            <div class="tracking-goal-note">${aggregate.goal_locations.length ? `${aggregate.goal_locations.length} goles con ubicacion importada desde el detector.` : 'Sin goles con ubicacion importada todavia.'}</div>
           </div>
         </div>
       `;
-      setTimeout(() => drawHeatmap(document.getElementById('perfil-tracking-heatmap-canvas'), DEFAULT_PITCH, aggregate.heatmap, []), 40);
+      setTimeout(() => {
+        drawHeatmap(document.getElementById('perfil-tracking-heatmap-canvas'), DEFAULT_PITCH, aggregate.heatmap, []);
+        drawGoalLocations(document.getElementById('perfil-tracking-goals-canvas'), DEFAULT_PITCH, aggregate.goal_locations || []);
+      }, 40);
     }
 
     if (matchesContainer) {
@@ -2282,6 +2593,8 @@
             ${profileStatLine('MVP / ACE', `${totals.mvp} / ${totals.ace}`)}
             ${profileStatLine('Tracking cargado', `${trackingMatchCount}/${rows.length}`)}
             ${profileStatLine('KM con tracking', `${trackingDistance.toFixed(2)} km`)}
+            ${profileStatLine('Pulmon FIS', aggregate?.fis_valor == null ? '-' : `${aggregate.fis_valor}/100`)}
+            ${profileStatLine('Score defensivo', aggregate?.defense_score == null ? '-' : `${aggregate.defense_score}/100`)}
           </div>
           <div class="tracking-season-table">
             <div class="tracking-profile-panel-sub">Ultimos partidos</div>
@@ -2531,6 +2844,9 @@
         <div class="tracking-match-tags">
           <span class="tracking-match-tag ${teamClass}">Equipo ${teamNumber}</span>
           <span class="tracking-match-tag ${hasTracking ? 'is-green' : 'is-muted'}">${hasTracking ? 'Tracking' : 'Sin tracking'}</span>
+          ${hasTracking && row.fis_valor !== null && row.fis_valor !== undefined ? `<span class="tracking-match-tag is-green">FIS ${round(row.fis_valor, 1)}</span>` : ''}
+          ${hasTracking && row.defense_score !== null && row.defense_score !== undefined ? `<span class="tracking-match-tag is-blue">DEF ${round(row.defense_score, 1)}</span>` : ''}
+          ${hasTracking && row.goal_locations?.length ? `<span class="tracking-match-tag">${row.goal_locations.length} goles mapa</span>` : ''}
           ${p.mvp ? '<span class="tracking-match-tag is-green">MVP</span>' : ''}
           ${p.ace ? '<span class="tracking-match-tag is-blue">ACE</span>' : ''}
         </div>
@@ -2761,9 +3077,12 @@
     heatmapOverlap,
     heatmapCoveragePct,
     combineHeatmaps,
+    aggregatePlayerRows,
     evaluateTrackingTeam,
     trackingFitnessPenalty,
     upsertTrackingAnalysisRow,
+    insertRows,
+    buildTrackingPlayerStatsRows,
     schemaMissingColumn,
     refreshTrackingCaches,
     openSummaryByAnalysisId

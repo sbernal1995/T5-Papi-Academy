@@ -108,13 +108,54 @@ function sampleExport() {
         }
       ]
     },
-    shot_map: { events: [{ type: 'goal', outcome: 'goal', order: 1 }] },
+    shot_map: {
+      events: [
+        {
+          type: 'goal',
+          outcome: 'goal',
+          order: 1,
+          player_id: 'P01',
+          name: 'Metox',
+          team: 'A',
+          match_seconds: 154,
+          x: 12.5,
+          y: 6.25,
+          active_goalkeeper: { player_id: 'P02', name: 'Boska', team: 'B' },
+          position_source: 'review_tracking'
+        },
+        {
+          type: 'goal',
+          outcome: 'goal',
+          order: 2,
+          player_id: 'P02',
+          name: 'Boska',
+          team: 'B',
+          match_seconds: 330,
+          x: 24,
+          y: 9
+        }
+      ]
+    },
     review_analysis: {
       enabled: true,
       tracking_only: true,
       event_metrics_enabled: false,
       reason: 'review legacy test',
       coverage: { goals_total: 2, goals_linked: 0 },
+      shot_map: {
+        events: [
+          {
+            type: 'goal',
+            outcome: 'goal',
+            order: 1,
+            player_id: 'P01',
+            name: 'Metox',
+            match_seconds: 154,
+            x: 12.5,
+            y: 6.25
+          }
+        ]
+      },
       defensive_players: [
         { player_id: 'P01', name: 'Metox', team: 'A', role: 'field', defense_score: 76.4 }
       ]
@@ -144,12 +185,17 @@ async function run() {
   assert.strictEqual(normalized.players[0].advanced_defense_score, 71.2);
   assert.strictEqual(normalized.players[0].advanced_defense.axes.duel, 70);
   assert.strictEqual(normalized.players[0].pulmon_tracking, 88);
+  assert.strictEqual(normalized.players[0].fis_valor, 88);
+  assert.strictEqual(normalized.players[0].fis_version, 'FIS v1');
+  assert.strictEqual(normalized.players[0].goal_locations.length, 1);
+  assert.strictEqual(normalized.players[0].goal_locations[0].x, 12.5);
+  assert.strictEqual(normalized.players[0].goal_locations[0].goalkeeper.name, 'Boska');
   assert.strictEqual(normalized.effective_play.net_play_pct, 70);
   assert.strictEqual(normalized.match_story.goals.length, 1);
   assert.strictEqual(normalized.matchmaker_seed.proposals.length, 1);
   assert.strictEqual(normalized.supabase_export.enabled, true);
   assert.strictEqual(normalized.advanced_defense.coverage.danger_events, 2);
-  assert.strictEqual(normalized.shot_map.events.length, 1);
+  assert.strictEqual(normalized.shot_map.events.length, 2);
   assert.strictEqual(normalized.available_metrics.defensive_movement_score, true);
   assert.strictEqual(normalized.available_metrics.advanced_defense_score, true);
   assert.strictEqual(normalized.review_analysis.tracking_only, true);
@@ -185,6 +231,42 @@ async function run() {
     ]
   );
   assert(teamPenalty > 0);
+
+  const mappings = new Map([['P01', { jugador_id: 'jugador-1' }]]);
+  const statsRows = tracking.buildTrackingPlayerStatsRows(normalized, mappings, 'analysis-1');
+  assert.strictEqual(statsRows[0].analysis_id, 'analysis-1');
+  assert.strictEqual(statsRows[0].jugador_id, 'jugador-1');
+  assert.strictEqual(statsRows[0].defense_score, 76.4);
+  assert.strictEqual(statsRows[0].advanced_defense_score, 71.2);
+  assert.strictEqual(statsRows[0].fis_valor, 88);
+  assert.strictEqual(statsRows[0].goal_locations.length, 1);
+  assert.strictEqual(statsRows[0].metrics.goal_locations.length, 1);
+
+  const aggregate = tracking.aggregatePlayerRows([
+    {
+      distance_km: 1.2,
+      avg_speed_kmh: 7.2,
+      max_speed_kmh: 14.4,
+      sprints: 4,
+      pulmon_tracking: 88,
+      fis_valor: 88,
+      defense_score: 76.4,
+      advanced_defense_score: 71.2,
+      advanced_defense_axes: { duel: 70, order: 66 },
+      physical_profile: { dimensions: { motor: 90, tanque: 82 } },
+      high_intensity_seconds: 30,
+      coverage_pct: 25,
+      goalkeeper_seconds: 0,
+      heatmap: normalized.players[0].heatmap,
+      goal_locations: normalized.players[0].goal_locations
+    }
+  ]);
+  assert.strictEqual(aggregate.fis_valor, 88);
+  assert.strictEqual(aggregate.defense_score, 76.4);
+  assert.strictEqual(aggregate.advanced_defense_score, 71.2);
+  assert.strictEqual(aggregate.physical_dimensions.motor, 90);
+  assert.strictEqual(aggregate.advanced_defense_axes.duel, 70);
+  assert.strictEqual(aggregate.goal_locations.length, 1);
 
   assert.strictEqual(
     tracking.schemaMissingColumn({ message: "Could not find the 'pitch_height_m' column of 'tracking_analyses' in the schema cache" }),
@@ -231,6 +313,29 @@ async function run() {
   assert.strictEqual(upsertCalls[0].pitch_height_m, 16);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(upsertCalls[1], 'pitch_height_m'), false);
   assert.strictEqual(analysisResult.analysis.id, 'analysis-1');
+
+  const insertCalls = [];
+  const fakeInsertClient = {
+    from(table) {
+      assert.strictEqual(table, 'tracking_player_stats');
+      return {
+        async insert(rows) {
+          insertCalls.push(rows.map(row => ({ ...row })));
+          if (insertCalls.length === 1) {
+            return {
+              error: { message: "Could not find the 'advanced_defense_score' column of 'tracking_player_stats' in the schema cache" }
+            };
+          }
+          return { error: null };
+        }
+      };
+    }
+  };
+  const insertResult = await tracking.insertRows(fakeInsertClient, 'tracking_player_stats', statsRows);
+  assert.deepStrictEqual(insertResult.omittedColumns, ['advanced_defense_score']);
+  assert.strictEqual(insertCalls.length, 2);
+  assert.strictEqual(insertCalls[0][0].advanced_defense_score, 71.2);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(insertCalls[1][0], 'advanced_defense_score'), false);
 
   console.log('tracking integration tests passed');
 }
