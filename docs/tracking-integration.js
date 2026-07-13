@@ -6,6 +6,7 @@
     detailsByAnalysis: new Map(),
     statsByPlayer: new Map(),
     latestByPlayer: new Map(),
+    goalsConcededByPlayer: new Map(),
     profileMatchesByPlayer: new Map(),
     importState: null,
     loadingAnalyses: false,
@@ -26,11 +27,45 @@
     stats: 'tracking_player_stats',
     heatmaps: 'tracking_player_heatmaps',
     teams: 'tracking_team_stats',
-    interactions: 'tracking_interactions'
+    interactions: 'tracking_interactions',
+    shotEvents: 'tracking_shot_events',
+    advancedDefenseEvents: 'tracking_advanced_defense_events',
+    advancedDefenseAssignments: 'tracking_advanced_defense_assignments'
   };
   const OPTIONAL_COLUMNS_BY_TABLE = {
-    tracking_analyses: ['source_version', 'duration_seconds', 'pitch_width_m', 'pitch_height_m', 'raw_json', 'summary'],
+    tracking_analyses: [
+      'export_schema',
+      'export_schema_version',
+      'source_schema',
+      'source_version',
+      'duration_seconds',
+      'pitch_width_m',
+      'pitch_height_m',
+      'available_metrics',
+      'match_link',
+      'review_analysis',
+      'advanced_defense',
+      'shot_map',
+      'effective_play',
+      'match_story',
+      'cross_stats',
+      'physical_profile',
+      'matchmaker_seed',
+      'supabase_export',
+      'goalkeeper_detection',
+      'metrics_v2',
+      'config_json',
+      'team_own_sides',
+      'limitations',
+      'raw_json',
+      'summary'
+    ],
+    tracking_player_mapping: ['partido_id', 'source_player_id', 'source_name', 'normalized_name', 'confidence'],
     tracking_player_stats: [
+      'partido_id',
+      'source_player_id',
+      'source_name',
+      'normalized_name',
       'defense_score',
       'defense_score_method',
       'advanced_defense_score',
@@ -40,7 +75,12 @@
       'physical_profile',
       'goal_locations'
     ],
-    tracking_player_heatmaps: ['player_id']
+    tracking_player_heatmaps: ['partido_id', 'player_id', 'source_player_id', 'source_name', 'normalized_name', 'counts'],
+    tracking_team_stats: ['partido_id', 'team_label'],
+    tracking_interactions: ['partido_id'],
+    tracking_shot_events: ['partido_id', 'source_player_id', 'source_name', 'normalized_name'],
+    tracking_advanced_defense_events: ['partido_id'],
+    tracking_advanced_defense_assignments: ['partido_id', 'source_player_id', 'source_name', 'normalized_name']
   };
 
   function escapeHtml(value) {
@@ -70,6 +110,48 @@
     const n = toNumber(value, 0);
     const factor = 10 ** decimals;
     return Math.round(n * factor) / factor;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function numberOrNull(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function integerOrNull(value) {
+    const n = numberOrNull(value);
+    return n === null ? null : Math.round(n);
+  }
+
+  function booleanOrNull(value) {
+    return typeof value === 'boolean' ? value : null;
+  }
+
+  function normalizeIdValue(value) {
+    const id = String(value ?? '').trim();
+    return id || null;
+  }
+
+  function resolveImportPartidoId(state = APP.importState) {
+    const candidates = [
+      state?.partidoId,
+      state?.partido_id,
+      state?.matchId,
+      state?.match_id,
+      state?.match?.id,
+      state?.partido?.id,
+      state?.normalized?.match_link?.partido_id,
+      state?.normalized?.match_link?.match_id,
+      state?.normalized?.supabase_export?.partido_id,
+      state?.normalized?.raw?.partido_id,
+      state?.normalized?.raw?.match_id,
+      state?.normalized?.raw?.match?.partido_id,
+      state?.normalized?.raw?.match?.id
+    ];
+    return candidates.map(normalizeIdValue).find(Boolean) || null;
   }
 
   function formatTime(seconds) {
@@ -138,6 +220,27 @@
     return '';
   }
 
+  function readableError(error) {
+    if (!error) return 'Error desconocido';
+    if (typeof error === 'string') return error;
+    const parts = [
+      error.message,
+      error.details,
+      error.hint,
+      error.code ? `code=${error.code}` : ''
+    ].filter(Boolean);
+    if (parts.length) return parts.join(' | ');
+    try {
+      return JSON.stringify(error);
+    } catch (_) {
+      return String(error);
+    }
+  }
+
+  function tableError(table, error) {
+    return new Error(`${table}: ${readableError(error)}`);
+  }
+
   function omitColumn(row, column) {
     const copy = { ...row };
     delete copy[column];
@@ -170,19 +273,23 @@
         continue;
       }
 
-      throw error;
+      throw tableError(TRACKING_TABLES.analyses, error);
     }
 
     throw new Error('No se pudo guardar tracking por columnas faltantes en tracking_analyses.');
   }
 
-  function buildTrackingPlayerStatsRows(normalized, mappings = new Map(), analysisId = null) {
+  function buildTrackingPlayerStatsRows(normalized, mappings = new Map(), analysisId = null, partidoId = null) {
     return (normalized?.players || []).map(player => {
       const mapping = mappings.get(player.player_id) || {};
       const jugadorId = mapping.jugador_id || null;
       return {
         analysis_id: analysisId,
+        partido_id: partidoId,
         player_id: player.player_id,
+        source_player_id: player.player_id,
+        source_name: player.detected_name,
+        normalized_name: normalizeName(player.detected_name),
         jugador_id: jugadorId,
         detected_name: player.detected_name,
         team: player.team || null,
@@ -220,6 +327,12 @@
           windows: player.windows,
           directionality: player.directionality,
           lane_distribution: player.lane_distribution,
+          field_seconds: player.field_seconds,
+          field_minutes: player.field_minutes,
+          distance_m: player.distance_m,
+          distance_per_field_min: player.distance_per_field_min,
+          distance_per_40_min_km: player.distance_per_40_min_km,
+          dominant_position_m: player.dominant_position_m,
           defense: player.defense,
           advanced_defense: player.advanced_defense,
           physical_profile: player.physical_profile,
@@ -233,6 +346,306 @@
         highlights: player.highlights
       };
     });
+  }
+
+  function shotEventKey(event, index) {
+    return String(
+      event.event_id
+      || `${event.type || 'shot'}-${event.outcome || 'unknown'}-${event.order ?? index + 1}-${event.sam3_seconds ?? event.match_seconds ?? event.review_seconds ?? 'na'}-${event.player_id || event.name || 'unknown'}`
+    );
+  }
+
+  function advancedDefenseEventKey(event, index) {
+    return String(
+      event.event_id
+      || `${event.type || 'danger'}-${event.order ?? index + 1}-${event.sam3_seconds ?? event.match_seconds ?? 'na'}-${event.defending_team || 'team'}`
+    );
+  }
+
+  function buildTrackingShotEventRows(normalized, mappings = new Map(), analysisId = null, partidoId = null) {
+    const events = Array.isArray(normalized?.shot_map?.events) ? normalized.shot_map.events : [];
+    return events.map((event, index) => {
+      const playerId = String(event.player_id || '');
+      const mapping = mappings.get(playerId) || {};
+      const goalkeeper = event.active_goalkeeper || {};
+      return {
+        analysis_id: analysisId,
+        partido_id: partidoId,
+        event_key: shotEventKey(event, index),
+        event_type: event.type || null,
+        outcome: event.outcome || null,
+        event_order: integerOrNull(event.order),
+        review_seconds: numberOrNull(event.review_seconds),
+        match_seconds: numberOrNull(event.match_seconds),
+        sam3_seconds: numberOrNull(event.sam3_seconds),
+        player_id: playerId || null,
+        source_player_id: playerId || null,
+        source_name: event.name || event.detected_name || null,
+        normalized_name: normalizeName(event.name || event.detected_name || playerId),
+        jugador_id: mapping.jugador_id || null,
+        detected_name: event.name || event.detected_name || null,
+        team: event.team || null,
+        x_m: numberOrNull(event.x),
+        y_m: numberOrNull(event.y),
+        quantity: integerOrNull(event.quantity),
+        linked: booleanOrNull(event.linked),
+        estimated: booleanOrNull(event.estimated),
+        position_source: event.position_source || null,
+        defending_team: event.defending_team || null,
+        active_goalkeeper_player_id: goalkeeper.player_id || null,
+        active_goalkeeper_name: goalkeeper.name || null,
+        active_goalkeeper_team: goalkeeper.team || null,
+        payload: event
+      };
+    });
+  }
+
+  function buildAdvancedDefenseEventRows(normalized, analysisId = null, partidoId = null) {
+    const events = Array.isArray(normalized?.advanced_defense?.events) ? normalized.advanced_defense.events : [];
+    return events.map((event, index) => {
+      const shooter = event.shooter || {};
+      const shot = event.shot || {};
+      const weighting = event.weighting || {};
+      const context = event.context || {};
+      const phase = context.phase || {};
+      return {
+        analysis_id: analysisId,
+        partido_id: partidoId,
+        event_key: advancedDefenseEventKey(event, index),
+        event_type: event.type || null,
+        event_order: integerOrNull(event.order),
+        sam3_seconds: numberOrNull(event.sam3_seconds),
+        match_seconds: numberOrNull(event.match_seconds),
+        attacking_team: event.attacking_team || null,
+        defending_team: event.defending_team || null,
+        shooter_player_id: shooter.player_id || null,
+        shooter_name: shooter.name || null,
+        shooter_team: shooter.team || null,
+        shot_x_m: numberOrNull(shot.x),
+        shot_y_m: numberOrNull(shot.y),
+        shot_distance_to_goal_m: numberOrNull(weighting.shot_distance_to_goal_m ?? shot.distance_to_goal_m),
+        total_blame: numberOrNull(weighting.total_blame),
+        context_state: context.state || null,
+        phase: phase.phase || null,
+        phase_label: phase.phase_label || phase.label || null,
+        local_advantage: integerOrNull(context.advantage ?? context.local_advantage),
+        payload: event
+      };
+    });
+  }
+
+  function buildAdvancedDefenseAssignmentRows(normalized, mappings = new Map(), analysisId = null, partidoId = null) {
+    const events = Array.isArray(normalized?.advanced_defense?.events) ? normalized.advanced_defense.events : [];
+    return events.flatMap((event, eventIndex) => {
+      const eventKey = advancedDefenseEventKey(event, eventIndex);
+      return (event.assignments || []).map(assignment => {
+        const playerId = String(assignment.player_id || '');
+        const mapping = mappings.get(playerId) || {};
+        return {
+          analysis_id: analysisId,
+          partido_id: partidoId,
+          event_key: eventKey,
+          player_id: playerId || null,
+          source_player_id: playerId || null,
+          source_name: assignment.name || null,
+          normalized_name: normalizeName(assignment.name || playerId),
+          jugador_id: mapping.jugador_id || null,
+          detected_name: assignment.name || null,
+          team: assignment.team || null,
+          role: assignment.role || null,
+          event_type: assignment.event_type || event.type || null,
+          blame: numberOrNull(assignment.blame),
+          capped_blame: numberOrNull(assignment.capped_blame),
+          bonus: numberOrNull(assignment.bonus),
+          distance_m: numberOrNull(assignment.distance_m),
+          nearest: booleanOrNull(assignment.nearest),
+          outnumbered: booleanOrNull(assignment.outnumbered),
+          advantage: integerOrNull(assignment.advantage),
+          return_toward_own_goal_mps: numberOrNull(assignment.return_toward_own_goal_mps),
+          shot_distance_to_goal_m: numberOrNull(assignment.shot_distance_to_goal_m),
+          reason: assignment.reason || null,
+          payload: assignment
+        };
+      });
+    });
+  }
+
+  function shotMapFromRows(rows, fallback = {}) {
+    if (!Array.isArray(rows) || !rows.length) return fallback || {};
+    const events = rows
+      .slice()
+      .sort((a, b) => toNumber(a.event_order, 0) - toNumber(b.event_order, 0) || toNumber(a.sam3_seconds, 0) - toNumber(b.sam3_seconds, 0))
+      .map(row => ({
+        ...(row.payload || {}),
+        type: row.event_type || row.payload?.type,
+        outcome: row.outcome || row.payload?.outcome,
+        order: row.event_order ?? row.payload?.order,
+        review_seconds: row.review_seconds ?? row.payload?.review_seconds,
+        match_seconds: row.match_seconds ?? row.payload?.match_seconds,
+        sam3_seconds: row.sam3_seconds ?? row.payload?.sam3_seconds,
+        player_id: row.player_id || row.payload?.player_id,
+        name: row.detected_name || row.payload?.name,
+        team: row.team || row.payload?.team,
+        x: row.x_m ?? row.payload?.x,
+        y: row.y_m ?? row.payload?.y,
+        active_goalkeeper: row.active_goalkeeper_player_id
+          ? {
+              player_id: row.active_goalkeeper_player_id,
+              name: row.active_goalkeeper_name,
+              team: row.active_goalkeeper_team
+            }
+          : row.payload?.active_goalkeeper
+      }));
+    return {
+      ...(fallback || {}),
+      events,
+      goals: events.filter(event => event.outcome === 'goal' || event.type === 'goal'),
+      saved_shots: events.filter(event => event.outcome === 'save' || event.type === 'save')
+    };
+  }
+
+  function isGoalShotEvent(row = {}) {
+    const type = normalizeName(row.event_type || row.payload?.type || row.type || '');
+    const outcome = normalizeName(row.outcome || row.payload?.outcome || row.result || '');
+    return type === 'goal' || outcome === 'goal' || type.includes('gol') || outcome.includes('gol');
+  }
+
+  function registerTrackingPlayerIdentity(row = {}, playerIdByTrackingKey, playerIdByNameKey) {
+    const analysisId = String(row.analysis_id || '');
+    const jugadorId = String(row.jugador_id || '');
+    if (!analysisId || !jugadorId) return;
+
+    [row.player_id, row.source_player_id].forEach(value => {
+      const key = String(value || '').trim();
+      if (key) playerIdByTrackingKey.set(`${analysisId}:${key}`, jugadorId);
+    });
+
+    [row.detected_name, row.source_name, row.normalized_name].forEach(value => {
+      const key = normalizeName(value);
+      if (key) playerIdByNameKey.set(`${analysisId}:${key}`, jugadorId);
+    });
+  }
+
+  function buildGoalkeeperConcededGoals(shotRows = [], playerIdByTrackingKey = new Map(), playerIdByNameKey = new Map()) {
+    const goalsByPlayer = new Map();
+
+    (shotRows || []).forEach((row, index) => {
+      if (!isGoalShotEvent(row)) return;
+
+      const payload = row.payload || {};
+      const goalkeeper = payload.active_goalkeeper || payload.goalkeeper || {};
+      const analysisId = String(row.analysis_id || '');
+      const goalkeeperTrackingId = String(row.active_goalkeeper_player_id || goalkeeper.player_id || goalkeeper.id || '').trim();
+      const goalkeeperNameKey = normalizeName(row.active_goalkeeper_name || goalkeeper.name || goalkeeper.detected_name || '');
+      const jugadorId = playerIdByTrackingKey.get(`${analysisId}:${goalkeeperTrackingId}`)
+        || playerIdByNameKey.get(`${analysisId}:${goalkeeperNameKey}`);
+      if (!jugadorId) return;
+
+      const x = numberOrNull(row.x_m ?? payload.x ?? payload.shot?.x);
+      const y = numberOrNull(row.y_m ?? payload.y ?? payload.shot?.y);
+      if (x === null || y === null) return;
+
+      const pitch = pitchForAnalysis(row.tracking_analyses || {});
+      const goal = {
+        x,
+        y,
+        order: row.event_order ?? payload.order ?? payload.goal_number ?? index + 1,
+        match_id: row.tracking_analyses?.partido_id || row.partido_id || null,
+        date: row.tracking_analyses?.partidos?.fecha || null,
+        pitch_width_m: pitch.width,
+        pitch_height_m: pitch.height,
+        shooter_name: row.detected_name || row.source_name || payload.name || payload.player?.name || payload.shooter?.name || '',
+        team: row.team || payload.team || '',
+        review_seconds: row.review_seconds ?? payload.review_seconds ?? null,
+        match_seconds: row.match_seconds ?? payload.match_seconds ?? null,
+        source: 'tracking_shot_events'
+      };
+
+      const key = String(jugadorId);
+      if (!goalsByPlayer.has(key)) goalsByPlayer.set(key, []);
+      goalsByPlayer.get(key).push(goal);
+    });
+
+    goalsByPlayer.forEach(goals => {
+      goals.sort((a, b) => {
+        const dateCompare = String(a.date || '').localeCompare(String(b.date || ''));
+        if (dateCompare !== 0) return dateCompare;
+        return toNumber(a.match_seconds ?? a.review_seconds, 0) - toNumber(b.match_seconds ?? b.review_seconds, 0);
+      });
+    });
+
+    return goalsByPlayer;
+  }
+
+  function advancedDefenseFromRows(eventRows, assignmentRows, fallback = {}) {
+    if (!Array.isArray(eventRows) || !eventRows.length) return fallback || {};
+    const assignmentsByEvent = (assignmentRows || []).reduce((acc, row) => {
+      const key = String(row.event_key || '');
+      if (!acc.has(key)) acc.set(key, []);
+      acc.get(key).push({
+        ...(row.payload || {}),
+        player_id: row.player_id || row.payload?.player_id,
+        name: row.detected_name || row.payload?.name,
+        team: row.team || row.payload?.team,
+        role: row.role || row.payload?.role,
+        event_type: row.event_type || row.payload?.event_type,
+        blame: row.blame ?? row.payload?.blame,
+        capped_blame: row.capped_blame ?? row.payload?.capped_blame,
+        bonus: row.bonus ?? row.payload?.bonus,
+        distance_m: row.distance_m ?? row.payload?.distance_m,
+        nearest: row.nearest ?? row.payload?.nearest,
+        outnumbered: row.outnumbered ?? row.payload?.outnumbered,
+        advantage: row.advantage ?? row.payload?.advantage,
+        return_toward_own_goal_mps: row.return_toward_own_goal_mps ?? row.payload?.return_toward_own_goal_mps,
+        shot_distance_to_goal_m: row.shot_distance_to_goal_m ?? row.payload?.shot_distance_to_goal_m,
+        reason: row.reason || row.payload?.reason
+      });
+      return acc;
+    }, new Map());
+    const events = eventRows
+      .slice()
+      .sort((a, b) => toNumber(a.event_order, 0) - toNumber(b.event_order, 0) || toNumber(a.sam3_seconds, 0) - toNumber(b.sam3_seconds, 0))
+      .map(row => {
+        const key = String(row.event_key || '');
+        return {
+          ...(row.payload || {}),
+          event_id: row.payload?.event_id || key,
+          type: row.event_type || row.payload?.type,
+          order: row.event_order ?? row.payload?.order,
+          sam3_seconds: row.sam3_seconds ?? row.payload?.sam3_seconds,
+          match_seconds: row.match_seconds ?? row.payload?.match_seconds,
+          attacking_team: row.attacking_team || row.payload?.attacking_team,
+          defending_team: row.defending_team || row.payload?.defending_team,
+          shooter: row.payload?.shooter || {
+            player_id: row.shooter_player_id,
+            name: row.shooter_name,
+            team: row.shooter_team
+          },
+          shot: row.payload?.shot || {
+            x: row.shot_x_m,
+            y: row.shot_y_m
+          },
+          weighting: {
+            ...(row.payload?.weighting || {}),
+            total_blame: row.total_blame ?? row.payload?.weighting?.total_blame,
+            shot_distance_to_goal_m: row.shot_distance_to_goal_m ?? row.payload?.weighting?.shot_distance_to_goal_m
+          },
+          context: {
+            ...(row.payload?.context || {}),
+            state: row.context_state || row.payload?.context?.state,
+            advantage: row.local_advantage ?? row.payload?.context?.advantage,
+            phase: row.payload?.context?.phase || {
+              phase: row.phase,
+              phase_label: row.phase_label
+            }
+          },
+          assignments: assignmentsByEvent.get(key) || row.payload?.assignments || []
+        };
+      });
+    return {
+      ...(fallback || {}),
+      events
+    };
   }
 
   function levenshtein(a, b) {
@@ -274,7 +687,13 @@
 
   function computePulmonTracking(player, durationSeconds) {
     const field = player.field_role || player;
-    const validSeconds = toNumber(field.valid_seconds ?? player.valid_seconds, durationSeconds || 0);
+    const goalkeeper = player.goalkeeper_role || {};
+    const goalkeeperSeconds = toNumber(
+      goalkeeper.total_seconds ?? player.goalkeeper_seconds,
+      0
+    );
+    const fallbackSeconds = Math.max(0, toNumber(durationSeconds, 0) - goalkeeperSeconds);
+    const validSeconds = toNumber(field.valid_seconds ?? player.valid_seconds, fallbackSeconds);
     const minutes = Math.max(validSeconds / 60, 1);
     const distancePerMin = toNumber(field.distance_m ?? player.distance_m, 0) / minutes;
     const highIntensityPerMin = toNumber(field.high_intensity_seconds ?? player.high_intensity_seconds, 0) / minutes;
@@ -315,6 +734,117 @@
       }
     });
     return { x_bins: heatmap.x_bins || xBins, y_bins: heatmap.y_bins || yBins, counts, flat, total };
+  }
+
+  function pitchFromRaw(raw = {}) {
+    return {
+      width: toNumber(raw.pitch?.width ?? raw.pitch_width_m, DEFAULT_PITCH.width),
+      height: toNumber(raw.pitch?.height ?? raw.pitch_height_m, DEFAULT_PITCH.height)
+    };
+  }
+
+  function pitchForAnalysis(analysis = {}) {
+    return {
+      width: toNumber(analysis.pitch_width_m ?? analysis.pitch?.width, DEFAULT_PITCH.width),
+      height: toNumber(analysis.pitch_height_m ?? analysis.pitch?.height, DEFAULT_PITCH.height)
+    };
+  }
+
+  function heatmapDominantPosition(heatmap, pitch = DEFAULT_PITCH) {
+    const normalized = normalizeHeatmap(heatmap);
+    if (!normalized.total || !normalized.flat.length) return null;
+
+    const maxValue = Math.max(...normalized.flat);
+    if (maxValue <= 0) return null;
+
+    const cells = [];
+    normalized.counts.forEach((row, y) => {
+      row.forEach((value, x) => {
+        const n = toNumber(value, 0);
+        if (n <= 0) return;
+        cells.push({
+          x,
+          y,
+          value: n,
+          center_x_m: ((x + 0.5) / Math.max(normalized.x_bins, 1)) * pitch.width,
+          center_y_m: ((y + 0.5) / Math.max(normalized.y_bins, 1)) * pitch.height
+        });
+      });
+    });
+    if (!cells.length) return null;
+
+    const threshold = maxValue * 0.62;
+    let selected = cells.filter(cell => cell.value >= threshold);
+    if (selected.length < 3) {
+      selected = [...cells].sort((a, b) => b.value - a.value).slice(0, Math.min(4, cells.length));
+    } else {
+      const maxCells = Math.max(3, Math.ceil(cells.length * 0.18));
+      selected = selected.sort((a, b) => b.value - a.value).slice(0, maxCells);
+    }
+
+    const weightSum = selected.reduce((sum, cell) => sum + cell.value, 0);
+    if (!weightSum) return null;
+    return {
+      x: round(selected.reduce((sum, cell) => sum + cell.center_x_m * cell.value, 0) / weightSum, 3),
+      y: round(selected.reduce((sum, cell) => sum + cell.center_y_m * cell.value, 0) / weightSum, 3),
+      source: 'heatmap_hotspot'
+    };
+  }
+
+  function playerFieldMetrics(player = {}, durationSeconds = 0) {
+    const metrics = player.metrics || {};
+    const duration = toNumber(durationSeconds, 0);
+    const goalkeeperSeconds = toNumber(player.goalkeeper_seconds ?? metrics.goalkeeper_seconds, 0);
+    const explicitFieldSeconds = [
+      player.field_seconds,
+      metrics.field_seconds,
+      player.valid_seconds,
+      metrics.valid_seconds
+    ].map(value => Number(value)).find(value => Number.isFinite(value) && value > 0);
+    const fieldSeconds = explicitFieldSeconds !== undefined
+      ? explicitFieldSeconds
+      : Math.max(0, duration - goalkeeperSeconds);
+    const distanceM = toNumber(
+      player.distance_m ?? metrics.distance_m,
+      toNumber(player.distance_km ?? metrics.distance_km, 0) * 1000
+    );
+    const fieldMinutes = fieldSeconds / 60;
+    const distancePerFieldMin = fieldMinutes > 0 ? distanceM / fieldMinutes : 0;
+
+    return {
+      field_seconds: round(fieldSeconds, 2),
+      field_minutes: round(fieldMinutes, 2),
+      field_distance_m: round(distanceM, 2),
+      distance_per_field_min: round(distancePerFieldMin, 2),
+      distance_per_40_min_km: round((distancePerFieldMin * 40) / 1000, 2)
+    };
+  }
+
+  function playerDisplayPosition(player = {}, pitch = DEFAULT_PITCH) {
+    const metrics = player.metrics || {};
+    const direct = player.dominant_position_m || metrics.dominant_position_m || player.heatmap_position_m || metrics.heatmap_position_m;
+    if (direct && Number.isFinite(Number(direct.x)) && Number.isFinite(Number(direct.y))) return direct;
+    const fromHeatmap = heatmapDominantPosition(player.heatmap || metrics.heatmap, pitch);
+    if (fromHeatmap) return fromHeatmap;
+    const avgX = Number(player.avg_x_m ?? metrics.avg_x_m);
+    const avgY = Number(player.avg_y_m ?? metrics.avg_y_m);
+    if (Number.isFinite(avgX) && Number.isFinite(avgY)) return { x: avgX, y: avgY, source: 'avg_position' };
+    return { x: pitch.width / 2, y: pitch.height / 2, source: 'fallback_center' };
+  }
+
+  function pitchZoneLabel(point, pitch = DEFAULT_PITCH) {
+    const x = clamp(toNumber(point?.x, pitch.width / 2), 0, pitch.width);
+    const y = clamp(toNumber(point?.y, pitch.height / 2), 0, pitch.height);
+    const third = x < pitch.width / 3 ? 'izquierda' : (x > (pitch.width * 2) / 3 ? 'derecha' : 'centro');
+    const lane = y < pitch.height / 3 ? 'arriba' : (y > (pitch.height * 2) / 3 ? 'abajo' : 'medio');
+    return `${third} / ${lane}`;
+  }
+
+  function teamUiLabel(team) {
+    const key = String(team || '').toUpperCase();
+    if (key === 'A') return 'Equipo 1 (A)';
+    if (key === 'B') return 'Equipo 2 (B)';
+    return `Equipo ${key || '-'}`;
   }
 
   function heatmapOverlap(heatmapA, heatmapB) {
@@ -380,6 +910,144 @@
     return count > 0 ? round(total / count, 2) : 0;
   }
 
+  function windowStartSeconds(window = {}) {
+    return toNumber(window.start_seconds ?? window.start ?? window.t0 ?? window.from_seconds, 0);
+  }
+
+  function windowEndSeconds(window = {}, fallbackStart = 0, fallbackSize = 300) {
+    return toNumber(
+      window.end_seconds ?? window.end ?? window.t1 ?? window.to_seconds,
+      fallbackStart + fallbackSize
+    );
+  }
+
+  function windowDistanceMeters(window = {}) {
+    const km = Number(window.distance_km ?? window.km);
+    if (Number.isFinite(km) && km > 0) return km * 1000;
+    return toNumber(
+      window.distance_m ?? window.total_distance_m ?? window.field_distance_m ?? window.meters ?? window.distance,
+      0
+    );
+  }
+
+  function windowHighIntensitySeconds(window = {}) {
+    return toNumber(
+      window.high_intensity_seconds ?? window.high_intensity ?? window.high_seconds ?? window.sprint_seconds,
+      0
+    );
+  }
+
+  function playerWindows(player = {}) {
+    const metrics = player.metrics || {};
+    const windows = player.windows || metrics.windows || player.field_windows || metrics.field_windows || [];
+    return Array.isArray(windows) ? windows : [];
+  }
+
+  function overlapSeconds(aStart, aEnd, bStart, bEnd) {
+    return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+  }
+
+  function goalkeeperOverlapSeconds(player = {}, startSeconds = 0, endSeconds = 0) {
+    const episodes = player.goalkeeper_episodes || player.metrics?.goalkeeper_episodes || [];
+    if (!Array.isArray(episodes) || !episodes.length) return 0;
+    return episodes.reduce((sum, episode) => {
+      const start = toNumber(episode.start_seconds ?? episode.start ?? episode.t0, 0);
+      const end = toNumber(episode.end_seconds ?? episode.end ?? episode.t1, start);
+      return sum + overlapSeconds(startSeconds, endSeconds, start, end);
+    }, 0);
+  }
+
+  function timelineWindowTemplates(details = {}, fallbackSize = 300) {
+    const explicit = (details.players || []).flatMap(player => playerWindows(player))
+      .concat(Array.isArray(details.temporal?.windows) ? details.temporal.windows : []);
+    const windows = explicit
+      .map(window => {
+        const start = windowStartSeconds(window);
+        const end = windowEndSeconds(window, start, fallbackSize);
+        return end > start ? { start_seconds: start, end_seconds: end } : null;
+      })
+      .filter(Boolean);
+    const unique = new Map(windows.map(window => [`${window.start_seconds}:${window.end_seconds}`, window]));
+    if (unique.size) {
+      return [...unique.values()].sort((a, b) => a.start_seconds - b.start_seconds || a.end_seconds - b.end_seconds);
+    }
+
+    const duration = toNumber(details.analysis?.duration_seconds, 0);
+    if (!duration) return [];
+    const generated = [];
+    for (let start = 0; start < duration; start += fallbackSize) {
+      generated.push({ start_seconds: start, end_seconds: Math.min(duration, start + fallbackSize) });
+    }
+    return generated;
+  }
+
+  function buildTeamPulmonWindowSeries(details = {}) {
+    const templates = timelineWindowTemplates(details);
+    if (!templates.length) return [];
+
+    const series = templates.map(window => ({
+      start_seconds: window.start_seconds,
+      end_seconds: window.end_seconds,
+      teams: {
+        A: { distance_m: 0, high_intensity_seconds: 0, field_seconds: 0, players: 0, estimated_distance: false },
+        B: { distance_m: 0, high_intensity_seconds: 0, field_seconds: 0, players: 0, estimated_distance: false }
+      }
+    }));
+    const indexByWindow = new Map(series.map((window, index) => [`${window.start_seconds}:${window.end_seconds}`, index]));
+    const duration = toNumber(details.analysis?.duration_seconds, 0);
+
+    (details.players || []).forEach(player => {
+      const team = String(player.team || '').toUpperCase() === 'B' ? 'B' : 'A';
+      const windows = playerWindows(player);
+      const sourceWindows = windows.length ? windows : templates;
+      const hasDistance = sourceWindows.some(window => windowDistanceMeters(window) > 0);
+      const playerMetrics = playerFieldMetrics(player, duration);
+      const weights = sourceWindows.map(window => {
+        const start = windowStartSeconds(window);
+        const end = windowEndSeconds(window, start);
+        const totalSeconds = Math.max(0, end - start);
+        const fieldSeconds = Math.max(0, totalSeconds - goalkeeperOverlapSeconds(player, start, end));
+        return {
+          start,
+          end,
+          fieldSeconds,
+          highIntensity: Math.min(fieldSeconds, windowHighIntensitySeconds(window)),
+          distance: windowDistanceMeters(window)
+        };
+      });
+      const totalWeight = weights.reduce((sum, item) => sum + (item.highIntensity * 3) + item.fieldSeconds, 0);
+
+      weights.forEach(item => {
+        if (item.end <= item.start || item.fieldSeconds <= 0) return;
+        const key = `${item.start}:${item.end}`;
+        const bucketIndex = indexByWindow.get(key);
+        if (bucketIndex === undefined) return;
+        const bucket = series[bucketIndex].teams[team];
+        const fallbackDistance = !hasDistance && totalWeight > 0
+          ? playerMetrics.field_distance_m * (((item.highIntensity * 3) + item.fieldSeconds) / totalWeight)
+          : 0;
+        const distance = hasDistance ? item.distance : fallbackDistance;
+        bucket.distance_m += distance;
+        bucket.high_intensity_seconds += item.highIntensity;
+        bucket.field_seconds += item.fieldSeconds;
+        bucket.players += 1;
+        bucket.estimated_distance = bucket.estimated_distance || (!hasDistance && distance > 0);
+      });
+    });
+
+    return series.map(window => {
+      Object.values(window.teams).forEach(team => {
+        team.distance_m = round(team.distance_m, 1);
+        team.high_intensity_seconds = round(team.high_intensity_seconds, 1);
+        team.field_seconds = round(team.field_seconds, 1);
+        team.km_per_40 = team.field_seconds > 0
+          ? round((team.distance_m / 1000) / (team.field_seconds / 2400), 2)
+          : 0;
+      });
+      return window;
+    });
+  }
+
   function advancedDefenseFromRaw(raw) {
     const direct = raw?.advanced_defense || raw?.review_analysis?.advanced_defense || {};
     return direct && typeof direct === 'object' ? direct : {};
@@ -429,6 +1097,7 @@
   function goalLocationsForPlayer(rawPlayer, raw) {
     const playerId = String(rawPlayer?.player_id || rawPlayer?.id || '');
     const nameKey = normalizeName(rawPlayer?.name || rawPlayer?.detected_name || '');
+    const pitch = pitchFromRaw(raw);
     return goalLocationEventsFromRaw(raw)
       .filter(event => {
         const eventPlayerId = String(event.player_id || event.player?.player_id || event.shooter?.player_id || '');
@@ -445,6 +1114,9 @@
           seconds: toNumber(event.match_seconds ?? event.review_seconds ?? event.sam3_seconds ?? event.seconds, 0),
           x: Number.isFinite(x) ? round(x, 3) : NaN,
           y: Number.isFinite(y) ? round(y, 3) : NaN,
+          pitch_width_m: pitch.width,
+          pitch_height_m: pitch.height,
+          coordinate_system: event.coordinate_system || event.position_units || event.units || '',
           team: event.team || event.player?.team || event.shooter?.team || '',
           goalkeeper: event.active_goalkeeper || event.goalkeeper || null,
           source: event.position_source || event.source || '',
@@ -460,6 +1132,7 @@
     const goalkeeper = rawPlayer.goalkeeper_role || {};
     const fieldSide = rawPlayer.field_side || {};
     const duration = toNumber(raw.duration_seconds ?? raw.config?.duration_seconds, 0);
+    const pitch = pitchFromRaw(raw);
     const heatmap = field.heatmap || rawPlayer.heatmap || null;
     const speedDistribution = field.speed_distribution_pct || rawPlayer.speed_distribution_pct || {};
     const defense = rawPlayer.defense || rawPlayer.metrics?.defense || {};
@@ -480,6 +1153,18 @@
     );
     const avgPosition = field.avg_position || rawPlayer.avg_position || {};
     const goalLocations = goalLocationsForPlayer(rawPlayer, raw);
+    const goalkeeperSeconds = round(toNumber(goalkeeper.total_seconds, 0), 2);
+    const fieldMetrics = playerFieldMetrics({
+      distance_m: field.distance_m ?? rawPlayer.distance_m,
+      distance_km: field.distance_km ?? rawPlayer.distance_km,
+      goalkeeper_seconds: goalkeeperSeconds,
+      valid_seconds: field.valid_seconds ?? rawPlayer.valid_seconds
+    }, duration);
+    const dominantPosition = heatmapDominantPosition(heatmap, pitch) || {
+      x: toNumber(avgPosition.x, pitch.width / 2),
+      y: toNumber(avgPosition.y, pitch.height / 2),
+      source: 'avg_position'
+    };
 
     return {
       player_id: String(rawPlayer.player_id || rawPlayer.id || rawPlayer.name || ''),
@@ -496,14 +1181,19 @@
       decel_max_mps2: round(toNumber(field.decel_max_mps2 ?? rawPlayer.decel_max_mps2, 0), 3),
       turns_gt_90: toNumber(field.turns_gt_90 ?? rawPlayer.turns_gt_90, 0),
       metabolic_load_index: round(toNumber(field.metabolic_load_index ?? rawPlayer.metabolic_load_index, 0), 2),
-      goalkeeper_seconds: round(toNumber(goalkeeper.total_seconds, 0), 2),
+      goalkeeper_seconds: goalkeeperSeconds,
       goalkeeper_episodes: goalkeeper.episodes || [],
+      field_seconds: fieldMetrics.field_seconds,
+      field_minutes: fieldMetrics.field_minutes,
+      distance_per_field_min: fieldMetrics.distance_per_field_min,
+      distance_per_40_min_km: fieldMetrics.distance_per_40_min_km,
       own_half_pct: round(toNumber(fieldSide.own_pct, 0), 2),
       rival_half_pct: round(toNumber(fieldSide.rival_pct, 0), 2),
       own_side: fieldSide.own_side || '',
       rival_side: fieldSide.rival_side || '',
       avg_x_m: round(toNumber(avgPosition.x, 0), 3),
       avg_y_m: round(toNumber(avgPosition.y, 0), 3),
+      dominant_position_m: dominantPosition,
       dispersion_m: round(toNumber(field.dispersion_m ?? rawPlayer.dispersion_m, 0), 3),
       coverage_pct: round(toNumber(field.coverage_pct ?? rawPlayer.coverage_pct ?? heatmapCoveragePct(heatmap), 0), 2),
       speed_distribution: speedDistribution,
@@ -612,9 +1302,15 @@
 
     return {
       raw,
+      schema: raw.schema || '',
+      schema_version: String(raw.schema_version || raw.t5_export?.schema_version || ''),
+      source_schema: raw.source_schema || '',
       version: String(raw.version || raw.schema_version || raw.t5_export?.schema_version || raw.t5_export?.version || 'unknown'),
       duration_seconds: round(toNumber(raw.duration_seconds ?? raw.config?.duration_seconds, 0), 3),
       pitch,
+      config: raw.config || {},
+      team_own_sides: raw.team_own_sides || {},
+      metrics_v2: raw.metrics_v2 || {},
       players,
       teams,
       summary: raw.summary || {},
@@ -664,6 +1360,8 @@
       .tracking-canvas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
       .tracking-canvas-card { background: rgba(7, 23, 16, .74); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: .8rem; }
       .tracking-canvas { width: 100%; aspect-ratio: 2 / 1; display: block; border-radius: 10px; background: #073b24; }
+      .tracking-canvas-card-featured { grid-column: 1 / -1; }
+      .tracking-canvas-card-featured .tracking-canvas { aspect-ratio: 2.35 / 1; min-height: 320px; }
       .tracking-carousel-card { min-height: 132px; background: linear-gradient(135deg, rgba(13,110,253,.18), rgba(25,135,84,.16)); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 1rem; }
       .tracking-slide-title { color: rgba(255,255,255,.68); font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; }
       .tracking-slide-main { color: #fff; font-size: clamp(1.5rem, 4vw, 2.4rem); font-weight: 850; line-height: 1.05; }
@@ -766,6 +1464,7 @@
         .tracking-mapping-row { grid-template-columns: 1fr; }
         .tracking-modal-xl { max-width: 100vw; margin: .25rem; }
         .tracking-table { min-width: 720px; }
+        .tracking-canvas-card-featured .tracking-canvas { min-height: 240px; }
       }
     `;
     document.head.appendChild(style);
@@ -787,6 +1486,24 @@
                   <label class="form-label">Archivo t5_player_stats.json</label>
                   <input type="file" id="tracking-json-input" class="form-control" accept="application/json,.json">
                   <div class="form-text text-light-emphasis">No se cargan videos. Solo el JSON resumido exportado desde Football Detector.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">O pegar JSON</label>
+                  <textarea id="tracking-json-paste" class="form-control bg-dark text-light border-secondary" rows="4" spellcheck="false" placeholder='{"schema":"t5-football-detector-export", ...}'></textarea>
+                  <div class="d-flex justify-content-end mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-info" id="tracking-json-paste-load">
+                      <i class="bi bi-clipboard-check me-1"></i>Usar JSON pegado
+                    </button>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">O cargar JSON desde URL</label>
+                  <div class="input-group input-group-sm">
+                    <input type="url" id="tracking-json-url" class="form-control bg-dark text-light border-secondary" placeholder="http://localhost:8765/t5_player_stats.json">
+                    <button type="button" class="btn btn-outline-info" id="tracking-json-url-load">
+                      <i class="bi bi-cloud-download me-1"></i>Cargar URL
+                    </button>
+                  </div>
                 </div>
                 <div id="tracking-import-summary" class="small text-light-emphasis mb-3"></div>
                 <div id="tracking-mapping-container" class="d-grid gap-2"></div>
@@ -825,6 +1542,18 @@
     if (input && !input.dataset.bound) {
       input.dataset.bound = '1';
       input.addEventListener('change', handleImportFileChange);
+    }
+
+    const pasteButton = document.getElementById('tracking-json-paste-load');
+    if (pasteButton && !pasteButton.dataset.bound) {
+      pasteButton.dataset.bound = '1';
+      pasteButton.addEventListener('click', handleImportPasteClick);
+    }
+
+    const urlButton = document.getElementById('tracking-json-url-load');
+    if (urlButton && !urlButton.dataset.bound) {
+      urlButton.dataset.bound = '1';
+      urlButton.addEventListener('click', handleImportUrlClick);
     }
 
     const saveButton = document.getElementById('tracking-save-import');
@@ -965,21 +1694,31 @@
       return;
     }
 
+    const cleanPartidoId = normalizeIdValue(partidoId);
+    if (!cleanPartidoId) {
+      showToast('No pude identificar el partido para cargar tracking. Abri el importador desde la tarjeta del partido.', 'error');
+      return;
+    }
+
     try {
       ensureModals();
-      const matchPlayers = await fetchMatchPlayers(partidoId);
+      const matchPlayers = await fetchMatchPlayers(cleanPartidoId);
       APP.importState = {
-        partidoId,
+        partidoId: cleanPartidoId,
         matchPlayers,
         normalized: null,
         mappings: new Map()
       };
 
       const input = document.getElementById('tracking-json-input');
+      const paste = document.getElementById('tracking-json-paste');
+      const url = document.getElementById('tracking-json-url');
       const summary = document.getElementById('tracking-import-summary');
       const mapping = document.getElementById('tracking-mapping-container');
       const saveButton = document.getElementById('tracking-save-import');
       if (input) input.value = '';
+      if (paste) paste.value = '';
+      if (url) url.value = '';
       if (summary) summary.innerHTML = `${matchPlayers.length} jugadores del partido listos para matchear.`;
       if (mapping) mapping.innerHTML = '<div class="text-light-emphasis">Elegi el JSON para ver el mapeo.</div>';
       if (saveButton) saveButton.disabled = true;
@@ -992,19 +1731,50 @@
     }
   }
 
+  function loadImportJsonText(text) {
+    if (!APP.importState) return;
+    const raw = JSON.parse(text);
+    const normalized = normalizeFootballDetectorStats(raw);
+    APP.importState.normalized = normalized;
+    autoMapPlayers();
+    renderMappingUI();
+  }
+
   async function handleImportFileChange(event) {
     const file = event.target.files?.[0];
     if (!file || !APP.importState) return;
     try {
       const text = await file.text();
-      const raw = JSON.parse(text);
-      const normalized = normalizeFootballDetectorStats(raw);
-      APP.importState.normalized = normalized;
-      autoMapPlayers();
-      renderMappingUI();
+      loadImportJsonText(text);
     } catch (error) {
       console.error('[tracking] JSON invalido:', error);
       showToast(`JSON invalido: ${error.message}`, 'error');
+    }
+  }
+
+  function handleImportPasteClick() {
+    const textarea = document.getElementById('tracking-json-paste');
+    const text = textarea?.value?.trim() || '';
+    if (!text || !APP.importState) return;
+    try {
+      loadImportJsonText(text);
+    } catch (error) {
+      console.error('[tracking] JSON pegado invalido:', error);
+      showToast(`JSON pegado invalido: ${error.message}`, 'error');
+    }
+  }
+
+  async function handleImportUrlClick() {
+    const input = document.getElementById('tracking-json-url');
+    const url = input?.value?.trim() || '';
+    if (!url || !APP.importState) return;
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      loadImportJsonText(await response.text());
+    } catch (error) {
+      console.error('[tracking] No se pudo cargar JSON desde URL:', error);
+      showToast(`No se pudo cargar JSON desde URL: ${error.message}`, 'error');
     }
   }
 
@@ -1099,7 +1869,7 @@
     const saveButton = document.getElementById('tracking-save-import');
     if (!state?.normalized || !saveButton) return;
     const allMapped = state.normalized.players.every(player => state.mappings.get(player.player_id)?.jugador_id);
-    saveButton.disabled = !allMapped;
+    saveButton.disabled = !allMapped || !resolveImportPartidoId(state);
   }
 
   async function saveCurrentImport() {
@@ -1110,6 +1880,13 @@
 
     const state = APP.importState;
     if (!state?.normalized) return;
+    const partidoId = resolveImportPartidoId(state);
+    if (!partidoId) {
+      showToast('No pude identificar el partido. Volve a abrir el importador desde la tarjeta del partido y carga el JSON otra vez.', 'error');
+      return;
+    }
+    state.partidoId = partidoId;
+
     const client = await waitForSupabase();
     if (!client) {
       showToast('Supabase no esta disponible', 'error');
@@ -1143,11 +1920,30 @@
       };
 
       const analysisResult = await upsertTrackingAnalysisRow(client, {
-        partido_id: state.partidoId,
+        partido_id: partidoId,
+        export_schema: normalized.schema || null,
+        export_schema_version: normalized.schema_version || null,
+        source_schema: normalized.source_schema || null,
         source_version: normalized.version,
         duration_seconds: normalized.duration_seconds,
         pitch_width_m: normalized.pitch.width,
         pitch_height_m: normalized.pitch.height,
+        available_metrics: normalized.available_metrics || {},
+        match_link: normalized.match_link || {},
+        review_analysis: normalized.review_analysis || {},
+        advanced_defense: normalized.advanced_defense || {},
+        shot_map: normalized.shot_map || {},
+        effective_play: normalized.effective_play || {},
+        match_story: normalized.match_story || {},
+        cross_stats: normalized.cross_stats || {},
+        physical_profile: normalized.physical_profile || {},
+        matchmaker_seed: normalized.matchmaker_seed || {},
+        supabase_export: normalized.supabase_export || {},
+        goalkeeper_detection: normalized.goalkeeper_detection || {},
+        metrics_v2: normalized.metrics_v2 || {},
+        config_json: normalized.config || {},
+        team_own_sides: normalized.team_own_sides || {},
+        limitations: normalized.limitations || [],
         raw_json: normalized.raw,
         summary
       });
@@ -1158,20 +1954,29 @@
 
       const mappingRows = normalized.players.map(player => ({
         analysis_id: analysisId,
+        partido_id: partidoId,
         player_id: player.player_id,
+        source_player_id: player.player_id,
+        source_name: player.detected_name,
         detected_name: player.detected_name,
+        normalized_name: normalizeName(player.detected_name),
         team: player.team || null,
         jugador_id: state.mappings.get(player.player_id)?.jugador_id || null,
         confidence: state.mappings.get(player.player_id)?.confidence || null
       }));
 
-      const statsRows = buildTrackingPlayerStatsRows(normalized, state.mappings, analysisId);
+      const statsRows = buildTrackingPlayerStatsRows(normalized, state.mappings, analysisId, partidoId);
 
       const heatmapRows = normalized.players.map(player => ({
         analysis_id: analysisId,
+        partido_id: partidoId,
         player_id: player.player_id,
+        source_player_id: player.player_id,
+        source_name: player.detected_name,
+        normalized_name: normalizeName(player.detected_name),
         jugador_id: state.mappings.get(player.player_id)?.jugador_id || null,
         heatmap: player.heatmap,
+        counts: player.heatmap?.counts || [],
         heatmap_windows: player.heatmap_windows,
         x_bins: player.heatmap?.x_bins || null,
         y_bins: player.heatmap?.y_bins || null
@@ -1179,13 +1984,18 @@
 
       const teamRows = normalized.teams.map(team => ({
         analysis_id: analysisId,
+        partido_id: partidoId,
         team: team.team || null,
+        team_label: team.team || null,
         distance_km: team.distance_km,
         avg_speed_kmh: null,
         high_intensity_seconds: team.high_intensity_seconds,
         pulmon_tracking_avg: team.pulmon_tracking_avg,
         metrics: team
       }));
+      const shotEventRows = buildTrackingShotEventRows(normalized, state.mappings, analysisId, partidoId);
+      const advancedDefenseEventRows = buildAdvancedDefenseEventRows(normalized, analysisId, partidoId);
+      const advancedDefenseAssignmentRows = buildAdvancedDefenseAssignmentRows(normalized, state.mappings, analysisId, partidoId);
 
       const interactionRows = [
         { type: 'rankings', payload: normalized.rankings },
@@ -1207,6 +2017,7 @@
         { type: 'limitations', payload: { items: normalized.limitations || [] } }
       ].map(item => ({
         analysis_id: analysisId,
+        partido_id: partidoId,
         interaction_type: item.type,
         payload: item.payload || {}
       }));
@@ -1216,17 +2027,20 @@
         await insertRows(client, TRACKING_TABLES.stats, statsRows),
         await insertRows(client, TRACKING_TABLES.heatmaps, heatmapRows),
         await insertRows(client, TRACKING_TABLES.teams, teamRows),
-        await insertRows(client, TRACKING_TABLES.interactions, interactionRows)
+        await insertRows(client, TRACKING_TABLES.interactions, interactionRows),
+        await insertRows(client, TRACKING_TABLES.shotEvents, shotEventRows),
+        await insertRows(client, TRACKING_TABLES.advancedDefenseEvents, advancedDefenseEventRows),
+        await insertRows(client, TRACKING_TABLES.advancedDefenseAssignments, advancedDefenseAssignmentRows)
       ];
       const omittedColumns = [
         ...analysisResult.omittedColumns,
         ...insertResults.flatMap(result => result?.omittedColumns || [])
       ];
 
-      APP.analysisByMatch.set(String(state.partidoId), analysis);
+      APP.analysisByMatch.set(String(partidoId), analysis);
       APP.detailsByAnalysis.delete(String(analysisId));
       APP.profileMatchesByPlayer.clear();
-      updateTrackingCard(state.partidoId);
+      updateTrackingCard(partidoId);
       await refreshTrackingCaches(true);
 
       const modal = bootstrap.Modal.getInstance(document.getElementById('trackingImportModal'));
@@ -1238,7 +2052,7 @@
       }
     } catch (error) {
       console.error('[tracking] Error guardando import:', error);
-      showToast(`No se pudo guardar tracking: ${error.message}`, 'error');
+      showToast(`No se pudo guardar tracking: ${readableError(error)}`, 'error');
     } finally {
       if (saveButton) {
         saveButton.innerHTML = '<i class="bi bi-database-check me-1"></i>Guardar tracking';
@@ -1249,6 +2063,9 @@
 
   async function deleteExistingAnalysisRows(client, analysisId) {
     const deletes = [
+      TRACKING_TABLES.advancedDefenseAssignments,
+      TRACKING_TABLES.advancedDefenseEvents,
+      TRACKING_TABLES.shotEvents,
       TRACKING_TABLES.mapping,
       TRACKING_TABLES.stats,
       TRACKING_TABLES.heatmaps,
@@ -1257,7 +2074,7 @@
     ].map(table => client.from(table).delete().eq('analysis_id', analysisId));
     const results = await Promise.all(deletes);
     const firstError = results.find(result => result.error)?.error;
-    if (firstError) throw firstError;
+    if (firstError) throw tableError('deleteExistingAnalysisRows', firstError);
   }
 
   async function insertRows(client, table, rows) {
@@ -1277,7 +2094,7 @@
         continue;
       }
 
-      throw error;
+      throw tableError(table, error);
     }
 
     throw new Error(`No se pudo guardar tracking por columnas faltantes en ${table}.`);
@@ -1289,7 +2106,17 @@
     const client = await waitForSupabase();
     if (!client) throw new Error('Supabase no esta disponible');
 
-    const [analysisRes, mappingRes, statsRes, heatmapsRes, teamsRes, interactionsRes] = await Promise.all([
+    const [
+      analysisRes,
+      mappingRes,
+      statsRes,
+      heatmapsRes,
+      teamsRes,
+      interactionsRes,
+      shotEventsRes,
+      advancedDefenseEventsRes,
+      advancedDefenseAssignmentsRes
+    ] = await Promise.all([
       client.from(TRACKING_TABLES.analyses)
         .select('*, partidos(id, fecha, cancha, equipo_ganador, temporada_id, temporadas(nombre))')
         .eq('id', analysisId)
@@ -1308,13 +2135,32 @@
         .eq('analysis_id', analysisId),
       client.from(TRACKING_TABLES.interactions)
         .select('*')
+        .eq('analysis_id', analysisId),
+      client.from(TRACKING_TABLES.shotEvents)
+        .select('*')
+        .eq('analysis_id', analysisId),
+      client.from(TRACKING_TABLES.advancedDefenseEvents)
+        .select('*')
+        .eq('analysis_id', analysisId),
+      client.from(TRACKING_TABLES.advancedDefenseAssignments)
+        .select('*')
         .eq('analysis_id', analysisId)
     ]);
 
-    const firstError = [analysisRes, mappingRes, statsRes, heatmapsRes, teamsRes, interactionsRes].find(result => result.error)?.error;
+    const firstError = [
+      analysisRes,
+      mappingRes,
+      statsRes,
+      heatmapsRes,
+      teamsRes,
+      interactionsRes,
+      shotEventsRes,
+      advancedDefenseEventsRes,
+      advancedDefenseAssignmentsRes
+    ].find(result => result.error)?.error;
     if (firstError) throw firstError;
 
-    const mappingsByPlayer = new Map((mappingRes.data || []).map(row => [row.player_id, row]));
+    const mappingsByPlayer = new Map((mappingRes.data || []).map(row => [row.player_id || row.source_player_id, row]));
     const heatmapByPlayer = new Map((heatmapsRes.data || []).map(row => [row.player_id, row]));
     const interactionMap = (interactionsRes.data || []).reduce((acc, row) => {
       acc[row.interaction_type] = row.payload || {};
@@ -1328,6 +2174,14 @@
     }
     const rawPlayers = rawNormalized?.players || [];
     const rawByPlayer = new Map(rawPlayers.map(player => [player.player_id, player]));
+    const fallbackShotMap = interactionMap.shot_map || rawNormalized?.shot_map || analysisRes.data?.shot_map || analysisRes.data?.raw_json?.shot_map || analysisRes.data?.raw_json?.review_analysis?.shot_map || {};
+    const fallbackAdvancedDefense = interactionMap.advanced_defense || rawNormalized?.advanced_defense || analysisRes.data?.advanced_defense || analysisRes.data?.raw_json?.advanced_defense || analysisRes.data?.raw_json?.review_analysis?.advanced_defense || {};
+    const structuredShotMap = shotMapFromRows(shotEventsRes.data || [], fallbackShotMap);
+    const structuredAdvancedDefense = advancedDefenseFromRows(
+      advancedDefenseEventsRes.data || [],
+      advancedDefenseAssignmentsRes.data || [],
+      fallbackAdvancedDefense
+    );
     const preferRawWhenMissing = (value, rawValue) => {
       if (rawValue === undefined || rawValue === null) return value;
       const n = Number(value);
@@ -1336,6 +2190,8 @@
       if (Number.isFinite(rawN) && n === 0 && rawN > 0) return rawValue;
       return value;
     };
+    const analysisPitch = pitchForAnalysis(analysisRes.data || {});
+    const analysisDuration = toNumber(analysisRes.data?.duration_seconds, 0);
 
     const players = (statsRes.data || []).map((row, index) => {
       const mapping = mappingsByPlayer.get(row.player_id) || {};
@@ -1346,14 +2202,19 @@
       const advancedDefense = metrics.advanced_defense || rawPlayer.advanced_defense || {};
       const physicalProfile = row.physical_profile || metrics.physical_profile || rawPlayer.physical_profile || {};
       const pulmon = metrics.pulmon || rawPlayer.pulmon || {};
-      const goalLocations = row.goal_locations || metrics.goal_locations || rawPlayer.goal_locations || [];
+      const goalLocations = (row.goal_locations || metrics.goal_locations || rawPlayer.goal_locations || []).map(goal => ({
+        ...goal,
+        pitch_width_m: goal.pitch_width_m ?? analysisPitch.width,
+        pitch_height_m: goal.pitch_height_m ?? analysisPitch.height
+      }));
       const fisValor = row.fis_valor ?? metrics.fis_valor ?? rawPlayer.fis_valor ?? physicalProfile.fis ?? pulmon.fis ?? rawPlayer.pulmon_tracking;
       const fisVersion = row.fis_version || metrics.fis_version || rawPlayer.fis_version || physicalProfile.fis_version || pulmon.fis_version || '';
-      return {
+      const enriched = {
         ...row,
         name: rawPlayer.detected_name || mapping.detected_name || row.detected_name || mapping.jugadores?.nombre || row.player_id,
         team: row.team || rawPlayer.team || mapping.team || '',
         manual_pulmon: mapping.jugadores?.pulmon ?? null,
+        distance_m: metrics.distance_m ?? rawPlayer.distance_m ?? toNumber(row.distance_km, 0) * 1000,
         distance_km: preferRawWhenMissing(row.distance_km, rawPlayer.distance_km),
         avg_speed_kmh: preferRawWhenMissing(row.avg_speed_kmh, rawPlayer.avg_speed_kmh),
         max_speed_kmh: preferRawWhenMissing(row.max_speed_kmh, rawPlayer.max_speed_kmh),
@@ -1385,6 +2246,7 @@
         metrics: {
           ...metrics,
           windows: metrics.windows || rawPlayer.windows || [],
+          distance_m: metrics.distance_m ?? rawPlayer.distance_m ?? toNumber(row.distance_km, 0) * 1000,
           fatigue: metrics.fatigue || rawPlayer.fatigue || {},
           recovery: metrics.recovery || rawPlayer.recovery || {},
           directionality: metrics.directionality || rawPlayer.directionality || {},
@@ -1401,6 +2263,20 @@
         heatmap: heatmapRow.heatmap || rawPlayer.heatmap,
         heatmap_windows: heatmapRow.heatmap_windows || rawPlayer.heatmap_windows
       };
+      const derivedField = playerFieldMetrics(enriched, analysisDuration);
+      const dominantPosition = metrics.dominant_position_m
+        || rawPlayer.dominant_position_m
+        || heatmapDominantPosition(enriched.heatmap, analysisPitch);
+      return {
+        ...enriched,
+        ...derivedField,
+        dominant_position_m: dominantPosition || playerDisplayPosition(enriched, analysisPitch),
+        metrics: {
+          ...enriched.metrics,
+          ...derivedField,
+          dominant_position_m: dominantPosition || playerDisplayPosition(enriched, analysisPitch)
+        }
+      };
     }).sort((a, b) => (a.team || '').localeCompare(b.team || '') || a.name.localeCompare(b.name));
 
     const details = {
@@ -1412,18 +2288,18 @@
       temporal: interactionMap.temporal || analysisRes.data?.raw_json?.temporal || {},
       interactions: interactionMap.interactions || analysisRes.data?.raw_json?.interactions || {},
       average_positions: interactionMap.average_positions || analysisRes.data?.raw_json?.average_positions || {},
-      available_metrics: interactionMap.available_metrics || rawNormalized?.available_metrics || analysisRes.data?.raw_json?.available_metrics || {},
-      review_analysis: interactionMap.review_analysis || rawNormalized?.review_analysis || analysisRes.data?.raw_json?.review_analysis || {},
-      advanced_defense: interactionMap.advanced_defense || rawNormalized?.advanced_defense || analysisRes.data?.raw_json?.advanced_defense || analysisRes.data?.raw_json?.review_analysis?.advanced_defense || {},
-      shot_map: interactionMap.shot_map || rawNormalized?.shot_map || analysisRes.data?.raw_json?.shot_map || analysisRes.data?.raw_json?.review_analysis?.shot_map || {},
-      match_link: interactionMap.match_link || rawNormalized?.match_link || analysisRes.data?.raw_json?.match_link || {},
-      goalkeeper_detection: interactionMap.goalkeeper_detection || rawNormalized?.goalkeeper_detection || analysisRes.data?.raw_json?.goalkeeper_detection || {},
-      effective_play: interactionMap.effective_play || rawNormalized?.effective_play || analysisRes.data?.raw_json?.effective_play || {},
-      match_story: interactionMap.match_story || rawNormalized?.match_story || analysisRes.data?.raw_json?.match_story || {},
-      cross_stats: interactionMap.cross_stats || rawNormalized?.cross_stats || analysisRes.data?.raw_json?.cross_stats || {},
-      physical_profile: interactionMap.physical_profile || rawNormalized?.physical_profile || analysisRes.data?.raw_json?.physical_profile || {},
-      matchmaker_seed: interactionMap.matchmaker_seed || rawNormalized?.matchmaker_seed || analysisRes.data?.raw_json?.matchmaker_seed || {},
-      supabase_export: interactionMap.supabase_export || rawNormalized?.supabase_export || analysisRes.data?.raw_json?.supabase_export || {},
+      available_metrics: interactionMap.available_metrics || rawNormalized?.available_metrics || analysisRes.data?.available_metrics || analysisRes.data?.raw_json?.available_metrics || {},
+      review_analysis: interactionMap.review_analysis || rawNormalized?.review_analysis || analysisRes.data?.review_analysis || analysisRes.data?.raw_json?.review_analysis || {},
+      advanced_defense: structuredAdvancedDefense,
+      shot_map: structuredShotMap,
+      match_link: interactionMap.match_link || rawNormalized?.match_link || analysisRes.data?.match_link || analysisRes.data?.raw_json?.match_link || {},
+      goalkeeper_detection: interactionMap.goalkeeper_detection || rawNormalized?.goalkeeper_detection || analysisRes.data?.goalkeeper_detection || analysisRes.data?.raw_json?.goalkeeper_detection || {},
+      effective_play: interactionMap.effective_play || rawNormalized?.effective_play || analysisRes.data?.effective_play || analysisRes.data?.raw_json?.effective_play || {},
+      match_story: interactionMap.match_story || rawNormalized?.match_story || analysisRes.data?.match_story || analysisRes.data?.raw_json?.match_story || {},
+      cross_stats: interactionMap.cross_stats || rawNormalized?.cross_stats || analysisRes.data?.cross_stats || analysisRes.data?.raw_json?.cross_stats || {},
+      physical_profile: interactionMap.physical_profile || rawNormalized?.physical_profile || analysisRes.data?.physical_profile || analysisRes.data?.raw_json?.physical_profile || {},
+      matchmaker_seed: interactionMap.matchmaker_seed || rawNormalized?.matchmaker_seed || analysisRes.data?.matchmaker_seed || analysisRes.data?.raw_json?.matchmaker_seed || {},
+      supabase_export: interactionMap.supabase_export || rawNormalized?.supabase_export || analysisRes.data?.supabase_export || analysisRes.data?.raw_json?.supabase_export || {},
       limitations: interactionMap.limitations?.items || rawNormalized?.limitations || analysisRes.data?.raw_json?.limitations || [],
       raw: analysisRes.data?.raw_json || null
     };
@@ -1462,26 +2338,17 @@
 
   function buildHighlightSlides(details) {
     const players = details.players || [];
-    const topDistance = [...players].sort((a, b) => toNumber(b.distance_km) - toNumber(a.distance_km))[0];
+    const duration = toNumber(details.analysis?.duration_seconds, 0);
+    const topDistance = [...players].sort((a, b) => playerFieldMetrics(b, duration).field_distance_m - playerFieldMetrics(a, duration).field_distance_m)[0];
     const topSpeed = [...players].sort((a, b) => toNumber(b.max_speed_kmh) - toNumber(a.max_speed_kmh))[0];
     const topPulmon = [...players].sort((a, b) => toNumber(b.pulmon_tracking) - toNumber(a.pulmon_tracking))[0];
     const topSprint = [...players].sort((a, b) => toNumber(b.sprints) - toNumber(a.sprints))[0];
-    const topAdvancedDefense = [...players]
-      .filter(player => player.advanced_defense_score !== null && player.advanced_defense_score !== undefined)
-      .sort((a, b) => toNumber(b.advanced_defense_score) - toNumber(a.advanced_defense_score))[0];
-    const topDefense = [...players]
-      .filter(player => player.defense_score !== null && player.defense_score !== undefined)
-      .sort((a, b) => toNumber(b.defense_score) - toNumber(a.defense_score))[0];
-    const marking = (details.interactions?.marking_pairs || [])[0];
 
     return [
-      topDistance && { title: 'Mas corredor', main: `${topDistance.name || topDistance.detected_name || 'Jugador'}`, sub: `${toNumber(topDistance.distance_km).toFixed(2)} km recorridos` },
+      topDistance && { title: 'Mas corredor', main: `${topDistance.name || topDistance.detected_name || 'Jugador'}`, sub: `${(playerFieldMetrics(topDistance, duration).field_distance_m / 1000).toFixed(2)} km de campo` },
       topSpeed && { title: 'Mas rapido', main: `${topSpeed.name || topSpeed.detected_name || 'Jugador'}`, sub: `${toNumber(topSpeed.max_speed_kmh).toFixed(1)} km/h pico robusto` },
       topPulmon && { title: 'Pulmon tracking', main: `${topPulmon.name || topPulmon.detected_name || 'Jugador'}`, sub: `${toNumber(topPulmon.pulmon_tracking).toFixed(1)}/100 por actividad fisica` },
-      topAdvancedDefense && { title: 'Defensa avanzada', main: `${topAdvancedDefense.name || topAdvancedDefense.detected_name || 'Jugador'}`, sub: `${toNumber(topAdvancedDefense.advanced_defense_score).toFixed(1)}/100 por culpa, orden, vueltas y duelos` },
-      topDefense && { title: 'Defensa tracking', main: `${topDefense.name || topDefense.detected_name || 'Jugador'}`, sub: `${toNumber(topDefense.defense_score).toFixed(1)}/100 por ${topDefense.defense_score_method === 'event_tracking_blend' ? 'eventos y movimiento' : 'movimiento defensivo'}` },
       topSprint && { title: 'Mas sprints', main: `${topSprint.name || topSprint.detected_name || 'Jugador'}`, sub: `${toNumber(topSprint.sprints)} sprints sostenidos` },
-      marking && { title: 'Marca sostenida', main: `${marking.marker || marking.a || 'Jugador'} vs ${marking.marked || marking.b || 'Rival'}`, sub: `${round(marking.seconds || marking.duration_seconds || 0, 1)} s cerca` }
     ].filter(Boolean);
   }
 
@@ -1497,9 +2364,12 @@
     }
 
     const players = details.players || [];
-    const totalDistance = round(players.reduce((sum, player) => sum + toNumber(player.distance_km), 0), 2);
+    const duration = toNumber(details.analysis.duration_seconds, 0);
+    const totalDistance = round(players.reduce((sum, player) => sum + playerFieldMetrics(player, duration).field_distance_m / 1000, 0), 2);
     const maxSpeed = round(Math.max(...players.map(player => toNumber(player.max_speed_kmh, 0))), 1);
-    const avgPulmon = round(players.reduce((sum, player) => sum + toNumber(player.pulmon_tracking), 0) / Math.max(players.length, 1), 1);
+    const fieldPlayers = players.filter(player => playerFieldMetrics(player, duration).field_seconds > 0);
+    const avgPulmon = round(fieldPlayers.reduce((sum, player) => sum + toNumber(player.pulmon_tracking), 0) / Math.max(fieldPlayers.length, 1), 1);
+    const avgKm40 = round(fieldPlayers.reduce((sum, player) => sum + playerFieldMetrics(player, duration).distance_per_40_min_km, 0) / Math.max(fieldPlayers.length, 1), 2);
     const totalSprints = players.reduce((sum, player) => sum + toNumber(player.sprints), 0);
     const slides = buildHighlightSlides(details);
 
@@ -1508,7 +2378,8 @@
         ${slides.length ? renderSlides(slides) : ''}
         <div class="tracking-kpi-grid">
           ${kpi('Jugadores', players.length)}
-          ${kpi('Distancia total', `${totalDistance} km`)}
+          ${kpi('KM campo', `${totalDistance} km`)}
+          ${kpi("KM/40' prom.", `${avgKm40} km`)}
           ${kpi('Vel. maxima', `${maxSpeed} km/h`)}
           ${kpi('Sprints', totalSprints)}
           ${kpi('Pulmon promedio', `${avgPulmon}/100`)}
@@ -1517,43 +2388,44 @@
         ${renderTrackingAvailability(details)}
 
         <div class="tracking-canvas-grid">
-          <div class="tracking-canvas-card">
+          <div class="tracking-canvas-card tracking-canvas-card-featured">
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="text-white mb-0">Formacion promedio</h6>
-              <span class="small text-light-emphasis">A/B por equipo tracking</span>
+              <h6 class="text-white mb-0">Zonas dominantes</h6>
+              <span class="small text-light-emphasis">jugador y zona por heatmap</span>
             </div>
             <canvas class="tracking-canvas" id="tracking-formation-canvas"></canvas>
           </div>
           <div class="tracking-canvas-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="text-white mb-0">Mapa de calor del equipo</h6>
-              <span class="small text-light-emphasis">jugadores de campo</span>
+              <h6 class="text-white mb-0">Mapa calor ${teamUiLabel('A')}</h6>
+              <span class="small tracking-team-a">azul</span>
             </div>
-            <canvas class="tracking-canvas" id="tracking-team-heatmap-canvas"></canvas>
+            <canvas class="tracking-canvas" id="tracking-team-heatmap-a-canvas"></canvas>
+          </div>
+          <div class="tracking-canvas-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="text-white mb-0">Mapa calor ${teamUiLabel('B')}</h6>
+              <span class="small tracking-team-b">rojo</span>
+            </div>
+            <canvas class="tracking-canvas" id="tracking-team-heatmap-b-canvas"></canvas>
           </div>
         </div>
+
+        ${renderDefenseSummary(details)}
 
         <div>
           <h6 class="text-white mb-2">Resumen fisico por jugador</h6>
-          ${renderPlayersTable(players)}
+          ${renderPlayersTable(players, details)}
         </div>
-        ${renderAdvancedDefenseSummary(details)}
-        ${renderDefenseSummary(details)}
 
-        <div class="row g-3">
-          <div class="col-lg-6">
-            <div class="tracking-profile-card h-100">
-              <h6 class="text-white">Pulmon por ventana</h6>
-              <div class="text-light-emphasis small mb-2">Distancia e intensidad por tramos del partido.</div>
-              ${renderTemporalWindows(details)}
-            </div>
+        <div class="tracking-profile-card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="text-white mb-0">Pulmon por ventana</h6>
+            <span class="small text-light-emphasis">${teamUiLabel('A')} vs ${teamUiLabel('B')}</span>
           </div>
-          <div class="col-lg-6">
-            <div class="tracking-profile-card h-100">
-              <h6 class="text-white">Duelos y marcas</h6>
-              ${renderInteractions(details)}
-            </div>
-          </div>
+          <div class="text-light-emphasis small mb-2">Eje X: tramo del partido. Eje Y: km/40' (kilometros proyectados cada 40 minutos de campo). Los minutos de arquero no cuentan.</div>
+          <canvas class="tracking-canvas" id="tracking-pulmon-window-canvas"></canvas>
+          ${renderPulmonWindowTable(details)}
         </div>
 
         <div>
@@ -1677,11 +2549,6 @@
       ['Fisico', metrics.physical_tracking],
       ['Heatmaps', metrics.heatmaps],
       ['Equipos', metrics.team_stats],
-      ['Defensa movimiento', metrics.defensive_movement_score],
-      ['Defensa avanzada', metrics.advanced_defense_score],
-      ['Goles sincronizados', metrics.goal_event_positions],
-      ['Marca perdida', metrics.lost_mark_detection],
-      ['Atajadas timeline', metrics.save_timeline],
       ['Mapa remates', metrics.shot_map]
     ];
     const reason = review.reason || matchLink.reason || '';
@@ -1691,7 +2558,7 @@
         <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
           <div>
             <h6 class="text-white mb-1">Datos disponibles</h6>
-            <div class="text-light-emphasis small">${escapeHtml(modeLabel)} · ${escapeHtml(syncMode)}</div>
+            <div class="text-light-emphasis small">${escapeHtml(modeLabel)} / ${escapeHtml(syncMode)}</div>
           </div>
           <div class="d-flex flex-wrap gap-1 justify-content-end">
             ${metricBadges.map(([label, enabled]) => `
@@ -1854,8 +2721,8 @@
     return `
       <div>
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <h6 class="text-white mb-0">Defensa tracking</h6>
-          <span class="small text-light-emphasis">${escapeHtml(modeText)}</span>
+          <h6 class="text-white mb-0">Score defensivo</h6>
+          <span class="small text-light-emphasis">Mayor a menor / ${escapeHtml(modeText)}</span>
         </div>
         <div class="tracking-table-wrap">
           <table class="tracking-table">
@@ -1918,7 +2785,9 @@
     `;
   }
 
-  function renderPlayersTable(players) {
+  function renderPlayersTable(players, details = {}) {
+    const pitch = pitchForAnalysis(details.analysis || {});
+    const duration = toNumber(details.analysis?.duration_seconds, 0);
     return `
       <div class="tracking-table-wrap">
         <table class="tracking-table">
@@ -1926,35 +2795,36 @@
             <tr>
               <th>Jugador</th>
               <th>Equipo</th>
-              <th>KM</th>
+              <th>KM campo</th>
+              <th>Min campo</th>
+              <th>KM/40'</th>
               <th>Vel prom</th>
               <th>Vel max</th>
               <th>Pulmon</th>
-              <th>Defensa</th>
               <th>Sprints</th>
               <th>Alta intensidad</th>
               <th>Arq</th>
-              <th>Campo rival</th>
+              <th>Zona dominante</th>
             </tr>
           </thead>
           <tbody>
             ${players.map(player => {
-              const defenseScore = player.defense_score !== null && player.defense_score !== undefined
-                ? toNumber(player.defense_score).toFixed(1)
-                : '-';
+              const field = playerFieldMetrics(player, duration);
+              const zone = pitchZoneLabel(playerDisplayPosition(player, pitch), pitch);
               return `
                 <tr>
                   <td><span class="tracking-player-dot" style="background:${player.team === 'A' ? '#60a5fa' : '#f87171'}"></span>${escapeHtml(player.name)}</td>
-                  <td>${escapeHtml(player.team || '-')}</td>
-                  <td>${toNumber(player.distance_km).toFixed(2)}</td>
+                  <td>${escapeHtml(teamUiLabel(player.team))}</td>
+                  <td>${(field.field_distance_m / 1000).toFixed(2)}</td>
+                  <td>${field.field_minutes.toFixed(1)}</td>
+                  <td>${field.distance_per_40_min_km.toFixed(2)}</td>
                   <td>${toNumber(player.avg_speed_kmh).toFixed(1)} km/h</td>
                   <td>${toNumber(player.max_speed_kmh).toFixed(1)} km/h</td>
                   <td>${toNumber(player.pulmon_tracking).toFixed(1)}</td>
-                  <td>${defenseScore}</td>
                   <td>${toNumber(player.sprints)}</td>
                   <td>${formatTime(player.high_intensity_seconds)}</td>
                   <td>${formatTime(player.goalkeeper_seconds)}</td>
-                  <td>${toNumber(player.rival_half_pct).toFixed(1)}%</td>
+                  <td>${escapeHtml(zone)}</td>
                 </tr>
               `;
             }).join('')}
@@ -1964,29 +2834,38 @@
     `;
   }
 
-  function renderTemporalWindows(details) {
-    const windows = details.temporal?.windows || [];
-    if (!windows.length) {
-      const playerWindows = (details.players || []).flatMap(player => (player.metrics?.windows || []).map(window => ({ ...window, player: player.name })));
-      if (!playerWindows.length) return '<div class="text-light-emphasis">Sin ventanas temporales.</div>';
-      return playerWindows.slice(0, 8).map(window => `
-        <div class="d-flex justify-content-between border-bottom border-secondary py-1 small">
-          <span>${escapeHtml(window.player)} ${formatTime(window.start_seconds)}-${formatTime(window.end_seconds)}</span>
-          <strong>${round(window.distance_m, 1)} m</strong>
-        </div>
-      `).join('');
-    }
-    return windows.slice(0, 10).map(window => {
-      const label = `${formatTime(window.start_seconds)}-${formatTime(window.end_seconds)}`;
-      const distance = window.distance_m || window.total_distance_m || window.distance || 0;
-      const intensity = window.high_intensity_seconds || window.high_intensity || 0;
-      return `
-        <div class="d-flex justify-content-between border-bottom border-secondary py-1 small">
-          <span>${label}</span>
-          <strong>${round(distance, 0)} m | ${formatTime(intensity)} alta</strong>
-        </div>
-      `;
-    }).join('');
+  function renderPulmonWindowTable(details) {
+    const windows = buildTeamPulmonWindowSeries(details);
+    if (!windows.length) return '<div class="text-light-emphasis small">Sin ventanas temporales.</div>';
+    const hasEstimated = windows.some(window => window.teams.A.estimated_distance || window.teams.B.estimated_distance);
+    return `
+      <div class="tracking-table-wrap mt-3">
+        <table class="tracking-table tracking-window-table">
+          <thead>
+            <tr>
+              <th>Tramo</th>
+              <th>${teamUiLabel('A')}</th>
+              <th>${teamUiLabel('B')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${windows.slice(0, 12).map(window => {
+              const label = `${formatTime(window.start_seconds)}-${formatTime(window.end_seconds)}`;
+              const teamA = window.teams.A;
+              const teamB = window.teams.B;
+              return `
+                <tr>
+                  <td>${label}</td>
+                  <td><strong>${round(teamA.distance_m, 0)} m</strong> | ${teamA.km_per_40.toFixed(2)} km/40' | ${formatTime(teamA.high_intensity_seconds)} alta</td>
+                  <td><strong>${round(teamB.distance_m, 0)} m</strong> | ${teamB.km_per_40.toFixed(2)} km/40' | ${formatTime(teamB.high_intensity_seconds)} alta</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${hasEstimated ? '<div class="tracking-goal-note">Cuando el JSON no trae metros por ventana, se estima el reparto usando distancia total, tiempo de campo e intensidad.</div>' : ''}
+    `;
   }
 
   function renderInteractions(details) {
@@ -2015,11 +2894,14 @@
     if (formationCanvas) {
       drawPitch(formationCanvas, pitch, { players: details.players, title: '' });
     }
-    const teamHeatmapCanvas = document.getElementById('tracking-team-heatmap-canvas');
-    if (teamHeatmapCanvas) {
-      const combined = combineHeatmaps((details.players || []).map(player => player.heatmap).filter(Boolean));
-      drawHeatmap(teamHeatmapCanvas, pitch, combined, []);
-    }
+    ['A', 'B'].forEach(team => {
+      const canvas = document.getElementById(`tracking-team-heatmap-${team.toLowerCase()}-canvas`);
+      if (!canvas) return;
+      const teamPlayers = (details.players || []).filter(player => String(player.team || '').toUpperCase() === team);
+      const combined = combineHeatmaps(teamPlayers.map(player => player.heatmap).filter(Boolean));
+      drawHeatmap(canvas, pitch, combined, teamPlayers);
+    });
+    drawPulmonWindowChart(document.getElementById('tracking-pulmon-window-canvas'), details);
     document.querySelectorAll('[data-player-heatmap]').forEach(canvas => {
       const player = (details.players || []).find(item => item.player_id === canvas.dataset.playerHeatmap);
       drawHeatmap(canvas, pitch, player?.heatmap, player ? [player] : []);
@@ -2029,7 +2911,7 @@
   function setupCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(320, Math.round(rect.width || 640));
-    const height = Math.max(160, Math.round(width / 2));
+    const height = Math.max(160, Math.round(rect.height || width / 2));
     canvas.width = width;
     canvas.height = height;
     return { ctx: canvas.getContext('2d'), width, height };
@@ -2057,36 +2939,181 @@
     ctx.strokeRect(width * 0.80, height * 0.32, width * 0.16, height * 0.36);
   }
 
+  function coordinateRatio(value, size, coordinateSystem = '') {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0.5;
+    const system = normalizeName(coordinateSystem);
+    if (system.includes('percent') || system.includes('porcentaje')) {
+      return clamp(n / 100, 0, 1);
+    }
+    if ((system.includes('normal') || system.includes('ratio')) && n >= 0 && n <= 1) {
+      return clamp(n, 0, 1);
+    }
+    if (n >= 0 && n <= size) {
+      return clamp(n / Math.max(size, 1), 0, 1);
+    }
+    if (n >= -size / 2 && n <= size / 2) {
+      return clamp((n + size / 2) / Math.max(size, 1), 0, 1);
+    }
+    if (n >= 0 && n <= 100) {
+      return clamp(n / 100, 0, 1);
+    }
+    return clamp(n / Math.max(size, 1), 0, 1);
+  }
+
   function pitchToCanvas(point, pitch, width, height) {
     const padX = width * 0.04;
     const padY = height * 0.08;
     const innerW = width * 0.92;
     const innerH = height * 0.84;
-    return {
-      x: padX + (toNumber(point.x ?? point.avg_x_m, 0) / Math.max(pitch.width, 1)) * innerW,
-      y: padY + (toNumber(point.y ?? point.avg_y_m, 0) / Math.max(pitch.height, 1)) * innerH
+    const sourcePitch = {
+      width: toNumber(point.pitch_width_m ?? point.pitch?.width, pitch.width),
+      height: toNumber(point.pitch_height_m ?? point.pitch?.height, pitch.height)
     };
+    const ratioX = coordinateRatio(point.x ?? point.avg_x_m, sourcePitch.width, point.coordinate_system);
+    const ratioY = coordinateRatio(point.y ?? point.avg_y_m, sourcePitch.height, point.coordinate_system);
+    return {
+      x: padX + ratioX * innerW,
+      y: padY + ratioY * innerH
+    };
+  }
+
+  function canvasPlayerName(player = {}) {
+    return player.name || player.detected_name || player.source_name || player.player_id || 'Jugador';
+  }
+
+  function fitCanvasText(ctx, text, maxWidth) {
+    const suffix = '...';
+    const value = String(text || '-').trim() || '-';
+    if (ctx.measureText(value).width <= maxWidth) return value;
+    let end = value.length;
+    while (end > 1) {
+      const candidate = `${value.slice(0, end).trim()}${suffix}`;
+      if (ctx.measureText(candidate).width <= maxWidth) return candidate;
+      end -= 1;
+    }
+    return value.slice(0, 1);
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function labelOverlapCount(rect, occupiedRects) {
+    return occupiedRects.reduce((count, occupied) => count + (rectsOverlap(rect, occupied) ? 1 : 0), 0);
+  }
+
+  function labelCandidateRect(anchorX, anchorY, labelW, labelH, width, height, offset) {
+    return {
+      x: clamp(anchorX + offset.dx, 4, width - labelW - 4),
+      y: clamp(anchorY + offset.dy, 4, height - labelH - 4),
+      w: labelW,
+      h: labelH
+    };
+  }
+
+  function drawCanvasPlayerLabel(ctx, linesInput, anchor, width, height, options = {}, occupiedRects = []) {
+    const lines = (Array.isArray(linesInput) ? linesInput : [linesInput])
+      .map(line => String(line || '').trim())
+      .filter(Boolean);
+    if (!lines.length) return;
+
+    const fontSize = options.fontSize || Math.max(12, Math.min(18, width * 0.018));
+    const lineHeight = Math.ceil(fontSize * 1.16);
+    const maxLabelWidth = Math.max(92, Math.min(options.maxWidth || width * 0.34, width - 16));
+    ctx.save();
+    ctx.font = `${options.weight || 800} ${fontSize}px system-ui, sans-serif`;
+    const fittedLines = lines.map(line => fitCanvasText(ctx, line, maxLabelWidth - 16));
+    const textWidth = Math.max(...fittedLines.map(line => ctx.measureText(line).width));
+    const labelW = Math.min(maxLabelWidth, textWidth + 16);
+    const labelH = Math.max(24, fittedLines.length * lineHeight + 10);
+    const offsets = [
+      { dx: 12, dy: -labelH / 2 },
+      { dx: -labelW - 12, dy: -labelH / 2 },
+      { dx: -labelW / 2, dy: -labelH - 12 },
+      { dx: -labelW / 2, dy: 12 },
+      { dx: 12, dy: 12 },
+      { dx: -labelW - 12, dy: 12 },
+      { dx: 12, dy: -labelH - 12 },
+      { dx: -labelW - 12, dy: -labelH - 12 }
+    ];
+    let bestRect = null;
+    let bestOverlap = Infinity;
+    offsets.forEach(offset => {
+      const rect = labelCandidateRect(anchor.x, anchor.y, labelW, labelH, width, height, offset);
+      const overlaps = labelOverlapCount(rect, occupiedRects);
+      if (overlaps < bestOverlap) {
+        bestRect = rect;
+        bestOverlap = overlaps;
+      }
+    });
+    if (!bestRect) {
+      ctx.restore();
+      return;
+    }
+    occupiedRects.push(bestRect);
+
+    ctx.strokeStyle = options.connectorColor || 'rgba(255,255,255,.32)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(anchor.x, anchor.y);
+    ctx.lineTo(bestRect.x + bestRect.w / 2, bestRect.y + bestRect.h / 2);
+    ctx.stroke();
+
+    ctx.fillStyle = options.background || 'rgba(8, 13, 26, .84)';
+    ctx.fillRect(bestRect.x, bestRect.y, bestRect.w, bestRect.h);
+    ctx.strokeStyle = options.border || 'rgba(255,255,255,.28)';
+    ctx.strokeRect(bestRect.x, bestRect.y, bestRect.w, bestRect.h);
+    ctx.fillStyle = options.color || '#fff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    fittedLines.forEach((line, index) => {
+      ctx.fillText(line, bestRect.x + 8, bestRect.y + 6 + index * lineHeight);
+    });
+    ctx.restore();
+  }
+
+  function drawCanvasPlayerMarker(ctx, point, color, radius) {
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
 
   function drawPitch(canvas, pitch, options = {}) {
     const { ctx, width, height } = setupCanvas(canvas);
     drawBasePitch(ctx, width, height);
     const players = options.players || [];
-    players.forEach(player => {
-      const p = pitchToCanvas({ x: player.avg_x_m, y: player.avg_y_m }, pitch, width, height);
+    const placedPlayers = players.map(player => {
+      const position = playerDisplayPosition(player, pitch);
+      return {
+        player,
+        position,
+        point: pitchToCanvas(position, pitch, width, height)
+      };
+    });
+    placedPlayers.forEach(({ player, point }) => {
       const color = player.team === 'A' ? '#2563eb' : '#dc2626';
-      ctx.beginPath();
-      ctx.fillStyle = color;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.arc(p.x, p.y, Math.max(7, width * 0.009), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(0,0,0,.62)';
-      ctx.fillRect(p.x + 8, p.y - 12, Math.min(150, ctx.measureText(player.name).width + 16), 24);
-      ctx.fillStyle = '#fff';
-      ctx.font = `${Math.max(11, width * 0.016)}px system-ui, sans-serif`;
-      ctx.fillText(player.name, p.x + 15, p.y + 5);
+      drawCanvasPlayerMarker(ctx, point, color, Math.max(9, width * 0.011));
+    });
+    const occupiedRects = [];
+    placedPlayers.forEach(({ player, position, point }) => {
+      drawCanvasPlayerLabel(
+        ctx,
+        [canvasPlayerName(player), pitchZoneLabel(position, pitch)],
+        point,
+        width,
+        height,
+        {
+          fontSize: Math.max(14, Math.min(22, width * 0.02)),
+          maxWidth: width * 0.28,
+          background: 'rgba(5, 12, 24, .88)'
+        },
+        occupiedRects
+      );
     });
   }
 
@@ -2112,16 +3139,153 @@
         });
       });
     }
-    players.forEach(player => {
-      const p = pitchToCanvas({ x: player.avg_x_m, y: player.avg_y_m }, pitch, width, height);
-      ctx.beginPath();
-      ctx.fillStyle = player.team === 'A' ? '#60a5fa' : '#f87171';
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.arc(p.x, p.y, Math.max(6, width * 0.008), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+    const placedPlayers = players.map(player => ({
+      player,
+      point: pitchToCanvas(playerDisplayPosition(player, pitch), pitch, width, height)
+    }));
+    placedPlayers.forEach(({ player, point }) => {
+      drawCanvasPlayerMarker(
+        ctx,
+        point,
+        player.team === 'A' ? '#60a5fa' : '#f87171',
+        Math.max(6, width * 0.008)
+      );
     });
+    const occupiedRects = [];
+    placedPlayers.forEach(({ player, point }) => {
+      drawCanvasPlayerLabel(
+        ctx,
+        canvasPlayerName(player),
+        point,
+        width,
+        height,
+        {
+          fontSize: Math.max(11, Math.min(15, width * 0.014)),
+          maxWidth: width * 0.24,
+          background: 'rgba(15, 23, 42, .82)'
+        },
+        occupiedRects
+      );
+    });
+  }
+
+  function drawPulmonWindowChart(canvas, details = {}) {
+    if (!canvas) return;
+    const { ctx, width, height } = setupCanvas(canvas);
+    const windows = buildTeamPulmonWindowSeries(details);
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, width, height);
+
+    if (!windows.length) {
+      ctx.fillStyle = 'rgba(255,255,255,.74)';
+      ctx.font = `${Math.max(13, width * 0.022)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Sin ventanas temporales', width / 2, height / 2);
+      ctx.textAlign = 'start';
+      return;
+    }
+
+    const padLeft = Math.max(70, width * 0.095);
+    const padRight = Math.max(22, width * 0.04);
+    const padTop = Math.max(20, height * 0.12);
+    const padBottom = Math.max(52, height * 0.24);
+    const chartW = width - padLeft - padRight;
+    const chartH = height - padTop - padBottom;
+    const values = windows
+      .flatMap(window => [window.teams.A.km_per_40, window.teams.B.km_per_40])
+      .map(value => Number(value))
+      .filter(Number.isFinite);
+    let minValue = Math.floor(Math.min(...values) * 10) / 10;
+    let maxValue = Math.ceil(Math.max(...values) * 10) / 10;
+    if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+      minValue = 0;
+      maxValue = 1;
+    }
+    if (minValue === maxValue) {
+      minValue = Math.max(0, minValue - 0.1);
+      maxValue += 0.1;
+    }
+    const valueRange = Math.max(0.1, maxValue - minValue);
+
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(255,255,255,.62)';
+    ctx.font = `${Math.max(10, width * 0.014)}px system-ui, sans-serif`;
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i += 1) {
+      const y = padTop + chartH - (chartH * i) / 4;
+      const value = minValue + (valueRange * i) / 4;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(width - padRight, y);
+      ctx.stroke();
+      ctx.fillText(value.toFixed(1), padLeft - 8, y + 4);
+    }
+
+    const xFor = (index) => {
+      if (windows.length === 1) return padLeft + chartW / 2;
+      return padLeft + (chartW * index) / (windows.length - 1);
+    };
+    const yFor = (value) => padTop + chartH - (chartH * clamp((value - minValue) / valueRange, 0, 1));
+    const drawLine = (team, color) => {
+      ctx.beginPath();
+      windows.forEach((window, index) => {
+        const x = xFor(index);
+        const y = yFor(window.teams[team].km_per_40);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(2, width / 260);
+      ctx.stroke();
+
+      windows.forEach((window, index) => {
+        const x = xFor(index);
+        const y = yFor(window.teams[team].km_per_40);
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+        ctx.arc(x, y, Math.max(3.5, width * 0.005), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+    };
+
+    ctx.strokeStyle = 'rgba(255,255,255,.34)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop);
+    ctx.lineTo(padLeft, padTop + chartH);
+    ctx.lineTo(width - padRight, padTop + chartH);
+    ctx.stroke();
+
+    drawLine('A', '#60a5fa');
+    drawLine('B', '#f87171');
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,.70)';
+    windows.forEach((window, index) => {
+      if (index % Math.ceil(windows.length / 6) !== 0 && index !== windows.length - 1) return;
+      ctx.fillText(formatTime(window.start_seconds), xFor(index), height - padBottom + 22);
+    });
+
+    ctx.textAlign = 'left';
+    ctx.font = `800 ${Math.max(11, width * 0.015)}px system-ui, sans-serif`;
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillText(teamUiLabel('A'), padLeft, padTop - 5);
+    ctx.fillStyle = '#f87171';
+    ctx.fillText(teamUiLabel('B'), padLeft + 120, padTop - 5);
+    ctx.fillStyle = 'rgba(255,255,255,.62)';
+    ctx.font = `${Math.max(10, width * 0.013)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Eje X: tramo del partido', padLeft + chartW / 2, height - 8);
+    ctx.save();
+    ctx.translate(16, padTop + chartH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText("Eje Y: km/40'", 0, 0);
+    ctx.restore();
   }
 
   function drawGoalLocations(canvas, pitch, goals = []) {
@@ -2165,7 +3329,7 @@
     if (!client) return;
     try {
       const statsRes = await client.from(TRACKING_TABLES.stats)
-        .select('*, tracking_analyses(id, partido_id, duration_seconds, raw_json, partidos(id, fecha, cancha, equipo_ganador, temporada_id, temporadas(nombre)))')
+        .select('*, tracking_analyses(id, partido_id, duration_seconds, pitch_width_m, pitch_height_m, raw_json, partidos(id, fecha, cancha, equipo_ganador, temporada_id, temporadas(nombre)))')
         .not('jugador_id', 'is', null);
       if (statsRes.error) throw statsRes.error;
 
@@ -2177,9 +3341,33 @@
         heatmapRows = heatmapsRes.data || [];
       }
 
+      let mappingRows = [];
+      const mappingRes = await client.from(TRACKING_TABLES.mapping)
+        .select('analysis_id, player_id, source_player_id, jugador_id, detected_name, source_name, normalized_name')
+        .not('jugador_id', 'is', null);
+      if (!mappingRes.error) {
+        mappingRows = mappingRes.data || [];
+      } else {
+        console.warn('[tracking] mapeo de jugadores no disponible para arqueros:', mappingRes.error.message || mappingRes.error);
+      }
+
+      let shotEventRows = [];
+      const shotEventsRes = await client.from(TRACKING_TABLES.shotEvents)
+        .select('analysis_id, partido_id, event_type, outcome, event_order, review_seconds, match_seconds, sam3_seconds, player_id, source_player_id, source_name, normalized_name, detected_name, team, x_m, y_m, active_goalkeeper_player_id, active_goalkeeper_name, active_goalkeeper_team, payload, tracking_analyses(id, partido_id, pitch_width_m, pitch_height_m, partidos(id, fecha, cancha, temporada_id, temporadas(nombre)))');
+      if (!shotEventsRes.error) {
+        shotEventRows = shotEventsRes.data || [];
+      } else {
+        console.warn('[tracking] eventos de remate no disponibles para arqueros:', shotEventsRes.error.message || shotEventsRes.error);
+      }
+
       const heatmapKey = new Map(heatmapRows.map(row => [`${row.analysis_id}:${row.jugador_id}`, row]));
+      const playerIdByTrackingKey = new Map();
+      const playerIdByNameKey = new Map();
+      (statsRes.data || []).forEach(row => registerTrackingPlayerIdentity(row, playerIdByTrackingKey, playerIdByNameKey));
+      mappingRows.forEach(row => registerTrackingPlayerIdentity(row, playerIdByTrackingKey, playerIdByNameKey));
       APP.statsByPlayer.clear();
       APP.latestByPlayer.clear();
+      APP.goalsConcededByPlayer = buildGoalkeeperConcededGoals(shotEventRows, playerIdByTrackingKey, playerIdByNameKey);
       (statsRes.data || []).forEach(row => {
         const key = String(row.jugador_id);
         const heatmap = heatmapKey.get(`${row.analysis_id}:${row.jugador_id}`);
@@ -2190,9 +3378,16 @@
         } catch (error) {
           rawPlayer = null;
         }
+        const analysisPitch = pitchForAnalysis(row.tracking_analyses || {});
+        const goalLocations = (row.goal_locations || row.metrics?.goal_locations || rawPlayer?.goal_locations || []).map(goal => ({
+          ...goal,
+          pitch_width_m: goal.pitch_width_m ?? analysisPitch.width,
+          pitch_height_m: goal.pitch_height_m ?? analysisPitch.height
+        }));
         const enriched = {
           ...row,
           metrics: row.metrics || {},
+          distance_m: row.metrics?.distance_m ?? rawPlayer?.distance_m ?? toNumber(row.distance_km, 0) * 1000,
           distance_km: row.distance_km ?? rawPlayer?.distance_km,
           avg_speed_kmh: row.avg_speed_kmh ?? rawPlayer?.avg_speed_kmh,
           max_speed_kmh: row.max_speed_kmh ?? rawPlayer?.max_speed_kmh,
@@ -2211,10 +3406,24 @@
           pulmon: row.metrics?.pulmon || rawPlayer?.pulmon || {},
           fis_valor: row.fis_valor ?? row.metrics?.fis_valor ?? rawPlayer?.fis_valor ?? row.metrics?.pulmon?.fis ?? rawPlayer?.pulmon?.fis,
           fis_version: row.fis_version || row.metrics?.fis_version || rawPlayer?.fis_version || row.metrics?.pulmon?.fis_version || rawPlayer?.pulmon?.fis_version || '',
-          goal_locations: row.goal_locations || row.metrics?.goal_locations || rawPlayer?.goal_locations || [],
+          goal_locations: goalLocations,
           heatmap: heatmap?.heatmap || rawPlayer?.heatmap,
           heatmap_windows: heatmap?.heatmap_windows || rawPlayer?.heatmap_windows
         };
+        const derivedField = playerFieldMetrics(enriched, row.tracking_analyses?.duration_seconds);
+        const dominantPosition = row.metrics?.dominant_position_m
+          || rawPlayer?.dominant_position_m
+          || heatmapDominantPosition(enriched.heatmap, analysisPitch);
+        enriched.metrics = {
+          ...enriched.metrics,
+          distance_m: enriched.distance_m,
+          ...derivedField,
+          dominant_position_m: dominantPosition || playerDisplayPosition(enriched, analysisPitch),
+          goal_locations: goalLocations
+        };
+        Object.assign(enriched, derivedField, {
+          dominant_position_m: dominantPosition || playerDisplayPosition(enriched, analysisPitch)
+        });
         if (!APP.statsByPlayer.has(key)) APP.statsByPlayer.set(key, []);
         APP.statsByPlayer.get(key).push(enriched);
       });
@@ -2355,15 +3564,21 @@
     const goalLocations = safeRows.flatMap(row => (row.goal_locations || row.metrics?.goal_locations || []).map(goal => ({
       ...goal,
       match_id: row.tracking_analyses?.partido_id || row.partido_id || null,
-      date: row.tracking_analyses?.partidos?.fecha || null
+      date: row.tracking_analyses?.partidos?.fecha || null,
+      pitch_width_m: goal.pitch_width_m ?? row.tracking_analyses?.pitch_width_m ?? DEFAULT_PITCH.width,
+      pitch_height_m: goal.pitch_height_m ?? row.tracking_analyses?.pitch_height_m ?? DEFAULT_PITCH.height
     })));
     const fisAverage = averagePresent(safeRows, row => row.fis_valor ?? row.pulmon_tracking ?? row.physical_profile?.fis ?? row.pulmon?.fis);
     const defenseAverage = averagePresent(safeRows, row => row.defense_score ?? row.defense?.defense_score);
     const advancedDefenseAverage = averagePresent(safeRows, row => row.advanced_defense_score ?? row.advanced_defense?.score);
+    const km40Average = averagePresent(safeRows, row => (
+      row.distance_per_40_min_km ?? row.metrics?.distance_per_40_min_km ?? playerFieldMetrics(row, row.tracking_analyses?.duration_seconds).distance_per_40_min_km
+    ));
     return {
       matches: safeRows.length,
       distance_km_avg: round(avg('distance_km'), 2),
       distance_km_total: round(sum('distance_km'), 2),
+      distance_per_40_min_km: km40Average === null ? 0 : round(km40Average, 2),
       avg_speed_kmh: round(avg('avg_speed_kmh'), 1),
       max_speed_kmh: round(Math.max(...safeRows.map(row => toNumber(row.max_speed_kmh))), 1),
       sprints_avg: round(avg('sprints'), 1),
@@ -2460,6 +3675,7 @@
     await refreshTrackingCaches();
     const trackingRows = APP.statsByPlayer.get(String(playerId)) || [];
     const aggregate = aggregatePlayerRows(trackingRows);
+    const goalkeeperConcededGoals = APP.goalsConcededByPlayer.get(String(playerId)) || [];
     let matchHistory = [];
     let matchHistoryError = null;
     if (matchesContainer) {
@@ -2471,7 +3687,28 @@
       }
     }
 
-    if (!aggregate) {
+    if (!aggregate && goalkeeperConcededGoals.length) {
+      if (summaryContainer) {
+        summaryContainer.innerHTML = `
+          <div class="tracking-profile-grid">
+            <div class="tracking-profile-card">
+              <h5 class="text-white mb-3">Perfil tracking</h5>
+              <div class="tracking-kpi-grid">
+                ${kpi('Goles recibidos con mapa', goalkeeperConcededGoals.length)}
+              </div>
+            </div>
+            <div class="tracking-profile-card">
+              <h6 class="tracking-profile-section-title">Desde donde le convirtieron</h6>
+              <canvas class="tracking-canvas" id="perfil-tracking-goals-against-canvas"></canvas>
+              <div class="tracking-goal-note">${goalkeeperConcededGoals.length} goles recibidos con ubicacion importada desde el detector.</div>
+            </div>
+          </div>
+        `;
+        setTimeout(() => {
+          drawGoalLocations(document.getElementById('perfil-tracking-goals-against-canvas'), DEFAULT_PITCH, goalkeeperConcededGoals);
+        }, 40);
+      }
+    } else if (!aggregate) {
       const empty = `
         <div class="tracking-profile-card text-center py-5">
           <i class="bi bi-broadcast-pin fs-1 text-muted"></i>
@@ -2487,16 +3724,12 @@
             <div class="tracking-kpi-grid">
               ${kpi('Partidos con tracking', aggregate.matches)}
               ${kpi('Pulmon FIS', `${aggregate.fis_valor ?? aggregate.pulmon_tracking}/100`)}
-              ${kpi('Score defensivo', aggregate.defense_score === null ? '-' : `${aggregate.defense_score}/100`)}
-              ${kpi('Defensa avanzada', aggregate.advanced_defense_score === null ? '-' : `${aggregate.advanced_defense_score}/100`)}
               ${kpi('KM prom.', `${aggregate.distance_km_avg} km`)}
+              ${kpi("KM/40' prom.", `${aggregate.distance_per_40_min_km} km`)}
               ${kpi('Goles con mapa', aggregate.goal_locations.length)}
+              ${goalkeeperConcededGoals.length ? kpi('Goles recibidos con mapa', goalkeeperConcededGoals.length) : ''}
             </div>
             ${renderTrackingMetricPills(aggregate.physical_dimensions)}
-          </div>
-          <div class="tracking-profile-card">
-            <h6 class="tracking-profile-section-title">Defensa avanzada</h6>
-            ${renderTrackingAxisList(aggregate.advanced_defense_axes)}
           </div>
           <div class="tracking-profile-card">
             <h6 class="tracking-profile-section-title">Mapa de calor promedio</h6>
@@ -2507,11 +3740,19 @@
             <canvas class="tracking-canvas" id="perfil-tracking-goals-canvas"></canvas>
             <div class="tracking-goal-note">${aggregate.goal_locations.length ? `${aggregate.goal_locations.length} goles con ubicacion importada desde el detector.` : 'Sin goles con ubicacion importada todavia.'}</div>
           </div>
+          ${goalkeeperConcededGoals.length ? `
+            <div class="tracking-profile-card">
+              <h6 class="tracking-profile-section-title">Desde donde le convirtieron</h6>
+              <canvas class="tracking-canvas" id="perfil-tracking-goals-against-canvas"></canvas>
+              <div class="tracking-goal-note">${goalkeeperConcededGoals.length} goles recibidos con ubicacion importada desde el detector.</div>
+            </div>
+          ` : ''}
         </div>
       `;
       setTimeout(() => {
         drawHeatmap(document.getElementById('perfil-tracking-heatmap-canvas'), DEFAULT_PITCH, aggregate.heatmap, []);
         drawGoalLocations(document.getElementById('perfil-tracking-goals-canvas'), DEFAULT_PITCH, aggregate.goal_locations || []);
+        drawGoalLocations(document.getElementById('perfil-tracking-goals-against-canvas'), DEFAULT_PITCH, goalkeeperConcededGoals);
       }, 40);
     }
 
@@ -2520,6 +3761,31 @@
       matchesContainer.querySelector('[data-profile-action="tracking-full"]')?.addEventListener('click', () => {
         document.getElementById('tab-perfil-tracking')?.click();
       });
+    }
+  }
+
+  async function renderGoalkeeperConcededMap(playerId, options = {}) {
+    if (typeof document === 'undefined') return 0;
+    const id = String(playerId || '').trim();
+    const canvas = options.canvas || document.getElementById(options.canvasId || 'perfil-arquero-goles-recibidos-canvas');
+    const note = options.note || document.getElementById(options.noteId || 'perfil-arquero-goles-recibidos-note');
+    if (!id || !canvas) return 0;
+
+    try {
+      ensureStyles();
+      await refreshTrackingCaches();
+      const goals = APP.goalsConcededByPlayer.get(id) || [];
+      drawGoalLocations(canvas, DEFAULT_PITCH, goals);
+      if (note) {
+        note.textContent = goals.length
+          ? `${goals.length} goles recibidos con ubicacion importada desde el detector.`
+          : 'Sin goles recibidos con ubicacion importada todavia.';
+      }
+      return goals.length;
+    } catch (error) {
+      console.warn('[tracking] no se pudo dibujar mapa de goles recibidos:', error.message || error);
+      if (note) note.textContent = 'No se pudo cargar el mapa de goles recibidos.';
+      return 0;
     }
   }
 
@@ -2845,7 +4111,6 @@
           <span class="tracking-match-tag ${teamClass}">Equipo ${teamNumber}</span>
           <span class="tracking-match-tag ${hasTracking ? 'is-green' : 'is-muted'}">${hasTracking ? 'Tracking' : 'Sin tracking'}</span>
           ${hasTracking && row.fis_valor !== null && row.fis_valor !== undefined ? `<span class="tracking-match-tag is-green">FIS ${round(row.fis_valor, 1)}</span>` : ''}
-          ${hasTracking && row.defense_score !== null && row.defense_score !== undefined ? `<span class="tracking-match-tag is-blue">DEF ${round(row.defense_score, 1)}</span>` : ''}
           ${hasTracking && row.goal_locations?.length ? `<span class="tracking-match-tag">${row.goal_locations.length} goles mapa</span>` : ''}
           ${p.mvp ? '<span class="tracking-match-tag is-green">MVP</span>' : ''}
           ${p.ace ? '<span class="tracking-match-tag is-blue">ACE</span>' : ''}
@@ -2961,22 +4226,60 @@
 
     proto.setJugadores = function patchedSetJugadores(jugadores) {
       originalSetJugadores.call(this, jugadores);
-      this.jugadores = this.jugadores.map((processed, index) => {
+      const enrichedPlayers = this.jugadores.map((processed, index) => {
         const raw = jugadores[index] || {};
         const tracking = trackingForRawPlayer(raw);
+        const playerId = raw.jugadores?.id || raw.jugador_id || raw.id || processed.id;
+        const concededGoals = playerId ? (APP.goalsConcededByPlayer.get(String(playerId)) || []) : [];
+        const golesRecibidosArquero = Math.max(toNumber(processed.golesRecibidosArquero, 0), concededGoals.length);
+        const playerWithGoalkeeperData = {
+          ...processed,
+          golesRecibidosArquero,
+          goles_recibidos_arquero: golesRecibidosArquero,
+          pj_arquero: processed.pjArquero
+        };
+        const rendimientoArquero = processed.rolPartido === 'arquero'
+          ? this.calcularRendimientoArquero(playerWithGoalkeeperData)
+          : processed.rendimientoArquero;
+        const rendimientoTotal = processed.rolPartido === 'arquero'
+          ? rendimientoArquero
+          : processed.rendimientoTotal;
+
         return {
           ...processed,
-          id: raw.jugadores?.id || raw.jugador_id || raw.id || processed.id,
+          id: playerId,
           tracking,
-          pulmon: tracking?.pulmon_tracking ?? processed.pulmon,
+          rendimientoTotal,
+          rendimientoArquero,
+          rendimientoArqueroDisponible: processed.rolPartido === 'arquero' ? rendimientoArquero : processed.rendimientoArqueroDisponible,
+          golesRecibidosArquero,
+          pulmon: tracking?.pulmon_tracking ?? 0,
           pulmonManual: processed.pulmon,
           pulmonTracking: tracking?.pulmon_tracking ?? null,
           trackingCoveragePct: tracking?.coverage_pct ?? 0,
           trackingIntensity: tracking?.high_intensity_seconds_avg ?? 0,
           trackingHeatmap: tracking?.heatmap || null,
-          trackingGoalkeeperSeconds: tracking?.goalkeeper_seconds ?? 0
+          trackingGoalkeeperSeconds: tracking?.goalkeeper_seconds ?? 0,
+          trackingDistanceKmAvg: tracking?.distance_km_avg ?? processed.trackingDistanceKmAvg ?? 0,
+          trackingDistanceKmTotal: tracking?.distance_km_total ?? processed.trackingDistanceKmTotal ?? 0,
+          trackingDistancePer40Km: tracking?.distance_per_40_min_km ?? processed.trackingDistancePer40Km ?? 0,
+          trackingGoalsScoredLocations: tracking?.goal_locations || processed.trackingGoalsScoredLocations || [],
+          trackingGoalsConcededLocations: concededGoals,
+          trackingGoalsConcededCount: concededGoals.length
         };
       });
+
+      const sumaImpacto = enrichedPlayers.reduce((total, jugador) => (
+        total + Math.abs(toNumber(jugador.rendimientoTotal, 0))
+      ), 0);
+      const impactoFallback = enrichedPlayers.length > 0 ? 100 / enrichedPlayers.length : 0;
+      this.jugadores = enrichedPlayers.map(jugador => ({
+        ...jugador,
+        skillMatchmaking: jugador.rendimientoTotal,
+        impactoMatchmaking: sumaImpacto > 0
+          ? (Math.abs(toNumber(jugador.rendimientoTotal, 0)) / sumaImpacto) * 100
+          : impactoFallback
+      }));
     };
 
     proto.evaluarIndividuo = function patchedEvaluar(individuo) {
@@ -2994,7 +4297,9 @@
       const tracking = evaluateTrackingTeam(equipo);
       return {
         ...stats,
-        pulmonPromedio: tracking.pulmonAvg || stats.pulmonPromedio,
+        pulmonPromedio: tracking.pulmonAvg,
+        pulmonTotal: tracking.pulmonTotal,
+        pulmonTrackingTotal: tracking.pulmonTotal,
         trackingCoveragePct: tracking.coveragePct,
         trackingOverlapPct: tracking.overlapPct,
         trackingIntensity: tracking.intensityAvg,
@@ -3004,10 +4309,17 @@
   }
 
   function evaluateTrackingTeam(team) {
-    const withTracking = (team || []).filter(player => player.tracking || player.trackingHeatmap || player.pulmonTracking !== null);
+    const withTracking = (team || []).filter(player => (
+      player.tracking
+      || player.trackingHeatmap
+      || player.pulmonTracking !== null && player.pulmonTracking !== undefined
+    ));
     const heatmaps = withTracking.map(player => player.trackingHeatmap || player.tracking?.heatmap).filter(Boolean);
     const combined = combineHeatmaps(heatmaps);
-    const pulmonValues = (team || []).map(player => toNumber(player.pulmonTracking ?? player.pulmon, 0)).filter(value => value > 0);
+    const pulmonValues = withTracking
+      .map(player => toNumber(player.pulmonTracking ?? player.tracking?.pulmon_tracking ?? player.tracking?.fis_valor, 0))
+      .filter(value => value > 0);
+    const pulmonTotal = pulmonValues.reduce((sum, value) => sum + value, 0);
     const intensityValues = withTracking.map(player => toNumber(player.trackingIntensity, 0));
     const goalkeepers = (team || []).filter(player =>
       player.rolPartido === 'arquero' || toNumber(player.trackingGoalkeeperSeconds, 0) >= 300
@@ -3015,7 +4327,8 @@
 
     return {
       playersWithTracking: withTracking.length,
-      pulmonAvg: pulmonValues.length ? round(pulmonValues.reduce((a, b) => a + b, 0) / pulmonValues.length, 1) : 0,
+      pulmonAvg: pulmonValues.length ? round(pulmonTotal / pulmonValues.length, 1) : 0,
+      pulmonTotal: round(pulmonTotal, 1),
       intensityAvg: intensityValues.length ? round(intensityValues.reduce((a, b) => a + b, 0) / intensityValues.length, 1) : 0,
       coveragePct: heatmapCoveragePct(combined),
       overlapPct: teamHeatmapOverlap(withTracking.map(player => ({ tracking: { heatmap: player.trackingHeatmap || player.tracking?.heatmap } }))),
@@ -3029,7 +4342,7 @@
     if (stats1.playersWithTracking + stats2.playersWithTracking === 0) return 0;
 
     let penalty = 0;
-    penalty += Math.abs(stats1.pulmonAvg - stats2.pulmonAvg) * 0.65;
+    penalty += Math.abs(stats1.pulmonTotal - stats2.pulmonTotal) * 0.65;
     penalty += Math.abs(stats1.intensityAvg - stats2.intensityAvg) * 0.08;
     penalty += Math.abs(stats1.coveragePct - stats2.coveragePct) * 0.22;
     penalty += (stats1.overlapPct + stats2.overlapPct) * 0.16;
@@ -3076,13 +4389,23 @@
     computePulmonTracking,
     heatmapOverlap,
     heatmapCoveragePct,
+    heatmapDominantPosition,
     combineHeatmaps,
+    playerFieldMetrics,
+    buildTeamPulmonWindowSeries,
     aggregatePlayerRows,
     evaluateTrackingTeam,
     trackingFitnessPenalty,
     upsertTrackingAnalysisRow,
     insertRows,
     buildTrackingPlayerStatsRows,
+    buildTrackingShotEventRows,
+    buildAdvancedDefenseEventRows,
+    buildAdvancedDefenseAssignmentRows,
+    shotMapFromRows,
+    advancedDefenseFromRows,
+    resolveImportPartidoId,
+    renderGoalkeeperConcededMap,
     schemaMissingColumn,
     refreshTrackingCaches,
     openSummaryByAnalysisId

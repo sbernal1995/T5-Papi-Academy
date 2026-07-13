@@ -3676,6 +3676,50 @@
         min-width: 145px;
       }
 
+      .matchmaking-swap-player {
+        appearance: none;
+        border-color: rgba(148, 163, 184, 0.18);
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+      }
+
+      .matchmaking-swap-player:hover,
+      .matchmaking-swap-player:focus-visible {
+        border-color: rgba(250, 204, 21, 0.58);
+        box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.12);
+        outline: none;
+      }
+
+      .matchmaking-swap-player.is-selected {
+        background: rgba(250, 204, 21, 0.16);
+        border-color: rgba(250, 204, 21, 0.76);
+      }
+
+      .matchmaking-swap-status {
+        align-items: center;
+        background: rgba(250, 204, 21, 0.1);
+        border: 1px solid rgba(250, 204, 21, 0.24);
+        border-radius: 8px;
+        color: #fde68a;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 0.86rem;
+        gap: 8px;
+        justify-content: space-between;
+        padding: 8px 10px;
+      }
+
+      .matchmaking-swap-status strong {
+        color: #fff7cc;
+      }
+
+      .matchmaking-swap-status small {
+        color: #fde68a;
+        margin-left: 4px;
+      }
+
       .matchmaking-player-main,
       .matchmaking-player-metrics {
         display: flex;
@@ -3733,6 +3777,41 @@
 
       .matchmaking-trend-note strong {
         color: #ecfdf5;
+      }
+
+      .matchmaking-attention {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(148, 163, 184, 0.22);
+      }
+
+      .matchmaking-attention-title {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #fde68a;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-attention-list {
+        display: grid;
+        gap: 6px;
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: #dbeafe;
+        font-size: 0.82rem;
+        line-height: 1.35;
+      }
+
+      .matchmaking-attention-list li::marker {
+        color: #facc15;
+      }
+
+      .matchmaking-attention-list strong {
+        color: #ffffff;
       }
 
       @media (max-width: 575px) {
@@ -3836,6 +3915,480 @@
 
       .stats-summary .stat-row:last-child {
         margin-bottom: 0;
+      }
+
+      .matchmaking-balance-root {
+        --mb-bg: #0a0f1e;
+        --mb-card: #121a2e;
+        --mb-card-soft: #0e1526;
+        --mb-line: rgba(148, 163, 184, 0.16);
+        --mb-text: #e7ecf5;
+        --mb-muted: #8b99b3;
+        --mb-skill: #35d399;
+        --mb-amber: #f5c443;
+        background: var(--mb-bg);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 16px;
+        color: var(--mb-text);
+        font-family: 'Inter', system-ui, sans-serif;
+        padding: 20px;
+        width: 100%;
+      }
+
+      .matchmaking-balance-root b,
+      .matchmaking-balance-root strong {
+        color: var(--mb-text);
+        font-weight: 700;
+      }
+
+      .matchmaking-balance-wrap,
+      .matchmaking-context-stack,
+      .matchmaking-team-players {
+        display: grid;
+      }
+
+      .matchmaking-balance-wrap {
+        gap: 20px;
+      }
+
+      .matchmaking-context-stack {
+        gap: 10px;
+      }
+
+      .matchmaking-result-mode,
+      .matchmaking-key-note,
+      .matchmaking-swap-status {
+        background: rgba(245, 196, 67, 0.07);
+        border: 1px solid rgba(245, 196, 67, 0.25);
+        border-radius: 12px;
+        color: #d9c79a;
+        font-size: 13.5px;
+        line-height: 1.5;
+        padding: 12px 16px;
+        text-align: left;
+      }
+
+      .matchmaking-result-mode {
+        color: #b9c4d8;
+      }
+
+      .matchmaking-result-mode i,
+      .matchmaking-key-note i {
+        color: var(--mb-amber);
+      }
+
+      .matchmaking-trend-note {
+        background: rgba(53, 211, 153, 0.08);
+        border-color: rgba(53, 211, 153, 0.25);
+        color: #baf7dc;
+      }
+
+      .matchmaking-trend-note i {
+        color: var(--mb-skill);
+      }
+
+      .matchmaking-swap-status {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+      }
+
+      .matchmaking-beam {
+        background: var(--mb-card);
+        border: 1px solid var(--mb-line);
+        border-radius: 16px;
+        padding: 20px 24px 24px;
+      }
+
+      .matchmaking-beam__scores {
+        align-items: baseline;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .matchmaking-beam__score {
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: clamp(2.2rem, 5vw, 3rem);
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .matchmaking-beam__label {
+        color: var(--mb-muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-beam__center {
+        text-align: center;
+      }
+
+      .matchmaking-beam__track {
+        background: var(--mb-card-soft);
+        border-radius: 999px;
+        display: flex;
+        height: 14px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .matchmaking-beam__side {
+        height: 100%;
+        transition: width 0.45s ease;
+      }
+
+      .matchmaking-beam__mid {
+        background: rgba(231, 236, 245, 0.68);
+        bottom: -4px;
+        left: 50%;
+        position: absolute;
+        top: -4px;
+        transform: translateX(-50%);
+        width: 2px;
+      }
+
+      .matchmaking-beam__pcts {
+        color: var(--mb-muted);
+        display: flex;
+        font-size: 0.78rem;
+        font-variant-numeric: tabular-nums;
+        justify-content: space-between;
+        margin-top: 8px;
+      }
+
+      .matchmaking-teams-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .matchmaking-team-panel {
+        background: var(--mb-card);
+        border: 1px solid var(--mb-line);
+        border-radius: 16px;
+        border-top: 3px solid var(--team-color);
+        padding: 18px;
+      }
+
+      .matchmaking-team-panel__header {
+        align-items: baseline;
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .matchmaking-team-panel__dot {
+        align-self: center;
+        background: var(--team-color);
+        border-radius: 999px;
+        height: 9px;
+        width: 9px;
+      }
+
+      .matchmaking-team-panel__header h3 {
+        color: var(--mb-text);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        margin: 0;
+      }
+
+      .matchmaking-team-panel__sub {
+        color: var(--mb-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        margin-left: auto;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-team-players {
+        gap: 4px;
+      }
+
+      .matchmaking-player-row {
+        appearance: none;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        color: inherit;
+        cursor: pointer;
+        display: block;
+        font: inherit;
+        padding: 9px 10px;
+        text-align: left;
+        width: 100%;
+      }
+
+      .matchmaking-player-row.is-key {
+        background: var(--team-soft);
+      }
+
+      .matchmaking-player-row:hover,
+      .matchmaking-player-row:focus-visible,
+      .matchmaking-player-row.is-selected {
+        border-color: rgba(245, 196, 67, 0.55);
+        box-shadow: 0 0 0 2px rgba(245, 196, 67, 0.1);
+        outline: none;
+      }
+
+      .matchmaking-player-row__top {
+        align-items: baseline;
+        display: flex;
+        font-variant-numeric: tabular-nums;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+
+      .matchmaking-player-row__name {
+        color: var(--mb-text);
+        font-size: 0.92rem;
+        font-weight: 750;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .matchmaking-player-row__star {
+        color: var(--mb-amber);
+        font-size: 0.75rem;
+        margin-left: 6px;
+      }
+
+      .matchmaking-player-row__role {
+        color: var(--mb-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-player-row__skill {
+        color: var(--mb-skill);
+        font-size: 0.75rem;
+        margin-left: auto;
+        white-space: nowrap;
+      }
+
+      .matchmaking-player-row__impact {
+        color: var(--mb-text);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1.08rem;
+        font-weight: 800;
+        min-width: 52px;
+        text-align: right;
+      }
+
+      .matchmaking-player-bar {
+        background: var(--mb-card-soft);
+        border-radius: 999px;
+        height: 5px;
+        overflow: hidden;
+      }
+
+      .matchmaking-player-bar__fill {
+        border-radius: inherit;
+        height: 100%;
+      }
+
+      .matchmaking-attention {
+        border-top: 1px solid var(--mb-line);
+        margin-top: 18px;
+        padding-top: 14px;
+      }
+
+      .matchmaking-attention-title {
+        color: var(--mb-amber);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-attention-list {
+        color: #b9c4d8;
+        display: grid;
+        font-size: 0.82rem;
+        gap: 8px;
+        line-height: 1.45;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .matchmaking-attention-list li {
+        display: flex;
+        gap: 9px;
+      }
+
+      .matchmaking-attention-icon {
+        color: var(--mb-amber);
+        flex: 0 0 18px;
+        text-align: center;
+      }
+
+      .matchmaking-stats {
+        background: var(--mb-card);
+        border: 1px solid var(--mb-line);
+        border-radius: 16px;
+        padding: 18px 22px;
+      }
+
+      .matchmaking-stats__title {
+        color: var(--mb-muted);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        margin: 0 0 12px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-stats__row {
+        align-items: center;
+        border-bottom: 1px solid var(--mb-line);
+        display: grid;
+        font-variant-numeric: tabular-nums;
+        grid-template-columns: 1fr 1.6fr 1fr;
+        padding: 8px 0;
+      }
+
+      .matchmaking-stats__row:last-of-type {
+        border-bottom: 0;
+      }
+
+      .matchmaking-stats__row[hidden] {
+        display: none;
+      }
+
+      .matchmaking-stats__label {
+        color: var(--mb-muted);
+        font-size: 0.8rem;
+        text-align: center;
+      }
+
+      .matchmaking-stats__value {
+        color: var(--mb-muted);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1.2rem;
+        font-weight: 750;
+      }
+
+      .matchmaking-stats__value--e1 {
+        text-align: left;
+      }
+
+      .matchmaking-stats__value--e2 {
+        text-align: right;
+      }
+
+      .matchmaking-stats__value.is-win.matchmaking-stats__value--e1 {
+        color: #7fb0ff;
+      }
+
+      .matchmaking-stats__value.is-win.matchmaking-stats__value--e2 {
+        color: #ff8a8a;
+      }
+
+      .matchmaking-stats__row.is-empty .matchmaking-stats__value,
+      .matchmaking-stats__row.is-empty .matchmaking-stats__label {
+        opacity: 0.46;
+      }
+
+      .matchmaking-stats__toggle {
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+        color: var(--mb-muted);
+        display: block;
+        font: inherit;
+        font-size: 0.78rem;
+        margin: 12px auto 0;
+        padding: 6px 10px;
+      }
+
+      .matchmaking-stats__toggle:hover,
+      .matchmaking-stats__toggle:focus-visible {
+        background: var(--mb-card-soft);
+        color: var(--mb-text);
+        outline: none;
+      }
+
+      .matchmaking-footer {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--mb-line);
+        border-radius: 16px;
+        padding: 16px;
+      }
+
+      .matchmaking-footer-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        text-align: center;
+      }
+
+      .matchmaking-footer-metric small {
+        color: var(--mb-muted);
+        display: block;
+        font-size: 0.72rem;
+      }
+
+      .matchmaking-footer-metric strong {
+        color: var(--mb-text);
+        display: block;
+        font-size: 1rem;
+        margin-top: 2px;
+      }
+
+      .matchmaking-footer .border-top {
+        border-color: var(--mb-line) !important;
+      }
+
+      @media (max-width: 720px) {
+        .matchmaking-balance-root {
+          padding: 14px;
+        }
+
+        .matchmaking-teams-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .matchmaking-beam {
+          padding: 16px;
+        }
+
+        .matchmaking-beam__scores {
+          gap: 12px;
+        }
+
+        .matchmaking-team-panel__header {
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .matchmaking-team-panel__sub {
+          flex: 1 0 100%;
+          margin-left: 17px;
+        }
+
+        .matchmaking-stats__row {
+          grid-template-columns: 0.8fr 1.4fr 0.8fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .matchmaking-beam__side {
+          transition: none;
+        }
       }
 
       /* Estilo especial para el botón de IA */
@@ -8872,17 +9425,23 @@
                   Cada carga queda como jugada individual; el total por jugador se agrupa al guardar el partido.
                 </div>
                 <div class="row g-2 align-items-end">
-                  <div class="col-md-6">
-                    <label class="form-label text-light small">Atajadas</label>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Atajador</label>
                     <select id="review-atajadas-jugador" class="form-select form-select-sm searchable-select">
                       <option value="">Jugador</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-light small">Pateador</label>
+                    <select id="review-atajadas-pateador" class="form-select form-select-sm searchable-select">
+                      <option value="">Pateador</option>
                     </select>
                   </div>
                   <div class="col-md-2">
                     <label class="form-label text-light small">Cant.</label>
                     <input type="number" id="review-atajadas-cantidad" class="form-control form-control-sm" min="0" placeholder="0">
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-2">
                     <button type="button" id="review-add-atajadas" class="btn btn-outline-info btn-sm w-100">Agregar</button>
                   </div>
                 </div>
@@ -8895,29 +9454,21 @@
 
               <div class="review-section">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h3 class="review-section-title mb-0"><i class="bi bi-stars text-warning"></i>Buenas jugadas</h3>
+                  <h3 class="review-section-title mb-0"><i class="bi bi-stars text-warning"></i>Eventos importantes</h3>
                   <span class="badge bg-secondary" id="review-buenas-jugadas-count">0</span>
                 </div>
                 <div class="small text-light-emphasis mb-2">
-                  Marca jugadas destacadas independientes de goles, asistencias o atajadas.
+                  Palos, buenas jugadas y otros momentos destacados.
                 </div>
                 <div class="row g-2 align-items-end">
-                  <div class="col-md-4">
-                    <label class="form-label text-light small">Jugador</label>
+                  <div class="col-md-8">
+                    <label class="form-label text-light small">Protagonista</label>
                     <select id="review-buena-jugada-jugador" class="form-select form-select-sm searchable-select">
                       <option value="">Jugador</option>
                     </select>
                   </div>
-                  <div class="col-md-2">
-                    <label class="form-label text-light small">Min</label>
-                    <input type="number" id="review-buena-jugada-minuto" class="form-control form-control-sm" min="0" max="120" placeholder="0">
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label text-light small">Seg</label>
-                    <input type="number" id="review-buena-jugada-segundo" class="form-control form-control-sm" min="0" max="59" placeholder="0">
-                  </div>
                   <div class="col-md-4">
-                    <button type="button" id="review-add-buena-jugada" class="btn btn-outline-warning btn-sm w-100">Agregar</button>
+                    <button type="button" id="review-add-buena-jugada" class="btn btn-outline-warning btn-sm w-100">Agregar evento</button>
                   </div>
                 </div>
                 <div class="row g-2 mt-2">
@@ -10511,11 +11062,11 @@
     <!-- Chart.js completo con todos los componentes -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <!-- Algoritmo Genético -->
-    <script src="./genetic-teams.js"></script>
+    <script src="./genetic-teams.js?v=matchmaking-balance-visual-2026-07-12"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=historial-conservative-detail-2026-07-09"></script>
+    <script type="module" src="./app.js?v=review-events-pateador-2026-07-12"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
-    <script src="./tracking-integration.js?v=tracking-0.1.7" defer></script>
+    <script src="./tracking-integration.js?v=tracking-0.1.23" defer></script>
     <!-- Funcionalidad de Paternidades -->
     <script>
     // ===============================

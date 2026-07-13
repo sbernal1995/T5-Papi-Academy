@@ -19,6 +19,49 @@ function etiquetaRolPartido(rol) {
   return normalizarRolPartido(rol) === ROL_PARTIDO_ARQUERO ? 'Arquero' : 'Jugador';
 }
 
+function numeroFinitoMatchmaking(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function numeroSeguroMatchmaking(valor, fallback = 0) {
+  const numero = numeroFinitoMatchmaking(valor);
+  return numero === null ? fallback : numero;
+}
+
+function obtenerIdJugadorMatchmaking(jugador) {
+  return jugador?.jugadores?.id || jugador?.jugador_id || jugador?.id || null;
+}
+
+function obtenerNombreJugadorMatchmaking(jugador) {
+  return jugador?.nombre || jugador?.jugadores?.nombre || 'Jugador';
+}
+
+function obtenerPulmonTrackingMatchmaking(jugador) {
+  const candidatos = [
+    jugador?.pulmonTracking,
+    jugador?.pulmon_tracking,
+    jugador?.tracking?.pulmon_tracking,
+    jugador?.tracking?.fis_valor,
+    jugador?.fis_valor,
+    jugador?.physical_profile?.fis,
+    jugador?.pulmon?.fis,
+    jugador?.metrics?.fis_valor,
+    jugador?.metrics?.pulmon?.fis,
+    jugador?.pulmonManual,
+    jugador?.manual_pulmon,
+    jugador?.jugadores?.pulmon,
+    jugador?.pulmon
+  ];
+
+  for (const valor of candidatos) {
+    const numero = numeroFinitoMatchmaking(valor);
+    if (numero !== null && numero > 0) return numero;
+  }
+
+  return null;
+}
+
 class GeneticTeamOptimizer {
   constructor() {
     this.sinergias = new Map();
@@ -38,6 +81,7 @@ class GeneticTeamOptimizer {
       rendimientoArquero: 1.5,
       golesFavorEquipo: 1.25,
       golesRecibidosEquipo: 1.25,
+      pulmonTrackingTotal: 1.4,
       cantidadArqueros: 25
     };
   }
@@ -48,6 +92,7 @@ class GeneticTeamOptimizer {
    */
   setJugadores(jugadores) {
     const jugadoresProcesados = jugadores.map(jugador => {
+      const jugadorId = obtenerIdJugadorMatchmaking(jugador);
       const rolPartido = normalizarRolPartido(jugador.rolPartido || jugador.rol_matchmaking);
       const rendimientoJugador = this.calcularRendimientoJugador(jugador);
       const rendimientoArqueroDisponible = this.calcularRendimientoArquero(jugador);
@@ -64,9 +109,11 @@ class GeneticTeamOptimizer {
             ? this.calcularRendimientoArquero(historicoMatchmaking)
             : this.calcularRendimientoJugador(historicoMatchmaking))
         : null;
+      const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
 
       return {
-        nombre: jugador.nombre || jugador.jugadores?.nombre,
+        id: jugadorId,
+        nombre: obtenerNombreJugadorMatchmaking(jugador),
         rolPartido,
         origenRendimiento: jugador.origenRendimiento || MODO_RENDIMIENTO_HISTORICO,
         partidosRecientesSolicitados: jugador.partidosRecientesSolicitados || 0,
@@ -80,6 +127,25 @@ class GeneticTeamOptimizer {
         golesFavorEquipo: esArquero ? 0 : Number(jugador.goles_favor_equipo) || 0,
         golesRecibidosEquipo: esArquero ? Number(jugador.goles_recibidos_equipo) || 0 : 0,
         cantidadArqueros: esArquero ? 1 : 0,
+        goles: numeroSeguroMatchmaking(jugador.goles),
+        asistencias: numeroSeguroMatchmaking(jugador.asistencias),
+        atajadas: numeroSeguroMatchmaking(jugador.atajadas),
+        golesRecibidosArquero: numeroSeguroMatchmaking(jugador.goles_recibidos_arquero ?? jugador.golesRecibidosArquero),
+        pjArquero: numeroSeguroMatchmaking(jugador.pj_arquero ?? jugador.pjArquero),
+        cagadasEnGol: numeroSeguroMatchmaking(jugador.cagadas_en_gol ?? jugador.cagadasEnGol),
+        momentosGolesMatchmaking: Array.isArray(jugador.momentosGolesMatchmaking) ? jugador.momentosGolesMatchmaking : [],
+        momentosGolesRecibidosArqueroMatchmaking: Array.isArray(jugador.momentosGolesRecibidosArqueroMatchmaking) ? jugador.momentosGolesRecibidosArqueroMatchmaking : [],
+        matchmakingVersus: jugador.matchmakingVersus && typeof jugador.matchmakingVersus === 'object' ? jugador.matchmakingVersus : {},
+        matchmakingJuntos: jugador.matchmakingJuntos && typeof jugador.matchmakingJuntos === 'object' ? jugador.matchmakingJuntos : {},
+        matchmakingDinamica: jugador.matchmakingDinamica && typeof jugador.matchmakingDinamica === 'object' ? jugador.matchmakingDinamica : null,
+        distribucionTramos: jugador.distribucionTramos || jugador.momentosPerfil?.distribucionTramos || null,
+        trackingDistanceKmAvg: numeroSeguroMatchmaking(jugador.trackingDistanceKmAvg ?? jugador.distance_km_avg ?? jugador.tracking?.distance_km_avg),
+        trackingDistancePer40Km: numeroSeguroMatchmaking(jugador.trackingDistancePer40Km ?? jugador.distance_per_40_min_km ?? jugador.tracking?.distance_per_40_min_km),
+        pulmonTracking,
+        trackingGoalsScoredLocations: Array.isArray(jugador.trackingGoalsScoredLocations)
+          ? jugador.trackingGoalsScoredLocations
+          : (Array.isArray(jugador.goal_locations) ? jugador.goal_locations : []),
+        trackingGoalsConcededLocations: Array.isArray(jugador.trackingGoalsConcededLocations) ? jugador.trackingGoalsConcededLocations : [],
         winrate: jugador.winrate || 0,
         pulmon: jugador.pulmon || jugador.jugadores?.pulmon || 0,
         pj: jugador.pj || 0
@@ -133,9 +199,24 @@ class GeneticTeamOptimizer {
    * Calcula el rendimiento de arquero de un jugador
    */
   calcularRendimientoArquero(jugador) {
-    const pj = jugador.pj || 1;
-    const atajadasPP = (jugador.atajadas || 0) / pj;
-    return atajadasPP * 0.66;
+    const pjArquero = Math.max(
+      Number(jugador.pj_arquero ?? jugador.pjArquero ?? jugador.pj) || 0,
+      1
+    );
+    const atajadas = Number(jugador.atajadas) || 0;
+    const golesRecibidos = Number(jugador.goles_recibidos_arquero ?? jugador.golesRecibidosArquero) || 0;
+    const atajadasPP = atajadas / pjArquero;
+    const golesRecibidosPP = golesRecibidos / pjArquero;
+    const atajadasPorGol = golesRecibidos > 0
+      ? atajadas / golesRecibidos
+      : (atajadasPP > 0 ? atajadasPP : 0);
+
+    return Math.max(
+      0,
+      (atajadasPP * 0.66)
+        + (Math.min(atajadasPorGol, 5) * 0.8)
+        - (Math.min(golesRecibidosPP, 5) * 0.6)
+    );
   }
 
   /**
@@ -323,6 +404,7 @@ class GeneticTeamOptimizer {
       rendimientoArquero: 0,
       golesFavorEquipo: 0,
       golesRecibidosEquipo: 0,
+      pulmonTrackingTotal: 0,
       cantidadArqueros: 0
     };
     const stats2 = {
@@ -331,11 +413,13 @@ class GeneticTeamOptimizer {
       rendimientoArquero: 0,
       golesFavorEquipo: 0,
       golesRecibidosEquipo: 0,
+      pulmonTrackingTotal: 0,
       cantidadArqueros: 0
     };
 
     for (let i = 0; i < individuo.length; i++) {
       const jugador = this.jugadores[i];
+      const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
       if (individuo[i] === 0) {
         equipo1.push(jugador.nombre);
         stats1.rendimientoTotal += jugador.rendimientoTotal;
@@ -343,6 +427,7 @@ class GeneticTeamOptimizer {
         stats1.rendimientoArquero += jugador.rendimientoArquero;
         stats1.golesFavorEquipo += jugador.golesFavorEquipo;
         stats1.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
+        stats1.pulmonTrackingTotal += pulmonTracking || 0;
         stats1.cantidadArqueros += jugador.cantidadArqueros;
       } else {
         equipo2.push(jugador.nombre);
@@ -351,6 +436,7 @@ class GeneticTeamOptimizer {
         stats2.rendimientoArquero += jugador.rendimientoArquero;
         stats2.golesFavorEquipo += jugador.golesFavorEquipo;
         stats2.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
+        stats2.pulmonTrackingTotal += pulmonTracking || 0;
         stats2.cantidadArqueros += jugador.cantidadArqueros;
       }
     }
@@ -366,6 +452,7 @@ class GeneticTeamOptimizer {
       rendimientoArquero: stats1.rendimientoArquero / size1,
       golesFavorEquipo: stats1.golesFavorEquipo / size1,
       golesRecibidosEquipo: stats1.golesRecibidosEquipo / size1,
+      pulmonTrackingTotal: stats1.pulmonTrackingTotal,
       cantidadArqueros: stats1.cantidadArqueros
     };
 
@@ -375,6 +462,7 @@ class GeneticTeamOptimizer {
       rendimientoArquero: stats2.rendimientoArquero / size2,
       golesFavorEquipo: stats2.golesFavorEquipo / size2,
       golesRecibidosEquipo: stats2.golesRecibidosEquipo / size2,
+      pulmonTrackingTotal: stats2.pulmonTrackingTotal,
       cantidadArqueros: stats2.cantidadArqueros
     };
 
@@ -396,6 +484,7 @@ class GeneticTeamOptimizer {
     fitness += Math.abs(avg1.rendimientoArquero - avg2.rendimientoArquero) * this.fitnessWeights.rendimientoArquero;
     fitness += Math.abs(avg1.golesFavorEquipo - avg2.golesFavorEquipo) * this.fitnessWeights.golesFavorEquipo;
     fitness += Math.abs(avg1.golesRecibidosEquipo - avg2.golesRecibidosEquipo) * this.fitnessWeights.golesRecibidosEquipo;
+    fitness += Math.abs((avg1.pulmonTrackingTotal || 0) - (avg2.pulmonTrackingTotal || 0)) * this.fitnessWeights.pulmonTrackingTotal;
     fitness += Math.abs((avg1.cantidadArqueros || 0) - (avg2.cantidadArqueros || 0)) * this.fitnessWeights.cantidadArqueros;
     return fitness;
   }
@@ -474,9 +563,10 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: 0,
       golesRecibidosEquipo: 0,
       winrate: 0,
-      pulmon: 0,
+      pulmonTrackingTotal: 0,
       cantidadArqueros: 0,
-      impactoMatchmaking: 0
+      impactoMatchmaking: 0,
+      jugadoresConPulmonTracking: 0
     };
 
     for (const jugador of equipo) {
@@ -486,7 +576,11 @@ class GeneticTeamOptimizer {
       stats.golesFavorEquipo += jugador.golesFavorEquipo;
       stats.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
       stats.winrate += jugador.winrate;
-      stats.pulmon += jugador.pulmon;
+      const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
+      if (pulmonTracking !== null && pulmonTracking > 0) {
+        stats.pulmonTrackingTotal += pulmonTracking;
+        stats.jugadoresConPulmonTracking += 1;
+      }
       stats.cantidadArqueros += jugador.cantidadArqueros;
       stats.impactoMatchmaking += jugador.impactoMatchmaking || 0;
     }
@@ -499,7 +593,10 @@ class GeneticTeamOptimizer {
       golesFavorPromedio: size > 0 ? stats.golesFavorEquipo / size : 0,
       golesRecibidosPromedio: size > 0 ? stats.golesRecibidosEquipo / size : 0,
       winratePromedio: size > 0 ? stats.winrate / size : 0,
-      pulmonPromedio: size > 0 ? stats.pulmon / size : 0,
+      pulmonPromedio: stats.jugadoresConPulmonTracking > 0 ? stats.pulmonTrackingTotal / stats.jugadoresConPulmonTracking : 0,
+      pulmonTotal: stats.pulmonTrackingTotal,
+      pulmonTrackingTotal: stats.pulmonTrackingTotal,
+      jugadoresConPulmonTracking: stats.jugadoresConPulmonTracking,
       cantidadArqueros: stats.cantidadArqueros,
       impactoMatchmaking: stats.impactoMatchmaking,
       jugadores: size
@@ -523,6 +620,7 @@ let contadorParejas = { enfrentadas: 1, juntas: 1 };
 let ultimosJugadoresUsados = ''; // Para recordar la última configuración
 let modoRendimientoMatchmaking = MODO_RENDIMIENTO_HISTORICO;
 let partidosRecientesMatchmaking = PARTIDOS_RECIENTES_DEFAULT;
+let seleccionIntercambioMatchmaking = null;
 
 function obtenerPosicionesJugador(jugador) {
   return jugador?.jugadores?.jugador_posicion || jugador?.jugador_posicion || [];
@@ -615,6 +713,293 @@ function obtenerEquipoGolEnPartidoMatchmaking(gol, jugadoresPartido = []) {
   }
 
   return goleadorEnPartido.equipo;
+}
+
+function esErrorColumnaFaltanteMatchmaking(error, columna) {
+  const mensaje = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code
+  ].filter(Boolean).join(' ').toLowerCase();
+  return mensaje.includes(String(columna).toLowerCase());
+}
+
+function construirSelectPartidosMomentosMatchmaking({ incluirArquero = true, incluirReview = true, incluirCagada = true } = {}) {
+  const columnasGol = [
+    'id',
+    'goleador_id',
+    'equipo',
+    'es_gol_en_contra',
+    'minuto'
+  ];
+
+  if (incluirCagada) columnasGol.push('cagada_jugador_id');
+  if (incluirArquero) columnasGol.push('arquero_id');
+  if (incluirReview) columnasGol.push('review_segundos');
+
+  return `
+    id,
+    fecha,
+    temporada_id,
+    equipo_ganador,
+    jugador_partido (
+      jugador_id,
+      equipo,
+      cagadas
+    ),
+    goles (
+      ${columnasGol.join(',\n      ')}
+    )
+  `;
+}
+
+async function consultarPartidosMomentosMatchmaking(temporadaId = '', opciones = {}) {
+  const incluirArquero = opciones.incluirArquero !== false;
+  const incluirReview = opciones.incluirReview !== false;
+  const incluirCagada = opciones.incluirCagada !== false;
+
+  let query = window.supabase
+    .from('partidos')
+    .select(construirSelectPartidosMomentosMatchmaking({ incluirArquero, incluirReview, incluirCagada }))
+    .order('fecha', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (temporadaId) {
+    query = query.eq('temporada_id', temporadaId);
+  }
+
+  const resultado = await query;
+  if (!resultado.error) return { partidos: resultado.data || [], incluyeArquero: incluirArquero };
+
+  if (incluirCagada && esErrorColumnaFaltanteMatchmaking(resultado.error, 'cagada_jugador_id')) {
+    return consultarPartidosMomentosMatchmaking(temporadaId, { incluirArquero, incluirReview, incluirCagada: false });
+  }
+
+  if (incluirArquero && esErrorColumnaFaltanteMatchmaking(resultado.error, 'arquero_id')) {
+    return consultarPartidosMomentosMatchmaking(temporadaId, { incluirArquero: false, incluirReview, incluirCagada });
+  }
+
+  if (incluirReview && esErrorColumnaFaltanteMatchmaking(resultado.error, 'review_segundos')) {
+    return consultarPartidosMomentosMatchmaking(temporadaId, { incluirArquero, incluirReview: false, incluirCagada });
+  }
+
+  throw resultado.error;
+}
+
+function obtenerMinutoGolMatchmaking(gol) {
+  const minuto = numeroFinitoMatchmaking(gol?.minuto);
+  if (minuto !== null && minuto >= 0) return minuto;
+
+  const reviewSegundos = numeroFinitoMatchmaking(gol?.review_segundos);
+  return reviewSegundos !== null && reviewSegundos >= 0 ? reviewSegundos / 60 : null;
+}
+
+function crearDinamicaMatchmakingVacia() {
+  return {
+    partidos: 0,
+    arrancoPerdiendo: 0,
+    remontadasGanadas: 0,
+    empatesDesdePerdiendo: 0,
+    cagadas: 0
+  };
+}
+
+function crearResumenJugadorMomentosMatchmaking() {
+  return {
+    convertidos: [],
+    recibidosArquero: [],
+    versus: new Map(),
+    juntos: new Map(),
+    dinamica: crearDinamicaMatchmakingVacia()
+  };
+}
+
+function asegurarRelacionMatchmaking(mapa, jugadorId) {
+  const key = String(jugadorId || '');
+  if (!key) return null;
+  if (!mapa.has(key)) {
+    mapa.set(key, {
+      pj: 0,
+      victorias: 0,
+      empates: 0,
+      derrotas: 0,
+      rachaVictoriasActual: 0,
+      mejorRachaVictorias: 0
+    });
+  }
+  return mapa.get(key);
+}
+
+function asegurarVersusMatchmaking(resumenJugador, rivalId) {
+  return asegurarRelacionMatchmaking(resumenJugador.versus, rivalId);
+}
+
+function asegurarJuntosMatchmaking(resumenJugador, companeroId) {
+  return asegurarRelacionMatchmaking(resumenJugador.juntos, companeroId);
+}
+
+function convertirVersusMatchmaking(versus = new Map()) {
+  const salida = {};
+  versus.forEach((stat, rivalId) => {
+    const pj = Number(stat.pj) || 0;
+    salida[rivalId] = {
+      ...stat,
+      winrate: pj > 0 ? ((Number(stat.victorias) || 0) / pj) * 100 : 0
+    };
+  });
+  return salida;
+}
+
+function obtenerEventosGolOrdenadosPartidoMatchmaking(partido) {
+  const jugadoresPartido = partido?.jugador_partido || [];
+  return (partido?.goles || [])
+    .map(gol => ({
+      gol,
+      equipo: obtenerEquipoGolEnPartidoMatchmaking(gol, jugadoresPartido),
+      minuto: obtenerMinutoGolMatchmaking(gol)
+    }))
+    .filter(evento => evento.equipo === 1 || evento.equipo === 2)
+    .sort((a, b) => {
+      const minutoA = a.minuto === null ? Number.POSITIVE_INFINITY : a.minuto;
+      const minutoB = b.minuto === null ? Number.POSITIVE_INFINITY : b.minuto;
+      if (minutoA !== minutoB) return minutoA - minutoB;
+      return String(a.gol?.id || '').localeCompare(String(b.gol?.id || ''));
+    });
+}
+
+function calcularCagadasJugadorPartidoMatchmaking(partido, jugadorPartido) {
+  const cagadasJugadorPartido = Number(jugadorPartido?.cagadas) || 0;
+  const cagadasDesdeGoles = (partido?.goles || [])
+    .filter(gol => String(gol?.cagada_jugador_id || '') === String(jugadorPartido?.jugador_id || ''))
+    .length;
+
+  if (cagadasJugadorPartido > 0 && cagadasDesdeGoles > 0) {
+    return Math.max(cagadasJugadorPartido, cagadasDesdeGoles);
+  }
+
+  return cagadasJugadorPartido + cagadasDesdeGoles;
+}
+
+async function enriquecerJugadoresConMomentosMatchmaking(jugadores, temporadaId = '') {
+  if (!window.supabase || !Array.isArray(jugadores) || jugadores.length === 0) {
+    return jugadores;
+  }
+
+  const idsSeleccionados = new Set(
+    jugadores
+      .map(jugador => obtenerIdJugadorMatchmaking(jugador))
+      .filter(Boolean)
+      .map(id => String(id))
+  );
+
+  if (idsSeleccionados.size === 0) return jugadores;
+
+  try {
+    const { partidos, incluyeArquero } = await consultarPartidosMomentosMatchmaking(temporadaId);
+    const momentosPorJugador = new Map();
+
+    idsSeleccionados.forEach(id => {
+      momentosPorJugador.set(id, crearResumenJugadorMomentosMatchmaking());
+    });
+
+    (partidos || []).forEach(partido => {
+      const jugadoresPartido = partido.jugador_partido || [];
+      const seleccionadosPartido = jugadoresPartido.filter(jp => (
+        idsSeleccionados.has(String(jp.jugador_id || ''))
+        && (Number(jp.equipo) === 1 || Number(jp.equipo) === 2)
+      ));
+      const golesOrdenados = obtenerEventosGolOrdenadosPartidoMatchmaking(partido);
+      const primerEquipoGol = golesOrdenados[0]?.equipo || null;
+      const equipoGanador = Number(partido.equipo_ganador);
+
+      seleccionadosPartido.forEach(jp => {
+        const jugadorId = String(jp.jugador_id || '');
+        const resumen = momentosPorJugador.get(jugadorId);
+        if (!resumen) return;
+
+        const equipoJugador = Number(jp.equipo);
+        resumen.dinamica.partidos += 1;
+        resumen.dinamica.cagadas += calcularCagadasJugadorPartidoMatchmaking(partido, jp);
+
+        if (primerEquipoGol && primerEquipoGol !== equipoJugador) {
+          resumen.dinamica.arrancoPerdiendo += 1;
+          if (equipoGanador === equipoJugador) {
+            resumen.dinamica.remontadasGanadas += 1;
+          } else if (!equipoGanador) {
+            resumen.dinamica.empatesDesdePerdiendo += 1;
+          }
+        }
+      });
+
+      seleccionadosPartido.forEach(jugador => {
+        seleccionadosPartido.forEach(rival => {
+          if (String(jugador.jugador_id) === String(rival.jugador_id)) return;
+
+          const resumen = momentosPorJugador.get(String(jugador.jugador_id));
+          if (!resumen) return;
+
+          const mismoEquipo = Number(jugador.equipo) === Number(rival.equipo);
+          const stat = mismoEquipo
+            ? asegurarJuntosMatchmaking(resumen, rival.jugador_id)
+            : asegurarVersusMatchmaking(resumen, rival.jugador_id);
+          if (!stat) return;
+
+          stat.pj += 1;
+          if (equipoGanador === Number(jugador.equipo)) {
+            stat.victorias += 1;
+            stat.rachaVictoriasActual = (Number(stat.rachaVictoriasActual) || 0) + 1;
+            stat.mejorRachaVictorias = Math.max(Number(stat.mejorRachaVictorias) || 0, stat.rachaVictoriasActual);
+          } else if (!equipoGanador) {
+            stat.empates += 1;
+            stat.rachaVictoriasActual = 0;
+          } else {
+            stat.derrotas += 1;
+            stat.rachaVictoriasActual = 0;
+          }
+        });
+      });
+
+      (partido.goles || []).forEach(gol => {
+        const minuto = obtenerMinutoGolMatchmaking(gol);
+        const segundos = minuto === null ? null : Math.round(minuto * 60);
+        const base = {
+          partido_id: partido.id,
+          fecha: partido.fecha || null,
+          minuto,
+          segundos,
+          goleador_id: gol.goleador_id || null,
+          arquero_id: incluyeArquero ? (gol.arquero_id || null) : null
+        };
+
+        if (!gol.es_gol_en_contra && gol.goleador_id && idsSeleccionados.has(String(gol.goleador_id))) {
+          momentosPorJugador.get(String(gol.goleador_id))?.convertidos.push(base);
+        }
+
+        if (!gol.es_gol_en_contra && incluyeArquero && gol.arquero_id && idsSeleccionados.has(String(gol.arquero_id))) {
+          momentosPorJugador.get(String(gol.arquero_id))?.recibidosArquero.push(base);
+        }
+      });
+    });
+
+    return jugadores.map(jugador => {
+      const id = obtenerIdJugadorMatchmaking(jugador);
+      const momentos = id ? momentosPorJugador.get(String(id)) : null;
+      if (!momentos) return jugador;
+
+      return {
+        ...jugador,
+        momentosGolesMatchmaking: momentos.convertidos,
+        momentosGolesRecibidosArqueroMatchmaking: momentos.recibidosArquero,
+        matchmakingVersus: convertirVersusMatchmaking(momentos.versus),
+        matchmakingJuntos: convertirVersusMatchmaking(momentos.juntos),
+        matchmakingDinamica: momentos.dinamica
+      };
+    });
+  } catch (error) {
+    console.warn('No se pudieron cargar momentos historicos para matchmaking:', error);
+    return jugadores;
+  }
 }
 
 function crearStatsRecientesBase(jugadorSeleccionado, cantidadPartidos) {
@@ -1095,6 +1480,11 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('best-fitness').textContent = '--';
         }
 
+        datosJugadoresSeleccionados = await enriquecerJugadoresConMomentosMatchmaking(
+          datosJugadoresSeleccionados,
+          configuracionRendimiento.temporadaId
+        );
+
         geneticOptimizer.setJugadores(datosJugadoresSeleccionados);
 
         // Ejecutar el algoritmo
@@ -1112,6 +1502,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Guardar los jugadores usados para recordarlos la próxima vez
         ultimosJugadoresUsados = document.getElementById('input-jugadores-partido').value;
         
+        seleccionIntercambioMatchmaking = null;
+
         // Mostrar resultados
         mostrarResultados(resultado);
         
@@ -1299,26 +1691,76 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-function renderizarJugadorResultadoMatchmaking(jugador) {
+const MATCHMAKING_TEAM_THEMES = {
+  equipo1: {
+    name: 'Equipo 1',
+    color: '#4c8dff',
+    soft: 'rgba(76, 141, 255, 0.12)'
+  },
+  equipo2: {
+    name: 'Equipo 2',
+    color: '#ff5d5d',
+    soft: 'rgba(255, 93, 93, 0.12)'
+  }
+};
+
+function porcentajeImpactoEquipoMatchmaking(stats1 = {}, stats2 = {}) {
+  const impacto1 = numeroSeguroMatchmaking(stats1.impactoMatchmaking);
+  const impacto2 = numeroSeguroMatchmaking(stats2.impactoMatchmaking);
+  const total = impacto1 + impacto2;
+  if (total <= 0) return { equipo1: 50, equipo2: 50 };
+  return {
+    equipo1: (impacto1 / total) * 100,
+    equipo2: (impacto2 / total) * 100
+  };
+}
+
+function maxImpactoJugadoresMatchmaking(resultado) {
+  const impactos = [
+    ...(resultado?.equipo1?.jugadores || []),
+    ...(resultado?.equipo2?.jugadores || [])
+  ].map(jugador => numeroSeguroMatchmaking(jugador.impactoMatchmaking));
+  return Math.max(1, ...impactos);
+}
+
+function renderizarJugadorResultadoMatchmaking(jugador, equipoKey = '', index = 0, opciones = {}) {
   const skill = Number(jugador.skillMatchmaking ?? jugador.rendimientoTotal) || 0;
   const impacto = Number(jugador.impactoMatchmaking) || 0;
   const rolArquero = jugador.rolPartido === ROL_PARTIDO_ARQUERO;
+  const estaSeleccionado = seleccionIntercambioMatchmaking &&
+    seleccionIntercambioMatchmaking.equipoKey === equipoKey &&
+    Number(seleccionIntercambioMatchmaking.index) === Number(index);
   const partidosRecientes = jugador.origenRendimiento === MODO_RENDIMIENTO_RECIENTE
     ? `<small class="text-light-emphasis">${jugador.partidosRecientesUsados}/${jugador.partidosRecientesSolicitados} PJ</small>`
     : '';
+  const maxImpacto = Math.max(1, numeroSeguroMatchmaking(opciones.maxImpacto, 1));
+  const anchoImpacto = Math.max(4, Math.min(100, (impacto / maxImpacto) * 100));
+  const tema = MATCHMAKING_TEAM_THEMES[equipoKey] || MATCHMAKING_TEAM_THEMES.equipo1;
+  const esClave = opciones.jugadorClave && String(opciones.jugadorClave.id || opciones.jugadorClave.nombre) === String(jugador.id || jugador.nombre);
+  const rolTexto = rolArquero ? 'Arquero' : 'Jugador';
 
   return `
-    <span class="player-card matchmaking-impact-card">
-      <span class="matchmaking-player-main">
-        <span class="matchmaking-player-name">${jugador.nombre}</span>
-        <span class="badge ${rolArquero ? 'bg-warning text-dark' : 'bg-primary'}">${etiquetaRolPartido(jugador.rolPartido)}</span>
-      </span>
-      <span class="matchmaking-player-metrics">
-        <small class="matchmaking-skill-pill">Skill ${skill.toFixed(1)}</small>
-        <small class="matchmaking-impact-pill">${impacto.toFixed(1)}% impacto</small>
+    <button
+      type="button"
+      class="matchmaking-player-row matchmaking-swap-player ${estaSeleccionado ? 'is-selected' : ''} ${esClave ? 'is-key' : ''}"
+      onclick="seleccionarJugadorIntercambioMatchmaking('${equipoKey}', ${index})"
+      aria-pressed="${estaSeleccionado ? 'true' : 'false'}"
+      title="${estaSeleccionado ? 'Cancelar seleccion' : 'Seleccionar para intercambiar'}"
+    >
+      <span class="matchmaking-player-row__top">
+        <span class="matchmaking-player-row__name">
+          ${escaparHtmlMatchmaking(jugador.nombre)}
+          ${esClave ? '<i class="bi bi-star-fill matchmaking-player-row__star" title="Jugador clave"></i>' : ''}
+        </span>
+        <span class="matchmaking-player-row__role">${rolTexto}</span>
+        <span class="matchmaking-player-row__skill">Skill ${skill.toFixed(1)}</span>
+        <span class="matchmaking-player-row__impact">${impacto.toFixed(1)}%</span>
         ${partidosRecientes}
       </span>
-    </span>
+      <span class="matchmaking-player-bar">
+        <span class="matchmaking-player-bar__fill" style="width:${anchoImpacto.toFixed(1)}%; background:${tema.color};"></span>
+      </span>
+    </button>
   `;
 }
 
@@ -1348,7 +1790,7 @@ function renderizarNotaJugadorClaveMatchmaking(resultado) {
     : 'según su rendimiento histórico';
 
   return `
-    <div class="matchmaking-key-note mt-3">
+    <div class="matchmaking-key-note">
       <i class="bi bi-exclamation-diamond me-2"></i>
       Este balance depende especialmente de que <strong>${jugadorClave.nombre}</strong> juegue como viene jugando:
       aporta <strong>${impacto.toFixed(1)}%</strong> del impacto del armado con skill <strong>${skill.toFixed(1)}</strong> ${contexto}.
@@ -1407,7 +1849,7 @@ function renderizarNotaSobreRendimientoReciente(resultado) {
     : '';
 
   return `
-    <div class="matchmaking-key-note matchmaking-trend-note mt-2">
+    <div class="matchmaking-key-note matchmaking-trend-note">
       <i class="bi bi-graph-up-arrow me-2"></i>
       Ojo con <strong>${jugador.nombre}</strong>: viene jugando bastante por encima de su histórico
       (skill reciente <strong>${reciente.toFixed(1)}</strong> vs histórico <strong>${historico.toFixed(1)}</strong>,
@@ -1416,7 +1858,945 @@ function renderizarNotaSobreRendimientoReciente(resultado) {
   `;
 }
 
+// Helpers para notas de atencion del matchmaking
+function escaparHtmlMatchmaking(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+const TRAMOS_GOL_MATCHMAKING = [
+  { key: 't0_15', label: '0-15', min: 0, max: 15 * 60 },
+  { key: 't15_30', label: '15-30', min: 15 * 60, max: 30 * 60 },
+  { key: 't30_45', label: '30-45', min: 30 * 60, max: 45 * 60 },
+  { key: 't45_plus', label: '45+', min: 45 * 60, max: Number.POSITIVE_INFINITY }
+];
+
+function obtenerListaDisponibleMatchmaking(...listas) {
+  return listas.find(lista => Array.isArray(lista) && lista.length > 0) || [];
+}
+
+function obtenerSegundosEventoGolMatchmaking(evento) {
+  const segundosDirectos = numeroFinitoMatchmaking(
+    evento?.segundos ?? evento?.match_seconds ?? evento?.review_seconds ?? evento?.sam3_seconds ?? evento?.seconds
+  );
+  if (segundosDirectos !== null && segundosDirectos >= 0) return segundosDirectos;
+
+  const minuto = numeroFinitoMatchmaking(evento?.minuto ?? evento?.minute);
+  return minuto !== null && minuto >= 0 ? minuto * 60 : null;
+}
+
+function crearDistribucionVaciaTramosMatchmaking() {
+  return TRAMOS_GOL_MATCHMAKING.reduce((acc, tramo) => {
+    acc[tramo.key] = 0;
+    return acc;
+  }, {});
+}
+
+function obtenerTramoPorSegundosMatchmaking(segundos) {
+  return TRAMOS_GOL_MATCHMAKING.find(tramo => segundos >= tramo.min && segundos < tramo.max) || null;
+}
+
+function calcularDistribucionEventosGolMatchmaking(eventos = []) {
+  const distribucion = crearDistribucionVaciaTramosMatchmaking();
+  let total = 0;
+
+  (eventos || []).forEach(evento => {
+    const segundos = obtenerSegundosEventoGolMatchmaking(evento);
+    if (segundos === null) return;
+
+    const tramo = obtenerTramoPorSegundosMatchmaking(segundos);
+    if (!tramo) return;
+
+    distribucion[tramo.key] += 1;
+    total += 1;
+  });
+
+  return { distribucion, total };
+}
+
+function obtenerTramoDominanteDistribucionMatchmaking(distribucion = {}, totalForzado = null, opciones = {}) {
+  const total = totalForzado ?? TRAMOS_GOL_MATCHMAKING.reduce((sum, tramo) => sum + (Number(distribucion[tramo.key]) || 0), 0);
+  const minimoTotal = opciones.minimoTotal ?? 2;
+  const minimoCantidad = opciones.minimoCantidad ?? 2;
+  const minimoPorcentaje = opciones.minimoPorcentaje ?? 45;
+
+  if (total < minimoTotal) return null;
+
+  const tramos = TRAMOS_GOL_MATCHMAKING
+    .map(tramo => ({
+      ...tramo,
+      cantidad: Number(distribucion[tramo.key]) || 0
+    }))
+    .sort((a, b) => b.cantidad - a.cantidad);
+
+  const principal = tramos[0];
+  const segundo = tramos[1];
+  const porcentaje = total > 0 ? (principal.cantidad / total) * 100 : 0;
+
+  if (principal.cantidad < minimoCantidad || porcentaje < minimoPorcentaje) return null;
+  if (segundo && principal.cantidad - segundo.cantidad < 2 && porcentaje < 60) return null;
+
+  return {
+    ...principal,
+    total,
+    porcentaje
+  };
+}
+
+function obtenerDistribucionTramosJugadorMatchmaking(jugador) {
+  const distribucion = jugador?.distribucionTramos;
+  if (!distribucion || typeof distribucion !== 'object') return null;
+  const total = TRAMOS_GOL_MATCHMAKING.reduce((sum, tramo) => sum + (Number(distribucion[tramo.key]) || 0), 0);
+  return total > 0 ? { distribucion, total } : null;
+}
+
+function obtenerEventosGolesConvertidosMatchmaking(jugador) {
+  return obtenerListaDisponibleMatchmaking(
+    jugador?.momentosGolesMatchmaking,
+    jugador?.trackingGoalsScoredLocations,
+    jugador?.tracking?.goal_locations
+  );
+}
+
+function obtenerEventosGolesRecibidosArqueroMatchmaking(jugador) {
+  return obtenerListaDisponibleMatchmaking(
+    jugador?.momentosGolesRecibidosArqueroMatchmaking,
+    jugador?.trackingGoalsConcededLocations
+  );
+}
+
+function obtenerTramoDominanteGolesJugadorMatchmaking(jugador, tipo = 'convertidos') {
+  const eventos = tipo === 'recibidos'
+    ? obtenerEventosGolesRecibidosArqueroMatchmaking(jugador)
+    : obtenerEventosGolesConvertidosMatchmaking(jugador);
+  const desdeEventos = calcularDistribucionEventosGolMatchmaking(eventos);
+  const dominanteEventos = obtenerTramoDominanteDistribucionMatchmaking(desdeEventos.distribucion, desdeEventos.total, {
+    minimoTotal: 2,
+    minimoCantidad: 2,
+    minimoPorcentaje: tipo === 'recibidos' ? 50 : 45
+  });
+
+  if (dominanteEventos) return dominanteEventos;
+
+  if (tipo === 'convertidos') {
+    const desdePerfil = obtenerDistribucionTramosJugadorMatchmaking(jugador);
+    if (desdePerfil) {
+      return obtenerTramoDominanteDistribucionMatchmaking(desdePerfil.distribucion, desdePerfil.total, {
+        minimoTotal: 3,
+        minimoCantidad: 2,
+        minimoPorcentaje: 45
+      });
+    }
+  }
+
+  return null;
+}
+
+function obtenerGolesPorPartidoMatchmaking(jugador) {
+  const pj = Math.max(numeroSeguroMatchmaking(jugador?.pj), 0);
+  return pj > 0 ? numeroSeguroMatchmaking(jugador?.goles) / pj : 0;
+}
+
+function obtenerStatsArqueroMatchmaking(jugador) {
+  const pjArquero = numeroSeguroMatchmaking(jugador?.pjArquero) || (jugador?.rolPartido === ROL_PARTIDO_ARQUERO ? numeroSeguroMatchmaking(jugador?.pj) : 0);
+  const atajadas = numeroSeguroMatchmaking(jugador?.atajadas);
+  const golesRecibidos = numeroSeguroMatchmaking(jugador?.golesRecibidosArquero);
+
+  return {
+    pjArquero,
+    atajadas,
+    golesRecibidos,
+    atajadasPP: pjArquero > 0 ? atajadas / pjArquero : 0,
+    golesRecibidosPP: pjArquero > 0 ? golesRecibidos / pjArquero : 0,
+    atajadasPorGol: golesRecibidos > 0 ? atajadas / golesRecibidos : null
+  };
+}
+
+function obtenerArqueroPrincipalEquipoMatchmaking(jugadores = []) {
+  return (jugadores || [])
+    .filter(jugador => jugador.rolPartido === ROL_PARTIDO_ARQUERO)
+    .sort((a, b) => {
+      const statsA = obtenerStatsArqueroMatchmaking(a);
+      const statsB = obtenerStatsArqueroMatchmaking(b);
+      if (statsB.pjArquero !== statsA.pjArquero) return statsB.pjArquero - statsA.pjArquero;
+      return statsB.atajadas - statsA.atajadas;
+    })[0] || null;
+}
+
+function obtenerMejorGoleadorEquipoMatchmaking(jugadores = []) {
+  const candidatos = (jugadores || [])
+    .filter(jugador => jugador.rolPartido !== ROL_PARTIDO_ARQUERO)
+    .map(jugador => {
+      const goles = numeroSeguroMatchmaking(jugador.goles);
+      const golesPP = obtenerGolesPorPartidoMatchmaking(jugador);
+      if (goles < 3 && golesPP < 0.35) return null;
+      return {
+        jugador,
+        goles,
+        golesPP,
+        tramo: obtenerTramoDominanteGolesJugadorMatchmaking(jugador, 'convertidos'),
+        score: (golesPP * 100) + (goles * 2) + (numeroSeguroMatchmaking(jugador.impactoMatchmaking) * 0.2)
+      };
+    })
+    .filter(Boolean);
+
+  return candidatos.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+function promedioEquipoMatchmaking(jugadores = [], obtenerValor) {
+  const valores = (jugadores || [])
+    .map(obtenerValor)
+    .map(valor => numeroFinitoMatchmaking(valor))
+    .filter(valor => valor !== null && valor > 0);
+
+  if (valores.length === 0) return { promedio: 0, cantidad: 0 };
+  return {
+    promedio: valores.reduce((sum, valor) => sum + valor, 0) / valores.length,
+    cantidad: valores.length
+  };
+}
+
+function obtenerKm40JugadorMatchmaking(jugador) {
+  return numeroFinitoMatchmaking(
+    jugador?.trackingDistancePer40Km
+    ?? jugador?.tracking?.distance_per_40_min_km
+    ?? jugador?.distance_per_40_min_km
+  );
+}
+
+function obtenerPulmonJugadorMatchmaking(jugador) {
+  return obtenerPulmonTrackingMatchmaking(jugador);
+}
+
+function generarNotaFisicaMatchmaking(equipo, rival, nombreRival) {
+  const kmEquipo = promedioEquipoMatchmaking(equipo, obtenerKm40JugadorMatchmaking);
+  const kmRival = promedioEquipoMatchmaking(rival, obtenerKm40JugadorMatchmaking);
+
+  if (kmEquipo.cantidad >= 2 && kmRival.cantidad >= 2) {
+    const diferenciaKm = kmEquipo.promedio - kmRival.promedio;
+    if (Math.abs(diferenciaKm) >= 0.35) {
+      return diferenciaKm > 0
+        ? `Dato fisico: +${diferenciaKm.toFixed(1)} km/40 de promedio sobre ${escaparHtmlMatchmaking(nombreRival)}.`
+        : `Dato fisico: ${escaparHtmlMatchmaking(nombreRival)} tiene +${Math.abs(diferenciaKm).toFixed(1)} km/40 de promedio.`;
+    }
+  }
+
+  const pulmonEquipo = promedioEquipoMatchmaking(equipo, obtenerPulmonJugadorMatchmaking);
+  const pulmonRival = promedioEquipoMatchmaking(rival, obtenerPulmonJugadorMatchmaking);
+
+  if (pulmonEquipo.cantidad >= 2 && pulmonRival.cantidad >= 2) {
+    const diferenciaPulmon = pulmonEquipo.promedio - pulmonRival.promedio;
+    if (Math.abs(diferenciaPulmon) >= 4) {
+      return diferenciaPulmon > 0
+        ? `Pulmon: +${diferenciaPulmon.toFixed(1)} de promedio sobre ${escaparHtmlMatchmaking(nombreRival)}.`
+        : `Pulmon: ${escaparHtmlMatchmaking(nombreRival)} tiene +${Math.abs(diferenciaPulmon).toFixed(1)} de promedio.`;
+    }
+  }
+
+  return null;
+}
+
+function obtenerMejorWinratePuntualMatchmaking(equipo = [], rival = []) {
+  const rivalesPorId = new Map(
+    (rival || [])
+      .map(jugador => [String(jugador.id || ''), jugador])
+      .filter(([id]) => id)
+  );
+
+  const candidatos = [];
+  (equipo || []).forEach(jugador => {
+    const versus = jugador.matchmakingVersus || {};
+    Object.entries(versus).forEach(([rivalId, stat]) => {
+      const rivalJugador = rivalesPorId.get(String(rivalId));
+      if (!rivalJugador) return;
+
+      const pj = Number(stat.pj) || 0;
+      const victorias = Number(stat.victorias) || 0;
+      const winrate = pj > 0 ? (victorias / pj) * 100 : 0;
+      if (pj < 3 || victorias < 2 || winrate < 65) return;
+
+      candidatos.push({
+        jugador,
+        rival: rivalJugador,
+        pj,
+        victorias,
+        winrate,
+        score: winrate + (pj * 2)
+      });
+    });
+  });
+
+  return candidatos.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+function obtenerGolesEquipoPorTramoMatchmaking(equipo = []) {
+  const eventos = (equipo || []).flatMap(jugador => obtenerEventosGolesConvertidosMatchmaking(jugador));
+  const resumen = calcularDistribucionEventosGolMatchmaking(eventos);
+  const ultimoCuarto = Number(resumen.distribucion.t45_plus) || 0;
+  return {
+    ...resumen,
+    ultimoCuarto,
+    pctUltimoCuarto: resumen.total > 0 ? (ultimoCuarto / resumen.total) * 100 : 0
+  };
+}
+
+function obtenerDinamicaEquipoMatchmaking(equipo = []) {
+  return (equipo || []).reduce((acc, jugador) => {
+    const dinamica = jugador.matchmakingDinamica || {};
+    acc.partidos += Number(dinamica.partidos) || 0;
+    acc.arrancoPerdiendo += Number(dinamica.arrancoPerdiendo) || 0;
+    acc.remontadasGanadas += Number(dinamica.remontadasGanadas) || 0;
+    acc.empatesDesdePerdiendo += Number(dinamica.empatesDesdePerdiendo) || 0;
+    acc.cagadas += Number(dinamica.cagadas) || Number(jugador.cagadasEnGol) || 0;
+    return acc;
+  }, {
+    partidos: 0,
+    arrancoPerdiendo: 0,
+    remontadasGanadas: 0,
+    empatesDesdePerdiendo: 0,
+    cagadas: 0
+  });
+}
+
+function obtenerCagadasEquipoMatchmaking(equipo = []) {
+  const dinamica = obtenerDinamicaEquipoMatchmaking(equipo);
+  if (dinamica.partidos > 0) {
+    return {
+      total: dinamica.cagadas,
+      partidos: dinamica.partidos,
+      porPartido: dinamica.cagadas / dinamica.partidos
+    };
+  }
+
+  const total = (equipo || []).reduce((sum, jugador) => sum + (Number(jugador.cagadasEnGol) || 0), 0);
+  const partidos = (equipo || []).reduce((sum, jugador) => sum + (Number(jugador.pj) || 0), 0);
+  return {
+    total,
+    partidos,
+    porPartido: partidos > 0 ? total / partidos : 0
+  };
+}
+
+function generarNotaWinratePuntualMatchmaking(equipo, rival) {
+  const dominio = obtenerMejorWinratePuntualMatchmaking(equipo, rival);
+  if (!dominio) return null;
+
+  return `<strong>${escaparHtmlMatchmaking(dominio.jugador.nombre)}</strong> tiene ${dominio.winrate.toFixed(0)}% de winrate sobre <strong>${escaparHtmlMatchmaking(dominio.rival.nombre)}</strong> (${dominio.victorias}/${dominio.pj} PJ).`;
+}
+
+function obtenerMejorRachaVsRivalMatchmaking(equipo = [], rival = []) {
+  const rivalesPorId = new Map(
+    (rival || [])
+      .map(jugador => [String(jugador.id || ''), jugador])
+      .filter(([id]) => id)
+  );
+
+  const candidatos = [];
+  (equipo || []).forEach(jugador => {
+    const versus = jugador.matchmakingVersus || {};
+    Object.entries(versus).forEach(([rivalId, stat]) => {
+      const rivalJugador = rivalesPorId.get(String(rivalId));
+      if (!rivalJugador) return;
+
+      const racha = Number(stat.rachaVictoriasActual) || 0;
+      const pj = Number(stat.pj) || 0;
+      if (racha < 3 || pj < racha) return;
+
+      candidatos.push({
+        jugador,
+        rival: rivalJugador,
+        racha,
+        pj,
+        score: (racha * 10) + pj
+      });
+    });
+  });
+
+  return candidatos.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+function generarNotaRachaVsRivalMatchmaking(equipo, rival) {
+  const racha = obtenerMejorRachaVsRivalMatchmaking(equipo, rival);
+  if (!racha) return null;
+
+  return `Racha puntual: <strong>${escaparHtmlMatchmaking(racha.jugador.nombre)}</strong> trae ${racha.racha} victorias seguidas sobre <strong>${escaparHtmlMatchmaking(racha.rival.nombre)}</strong>.`;
+}
+
+function obtenerPeorWinrateParejaMatchmaking(equipo = []) {
+  const jugadoresPorId = new Map(
+    (equipo || [])
+      .map(jugador => [String(jugador.id || ''), jugador])
+      .filter(([id]) => id)
+  );
+  const candidatos = [];
+  const paresUsados = new Set();
+
+  (equipo || []).forEach(jugador => {
+    const juntos = jugador.matchmakingJuntos || {};
+    Object.entries(juntos).forEach(([companeroId, stat]) => {
+      const companero = jugadoresPorId.get(String(companeroId));
+      if (!companero) return;
+
+      const ids = [String(jugador.id), String(companero.id)].sort();
+      const key = ids.join(':');
+      if (paresUsados.has(key)) return;
+      paresUsados.add(key);
+
+      const pj = Number(stat.pj) || 0;
+      const victorias = Number(stat.victorias) || 0;
+      const winrate = pj > 0 ? (victorias / pj) * 100 : 0;
+      if (pj < 3 || winrate > 35) return;
+
+      candidatos.push({
+        jugador,
+        companero,
+        pj,
+        winrate,
+        score: winrate - (pj * 1.5)
+      });
+    });
+  });
+
+  return candidatos.sort((a, b) => a.score - b.score)[0] || null;
+}
+
+function generarNotaParejaNegativaMatchmaking(equipo) {
+  const pareja = obtenerPeorWinrateParejaMatchmaking(equipo);
+  if (!pareja) return null;
+
+  return `Advertencia dupla: <strong>${escaparHtmlMatchmaking(pareja.jugador.nombre)}</strong> y <strong>${escaparHtmlMatchmaking(pareja.companero.nombre)}</strong> tienen ${pareja.winrate.toFixed(0)}% de winrate juntos (${pareja.pj} PJ).`;
+}
+
+function generarNotaUltimoCuartoMatchmaking(equipo, rival) {
+  const propio = obtenerGolesEquipoPorTramoMatchmaking(equipo);
+  const rivalStats = obtenerGolesEquipoPorTramoMatchmaking(rival);
+
+  if (propio.total < 5 || propio.ultimoCuarto < 2) return null;
+  const ventajaPct = propio.pctUltimoCuarto - rivalStats.pctUltimoCuarto;
+  if (propio.pctUltimoCuarto < 38 && ventajaPct < 15) return null;
+
+  return `Cierre goleador: ${propio.pctUltimoCuarto.toFixed(0)}% de sus goles registrados fueron en el ultimo cuarto de hora.`;
+}
+
+function generarNotaRemontadaMatchmaking(equipo) {
+  const dinamica = obtenerDinamicaEquipoMatchmaking(equipo);
+  if (dinamica.arrancoPerdiendo < 5) return null;
+
+  const pctVictoria = (dinamica.remontadasGanadas / dinamica.arrancoPerdiendo) * 100;
+  if (pctVictoria >= 40) {
+    return `Dio vuelta un partido: ${pctVictoria.toFixed(0)}% cuando recibe el primer gol.`;
+  }
+
+  if (pctVictoria <= 20) {
+    return `Le cuesta darlo vuelta: ${pctVictoria.toFixed(0)}% cuando recibe el primer gol.`;
+  }
+
+  return null;
+}
+
+function generarNotaCagadasMatchmaking(equipo, rival, nombreRival) {
+  const propio = obtenerCagadasEquipoMatchmaking(equipo);
+  const rivalStats = obtenerCagadasEquipoMatchmaking(rival);
+  if (propio.partidos < 10 || propio.porPartido < 0.18) return null;
+  if (propio.porPartido < rivalStats.porPartido + 0.08 && propio.porPartido < 0.3) return null;
+
+  if (rivalStats.porPartido <= 0) return null;
+
+  const pctMas = ((propio.porPartido - rivalStats.porPartido) / rivalStats.porPartido) * 100;
+  if (pctMas < 25 && propio.porPartido < 0.3) return null;
+
+  return `Cagadas: ${pctMas.toFixed(0)}% mas que ${escaparHtmlMatchmaking(nombreRival)}.`;
+}
+
+function obtenerDueloGoleadorArqueroMatchmaking(equipo, arqueroRival) {
+  if (!arqueroRival) return null;
+
+  const jugadoresPorId = new Map(
+    (equipo || [])
+      .map(jugador => [String(jugador.id || ''), jugador])
+      .filter(([id]) => id)
+  );
+  if (jugadoresPorId.size === 0) return null;
+
+  const conteo = new Map();
+  obtenerEventosGolesRecibidosArqueroMatchmaking(arqueroRival).forEach(evento => {
+    const goleadorId = evento?.goleador_id ? String(evento.goleador_id) : '';
+    if (!goleadorId || !jugadoresPorId.has(goleadorId)) return;
+    conteo.set(goleadorId, (conteo.get(goleadorId) || 0) + 1);
+  });
+
+  return [...conteo.entries()]
+    .map(([id, goles]) => ({ jugador: jugadoresPorId.get(id), goles }))
+    .filter(item => item.goles >= 2)
+    .sort((a, b) => b.goles - a.goles)[0] || null;
+}
+
+function agregarNotaAtencionMatchmaking(notas, usadas, score, html, key = html) {
+  if (!html || usadas.has(key)) return;
+  usadas.add(key);
+  notas.push({ score, html });
+}
+
+function generarNotasAtencionEquipoMatchmaking(resultado, equipoKey) {
+  const equipo = resultado?.[equipoKey]?.jugadores || [];
+  const rivalKey = equipoKey === 'equipo1' ? 'equipo2' : 'equipo1';
+  const rival = resultado?.[rivalKey]?.jugadores || [];
+  const nombreRival = rivalKey === 'equipo1' ? 'Equipo 1' : 'Equipo 2';
+  const notas = [];
+  const usadas = new Set();
+  const arqueroPropio = obtenerArqueroPrincipalEquipoMatchmaking(equipo);
+  const arqueroRival = obtenerArqueroPrincipalEquipoMatchmaking(rival);
+  const goleadorPropio = obtenerMejorGoleadorEquipoMatchmaking(equipo);
+  const goleadorRival = obtenerMejorGoleadorEquipoMatchmaking(rival);
+  const duelo = obtenerDueloGoleadorArqueroMatchmaking(equipo, arqueroRival);
+  const notaWinratePuntual = generarNotaWinratePuntualMatchmaking(equipo, rival);
+
+  if (duelo && arqueroRival) {
+    agregarNotaAtencionMatchmaking(
+      notas,
+      usadas,
+      100,
+      `Explotar el duelo: <strong>${escaparHtmlMatchmaking(duelo.jugador.nombre)}</strong> ya le hizo <strong>${duelo.goles}</strong> goles a <strong>${escaparHtmlMatchmaking(arqueroRival.nombre)}</strong>.`,
+      `duelo:${duelo.jugador.id}:${arqueroRival.id}`
+    );
+  }
+
+  agregarNotaAtencionMatchmaking(notas, usadas, 96, notaWinratePuntual, 'winrate-puntual');
+  agregarNotaAtencionMatchmaking(notas, usadas, 95, generarNotaRachaVsRivalMatchmaking(equipo, rival), 'racha-vs-rival');
+  agregarNotaAtencionMatchmaking(notas, usadas, 94, generarNotaParejaNegativaMatchmaking(equipo), 'pareja-negativa');
+  agregarNotaAtencionMatchmaking(notas, usadas, 90, generarNotaUltimoCuartoMatchmaking(equipo, rival), 'ultimo-cuarto');
+  agregarNotaAtencionMatchmaking(notas, usadas, 84, generarNotaRemontadaMatchmaking(equipo), 'remontada');
+  agregarNotaAtencionMatchmaking(notas, usadas, 80, generarNotaCagadasMatchmaking(equipo, rival, nombreRival), 'cagadas');
+
+  if (goleadorRival) {
+    const nombre = escaparHtmlMatchmaking(goleadorRival.jugador.nombre);
+    if (goleadorRival.tramo) {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        92,
+        `Cuidar a <strong>${nombre}</strong> en el tramo <strong>${goleadorRival.tramo.label}</strong>: ahi hizo el ${goleadorRival.tramo.porcentaje.toFixed(0)}% de sus goles registrados.`,
+        `rival-scorer-time:${goleadorRival.jugador.id}`
+      );
+    } else {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        78,
+        `Cuidar a <strong>${nombre}</strong>: suma ${goleadorRival.goles} goles (${goleadorRival.golesPP.toFixed(2)}/PJ) en el historial.`,
+        `rival-scorer:${goleadorRival.jugador.id}`
+      );
+    }
+  }
+
+  if (goleadorPropio && (!duelo || String(duelo.jugador.id) !== String(goleadorPropio.jugador.id))) {
+    const nombre = escaparHtmlMatchmaking(goleadorPropio.jugador.nombre);
+    if (goleadorPropio.tramo) {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        88,
+        `Buscar a <strong>${nombre}</strong> en el <strong>${goleadorPropio.tramo.label}</strong>: ahi hizo el ${goleadorPropio.tramo.porcentaje.toFixed(0)}% de sus goles registrados.`,
+        `own-scorer-time:${goleadorPropio.jugador.id}`
+      );
+    } else {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        70,
+        `Buscar a <strong>${nombre}</strong>: es el mejor promedio de gol del equipo (${goleadorPropio.golesPP.toFixed(2)}/PJ).`,
+        `own-scorer:${goleadorPropio.jugador.id}`
+      );
+    }
+  }
+
+  if (arqueroPropio) {
+    const tramoRecibidos = obtenerTramoDominanteGolesJugadorMatchmaking(arqueroPropio, 'recibidos');
+    const statsArquero = obtenerStatsArqueroMatchmaking(arqueroPropio);
+    const nombre = escaparHtmlMatchmaking(arqueroPropio.nombre);
+
+    if (tramoRecibidos) {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        86,
+        `Proteger a <strong>${nombre}</strong> en el <strong>${tramoRecibidos.label}</strong>: ahi recibio el ${tramoRecibidos.porcentaje.toFixed(0)}% de sus goles registrados.`,
+        `own-keeper-time:${arqueroPropio.id}`
+      );
+    } else if (statsArquero.golesRecibidos >= 3 && statsArquero.atajadasPorGol !== null && statsArquero.atajadasPorGol < 1.25) {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        72,
+        `No exponer a <strong>${nombre}</strong>: su ratio es ${statsArquero.atajadasPorGol.toFixed(2)} atajadas por gol recibido.`,
+        `own-keeper-ratio:${arqueroPropio.id}`
+      );
+    }
+  }
+
+  if (arqueroRival) {
+    const statsRival = obtenerStatsArqueroMatchmaking(arqueroRival);
+    const nombre = escaparHtmlMatchmaking(arqueroRival.nombre);
+    if (statsRival.golesRecibidos >= 3 && statsRival.atajadasPorGol !== null && statsRival.atajadasPorGol < 1.25) {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        82,
+        `Probar al arco contra <strong>${nombre}</strong>: recibe bastante para su volumen de atajadas (${statsRival.atajadasPorGol.toFixed(2)} ataj/GR).`,
+        `rival-keeper-weak:${arqueroRival.id}`
+      );
+    } else if (statsRival.atajadas >= 5 && statsRival.atajadasPorGol !== null && statsRival.atajadasPorGol >= 2.2) {
+      agregarNotaAtencionMatchmaking(
+        notas,
+        usadas,
+        68,
+        `Elegir mejor el tiro ante <strong>${nombre}</strong>: sostiene ${statsRival.atajadasPorGol.toFixed(2)} atajadas por gol recibido.`,
+        `rival-keeper-strong:${arqueroRival.id}`
+      );
+    }
+  }
+
+  agregarNotaAtencionMatchmaking(notas, usadas, 64, generarNotaFisicaMatchmaking(equipo, rival, nombreRival), 'fisica');
+
+  if (notas.length === 0) {
+    const statsEquipo = resultado?.[equipoKey]?.estadisticas || {};
+    const statsRival = resultado?.[rivalKey]?.estadisticas || {};
+    const golesFavor = numeroSeguroMatchmaking(statsEquipo.golesFavorPromedio);
+    const golesRival = numeroSeguroMatchmaking(statsRival.golesFavorPromedio);
+    const golesRecibidos = numeroSeguroMatchmaking(statsEquipo.golesRecibidosPromedio);
+    const recibidosRival = numeroSeguroMatchmaking(statsRival.golesRecibidosPromedio);
+
+    if (golesRecibidos > recibidosRival + 0.25) {
+      agregarNotaAtencionMatchmaking(notas, usadas, 10, 'Cuidar perdidas y cierres: historicamente este grupo recibe mas goles por partido que el rival.', 'fallback-defense');
+    } else if (golesFavor > golesRival + 0.25) {
+      agregarNotaAtencionMatchmaking(notas, usadas, 10, 'Acelerar cuando recuperen: el equipo tiene mejor promedio historico de goles a favor.', 'fallback-attack');
+    } else {
+      agregarNotaAtencionMatchmaking(notas, usadas, 10, 'Partido parejo: priorizar marcas sobre los goleadores y administrar el ritmo antes de abrirse.', 'fallback-balance');
+    }
+  }
+
+  return notas
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map(nota => nota.html);
+}
+
+function renderizarNotasAtencionEquipoMatchmaking(resultado, equipoKey) {
+  const notas = generarNotasAtencionEquipoMatchmaking(resultado, equipoKey);
+  if (notas.length === 0) return '';
+
+  return `
+    <div class="matchmaking-attention">
+      <div class="matchmaking-attention-title">
+        A que prestar atencion
+      </div>
+      <ul class="matchmaking-attention-list">
+        ${notas.map(nota => `
+          <li>
+            <span class="matchmaking-attention-icon">${iconoNotaAtencionMatchmaking(nota)}</span>
+            <span>${nota}</span>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function iconoNotaAtencionMatchmaking(nota = '') {
+  const texto = String(nota).toLowerCase();
+  if (texto.includes('advertencia') || texto.includes('cagadas') || texto.includes('no exponer') || texto.includes('le cuesta')) {
+    return '<i class="bi bi-exclamation-triangle-fill"></i>';
+  }
+  if (texto.includes('racha')) return '<i class="bi bi-fire"></i>';
+  if (texto.includes('winrate') || texto.includes('duelo')) return '<i class="bi bi-diagram-3-fill"></i>';
+  if (texto.includes('gol') || texto.includes('tiro')) return '<i class="bi bi-bullseye"></i>';
+  if (texto.includes('vuelta') || texto.includes('remont')) return '<i class="bi bi-arrow-return-right"></i>';
+  if (texto.includes('fisico') || texto.includes('pulmon')) return '<i class="bi bi-heart-pulse-fill"></i>';
+  return '<i class="bi bi-lightning-charge-fill"></i>';
+}
+
 // Función para mostrar los resultados
+function obtenerCalculadorMatchmaking() {
+  return geneticOptimizer instanceof GeneticTeamOptimizer ? geneticOptimizer : new GeneticTeamOptimizer();
+}
+
+function convertirStatsEquipoAFitnessMatchmaking(stats = {}) {
+  const jugadores = Math.max(1, Number(stats.jugadores) || 0);
+  return {
+    rendimientoTotal: (Number(stats.rendimientoTotal) || 0) / jugadores,
+    rendimientoAtaque: (Number(stats.rendimientoAtaque) || 0) / jugadores,
+    rendimientoArquero: (Number(stats.rendimientoArquero) || 0) / jugadores,
+    golesFavorEquipo: Number(stats.golesFavorPromedio) || 0,
+    golesRecibidosEquipo: Number(stats.golesRecibidosPromedio) || 0,
+    pulmonTrackingTotal: numeroSeguroMatchmaking(stats.pulmonTrackingTotal ?? stats.pulmonTotal),
+    cantidadArqueros: Number(stats.cantidadArqueros) || 0
+  };
+}
+
+function recalcularResultadoIntercambioMatchmaking(resultado) {
+  if (!resultado?.equipo1?.jugadores || !resultado?.equipo2?.jugadores) return resultado;
+
+  const calculador = obtenerCalculadorMatchmaking();
+  resultado.equipo1.estadisticas = calculador.calcularEstadisticasEquipo(resultado.equipo1.jugadores);
+  resultado.equipo2.estadisticas = calculador.calcularEstadisticasEquipo(resultado.equipo2.jugadores);
+  resultado.fitness = calculador.calcularFitnessBalanceado(
+    convertirStatsEquipoAFitnessMatchmaking(resultado.equipo1.estadisticas),
+    convertirStatsEquipoAFitnessMatchmaking(resultado.equipo2.estadisticas)
+  );
+
+  return resultado;
+}
+
+function obtenerJugadorResultadoIntercambioMatchmaking(resultado, equipoKey, index) {
+  const jugadores = resultado?.[equipoKey]?.jugadores;
+  if (!Array.isArray(jugadores)) return null;
+  return jugadores[Number(index)] || null;
+}
+
+window.cancelarIntercambioMatchmaking = function() {
+  seleccionIntercambioMatchmaking = null;
+  if (window.ultimoResultadoGenetico) {
+    mostrarResultados(window.ultimoResultadoGenetico);
+  }
+};
+
+window.toggleMetricasMatchmaking = function(button) {
+  const root = button?.closest('.matchmaking-stats');
+  if (!root) return;
+  const rows = Array.from(root.querySelectorAll('[data-matchmaking-empty="true"]'));
+  if (rows.length === 0) return;
+  const shouldShow = rows.some(row => row.hidden);
+  rows.forEach(row => {
+    row.hidden = !shouldShow;
+  });
+  button.textContent = shouldShow
+    ? 'Ocultar metricas sin datos'
+    : `Ver metricas sin datos (${rows.length})`;
+};
+
+window.seleccionarJugadorIntercambioMatchmaking = function(equipoKey, index) {
+  const resultado = window.ultimoResultadoGenetico;
+  const equipoValido = equipoKey === 'equipo1' || equipoKey === 'equipo2';
+  const jugador = equipoValido ? obtenerJugadorResultadoIntercambioMatchmaking(resultado, equipoKey, index) : null;
+  if (!jugador) return;
+
+  if (!seleccionIntercambioMatchmaking) {
+    seleccionIntercambioMatchmaking = { equipoKey, index: Number(index) };
+    mostrarResultados(resultado);
+    return;
+  }
+
+  const seleccion = seleccionIntercambioMatchmaking;
+  if (seleccion.equipoKey === equipoKey) {
+    seleccionIntercambioMatchmaking =
+      Number(seleccion.index) === Number(index) ? null : { equipoKey, index: Number(index) };
+    mostrarResultados(resultado);
+    return;
+  }
+
+  const jugadorSeleccionado = obtenerJugadorResultadoIntercambioMatchmaking(resultado, seleccion.equipoKey, seleccion.index);
+  if (!jugadorSeleccionado) {
+    seleccionIntercambioMatchmaking = { equipoKey, index: Number(index) };
+    mostrarResultados(resultado);
+    return;
+  }
+
+  const equipoOrigen = resultado[seleccion.equipoKey].jugadores;
+  const equipoDestino = resultado[equipoKey].jugadores;
+  equipoOrigen[Number(seleccion.index)] = jugador;
+  equipoDestino[Number(index)] = jugadorSeleccionado;
+
+  seleccionIntercambioMatchmaking = null;
+  recalcularResultadoIntercambioMatchmaking(resultado);
+  mostrarResultados(resultado);
+
+  if (typeof window.showToast === 'function') {
+    window.showToast('Equipos recalculados tras el intercambio', 'success');
+  }
+};
+
+function renderizarEstadoIntercambioMatchmaking(resultado) {
+  if (!seleccionIntercambioMatchmaking) return '';
+
+  const jugador = obtenerJugadorResultadoIntercambioMatchmaking(
+    resultado,
+    seleccionIntercambioMatchmaking.equipoKey,
+    seleccionIntercambioMatchmaking.index
+  );
+  if (!jugador) return '';
+
+  const equipoTexto = seleccionIntercambioMatchmaking.equipoKey === 'equipo1' ? 'Equipo 1' : 'Equipo 2';
+  return `
+    <div class="matchmaking-swap-status mt-3">
+      <span>
+        <i class="bi bi-arrow-left-right me-1"></i>
+        Seleccionado: <strong>${escaparHtmlMatchmaking(jugador.nombre)}</strong>
+        <small>${equipoTexto}</small>
+      </span>
+      <button type="button" class="btn btn-sm btn-outline-light" onclick="cancelarIntercambioMatchmaking()">
+        Cancelar
+      </button>
+    </div>
+  `;
+}
+
+function formatearNumeroMatchmaking(valor, decimales = 1, sufijo = '') {
+  return `${numeroSeguroMatchmaking(valor).toFixed(decimales)}${sufijo}`;
+}
+
+function renderizarContextoMatchmaking(etiquetaBaseRendimiento) {
+  return `
+    <div class="matchmaking-result-mode">
+      <div>
+        <i class="bi bi-sliders me-2"></i>
+        Base de balance: <strong>${escaparHtmlMatchmaking(etiquetaBaseRendimiento)}</strong>
+      </div>
+      <div class="small mt-1">Toca un jugador de cada equipo para intercambiarlos y recalcular el armado.</div>
+    </div>
+  `;
+}
+
+function renderizarBalanzaMatchmaking(resultado) {
+  const stats1 = resultado.equipo1.estadisticas;
+  const stats2 = resultado.equipo2.estadisticas;
+  const impactoPct = porcentajeImpactoEquipoMatchmaking(stats1, stats2);
+  return `
+    <section class="matchmaking-beam">
+      <div class="matchmaking-beam__scores">
+        <div>
+          <div class="matchmaking-beam__score" style="color:${MATCHMAKING_TEAM_THEMES.equipo1.color};">${stats1.rendimientoTotal.toFixed(1)}</div>
+          <div class="matchmaking-beam__label">Equipo 1</div>
+        </div>
+        <div class="matchmaking-beam__center">
+          <div class="matchmaking-beam__label">Rendimiento</div>
+          <div class="matchmaking-beam__label" style="opacity:.62;">Matchmaking</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="matchmaking-beam__score" style="color:${MATCHMAKING_TEAM_THEMES.equipo2.color};">${stats2.rendimientoTotal.toFixed(1)}</div>
+          <div class="matchmaking-beam__label">Equipo 2</div>
+        </div>
+      </div>
+      <div class="matchmaking-beam__track">
+        <div class="matchmaking-beam__side" style="width:${impactoPct.equipo1.toFixed(1)}%; background:${MATCHMAKING_TEAM_THEMES.equipo1.color};"></div>
+        <div class="matchmaking-beam__side" style="width:${impactoPct.equipo2.toFixed(1)}%; background:${MATCHMAKING_TEAM_THEMES.equipo2.color};"></div>
+        <div class="matchmaking-beam__mid"></div>
+      </div>
+      <div class="matchmaking-beam__pcts">
+        <span>${impactoPct.equipo1.toFixed(1)}% del impacto</span>
+        <span>${impactoPct.equipo2.toFixed(1)}% del impacto</span>
+      </div>
+    </section>
+  `;
+}
+
+function renderizarEquipoBalanceMatchmaking(resultado, equipoKey, opciones = {}) {
+  const tema = MATCHMAKING_TEAM_THEMES[equipoKey] || MATCHMAKING_TEAM_THEMES.equipo1;
+  const jugadores = resultado?.[equipoKey]?.jugadores || [];
+  return `
+    <section class="matchmaking-team-panel" style="--team-color:${tema.color}; --team-soft:${tema.soft};">
+      <header class="matchmaking-team-panel__header">
+        <span class="matchmaking-team-panel__dot"></span>
+        <h3>${tema.name}</h3>
+        <span class="matchmaking-team-panel__sub">impacto por jugador</span>
+      </header>
+      <div class="matchmaking-team-players">
+        ${jugadores.map((jugador, index) => renderizarJugadorResultadoMatchmaking(jugador, equipoKey, index, opciones)).join('')}
+      </div>
+      ${renderizarNotasAtencionEquipoMatchmaking(resultado, equipoKey)}
+    </section>
+  `;
+}
+
+function crearFilaComparativaMatchmaking(label, valor1, valor2, opciones = {}) {
+  const numero1 = numeroSeguroMatchmaking(valor1);
+  const numero2 = numeroSeguroMatchmaking(valor2);
+  const formato = opciones.formato || ((valor) => formatearNumeroMatchmaking(valor, opciones.decimales ?? 1, opciones.sufijo || ''));
+  const vacia = !opciones.siempreVisible && numero1 === 0 && numero2 === 0;
+  const e1Gana = opciones.menorEsMejor ? numero1 < numero2 : numero1 > numero2;
+  const e2Gana = opciones.menorEsMejor ? numero2 < numero1 : numero2 > numero1;
+  return `
+    <div class="matchmaking-stats__row ${vacia ? 'is-empty' : ''}" ${vacia ? 'data-matchmaking-empty="true" hidden' : ''}>
+      <span class="matchmaking-stats__value matchmaking-stats__value--e1 ${e1Gana ? 'is-win' : ''}">${escaparHtmlMatchmaking(formato(numero1))}</span>
+      <span class="matchmaking-stats__label">${escaparHtmlMatchmaking(label)}</span>
+      <span class="matchmaking-stats__value matchmaking-stats__value--e2 ${e2Gana ? 'is-win' : ''}">${escaparHtmlMatchmaking(formato(numero2))}</span>
+    </div>
+  `;
+}
+
+function filasComparativaMatchmaking(resultado) {
+  const e1 = resultado.equipo1.estadisticas;
+  const e2 = resultado.equipo2.estadisticas;
+  return [
+    crearFilaComparativaMatchmaking('Rendimiento Matchmaking', e1.rendimientoTotal, e2.rendimientoTotal, { siempreVisible: true, decimales: 1 }),
+    crearFilaComparativaMatchmaking('Impacto del Equipo', e1.impactoMatchmaking, e2.impactoMatchmaking, { siempreVisible: true, decimales: 1, sufijo: '%' }),
+    crearFilaComparativaMatchmaking('Rendimiento Jugadores', e1.rendimientoAtaque, e2.rendimientoAtaque, { siempreVisible: true, decimales: 1 }),
+    crearFilaComparativaMatchmaking('Winrate Promedio', e1.winratePromedio, e2.winratePromedio, { siempreVisible: true, decimales: 1, sufijo: '%' }),
+    crearFilaComparativaMatchmaking('Goles a Favor / Partido', e1.golesFavorPromedio, e2.golesFavorPromedio, { siempreVisible: true, decimales: 2 }),
+    crearFilaComparativaMatchmaking('Rendimiento Arqueros', e1.rendimientoArquero, e2.rendimientoArquero, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Arqueros', e1.cantidadArqueros, e2.cantidadArqueros, { formato: (valor) => String(Math.round(valor)) }),
+    crearFilaComparativaMatchmaking('Pulmon Promedio', e1.pulmonPromedio, e2.pulmonPromedio, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Pulmon Total', e1.pulmonTrackingTotal ?? e1.pulmonTotal, e2.pulmonTrackingTotal ?? e2.pulmonTotal, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Goles Recibidos / Partido', e1.golesRecibidosPromedio, e2.golesRecibidosPromedio, { decimales: 2, menorEsMejor: true })
+  ];
+}
+
+function renderizarComparativaMatchmaking(resultado) {
+  const filas = filasComparativaMatchmaking(resultado);
+  const vacias = filas.filter(fila => fila.includes('data-matchmaking-empty="true"')).length;
+  return `
+    <section class="matchmaking-stats">
+      <h4 class="matchmaking-stats__title">Comparativa del armado</h4>
+      ${filas.join('')}
+      ${vacias ? `
+        <button type="button" class="matchmaking-stats__toggle" onclick="toggleMetricasMatchmaking(this)">
+          Ver metricas sin datos (${vacias})
+        </button>
+      ` : ''}
+    </section>
+  `;
+}
+
+function renderizarFooterMatchmaking(resultado) {
+  const stats1 = resultado.equipo1.estadisticas;
+  const stats2 = resultado.equipo2.estadisticas;
+  const difPulmon = Math.abs(
+    numeroSeguroMatchmaking(stats1.pulmonTrackingTotal ?? stats1.pulmonTotal)
+    - numeroSeguroMatchmaking(stats2.pulmonTrackingTotal ?? stats2.pulmonTotal)
+  );
+
+  return `
+    <section class="matchmaking-footer">
+      <div class="matchmaking-footer-grid">
+        <div class="matchmaking-footer-metric">
+          <small>Fitness Score</small>
+          <strong>${resultado.fitness.toFixed(2)}</strong>
+        </div>
+        <div class="matchmaking-footer-metric">
+          <small>Dif. Matchmaking</small>
+          <strong>${Math.abs(stats1.rendimientoTotal - stats2.rendimientoTotal).toFixed(1)}</strong>
+        </div>
+        <div class="matchmaking-footer-metric">
+          <small>Dif. Impacto</small>
+          <strong>${Math.abs(stats1.impactoMatchmaking - stats2.impactoMatchmaking).toFixed(1)}%</strong>
+        </div>
+        <div class="matchmaking-footer-metric">
+          <small>Dif. Goles a favor</small>
+          <strong>${Math.abs(stats1.golesFavorPromedio - stats2.golesFavorPromedio).toFixed(2)}</strong>
+        </div>
+        <div class="matchmaking-footer-metric">
+          <small>Dif. Pulmon</small>
+          <strong>${difPulmon.toFixed(1)}</strong>
+        </div>
+      </div>
+      ${mostrarRestriccionesAplicadas()}
+    </section>
+  `;
+}
+
 function mostrarResultados(resultado) {
   document.getElementById('progress-section').style.display = 'none';
   document.getElementById('results-section').style.display = 'block';
@@ -1427,6 +2807,44 @@ function mostrarResultados(resultado) {
     ? `Últimos ${configuracion.partidos || PARTIDOS_RECIENTES_DEFAULT} partidos por jugador${configuracion.temporadaId ? ' en temporada activa' : ''}`
     : 'Histórico / temporada activa';
   
+  if (
+    seleccionIntercambioMatchmaking &&
+    !obtenerJugadorResultadoIntercambioMatchmaking(
+      resultado,
+      seleccionIntercambioMatchmaking.equipoKey,
+      seleccionIntercambioMatchmaking.index
+    )
+  ) {
+    seleccionIntercambioMatchmaking = null;
+  }
+
+  const jugadorClave = obtenerJugadorClaveMatchmaking(resultado);
+  const maxImpacto = maxImpactoJugadoresMatchmaking(resultado);
+  container.innerHTML = `
+    <div class="col-12">
+      <div class="matchmaking-balance-root">
+        <div class="matchmaking-balance-wrap">
+          <div class="matchmaking-context-stack">
+            ${renderizarContextoMatchmaking(etiquetaBaseRendimiento)}
+            ${renderizarNotaJugadorClaveMatchmaking(resultado)}
+            ${renderizarNotaSobreRendimientoReciente(resultado)}
+            ${renderizarEstadoIntercambioMatchmaking(resultado)}
+          </div>
+          ${renderizarBalanzaMatchmaking(resultado)}
+          <div class="matchmaking-teams-grid">
+            ${renderizarEquipoBalanceMatchmaking(resultado, 'equipo1', { maxImpacto, jugadorClave })}
+            ${renderizarEquipoBalanceMatchmaking(resultado, 'equipo2', { maxImpacto, jugadorClave })}
+          </div>
+          ${renderizarComparativaMatchmaking(resultado)}
+          ${renderizarFooterMatchmaking(resultado)}
+        </div>
+      </div>
+    </div>
+  `;
+
+  window.ultimoResultadoGenetico = resultado;
+  return;
+
   const html = `
     <div class="col-12">
       <div class="matchmaking-result-mode rounded px-3 py-2">
@@ -1436,6 +2854,7 @@ function mostrarResultados(resultado) {
         </div>
         ${renderizarNotaJugadorClaveMatchmaking(resultado)}
         ${renderizarNotaSobreRendimientoReciente(resultado)}
+        ${renderizarEstadoIntercambioMatchmaking(resultado)}
       </div>
     </div>
     <div class="col-md-6">
@@ -1445,8 +2864,9 @@ function mostrarResultados(resultado) {
           Equipo 1
         </h6>
         <div class="player-list">
-          ${resultado.equipo1.jugadores.map(renderizarJugadorResultadoMatchmaking).join('')}
+          ${resultado.equipo1.jugadores.map((jugador, index) => renderizarJugadorResultadoMatchmaking(jugador, 'equipo1', index)).join('')}
         </div>
+        ${renderizarNotasAtencionEquipoMatchmaking(resultado, 'equipo1')}
         <div class="stats-summary">
           <div class="stat-row">
             <span>Rendimiento Matchmaking:</span>
@@ -1477,6 +2897,10 @@ function mostrarResultados(resultado) {
             <span class="fw-bold">${resultado.equipo1.estadisticas.pulmonPromedio.toFixed(1)}</span>
           </div>
           <div class="stat-row">
+            <span>Pulmon Total:</span>
+            <span class="fw-bold">${numeroSeguroMatchmaking(resultado.equipo1.estadisticas.pulmonTrackingTotal ?? resultado.equipo1.estadisticas.pulmonTotal).toFixed(1)}</span>
+          </div>
+          <div class="stat-row">
             <span>Goles a Favor / Partido:</span>
             <span class="fw-bold">${resultado.equipo1.estadisticas.golesFavorPromedio.toFixed(2)}</span>
           </div>
@@ -1494,8 +2918,9 @@ function mostrarResultados(resultado) {
           Equipo 2
         </h6>
         <div class="player-list">
-          ${resultado.equipo2.jugadores.map(renderizarJugadorResultadoMatchmaking).join('')}
+          ${resultado.equipo2.jugadores.map((jugador, index) => renderizarJugadorResultadoMatchmaking(jugador, 'equipo2', index)).join('')}
         </div>
+        ${renderizarNotasAtencionEquipoMatchmaking(resultado, 'equipo2')}
         <div class="stats-summary">
           <div class="stat-row">
             <span>Rendimiento Matchmaking:</span>
@@ -1524,6 +2949,10 @@ function mostrarResultados(resultado) {
           <div class="stat-row">
             <span>Pulmón Promedio:</span>
             <span class="fw-bold">${resultado.equipo2.estadisticas.pulmonPromedio.toFixed(1)}</span>
+          </div>
+          <div class="stat-row">
+            <span>Pulmon Total:</span>
+            <span class="fw-bold">${numeroSeguroMatchmaking(resultado.equipo2.estadisticas.pulmonTrackingTotal ?? resultado.equipo2.estadisticas.pulmonTotal).toFixed(1)}</span>
           </div>
           <div class="stat-row">
             <span>Goles a Favor / Partido:</span>
@@ -1567,6 +2996,10 @@ function mostrarResultados(resultado) {
           <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Goles a Favor</div>
             <div class="text-white fw-bold">${Math.abs(resultado.equipo1.estadisticas.golesFavorPromedio - resultado.equipo2.estadisticas.golesFavorPromedio).toFixed(2)}</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="small text-light-emphasis">Dif. Pulmon</div>
+            <div class="text-white fw-bold">${Math.abs(numeroSeguroMatchmaking(resultado.equipo1.estadisticas.pulmonTrackingTotal ?? resultado.equipo1.estadisticas.pulmonTotal) - numeroSeguroMatchmaking(resultado.equipo2.estadisticas.pulmonTrackingTotal ?? resultado.equipo2.estadisticas.pulmonTotal)).toFixed(1)}</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="small text-light-emphasis">Dif. Cant. Arqueros</div>

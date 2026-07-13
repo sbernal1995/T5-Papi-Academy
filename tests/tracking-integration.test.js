@@ -24,6 +24,10 @@ function sampleExport() {
         dispersion_m: 2,
         coverage_pct: 25,
         speed_distribution_pct: { walk: 40, trot: 40, sprint: 20 },
+        windows: [
+          { start_seconds: 0, end_seconds: 300, distance_m: 700, high_intensity_seconds: 20 },
+          { start_seconds: 300, end_seconds: 600, distance_m: 500, high_intensity_seconds: 10 }
+        ],
         field_side: { own_pct: 40, rival_pct: 60 },
         goalkeeper_role: { total_seconds: 0, episodes: [] },
         pulmon: { fis_version: 'FIS v1', fis: 88, dimensions: { motor: 90, tanque: 82 } },
@@ -49,12 +53,16 @@ function sampleExport() {
         name: 'Boska',
         team: 'B',
         field_role: {
-          distance_m: 900,
-          distance_km: 0.9,
+          distance_m: 600,
+          distance_km: 0.6,
           speed_avg_mps: 1.5,
           speed_peak_mps: 3,
           sprints: 1,
           high_intensity_seconds: 5,
+          windows: [
+            { start_seconds: 0, end_seconds: 300, distance_m: 0, high_intensity_seconds: 2 },
+            { start_seconds: 300, end_seconds: 600, distance_m: 0, high_intensity_seconds: 3 }
+          ],
           avg_position: { x: 22, y: 8 },
           coverage_pct: 10,
           heatmap: {
@@ -187,8 +195,14 @@ async function run() {
   assert.strictEqual(normalized.players[0].pulmon_tracking, 88);
   assert.strictEqual(normalized.players[0].fis_valor, 88);
   assert.strictEqual(normalized.players[0].fis_version, 'FIS v1');
+  assert.strictEqual(normalized.players[0].field_seconds, 600);
+  assert.strictEqual(normalized.players[0].distance_per_40_min_km, 4.8);
+  assert.strictEqual(normalized.players[1].field_seconds, 480);
+  assert.strictEqual(normalized.players[1].distance_per_40_min_km, 3);
+  assert.deepStrictEqual(normalized.players[0].dominant_position_m, { x: 8, y: 4, source: 'heatmap_hotspot' });
   assert.strictEqual(normalized.players[0].goal_locations.length, 1);
   assert.strictEqual(normalized.players[0].goal_locations[0].x, 12.5);
+  assert.strictEqual(normalized.players[0].goal_locations[0].pitch_width_m, 32);
   assert.strictEqual(normalized.players[0].goal_locations[0].goalkeeper.name, 'Boska');
   assert.strictEqual(normalized.effective_play.net_play_pct, 70);
   assert.strictEqual(normalized.match_story.goals.length, 1);
@@ -219,6 +233,15 @@ async function run() {
     { counts: [[0, 2], [0, 0]], x_bins: 2, y_bins: 2 }
   ]);
   assert.deepStrictEqual(combined.counts, [[1, 2], [0, 0]]);
+  const dominant = tracking.heatmapDominantPosition({ counts: [[0, 0], [0, 9]], x_bins: 2, y_bins: 2 }, { width: 32, height: 16 });
+  assert.deepStrictEqual(dominant, { x: 24, y: 12, source: 'heatmap_hotspot' });
+
+  const windowSeries = tracking.buildTeamPulmonWindowSeries({ analysis: { duration_seconds: 600 }, players: normalized.players });
+  assert.strictEqual(windowSeries.length, 2);
+  assert.strictEqual(windowSeries[0].teams.A.distance_m, 700);
+  assert(windowSeries[0].teams.B.distance_m > 0);
+  assert.strictEqual(windowSeries[0].teams.B.estimated_distance, true);
+  assert(windowSeries[0].teams.A.km_per_40 > 0);
 
   const teamPenalty = tracking.trackingFitnessPenalty(
     [
@@ -233,14 +256,53 @@ async function run() {
   assert(teamPenalty > 0);
 
   const mappings = new Map([['P01', { jugador_id: 'jugador-1' }]]);
-  const statsRows = tracking.buildTrackingPlayerStatsRows(normalized, mappings, 'analysis-1');
+  const statsRows = tracking.buildTrackingPlayerStatsRows(normalized, mappings, 'analysis-1', 'match-1');
   assert.strictEqual(statsRows[0].analysis_id, 'analysis-1');
+  assert.strictEqual(statsRows[0].partido_id, 'match-1');
+  assert.strictEqual(statsRows[0].source_player_id, 'P01');
+  assert.strictEqual(statsRows[0].source_name, 'Metox');
+  assert.strictEqual(statsRows[0].normalized_name, 'metox');
   assert.strictEqual(statsRows[0].jugador_id, 'jugador-1');
   assert.strictEqual(statsRows[0].defense_score, 76.4);
   assert.strictEqual(statsRows[0].advanced_defense_score, 71.2);
   assert.strictEqual(statsRows[0].fis_valor, 88);
   assert.strictEqual(statsRows[0].goal_locations.length, 1);
   assert.strictEqual(statsRows[0].metrics.goal_locations.length, 1);
+
+  const shotRows = tracking.buildTrackingShotEventRows(normalized, mappings, 'analysis-1', 'match-1');
+  assert.strictEqual(shotRows.length, 2);
+  assert.strictEqual(shotRows[0].analysis_id, 'analysis-1');
+  assert.strictEqual(shotRows[0].partido_id, 'match-1');
+  assert.strictEqual(shotRows[0].source_player_id, 'P01');
+  assert.strictEqual(shotRows[0].source_name, 'Metox');
+  assert.strictEqual(shotRows[0].jugador_id, 'jugador-1');
+  assert.strictEqual(shotRows[0].outcome, 'goal');
+  assert.strictEqual(shotRows[0].x_m, 12.5);
+  assert.strictEqual(shotRows[0].active_goalkeeper_name, 'Boska');
+  const reconstructedShotMap = tracking.shotMapFromRows(shotRows, {});
+  assert.strictEqual(reconstructedShotMap.events.length, 2);
+  assert.strictEqual(reconstructedShotMap.events[0].active_goalkeeper.name, 'Boska');
+
+  const advancedEventRows = tracking.buildAdvancedDefenseEventRows(normalized, 'analysis-1', 'match-1');
+  const advancedAssignmentRows = tracking.buildAdvancedDefenseAssignmentRows(normalized, mappings, 'analysis-1', 'match-1');
+  assert.strictEqual(advancedEventRows.length, 1);
+  assert.strictEqual(advancedEventRows[0].partido_id, 'match-1');
+  assert.strictEqual(advancedEventRows[0].event_type, 'goal');
+  assert.strictEqual(advancedEventRows[0].shooter_name, 'Boska');
+  assert.strictEqual(advancedEventRows[0].total_blame, 4);
+  assert.strictEqual(advancedAssignmentRows.length, 1);
+  assert.strictEqual(advancedAssignmentRows[0].partido_id, 'match-1');
+  assert.strictEqual(advancedAssignmentRows[0].source_player_id, 'P01');
+  assert.strictEqual(advancedAssignmentRows[0].source_name, 'Metox');
+  assert.strictEqual(advancedAssignmentRows[0].jugador_id, 'jugador-1');
+  assert.strictEqual(advancedAssignmentRows[0].capped_blame, 0.8);
+  const reconstructedAdvanced = tracking.advancedDefenseFromRows(advancedEventRows, advancedAssignmentRows, normalized.advanced_defense);
+  assert.strictEqual(reconstructedAdvanced.events.length, 1);
+  assert.strictEqual(reconstructedAdvanced.events[0].assignments.length, 1);
+  assert.strictEqual(reconstructedAdvanced.events[0].assignments[0].capped_blame, 0.8);
+  assert.strictEqual(tracking.resolveImportPartidoId({ partidoId: ' match-1 ' }), 'match-1');
+  assert.strictEqual(tracking.resolveImportPartidoId({ partidoId: '', normalized: { raw: { match: { id: 'match-2' } } } }), 'match-2');
+  assert.strictEqual(tracking.resolveImportPartidoId({ partidoId: '' }), null);
 
   const aggregate = tracking.aggregatePlayerRows([
     {
@@ -254,6 +316,7 @@ async function run() {
       advanced_defense_score: 71.2,
       advanced_defense_axes: { duel: 70, order: 66 },
       physical_profile: { dimensions: { motor: 90, tanque: 82 } },
+      distance_per_40_min_km: 4.8,
       high_intensity_seconds: 30,
       coverage_pct: 25,
       goalkeeper_seconds: 0,
@@ -262,6 +325,7 @@ async function run() {
     }
   ]);
   assert.strictEqual(aggregate.fis_valor, 88);
+  assert.strictEqual(aggregate.distance_per_40_min_km, 4.8);
   assert.strictEqual(aggregate.defense_score, 76.4);
   assert.strictEqual(aggregate.advanced_defense_score, 71.2);
   assert.strictEqual(aggregate.physical_dimensions.motor, 90);
@@ -301,17 +365,38 @@ async function run() {
   };
   const analysisResult = await tracking.upsertTrackingAnalysisRow(fakeClient, {
     partido_id: 'match-1',
+    export_schema: 't5-football-detector-export',
+    export_schema_version: '1.1',
+    source_schema: 'football-detector-stats',
     source_version: '0.3.3',
     duration_seconds: 600,
     pitch_width_m: 32,
     pitch_height_m: 16,
+    available_metrics: normalized.available_metrics,
+    match_link: normalized.match_link,
+    review_analysis: normalized.review_analysis,
+    advanced_defense: normalized.advanced_defense,
+    shot_map: normalized.shot_map,
+    effective_play: normalized.effective_play,
+    match_story: normalized.match_story,
+    cross_stats: normalized.cross_stats,
+    physical_profile: normalized.physical_profile,
+    matchmaker_seed: normalized.matchmaker_seed,
+    supabase_export: normalized.supabase_export,
+    goalkeeper_detection: normalized.goalkeeper_detection,
+    metrics_v2: normalized.metrics_v2,
+    config_json: normalized.config,
+    team_own_sides: normalized.team_own_sides,
+    limitations: normalized.limitations,
     raw_json: { ok: true },
     summary: { players: 2 }
   });
   assert.deepStrictEqual(analysisResult.omittedColumns, ['pitch_height_m']);
   assert.strictEqual(upsertCalls.length, 2);
   assert.strictEqual(upsertCalls[0].pitch_height_m, 16);
+  assert.strictEqual(upsertCalls[0].shot_map.events.length, 2);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(upsertCalls[1], 'pitch_height_m'), false);
+  assert.strictEqual(upsertCalls[1].advanced_defense.events.length, 1);
   assert.strictEqual(analysisResult.analysis.id, 'analysis-1');
 
   const insertCalls = [];
@@ -336,6 +421,45 @@ async function run() {
   assert.strictEqual(insertCalls.length, 2);
   assert.strictEqual(insertCalls[0][0].advanced_defense_score, 71.2);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(insertCalls[1][0], 'advanced_defense_score'), false);
+
+  const mappingInsertCalls = [];
+  const fakeMappingClient = {
+    from(table) {
+      assert.strictEqual(table, 'tracking_player_mapping');
+      return {
+        async insert(rows) {
+          mappingInsertCalls.push(rows.map(row => ({ ...row })));
+          if (mappingInsertCalls.length === 1) {
+            return {
+              error: { message: "Could not find the 'confidence' column of 'tracking_player_mapping' in the schema cache" }
+            };
+          }
+          return { error: null };
+        }
+      };
+    }
+  };
+  const mappingResult = await tracking.insertRows(fakeMappingClient, 'tracking_player_mapping', [{
+    analysis_id: 'analysis-1',
+    partido_id: 'match-1',
+    player_id: 'P01',
+    source_player_id: 'P01',
+    detected_name: 'Metox',
+    source_name: 'Metox',
+    normalized_name: 'metox',
+    team: 'A',
+    jugador_id: 'jugador-1',
+    confidence: 0.92
+  }]);
+  assert.deepStrictEqual(mappingResult.omittedColumns, ['confidence']);
+  assert.strictEqual(mappingInsertCalls.length, 2);
+  assert.strictEqual(mappingInsertCalls[0][0].partido_id, 'match-1');
+  assert.strictEqual(mappingInsertCalls[1][0].partido_id, 'match-1');
+  assert.strictEqual(mappingInsertCalls[1][0].source_player_id, 'P01');
+  assert.strictEqual(mappingInsertCalls[1][0].source_name, 'Metox');
+  assert.strictEqual(mappingInsertCalls[1][0].normalized_name, 'metox');
+  assert.strictEqual(mappingInsertCalls[0][0].confidence, 0.92);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(mappingInsertCalls[1][0], 'confidence'), false);
 
   console.log('tracking integration tests passed');
 }
