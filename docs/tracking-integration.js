@@ -21,6 +21,11 @@
   };
 
   const DEFAULT_PITCH = { width: 32, height: 16 };
+  const DEFENSE_SCORE_MAX = 100;
+  const DEFENSE_SKILL_BASELINE = 50;
+  const DEFENSE_SKILL_MIN = 0;
+  const DEFENSE_SKILL_MAX = 11;
+  const DEFENSE_SKILL_RANGE_EPSILON = 0.001;
   const TRACKING_TABLES = {
     analyses: 'tracking_analyses',
     mapping: 'tracking_player_mapping',
@@ -119,6 +124,62 @@
   function numberOrNull(value) {
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
+  }
+
+  function trackingDefenseScore(player = null) {
+    const candidates = [
+      player?.advanced_defense_score,
+      player?.advanced_defense?.score,
+      player?.tracking?.advanced_defense_score,
+      player?.tracking?.advanced_defense?.score,
+      player?.metrics?.advanced_defense_score,
+      player?.metrics?.advanced_defense?.score,
+      player?.scoreDefensivoMatchmaking,
+      player?.scoreDefensivoTracking,
+      player?.defense_score,
+      player?.defense?.defense_score,
+      player?.tracking?.defense_score,
+      player?.tracking?.defense?.defense_score,
+      player?.metrics?.defense_score,
+      player?.metrics?.defense?.defense_score
+    ];
+
+    for (const value of candidates) {
+      const n = numberOrNull(value);
+      if (n !== null && n > 0) return clamp(n, 0, 100);
+    }
+
+    return null;
+  }
+
+  function defenseSkillImpact(score, range = null) {
+    const n = numberOrNull(score);
+    if (n === null) return 0;
+    if (range?.useRange) {
+      const normalized = (n - range.min) / range.range;
+      return clamp(normalized, 0, 1) * DEFENSE_SKILL_MAX;
+    }
+    const impact = ((n - DEFENSE_SKILL_BASELINE) / (DEFENSE_SCORE_MAX - DEFENSE_SKILL_BASELINE)) * DEFENSE_SKILL_MAX;
+    return clamp(impact, DEFENSE_SKILL_MIN, DEFENSE_SKILL_MAX);
+  }
+
+  function defenseSkillRange(players = []) {
+    const scores = (players || [])
+      .map(player => numberOrNull(player?.scoreDefensivoTracking))
+      .filter(score => score !== null);
+    if (!scores.length) {
+      return { min: null, max: null, range: 0, useRange: false };
+    }
+
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    const range = max - min;
+    return {
+      min,
+      max,
+      range,
+      useRange: scores.length > 1 && range > DEFENSE_SKILL_RANGE_EPSILON
+    };
   }
 
   function integerOrNull(value) {
@@ -546,7 +607,13 @@
       if (x === null || y === null) return;
 
       const pitch = pitchForAnalysis(row.tracking_analyses || {});
-      const goal = {
+      const goalkeeperSideSource = {
+        team: row.active_goalkeeper_team || goalkeeper.team || '',
+        own_side: goalkeeper.own_side || goalkeeper.ownSide || '',
+        metrics: {},
+        tracking_analyses: row.tracking_analyses || {}
+      };
+      const goal = orientPointDefenseToAttack({
         x,
         y,
         order: row.event_order ?? payload.order ?? payload.goal_number ?? index + 1,
@@ -559,11 +626,11 @@
         review_seconds: row.review_seconds ?? payload.review_seconds ?? null,
         match_seconds: row.match_seconds ?? payload.match_seconds ?? null,
         source: 'tracking_shot_events'
-      };
+      }, goalkeeperSideSource, row.tracking_analyses || {}, pitch);
 
       const key = String(jugadorId);
       if (!goalsByPlayer.has(key)) goalsByPlayer.set(key, []);
-      goalsByPlayer.get(key).push(goal);
+      if (goal) goalsByPlayer.get(key).push(goal);
     });
 
     goalsByPlayer.forEach(goals => {
@@ -736,6 +803,112 @@
     return { x_bins: heatmap.x_bins || xBins, y_bins: heatmap.y_bins || yBins, counts, flat, total };
   }
 
+  function normalizePitchSide(side) {
+    const value = normalizeName(side);
+    if (value.includes('left') || value.includes('izq')) return 'left';
+    if (value.includes('right') || value.includes('der')) return 'right';
+    return '';
+  }
+
+  function oppositePitchSide(side) {
+    const normalized = normalizePitchSide(side);
+    if (normalized === 'left') return 'right';
+    if (normalized === 'right') return 'left';
+    return '';
+  }
+
+  function ownSideFromTeamOwnSides(teamOwnSides = {}, team = '') {
+    const key = String(team || '').toUpperCase();
+    if (!key || !teamOwnSides || typeof teamOwnSides !== 'object') return '';
+    const sideInfo = teamOwnSides[key] || teamOwnSides[key.toLowerCase()] || {};
+    return normalizePitchSide(sideInfo.own_side || sideInfo.ownSide || sideInfo.side);
+  }
+
+  function resolveOwnSideForPlayer(player = {}, context = {}) {
+    const metrics = player.metrics || {};
+    const fieldSide = player.field_side || metrics.field_side || {};
+    const team = player.team || metrics.team || context.team || '';
+    const candidates = [
+      player.own_side,
+      player.ownSide,
+      metrics.own_side,
+      metrics.ownSide,
+      fieldSide.own_side,
+      fieldSide.ownSide,
+      ownSideFromTeamOwnSides(player.team_own_sides, team),
+      ownSideFromTeamOwnSides(player.tracking_analyses?.team_own_sides, team),
+      ownSideFromTeamOwnSides(context.team_own_sides, team),
+      ownSideFromTeamOwnSides(context.raw?.team_own_sides, team),
+      ownSideFromTeamOwnSides(context.tracking_analyses?.team_own_sides, team)
+    ];
+    return candidates.map(normalizePitchSide).find(Boolean) || '';
+  }
+
+  function resolveRivalSideForPlayer(player = {}, context = {}) {
+    const metrics = player.metrics || {};
+    const fieldSide = player.field_side || metrics.field_side || {};
+    return normalizePitchSide(player.rival_side || player.rivalSide || metrics.rival_side || metrics.rivalSide || fieldSide.rival_side || fieldSide.rivalSide)
+      || oppositePitchSide(resolveOwnSideForPlayer(player, context));
+  }
+
+  function heatmapCountsForOrientation(normalized) {
+    const yBins = normalized.counts.length;
+    const xBins = Math.max(normalized.x_bins, ...normalized.counts.map(row => Array.isArray(row) ? row.length : 0), 0);
+    return Array.from({ length: yBins }, (_, y) => (
+      Array.from({ length: xBins }, (_, x) => toNumber(normalized.counts[y]?.[x], 0))
+    ));
+  }
+
+  function orientHeatmapDefenseToAttack(heatmap, player = {}, context = {}) {
+    if (!heatmap || heatmap.orientation === 'defense_to_attack') return heatmap || null;
+    const normalized = normalizeHeatmap(heatmap);
+    if (!normalized.total || !normalized.counts.length) return heatmap;
+    const ownSide = resolveOwnSideForPlayer(player, context);
+    if (!ownSide) return heatmap;
+
+    const counts = heatmapCountsForOrientation(normalized);
+    return {
+      ...heatmap,
+      counts: ownSide === 'right' ? counts.map(row => row.slice().reverse()) : counts,
+      x_bins: counts[0]?.length || normalized.x_bins,
+      y_bins: counts.length || normalized.y_bins,
+      orientation: 'defense_to_attack',
+      source_own_side: ownSide
+    };
+  }
+
+  function orientPointDefenseToAttack(point, player = {}, context = {}, pitch = DEFAULT_PITCH) {
+    if (!point) return null;
+    const contextPitch = pitchForAnalysis(context || {});
+    const sourcePitch = {
+      width: toNumber(point.pitch_width_m ?? point.pitch?.width ?? contextPitch.width, pitch.width),
+      height: toNumber(point.pitch_height_m ?? point.pitch?.height ?? contextPitch.height, pitch.height)
+    };
+    const ownSide = resolveOwnSideForPlayer(player, context);
+    const base = {
+      ...point,
+      pitch_width_m: sourcePitch.width,
+      pitch_height_m: sourcePitch.height
+    };
+
+    if (!ownSide || point.orientation === 'defense_to_attack') {
+      return base;
+    }
+
+    const ratioX = coordinateRatio(point.x ?? point.avg_x_m, sourcePitch.width, point.coordinate_system);
+    const ratioY = coordinateRatio(point.y ?? point.avg_y_m, sourcePitch.height, point.coordinate_system);
+    const normalizedX = ownSide === 'right' ? 1 - ratioX : ratioX;
+
+    return {
+      ...base,
+      x: round(normalizedX * sourcePitch.width, 3),
+      y: round(ratioY * sourcePitch.height, 3),
+      coordinate_system: 'meters',
+      orientation: 'defense_to_attack',
+      source_own_side: ownSide
+    };
+  }
+
   function pitchFromRaw(raw = {}) {
     return {
       width: toNumber(raw.pitch?.width ?? raw.pitch_width_m, DEFAULT_PITCH.width),
@@ -845,6 +1018,32 @@
     if (key === 'A') return 'Equipo 1 (A)';
     if (key === 'B') return 'Equipo 2 (B)';
     return `Equipo ${key || '-'}`;
+  }
+
+  function normalizeTeamSide(side) {
+    return normalizePitchSide(side);
+  }
+
+  function attackDirectionFromOwnSide(ownSide) {
+    const side = normalizeTeamSide(ownSide);
+    if (side === 'left') return 'right';
+    if (side === 'right') return 'left';
+    return '';
+  }
+
+  function attackDirectionForTeam(details = {}, team) {
+    const key = String(team || '').toUpperCase();
+    const sideInfo = details?.analysis?.team_own_sides?.[key]
+      || details?.team_own_sides?.[key]
+      || details?.raw?.team_own_sides?.[key]
+      || {};
+    return attackDirectionFromOwnSide(sideInfo.own_side || sideInfo.ownSide);
+  }
+
+  function attackDirectionLabel(direction) {
+    if (direction === 'left') return 'Ataca a la izquierda';
+    if (direction === 'right') return 'Ataca a la derecha';
+    return 'Ataque sin lado';
   }
 
   function heatmapOverlap(heatmapA, heatmapB) {
@@ -1094,7 +1293,7 @@
       });
   }
 
-  function goalLocationsForPlayer(rawPlayer, raw) {
+  function goalLocationsForPlayer(rawPlayer, raw, playerContext = {}) {
     const playerId = String(rawPlayer?.player_id || rawPlayer?.id || '');
     const nameKey = normalizeName(rawPlayer?.name || rawPlayer?.detected_name || '');
     const pitch = pitchFromRaw(raw);
@@ -1109,7 +1308,7 @@
         const rawY = event.y ?? event.position?.y ?? event.location?.y;
         const x = Number(rawX);
         const y = Number(rawY);
-        return {
+        const location = {
           order: event.order ?? event.goal_number ?? event.index ?? null,
           seconds: toNumber(event.match_seconds ?? event.review_seconds ?? event.sam3_seconds ?? event.seconds, 0),
           x: Number.isFinite(x) ? round(x, 3) : NaN,
@@ -1123,6 +1322,7 @@
           linked: Boolean(event.linked),
           estimated: Boolean(event.estimated)
         };
+        return orientPointDefenseToAttack(location, playerContext, raw, pitch);
       })
       .filter(event => Number.isFinite(event.x) && Number.isFinite(event.y));
   }
@@ -1131,6 +1331,18 @@
     const field = rawPlayer.field_role || rawPlayer;
     const goalkeeper = rawPlayer.goalkeeper_role || {};
     const fieldSide = rawPlayer.field_side || {};
+    const team = String(rawPlayer.team || field.team || '').toUpperCase();
+    const sideSource = {
+      ...rawPlayer,
+      team,
+      field_side: fieldSide,
+      metrics: {
+        ...(rawPlayer.metrics || {}),
+        ...(field.metrics || {})
+      }
+    };
+    const ownSide = resolveOwnSideForPlayer(sideSource, raw);
+    const rivalSide = resolveRivalSideForPlayer(sideSource, raw);
     const duration = toNumber(raw.duration_seconds ?? raw.config?.duration_seconds, 0);
     const pitch = pitchFromRaw(raw);
     const heatmap = field.heatmap || rawPlayer.heatmap || null;
@@ -1152,7 +1364,11 @@
       0
     );
     const avgPosition = field.avg_position || rawPlayer.avg_position || {};
-    const goalLocations = goalLocationsForPlayer(rawPlayer, raw);
+    const goalLocations = goalLocationsForPlayer(rawPlayer, raw, {
+      ...sideSource,
+      own_side: ownSide,
+      rival_side: rivalSide
+    });
     const goalkeeperSeconds = round(toNumber(goalkeeper.total_seconds, 0), 2);
     const fieldMetrics = playerFieldMetrics({
       distance_m: field.distance_m ?? rawPlayer.distance_m,
@@ -1169,7 +1385,7 @@
     return {
       player_id: String(rawPlayer.player_id || rawPlayer.id || rawPlayer.name || ''),
       detected_name: String(rawPlayer.name || rawPlayer.detected_name || rawPlayer.player_id || ''),
-      team: String(rawPlayer.team || field.team || '').toUpperCase(),
+      team,
       distance_km: round(toNumber(field.distance_km ?? rawPlayer.distance_km, 0), 3),
       distance_m: round(toNumber(field.distance_m ?? rawPlayer.distance_m, 0), 2),
       avg_speed_kmh: speedMpsToKmh(field.speed_avg_mps ?? rawPlayer.speed_avg_mps),
@@ -1189,8 +1405,8 @@
       distance_per_40_min_km: fieldMetrics.distance_per_40_min_km,
       own_half_pct: round(toNumber(fieldSide.own_pct, 0), 2),
       rival_half_pct: round(toNumber(fieldSide.rival_pct, 0), 2),
-      own_side: fieldSide.own_side || '',
-      rival_side: fieldSide.rival_side || '',
+      own_side: ownSide,
+      rival_side: rivalSide,
       avg_x_m: round(toNumber(avgPosition.x, 0), 3),
       avg_y_m: round(toNumber(avgPosition.y, 0), 3),
       dominant_position_m: dominantPosition,
@@ -1357,11 +1573,11 @@
       .tracking-player-dot { width: .75rem; height: .75rem; border-radius: 50%; display: inline-block; margin-right: .35rem; }
       .tracking-team-a { color: #60a5fa; }
       .tracking-team-b { color: #f87171; }
-      .tracking-canvas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+      .tracking-canvas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
       .tracking-canvas-card { background: rgba(7, 23, 16, .74); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: .8rem; }
-      .tracking-canvas { width: 100%; aspect-ratio: 2 / 1; display: block; border-radius: 10px; background: #073b24; }
+      .tracking-canvas { width: 100%; aspect-ratio: 2 / 1; min-height: 260px; display: block; border-radius: 10px; background: #073b24; }
       .tracking-canvas-card-featured { grid-column: 1 / -1; }
-      .tracking-canvas-card-featured .tracking-canvas { aspect-ratio: 2.35 / 1; min-height: 320px; }
+      .tracking-canvas-card-featured .tracking-canvas { aspect-ratio: 2.35 / 1; min-height: 360px; }
       .tracking-carousel-card { min-height: 132px; background: linear-gradient(135deg, rgba(13,110,253,.18), rgba(25,135,84,.16)); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 1rem; }
       .tracking-slide-title { color: rgba(255,255,255,.68); font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; }
       .tracking-slide-main { color: #fff; font-size: clamp(1.5rem, 4vw, 2.4rem); font-weight: 850; line-height: 1.05; }
@@ -1402,7 +1618,7 @@
       .tracking-win-ring { --win-pct: 0; width: 116px; height: 116px; border-radius: 50%; display: grid; place-items: center; margin: .35rem auto 0; background: conic-gradient(#5b8cff calc(var(--win-pct) * 1%), #ff4868 0); position: relative; }
       .tracking-win-ring::after { content: ''; position: absolute; inset: 18px; border-radius: 50%; background: #272938; }
       .tracking-win-ring span { position: relative; z-index: 1; color: #75a3ff; font-weight: 900; font-size: 1.1rem; }
-      .tracking-core-line { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; align-items: end; }
+      .tracking-core-line { display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); gap: .7rem; align-items: end; }
       .tracking-core-metric { color: #a7acc7; font-size: .78rem; }
       .tracking-core-metric strong { display: block; color: #fff; font-size: clamp(1.2rem, 2.3vw, 1.65rem); line-height: 1.05; }
       .tracking-role-bars { display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; gap: .75rem; min-height: 112px; }
@@ -1428,7 +1644,7 @@
       .tracking-match-avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 52px; color: #fff; font-weight: 900; background: linear-gradient(135deg, #26334f, #5b8cff); border: 1px solid rgba(255,255,255,.25); }
       .tracking-match-main strong { color: #fff; font-size: 1.25rem; line-height: 1; }
       .tracking-match-main span { display: block; color: #b8c0df; font-size: .82rem; margin-top: .25rem; }
-      .tracking-match-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+      .tracking-match-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; }
       .tracking-match-metric { color: #b8c0df; font-size: .72rem; text-transform: uppercase; }
       .tracking-match-metric strong { display: block; color: #fff; font-size: .95rem; text-transform: none; }
       .tracking-match-tags { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-start; }
@@ -1459,12 +1675,14 @@
         .tracking-core-line { grid-template-columns: repeat(2, 1fr); }
         .tracking-match-row { grid-template-columns: 1fr; gap: .5rem; }
         .tracking-match-tags { justify-content: flex-start; }
-        .tracking-match-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .tracking-match-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         .tracking-lineups { grid-template-columns: 1fr; }
         .tracking-mapping-row { grid-template-columns: 1fr; }
+        .tracking-canvas-grid { grid-template-columns: 1fr; }
         .tracking-modal-xl { max-width: 100vw; margin: .25rem; }
         .tracking-table { min-width: 720px; }
-        .tracking-canvas-card-featured .tracking-canvas { min-height: 240px; }
+        .tracking-canvas { min-height: 220px; }
+        .tracking-canvas-card-featured .tracking-canvas { min-height: 260px; }
       }
     `;
     document.head.appendChild(style);
@@ -1572,7 +1790,7 @@
             <div class="tracking-status" data-tracking-status="${escapeHtml(partidoId)}">Buscando analisis...</div>
           </div>
           <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-sm btn-outline-info" data-tracking-import="${escapeHtml(partidoId)}">
+            <button type="button" class="btn btn-sm btn-outline-info d-none" data-tracking-import="${escapeHtml(partidoId)}">
               <i class="bi bi-upload me-1"></i>Cargar tracking
             </button>
             <button type="button" class="btn btn-sm btn-success d-none" data-tracking-summary="${escapeHtml(partidoId)}">
@@ -1584,13 +1802,15 @@
     `;
   }
 
+  function updateTrackingImportVisibility() {
+    const canImport = userIsAdmin();
+    document.querySelectorAll('[data-tracking-import]').forEach(button => {
+      button.classList.toggle('d-none', !canImport);
+    });
+  }
+
   function decorateHistoryCards() {
     ensureStyles();
-    if (!userIsAdmin()) {
-      removeHistoryTrackingCards();
-      return;
-    }
-
     ensureModals();
     const cards = Array.from(document.querySelectorAll('.partido-card[data-partido-id]'));
     if (!cards.length) return;
@@ -1612,6 +1832,7 @@
       button.addEventListener('click', () => openSummaryByMatch(button.dataset.trackingSummary));
     });
 
+    updateTrackingImportVisibility();
     loadAnalysesForVisibleCards();
   }
 
@@ -2202,17 +2423,33 @@
       const advancedDefense = metrics.advanced_defense || rawPlayer.advanced_defense || {};
       const physicalProfile = row.physical_profile || metrics.physical_profile || rawPlayer.physical_profile || {};
       const pulmon = metrics.pulmon || rawPlayer.pulmon || {};
-      const goalLocations = (row.goal_locations || metrics.goal_locations || rawPlayer.goal_locations || []).map(goal => ({
-        ...goal,
-        pitch_width_m: goal.pitch_width_m ?? analysisPitch.width,
-        pitch_height_m: goal.pitch_height_m ?? analysisPitch.height
-      }));
+      const rawGoalLocations = row.goal_locations || metrics.goal_locations || rawPlayer.goal_locations || [];
       const fisValor = row.fis_valor ?? metrics.fis_valor ?? rawPlayer.fis_valor ?? physicalProfile.fis ?? pulmon.fis ?? rawPlayer.pulmon_tracking;
       const fisVersion = row.fis_version || metrics.fis_version || rawPlayer.fis_version || physicalProfile.fis_version || pulmon.fis_version || '';
+      const team = row.team || rawPlayer.team || mapping.team || '';
+      const sideSource = {
+        ...row,
+        team,
+        metrics,
+        tracking_analyses: analysisRes.data || {}
+      };
+      const ownSide = resolveOwnSideForPlayer(sideSource, analysisRes.data || {});
+      const rivalSide = resolveRivalSideForPlayer(sideSource, analysisRes.data || {});
+      const goalLocations = rawGoalLocations
+        .map(goal => orientPointDefenseToAttack({
+          ...goal,
+          pitch_width_m: goal.pitch_width_m ?? analysisPitch.width,
+          pitch_height_m: goal.pitch_height_m ?? analysisPitch.height
+        }, {
+          ...sideSource,
+          own_side: ownSide,
+          rival_side: rivalSide
+        }, analysisRes.data || {}, analysisPitch))
+        .filter(Boolean);
       const enriched = {
         ...row,
         name: rawPlayer.detected_name || mapping.detected_name || row.detected_name || mapping.jugadores?.nombre || row.player_id,
-        team: row.team || rawPlayer.team || mapping.team || '',
+        team,
         manual_pulmon: mapping.jugadores?.pulmon ?? null,
         distance_m: metrics.distance_m ?? rawPlayer.distance_m ?? toNumber(row.distance_km, 0) * 1000,
         distance_km: preferRawWhenMissing(row.distance_km, rawPlayer.distance_km),
@@ -2226,6 +2463,8 @@
         goalkeeper_seconds: preferRawWhenMissing(row.goalkeeper_seconds, rawPlayer.goalkeeper_seconds),
         own_half_pct: preferRawWhenMissing(row.own_half_pct, rawPlayer.own_half_pct),
         rival_half_pct: preferRawWhenMissing(row.rival_half_pct, rawPlayer.rival_half_pct),
+        own_side: ownSide,
+        rival_side: rivalSide,
         avg_x_m: preferRawWhenMissing(row.avg_x_m, rawPlayer.avg_x_m),
         avg_y_m: preferRawWhenMissing(row.avg_y_m, rawPlayer.avg_y_m),
         dispersion_m: preferRawWhenMissing(row.dispersion_m, rawPlayer.dispersion_m),
@@ -2257,7 +2496,9 @@
           pulmon,
           fis_valor: fisValor,
           fis_version: fisVersion,
-          goal_locations: goalLocations
+          goal_locations: goalLocations,
+          own_side: ownSide,
+          rival_side: rivalSide
         },
         highlights: row.highlights || rawPlayer.highlights || {},
         heatmap: heatmapRow.heatmap || rawPlayer.heatmap,
@@ -2398,14 +2639,14 @@
           <div class="tracking-canvas-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="text-white mb-0">Mapa calor ${teamUiLabel('A')}</h6>
-              <span class="small tracking-team-a">azul</span>
+              <span class="small tracking-team-a">azul - ${attackDirectionLabel(attackDirectionForTeam(details, 'A'))}</span>
             </div>
             <canvas class="tracking-canvas" id="tracking-team-heatmap-a-canvas"></canvas>
           </div>
           <div class="tracking-canvas-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="text-white mb-0">Mapa calor ${teamUiLabel('B')}</h6>
-              <span class="small tracking-team-b">rojo</span>
+              <span class="small tracking-team-b">rojo - ${attackDirectionLabel(attackDirectionForTeam(details, 'B'))}</span>
             </div>
             <canvas class="tracking-canvas" id="tracking-team-heatmap-b-canvas"></canvas>
           </div>
@@ -2601,7 +2842,7 @@
     return `
       <div>
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <h6 class="text-white mb-0">Defensa avanzada</h6>
+          <h6 class="text-white mb-0">Detalle defensivo</h6>
           <span class="small text-light-emphasis">${escapeHtml(coverageText)}</span>
         </div>
         <div class="tracking-table-wrap mb-3">
@@ -2899,7 +3140,7 @@
       if (!canvas) return;
       const teamPlayers = (details.players || []).filter(player => String(player.team || '').toUpperCase() === team);
       const combined = combineHeatmaps(teamPlayers.map(player => player.heatmap).filter(Boolean));
-      drawHeatmap(canvas, pitch, combined, teamPlayers);
+      drawHeatmap(canvas, pitch, combined, teamPlayers, { attackDirection: attackDirectionForTeam(details, team) });
     });
     drawPulmonWindowChart(document.getElementById('tracking-pulmon-window-canvas'), details);
     document.querySelectorAll('[data-player-heatmap]').forEach(canvas => {
@@ -2937,6 +3178,88 @@
     ctx.stroke();
     ctx.strokeRect(width * 0.04, height * 0.32, width * 0.16, height * 0.36);
     ctx.strokeRect(width * 0.80, height * 0.32, width * 0.16, height * 0.36);
+  }
+
+  function drawCanvasAttackDirection(ctx, width, height, direction) {
+    if (!direction) return;
+    const text = attackDirectionLabel(direction);
+    const right = direction === 'right';
+    const fontSize = Math.max(13, Math.min(18, width * 0.02));
+    const padX = Math.max(10, width * 0.014);
+    const pillH = Math.max(28, fontSize + 12);
+    ctx.save();
+    ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
+    const pillW = Math.min(width * 0.34, ctx.measureText(text).width + padX * 2);
+    const x = right ? width - pillW - width * 0.055 : width * 0.055;
+    const y = height * 0.105;
+    ctx.fillStyle = 'rgba(2, 6, 23, .72)';
+    ctx.strokeStyle = 'rgba(255,255,255,.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x, y, pillW, pillH, 999);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + pillW / 2, y + pillH / 2 + 0.5);
+
+    const arrowY = y + pillH + Math.max(12, height * 0.035);
+    const startX = right ? x : x + pillW;
+    const endX = right ? Math.min(width * 0.93, startX + width * 0.18) : Math.max(width * 0.07, startX - width * 0.18);
+    ctx.strokeStyle = 'rgba(255,255,255,.72)';
+    ctx.lineWidth = Math.max(2, width / 360);
+    ctx.beginPath();
+    ctx.moveTo(startX, arrowY);
+    ctx.lineTo(endX, arrowY);
+    ctx.stroke();
+    const head = Math.max(7, width * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(endX, arrowY);
+    ctx.lineTo(endX + (right ? -head : head), arrowY - head * 0.65);
+    ctx.lineTo(endX + (right ? -head : head), arrowY + head * 0.65);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,.82)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCanvasGoalReference(ctx, width, height, options = {}) {
+    const defenseLabel = options.defenseLabel || 'Arco defensa';
+    const attackLabel = options.attackLabel || 'Arco ataque';
+    const fontSize = Math.max(11, Math.min(16, width * 0.018));
+    const goalW = Math.max(10, width * 0.014);
+    const goalH = height * 0.26;
+    const goalY = (height - goalH) / 2;
+    const leftX = Math.max(2, width * 0.04 - goalW * 0.5);
+    const rightX = Math.min(width - goalW - 2, width * 0.96 - goalW * 0.5);
+    const drawGoal = (x, label, color, alignRight = false) => {
+      const labelW = Math.min(width * 0.24, Math.max(104, label.length * fontSize * 0.56 + 22));
+      const labelH = Math.max(26, fontSize + 12);
+      const labelX = alignRight ? width * 0.96 - labelW : width * 0.04;
+      const labelY = height * 0.1;
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = 'rgba(2, 6, 23, .72)';
+      ctx.lineWidth = Math.max(2, width / 460);
+      ctx.strokeRect(x, goalY, goalW, goalH);
+      ctx.beginPath();
+      ctx.roundRect(labelX, labelY, labelW, labelH, 999);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.22)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, labelX + labelW / 2, labelY + labelH / 2 + 0.5);
+      ctx.restore();
+    };
+
+    drawGoal(leftX, defenseLabel, '#93c5fd');
+    drawGoal(rightX, attackLabel, '#facc15', true);
   }
 
   function coordinateRatio(value, size, coordinateSystem = '') {
@@ -3117,7 +3440,7 @@
     });
   }
 
-  function drawHeatmap(canvas, pitch, heatmap, players = []) {
+  function drawHeatmap(canvas, pitch, heatmap, players = [], options = {}) {
     if (!canvas) return;
     const { ctx, width, height } = setupCanvas(canvas);
     drawBasePitch(ctx, width, height);
@@ -3139,6 +3462,10 @@
         });
       });
     }
+    drawCanvasAttackDirection(ctx, width, height, options.attackDirection);
+    if (options.showGoalReference) {
+      drawCanvasGoalReference(ctx, width, height, options.goalReference || {});
+    }
     const placedPlayers = players.map(player => ({
       player,
       point: pitchToCanvas(playerDisplayPosition(player, pitch), pitch, width, height)
@@ -3148,7 +3475,7 @@
         ctx,
         point,
         player.team === 'A' ? '#60a5fa' : '#f87171',
-        Math.max(6, width * 0.008)
+        Math.max(8, width * 0.011)
       );
     });
     const occupiedRects = [];
@@ -3160,9 +3487,9 @@
         width,
         height,
         {
-          fontSize: Math.max(11, Math.min(15, width * 0.014)),
-          maxWidth: width * 0.24,
-          background: 'rgba(15, 23, 42, .82)'
+          fontSize: Math.max(13, Math.min(18, width * 0.018)),
+          maxWidth: width * 0.30,
+          background: 'rgba(15, 23, 42, .9)'
         },
         occupiedRects
       );
@@ -3329,7 +3656,7 @@
     if (!client) return;
     try {
       const statsRes = await client.from(TRACKING_TABLES.stats)
-        .select('*, tracking_analyses(id, partido_id, duration_seconds, pitch_width_m, pitch_height_m, raw_json, partidos(id, fecha, cancha, equipo_ganador, temporada_id, temporadas(nombre)))')
+        .select('*, tracking_analyses(id, partido_id, duration_seconds, pitch_width_m, pitch_height_m, team_own_sides, partidos(id, fecha, cancha, equipo_ganador, temporada_id, temporadas(nombre)))')
         .not('jugador_id', 'is', null);
       if (statsRes.error) throw statsRes.error;
 
@@ -3353,7 +3680,7 @@
 
       let shotEventRows = [];
       const shotEventsRes = await client.from(TRACKING_TABLES.shotEvents)
-        .select('analysis_id, partido_id, event_type, outcome, event_order, review_seconds, match_seconds, sam3_seconds, player_id, source_player_id, source_name, normalized_name, detected_name, team, x_m, y_m, active_goalkeeper_player_id, active_goalkeeper_name, active_goalkeeper_team, payload, tracking_analyses(id, partido_id, pitch_width_m, pitch_height_m, partidos(id, fecha, cancha, temporada_id, temporadas(nombre)))');
+        .select('analysis_id, partido_id, event_type, outcome, event_order, review_seconds, match_seconds, sam3_seconds, player_id, source_player_id, source_name, normalized_name, detected_name, team, x_m, y_m, active_goalkeeper_player_id, active_goalkeeper_name, active_goalkeeper_team, payload, tracking_analyses(id, partido_id, pitch_width_m, pitch_height_m, team_own_sides, partidos(id, fecha, cancha, temporada_id, temporadas(nombre)))');
       if (!shotEventsRes.error) {
         shotEventRows = shotEventsRes.data || [];
       } else {
@@ -3379,13 +3706,21 @@
           rawPlayer = null;
         }
         const analysisPitch = pitchForAnalysis(row.tracking_analyses || {});
-        const goalLocations = (row.goal_locations || row.metrics?.goal_locations || rawPlayer?.goal_locations || []).map(goal => ({
-          ...goal,
-          pitch_width_m: goal.pitch_width_m ?? analysisPitch.width,
-          pitch_height_m: goal.pitch_height_m ?? analysisPitch.height
-        }));
+        const team = row.team || rawPlayer?.team || '';
+        const sideSource = {
+          ...row,
+          team,
+          metrics: row.metrics || {},
+          tracking_analyses: row.tracking_analyses || {}
+        };
+        const ownSide = resolveOwnSideForPlayer(sideSource, row.tracking_analyses || {});
+        const rivalSide = resolveRivalSideForPlayer(sideSource, row.tracking_analyses || {});
+        const rawGoalLocations = row.goal_locations || row.metrics?.goal_locations || rawPlayer?.goal_locations || [];
         const enriched = {
           ...row,
+          team,
+          own_side: ownSide,
+          rival_side: rivalSide,
           metrics: row.metrics || {},
           distance_m: row.metrics?.distance_m ?? rawPlayer?.distance_m ?? toNumber(row.distance_km, 0) * 1000,
           distance_km: row.distance_km ?? rawPlayer?.distance_km,
@@ -3406,10 +3741,21 @@
           pulmon: row.metrics?.pulmon || rawPlayer?.pulmon || {},
           fis_valor: row.fis_valor ?? row.metrics?.fis_valor ?? rawPlayer?.fis_valor ?? row.metrics?.pulmon?.fis ?? rawPlayer?.pulmon?.fis,
           fis_version: row.fis_version || row.metrics?.fis_version || rawPlayer?.fis_version || row.metrics?.pulmon?.fis_version || rawPlayer?.pulmon?.fis_version || '',
-          goal_locations: goalLocations,
           heatmap: heatmap?.heatmap || rawPlayer?.heatmap,
           heatmap_windows: heatmap?.heatmap_windows || rawPlayer?.heatmap_windows
         };
+        const goalLocations = rawGoalLocations
+          .map(goal => orientPointDefenseToAttack({
+            ...goal,
+            pitch_width_m: goal.pitch_width_m ?? analysisPitch.width,
+            pitch_height_m: goal.pitch_height_m ?? analysisPitch.height
+          }, {
+            ...sideSource,
+            own_side: ownSide,
+            rival_side: rivalSide
+          }, row.tracking_analyses || {}, analysisPitch))
+          .filter(Boolean);
+        enriched.goal_locations = goalLocations;
         const derivedField = playerFieldMetrics(enriched, row.tracking_analyses?.duration_seconds);
         const dominantPosition = row.metrics?.dominant_position_m
           || rawPlayer?.dominant_position_m
@@ -3419,6 +3765,8 @@
           distance_m: enriched.distance_m,
           ...derivedField,
           dominant_position_m: dominantPosition || playerDisplayPosition(enriched, analysisPitch),
+          own_side: ownSide,
+          rival_side: rivalSide,
           goal_locations: goalLocations
         };
         Object.assign(enriched, derivedField, {
@@ -3476,6 +3824,7 @@
 
     const matchIds = [...new Set(filtered.map(row => row.partido_id).filter(Boolean))];
     let participantsByMatch = new Map();
+    let goalsByMatch = new Map();
     if (matchIds.length) {
       const { data: allParticipants, error: allError } = await client
         .from('jugador_partido')
@@ -3488,6 +3837,21 @@
         map.get(key).push(row);
         return map;
       }, new Map());
+
+      const { data: allGoals, error: goalsError } = await client
+        .from('goles')
+        .select('partido_id, cagada_jugador_id')
+        .in('partido_id', matchIds);
+      if (!goalsError) {
+        goalsByMatch = (allGoals || []).reduce((map, row) => {
+          const key = String(row.partido_id);
+          if (!map.has(key)) map.set(key, []);
+          map.get(key).push(row);
+          return map;
+        }, new Map());
+      } else if (!String(goalsError.message || '').includes('cagada_jugador_id')) {
+        throw goalsError;
+      }
     }
 
     const trackingRows = APP.statsByPlayer.get(String(playerId)) || [];
@@ -3499,11 +3863,14 @@
 
     const history = filtered.map(row => {
       const participants = participantsByMatch.get(String(row.partido_id)) || [];
+      const goals = goalsByMatch.get(String(row.partido_id)) || [];
       const team = normalizeTeamNumber(row.equipo);
       return {
         participation: row,
         match: row.partidos,
         tracking: trackingByMatch.get(String(row.partido_id)) || null,
+        goals,
+        mistakes: resolveProfileMistakes(row, goals),
         teammates: participants.filter(player => normalizeTeamNumber(player.equipo) === team),
         rivals: participants.filter(player => normalizeTeamNumber(player.equipo) !== team),
         team
@@ -3519,6 +3886,21 @@
     if (team === 'B') return 2;
     const numeric = Number(team);
     return numeric === 2 ? 2 : 1;
+  }
+
+  function resolveProfileMistakes(participation = {}, goals = []) {
+    const playerId = String(participation?.jugador_id || '');
+    const stored = toNumber(participation?.cagadas);
+    const fromGoals = (goals || [])
+      .filter(goal => String(goal?.cagada_jugador_id || '') === playerId)
+      .length;
+    if (stored > 0 && fromGoals > 0) return Math.max(stored, fromGoals);
+    return stored + fromGoals;
+  }
+
+  function getProfileEntryMistakes(entry = {}) {
+    if (Number.isFinite(Number(entry.mistakes))) return Number(entry.mistakes);
+    return resolveProfileMistakes(entry.participation || {}, entry.goals || []);
   }
 
   function averagePresent(rows, getter) {
@@ -3560,14 +3942,24 @@
     if (!safeRows.length) return null;
     const sum = (field) => safeRows.reduce((total, row) => total + toNumber(row[field]), 0);
     const avg = (field) => sum(field) / safeRows.length;
-    const averageHeatmap = averageHeatmaps(safeRows.map(row => row.heatmap).filter(Boolean));
-    const goalLocations = safeRows.flatMap(row => (row.goal_locations || row.metrics?.goal_locations || []).map(goal => ({
+    const averageHeatmapRaw = averageHeatmaps(
+      safeRows
+        .map(row => orientHeatmapDefenseToAttack(row.heatmap, row, row.tracking_analyses || {}))
+        .filter(Boolean)
+    );
+    const averageHeatmap = averageHeatmapRaw
+      ? { ...averageHeatmapRaw, orientation: 'defense_to_attack' }
+      : null;
+    const dominantPosition = averageHeatmap ? heatmapDominantPosition(averageHeatmap, DEFAULT_PITCH) : null;
+    const goalLocations = safeRows.flatMap(row => (
+      row.goal_locations || row.metrics?.goal_locations || []
+    ).map(goal => orientPointDefenseToAttack({
       ...goal,
       match_id: row.tracking_analyses?.partido_id || row.partido_id || null,
       date: row.tracking_analyses?.partidos?.fecha || null,
       pitch_width_m: goal.pitch_width_m ?? row.tracking_analyses?.pitch_width_m ?? DEFAULT_PITCH.width,
       pitch_height_m: goal.pitch_height_m ?? row.tracking_analyses?.pitch_height_m ?? DEFAULT_PITCH.height
-    })));
+    }, row, row.tracking_analyses || {}, DEFAULT_PITCH)).filter(Boolean));
     const fisAverage = averagePresent(safeRows, row => row.fis_valor ?? row.pulmon_tracking ?? row.physical_profile?.fis ?? row.pulmon?.fis);
     const defenseAverage = averagePresent(safeRows, row => row.defense_score ?? row.defense?.defense_score);
     const advancedDefenseAverage = averagePresent(safeRows, row => row.advanced_defense_score ?? row.advanced_defense?.score);
@@ -3592,6 +3984,7 @@
       coverage_pct: round(avg('coverage_pct'), 1),
       goalkeeper_seconds: round(avg('goalkeeper_seconds'), 1),
       heatmap: averageHeatmap,
+      dominant_position_m: dominantPosition,
       goal_locations: goalLocations,
       latest: safeRows[0]
     };
@@ -3717,6 +4110,9 @@
       `;
       if (summaryContainer) summaryContainer.innerHTML = empty;
     } else if (summaryContainer) {
+      const defenseProfileScore = trackingDefenseScore(aggregate);
+      const hasDefenseProfileData = defenseProfileScore !== null
+        || Object.values(aggregate.advanced_defense_axes || {}).some(value => Number.isFinite(Number(value)));
       summaryContainer.innerHTML = `
         <div class="tracking-profile-grid">
           <div class="tracking-profile-card">
@@ -3724,6 +4120,7 @@
             <div class="tracking-kpi-grid">
               ${kpi('Partidos con tracking', aggregate.matches)}
               ${kpi('Pulmon FIS', `${aggregate.fis_valor ?? aggregate.pulmon_tracking}/100`)}
+              ${defenseProfileScore === null ? '' : kpi('Score defensivo', `${round(defenseProfileScore, 1)}/100`)}
               ${kpi('KM prom.', `${aggregate.distance_km_avg} km`)}
               ${kpi("KM/40' prom.", `${aggregate.distance_per_40_min_km} km`)}
               ${kpi('Goles con mapa', aggregate.goal_locations.length)}
@@ -3731,9 +4128,24 @@
             </div>
             ${renderTrackingMetricPills(aggregate.physical_dimensions)}
           </div>
+          ${hasDefenseProfileData ? `
+          <div class="tracking-profile-card">
+            <h6 class="tracking-profile-section-title">Skill defensivo tracking</h6>
+            ${defenseProfileScore === null ? '' : `
+            <div class="tracking-metric-band">
+              <div class="tracking-metric-pill">
+                <strong>${round(defenseProfileScore, 1)}</strong>
+                <span>Score defensivo</span>
+              </div>
+            </div>
+            `}
+            <div class="mt-3">${renderTrackingAxisList(aggregate.advanced_defense_axes)}</div>
+          </div>
+          ` : ''}
           <div class="tracking-profile-card">
             <h6 class="tracking-profile-section-title">Mapa de calor promedio</h6>
             <canvas class="tracking-canvas" id="perfil-tracking-heatmap-canvas"></canvas>
+            <div class="tracking-goal-note">Orientado de defensa a ataque: izquierda = arco propio, derecha = arco rival.</div>
           </div>
           <div class="tracking-profile-card">
             <h6 class="tracking-profile-section-title">Desde donde convierte goles</h6>
@@ -3750,7 +4162,7 @@
         </div>
       `;
       setTimeout(() => {
-        drawHeatmap(document.getElementById('perfil-tracking-heatmap-canvas'), DEFAULT_PITCH, aggregate.heatmap, []);
+        drawHeatmap(document.getElementById('perfil-tracking-heatmap-canvas'), DEFAULT_PITCH, aggregate.heatmap, [], { showGoalReference: true });
         drawGoalLocations(document.getElementById('perfil-tracking-goals-canvas'), DEFAULT_PITCH, aggregate.goal_locations || []);
         drawGoalLocations(document.getElementById('perfil-tracking-goals-against-canvas'), DEFAULT_PITCH, goalkeeperConcededGoals);
       }, 40);
@@ -3827,6 +4239,7 @@
     const latest = latestRows[0] || null;
     const latestMatch = latest?.match || {};
     const trackingMatchCount = (trackingRows || []).length;
+    const defenseProfileScore = trackingDefenseScore(aggregate);
 
     if (error) {
       return `
@@ -3860,7 +4273,7 @@
             ${profileStatLine('Tracking cargado', `${trackingMatchCount}/${rows.length}`)}
             ${profileStatLine('KM con tracking', `${trackingDistance.toFixed(2)} km`)}
             ${profileStatLine('Pulmon FIS', aggregate?.fis_valor == null ? '-' : `${aggregate.fis_valor}/100`)}
-            ${profileStatLine('Score defensivo', aggregate?.defense_score == null ? '-' : `${aggregate.defense_score}/100`)}
+            ${profileStatLine('Score defensivo', defenseProfileScore === null ? '-' : `${round(defenseProfileScore, 1)}/100`)}
           </div>
           <div class="tracking-season-table">
             <div class="tracking-profile-panel-sub">Ultimos partidos</div>
@@ -3885,6 +4298,7 @@
               ${profileCoreMetric('AST', totals.assists, 'asist.')}
               ${profileCoreMetric('ATA', totals.saves, 'atajadas')}
               ${profileCoreMetric('KM', trackingDistance.toFixed(2), 'tracking')}
+              ${profileCoreMetric('DEF', defenseProfileScore === null ? '-' : round(defenseProfileScore, 1), 'tracking')}
             </div>
             <div class="tracking-rival-summary">
               <div class="tracking-profile-panel-sub">Rivales mas repetidos</div>
@@ -3970,7 +4384,7 @@
       acc.goals += toNumber(p.goles);
       acc.assists += toNumber(p.asistencias);
       acc.saves += toNumber(p.atajadas);
-      acc.mistakes += toNumber(p.cagadas);
+      acc.mistakes += getProfileEntryMistakes(entry);
       if (p.mvp) acc.mvp += 1;
       if (p.ace) acc.ace += 1;
       return acc;
@@ -4032,6 +4446,7 @@
     const resultClass = result.key === 'win' ? 'tracking-result-win' : result.key === 'loss' ? 'tracking-result-loss' : 'tracking-result-draw';
     const teamClass = row.team === 'A' ? 'is-blue' : row.team === 'B' ? 'is-red' : '';
     const avatar = row.team === 'A' ? 'A' : row.team === 'B' ? 'B' : 'T';
+    const defenseScore = trackingDefenseScore(row);
     return `
       <div class="tracking-match-row ${resultClass}">
         <div class="tracking-match-row-date">
@@ -4053,10 +4468,12 @@
           <div class="tracking-match-metric">Vel<strong>${toNumber(row.avg_speed_kmh).toFixed(1)}</strong></div>
           <div class="tracking-match-metric">Max<strong>${toNumber(row.max_speed_kmh).toFixed(1)}</strong></div>
           <div class="tracking-match-metric">Pulmon<strong>${toNumber(row.pulmon_tracking).toFixed(1)}</strong></div>
+          <div class="tracking-match-metric">Def<strong>${defenseScore === null ? '-' : round(defenseScore, 1)}</strong></div>
         </div>
         <div class="tracking-match-tags">
           <span class="tracking-match-tag ${teamClass}">Equipo ${escapeHtml(row.team || '-')}</span>
           <span class="tracking-match-tag">${Math.round(toNumber(row.sprints))} spr</span>
+          ${defenseScore === null ? '' : `<span class="tracking-match-tag is-blue">DEF ${round(defenseScore, 1)}</span>`}
           ${toNumber(row.goalkeeper_seconds) > 0 ? `<span class="tracking-match-tag is-green">${formatTime(row.goalkeeper_seconds)} ARQ</span>` : ''}
         </div>
       </div>
@@ -4081,6 +4498,7 @@
     const teamNumber = normalizeTeamNumber(p.equipo);
     const teamClass = teamNumber === 1 ? 'is-blue' : 'is-red';
     const hasTracking = !!entry.tracking;
+    const defenseScore = hasTracking ? trackingDefenseScore(row) : null;
     return `
       <div class="tracking-match-row ${resultClass}">
         <div class="tracking-match-row-date">
@@ -4099,9 +4517,10 @@
           </div>
         </div>
         <div class="tracking-match-metrics">
-          <div class="tracking-match-metric">Cag<strong>${toNumber(p.cagadas)}</strong></div>
+          <div class="tracking-match-metric">Cag<strong>${getProfileEntryMistakes(entry)}</strong></div>
           <div class="tracking-match-metric">KM<strong>${hasTracking ? toNumber(row.distance_km).toFixed(2) : '-'}</strong></div>
           <div class="tracking-match-metric">Max<strong>${hasTracking ? toNumber(row.max_speed_kmh).toFixed(1) : '-'}</strong></div>
+          <div class="tracking-match-metric">Def<strong>${defenseScore === null ? '-' : round(defenseScore, 1)}</strong></div>
         </div>
         <div class="tracking-lineups">
           ${renderLineupColumn('Equipo', entry.teammates || [], p.jugador_id)}
@@ -4111,6 +4530,7 @@
           <span class="tracking-match-tag ${teamClass}">Equipo ${teamNumber}</span>
           <span class="tracking-match-tag ${hasTracking ? 'is-green' : 'is-muted'}">${hasTracking ? 'Tracking' : 'Sin tracking'}</span>
           ${hasTracking && row.fis_valor !== null && row.fis_valor !== undefined ? `<span class="tracking-match-tag is-green">FIS ${round(row.fis_valor, 1)}</span>` : ''}
+          ${defenseScore === null ? '' : `<span class="tracking-match-tag is-blue">DEF ${round(defenseScore, 1)}</span>`}
           ${hasTracking && row.goal_locations?.length ? `<span class="tracking-match-tag">${row.goal_locations.length} goles mapa</span>` : ''}
           ${p.mvp ? '<span class="tracking-match-tag is-green">MVP</span>' : ''}
           ${p.ace ? '<span class="tracking-match-tag is-blue">ACE</span>' : ''}
@@ -4213,6 +4633,15 @@
     return id ? APP.latestByPlayer.get(String(id)) : null;
   }
 
+  async function ensureMatchmakingTrackingReady() {
+    await refreshTrackingCaches();
+    patchOptimizer();
+    return {
+      players: APP.latestByPlayer.size,
+      rows: APP.statsByPlayer.size
+    };
+  }
+
   function patchOptimizer() {
     if (APP.optimizerPatched || typeof window === 'undefined' || !window.GeneticTeamOptimizer) return;
     const proto = window.GeneticTeamOptimizer.prototype;
@@ -4226,11 +4655,20 @@
 
     proto.setJugadores = function patchedSetJugadores(jugadores) {
       originalSetJugadores.call(this, jugadores);
-      const enrichedPlayers = this.jugadores.map((processed, index) => {
+      const enrichedBasePlayers = this.jugadores.map((processed, index) => {
         const raw = jugadores[index] || {};
         const tracking = trackingForRawPlayer(raw);
         const playerId = raw.jugadores?.id || raw.jugador_id || raw.id || processed.id;
         const concededGoals = playerId ? (APP.goalsConcededByPlayer.get(String(playerId)) || []) : [];
+        const scoreDefensivoTracking = trackingDefenseScore(tracking)
+          ?? numberOrNull(processed.scoreDefensivoTracking ?? processed.scoreDefensivoMatchmaking);
+        const puntosDefensaRankingDirecto = numberOrNull(
+          raw.puntosDefensaTrackingPromedio
+          ?? raw.puntos_defensa_tracking_promedio
+          ?? processed.puntosDefensaRankingDirecto
+          ?? processed.puntosDefensaTrackingPromedio
+        );
+        const impactoSkillDefensa = puntosDefensaRankingDirecto ?? 0;
         const golesRecibidosArquero = Math.max(toNumber(processed.golesRecibidosArquero, 0), concededGoals.length);
         const playerWithGoalkeeperData = {
           ...processed,
@@ -4241,24 +4679,33 @@
         const rendimientoArquero = processed.rolPartido === 'arquero'
           ? this.calcularRendimientoArquero(playerWithGoalkeeperData)
           : processed.rendimientoArquero;
-        const rendimientoTotal = processed.rolPartido === 'arquero'
-          ? rendimientoArquero
-          : processed.rendimientoTotal;
+        const rankingSaveSkill = numberOrNull(processed.rendimientoArqueroRanking)
+          ?? (((toNumber(raw.atajadas ?? processed.atajadas, 0)) / Math.max(toNumber(raw.pj ?? processed.pj, 0), 1)) * 0.4);
+        const rendimientoTotal = toNumber(processed.rendimientoJugador, 0) + rankingSaveSkill + impactoSkillDefensa;
 
         return {
           ...processed,
           id: playerId,
           tracking,
           rendimientoTotal,
+          skillBaseMatchmaking: rendimientoTotal,
           rendimientoArquero,
+          rendimientoArqueroRanking: rankingSaveSkill,
           rendimientoArqueroDisponible: processed.rolPartido === 'arquero' ? rendimientoArquero : processed.rendimientoArqueroDisponible,
+          impactoSkillDefensa,
+          puntosDefensaRankingDirecto,
           golesRecibidosArquero,
           pulmon: tracking?.pulmon_tracking ?? 0,
           pulmonManual: processed.pulmon,
           pulmonTracking: tracking?.pulmon_tracking ?? null,
+          scoreDefensivoMatchmaking: scoreDefensivoTracking ?? processed.scoreDefensivoMatchmaking ?? 0,
+          scoreDefensivoTracking,
+          defense_score: tracking?.defense_score ?? processed.defense_score ?? null,
+          advanced_defense_score: tracking?.advanced_defense_score ?? processed.advanced_defense_score ?? null,
           trackingCoveragePct: tracking?.coverage_pct ?? 0,
           trackingIntensity: tracking?.high_intensity_seconds_avg ?? 0,
-          trackingHeatmap: tracking?.heatmap || null,
+          trackingHeatmap: tracking?.heatmap || processed.trackingHeatmap || null,
+          dominantPosition: tracking?.dominant_position_m || processed.dominantPosition || processed.dominant_position_m || null,
           trackingGoalkeeperSeconds: tracking?.goalkeeper_seconds ?? 0,
           trackingDistanceKmAvg: tracking?.distance_km_avg ?? processed.trackingDistanceKmAvg ?? 0,
           trackingDistanceKmTotal: tracking?.distance_km_total ?? processed.trackingDistanceKmTotal ?? 0,
@@ -4269,13 +4716,29 @@
         };
       });
 
+      const defenseRange = defenseSkillRange(enrichedBasePlayers);
+      const enrichedPlayers = enrichedBasePlayers.map(player => {
+        const impactoSkillDefensa = player.puntosDefensaRankingDirecto !== null
+          ? player.puntosDefensaRankingDirecto
+          : defenseSkillImpact(player.scoreDefensivoTracking, defenseRange);
+        const rendimientoTotal = toNumber(player.rendimientoJugador, 0)
+          + toNumber(player.rendimientoArqueroRanking, 0)
+          + impactoSkillDefensa;
+        return {
+          ...player,
+          impactoSkillDefensa,
+          rendimientoTotal,
+          skillBaseMatchmaking: rendimientoTotal
+        };
+      });
+
       const sumaImpacto = enrichedPlayers.reduce((total, jugador) => (
         total + Math.abs(toNumber(jugador.rendimientoTotal, 0))
       ), 0);
       const impactoFallback = enrichedPlayers.length > 0 ? 100 / enrichedPlayers.length : 0;
       this.jugadores = enrichedPlayers.map(jugador => ({
         ...jugador,
-        skillMatchmaking: jugador.rendimientoTotal,
+        skillMatchmaking: jugador.skillBaseMatchmaking,
         impactoMatchmaking: sumaImpacto > 0
           ? (Math.abs(toNumber(jugador.rendimientoTotal, 0)) / sumaImpacto) * 100
           : impactoFallback
@@ -4295,15 +4758,31 @@
     proto.calcularEstadisticasEquipo = function patchedStats(equipo) {
       const stats = originalStats.call(this, equipo);
       const tracking = evaluateTrackingTeam(equipo);
+      const scoreDefensivoTotal = Math.max(toNumber(stats.scoreDefensivoTotal, 0), tracking.defenseTotal);
+      const jugadoresConScoreDefensivoTracking = Math.max(
+        toNumber(stats.jugadoresConScoreDefensivoTracking, 0),
+        tracking.playersWithDefenseScore
+      );
+      const scoreDefensivoPromedio = tracking.playersWithDefenseScore > 0
+        ? tracking.defenseAvg
+        : toNumber(stats.scoreDefensivoPromedio, 0);
       return {
         ...stats,
         pulmonPromedio: tracking.pulmonAvg,
         pulmonTotal: tracking.pulmonTotal,
         pulmonTrackingTotal: tracking.pulmonTotal,
+        scoreDefensivoPromedio,
+        scoreDefensivoTotal,
+        jugadoresConScoreDefensivoTracking,
         trackingCoveragePct: tracking.coveragePct,
         trackingOverlapPct: tracking.overlapPct,
         trackingIntensity: tracking.intensityAvg,
-        trackingPlayers: tracking.playersWithTracking
+        trackingPlayers: tracking.playersWithTracking,
+        armoniaHeatmapScore: tracking.harmonyScore,
+        heatmapCoveragePct: tracking.coveragePct,
+        heatmapOverlapPct: tracking.overlapPct,
+        heatmapPlayers: tracking.heatmapPlayers,
+        heatmapHarmonyUsable: tracking.heatmapPlayers >= 2
       };
     };
   }
@@ -4313,13 +4792,27 @@
       player.tracking
       || player.trackingHeatmap
       || player.pulmonTracking !== null && player.pulmonTracking !== undefined
+      || trackingDefenseScore(player) !== null
     ));
-    const heatmaps = withTracking.map(player => player.trackingHeatmap || player.tracking?.heatmap).filter(Boolean);
+    const heatmaps = withTracking
+      .map(player => orientHeatmapDefenseToAttack(player.trackingHeatmap || player.tracking?.heatmap, player.tracking || player))
+      .filter(Boolean);
     const combined = combineHeatmaps(heatmaps);
+    const coveragePct = heatmapCoveragePct(combined);
+    const overlapPct = teamHeatmapOverlap(heatmaps.map(heatmap => ({ tracking: { heatmap } })));
+    const coverageScore = Math.max(0, Math.min(100, coveragePct * 1.35));
+    const overlapScore = heatmaps.length >= 2 ? Math.max(0, Math.min(100, 100 - overlapPct)) : 0;
+    const harmonyScore = heatmaps.length >= 2
+      ? Math.max(0, Math.min(100, (coverageScore * 0.62) + (overlapScore * 0.38)))
+      : 0;
     const pulmonValues = withTracking
       .map(player => toNumber(player.pulmonTracking ?? player.tracking?.pulmon_tracking ?? player.tracking?.fis_valor, 0))
       .filter(value => value > 0);
     const pulmonTotal = pulmonValues.reduce((sum, value) => sum + value, 0);
+    const defenseValues = withTracking
+      .map(player => trackingDefenseScore(player))
+      .filter(value => value !== null && value > 0);
+    const defenseTotal = defenseValues.reduce((sum, value) => sum + value, 0);
     const intensityValues = withTracking.map(player => toNumber(player.trackingIntensity, 0));
     const goalkeepers = (team || []).filter(player =>
       player.rolPartido === 'arquero' || toNumber(player.trackingGoalkeeperSeconds, 0) >= 300
@@ -4327,11 +4820,16 @@
 
     return {
       playersWithTracking: withTracking.length,
+      heatmapPlayers: heatmaps.length,
       pulmonAvg: pulmonValues.length ? round(pulmonTotal / pulmonValues.length, 1) : 0,
       pulmonTotal: round(pulmonTotal, 1),
+      defenseAvg: defenseValues.length ? round(defenseTotal / defenseValues.length, 1) : 0,
+      defenseTotal: round(defenseTotal, 1),
+      playersWithDefenseScore: defenseValues.length,
       intensityAvg: intensityValues.length ? round(intensityValues.reduce((a, b) => a + b, 0) / intensityValues.length, 1) : 0,
-      coveragePct: heatmapCoveragePct(combined),
-      overlapPct: teamHeatmapOverlap(withTracking.map(player => ({ tracking: { heatmap: player.trackingHeatmap || player.tracking?.heatmap } }))),
+      coveragePct: round(coveragePct, 2),
+      overlapPct: round(overlapPct, 2),
+      harmonyScore: round(harmonyScore, 1),
       goalkeepers
     };
   }
@@ -4343,9 +4841,8 @@
 
     let penalty = 0;
     penalty += Math.abs(stats1.pulmonTotal - stats2.pulmonTotal) * 0.65;
+    penalty += Math.abs(stats1.defenseTotal - stats2.defenseTotal) * 0.35;
     penalty += Math.abs(stats1.intensityAvg - stats2.intensityAvg) * 0.08;
-    penalty += Math.abs(stats1.coveragePct - stats2.coveragePct) * 0.22;
-    penalty += (stats1.overlapPct + stats2.overlapPct) * 0.16;
     if (stats1.goalkeepers === 0) penalty += 12;
     if (stats2.goalkeepers === 0) penalty += 12;
     return penalty;
@@ -4376,6 +4873,7 @@
     ensureStyles();
     ensureModals();
     initDomObservers();
+    patchOptimizer();
     await refreshTrackingCaches();
     patchOptimizer();
     const optimizerRetry = setInterval(() => {
@@ -4390,6 +4888,8 @@
     heatmapOverlap,
     heatmapCoveragePct,
     heatmapDominantPosition,
+    orientHeatmapDefenseToAttack,
+    orientPointDefenseToAttack,
     combineHeatmaps,
     playerFieldMetrics,
     buildTeamPulmonWindowSeries,
@@ -4404,6 +4904,7 @@
     buildAdvancedDefenseAssignmentRows,
     shotMapFromRows,
     advancedDefenseFromRows,
+    ensureMatchmakingTrackingReady,
     resolveImportPartidoId,
     renderGoalkeeperConcededMap,
     schemaMissingColumn,

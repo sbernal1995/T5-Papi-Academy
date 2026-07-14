@@ -10,6 +10,32 @@ const MODO_RENDIMIENTO_RECIENTE = 'reciente';
 const PARTIDOS_RECIENTES_DEFAULT = 5;
 const SOBRE_RENDIMIENTO_RECIENTE_MIN_ABSOLUTO = 3;
 const SOBRE_RENDIMIENTO_RECIENTE_MIN_RELATIVO = 0.25;
+const MATCHMAKING_PITCH = { width: 32, height: 16 };
+const MATCHMAKING_LIVE_PITCH_PIXELS = { width: 720, height: 360 };
+const MATCHMAKING_LIVE_MARKER_COLLISION = {
+  minDistPx: 70,
+  iterations: 18,
+  anchorPull: 0.12,
+  verticalScale: 1.02,
+  visualSpread: 0.018,
+  columnCenterPull: 0.018
+};
+const MATCHMAKING_KEEPER_ROTATION = {
+  layerLambda: 0.015,
+  minLayerSep: 0.19,
+  intervalMs: 3000,
+  keeperSlot: { x: 0.06, y: 0.5 }
+};
+const MATCHMAKING_AREA_COLORS = ['#22d3ee', '#a78bfa', '#fbbf24', '#34d399', '#fb7185'];
+const MATCHMAKING_HARMONY_GRID = { cols: 26, rows: 13 };
+const MATCHMAKING_HARMONY_MARKER_MIN_DISTANCE = 6.3;
+const MATCHMAKING_HARMONY_MARKER_PADDING = 3.4;
+const MATCHMAKING_DEFENSE_SCORE_MAX = 100;
+const MATCHMAKING_DEFENSE_SKILL_BASELINE = 50;
+const MATCHMAKING_DEFENSE_SKILL_MIN = 0;
+const MATCHMAKING_DEFENSE_SKILL_MAX = 11;
+const MATCHMAKING_DEFENSE_RANGE_EPSILON = 0.001;
+const MATCHMAKING_RANKING_SAVE_WEIGHT = 0.4;
 
 function normalizarRolPartido(rol) {
   return rol === ROL_PARTIDO_ARQUERO ? ROL_PARTIDO_ARQUERO : ROL_PARTIDO_JUGADOR;
@@ -27,6 +53,80 @@ function numeroFinitoMatchmaking(valor) {
 function numeroSeguroMatchmaking(valor, fallback = 0) {
   const numero = numeroFinitoMatchmaking(valor);
   return numero === null ? fallback : numero;
+}
+
+function clampMatchmaking(valor, min, max) {
+  return Math.max(min, Math.min(max, valor));
+}
+
+function calcularImpactoSkillDefensaMatchmaking(score, rangoDefensa = null) {
+  const numero = numeroFinitoMatchmaking(score);
+  if (numero === null) return 0;
+  if (rangoDefensa?.usaRango) {
+    const normalizado = (numero - rangoDefensa.min) / rangoDefensa.rango;
+    return clampMatchmaking(normalizado, 0, 1) * MATCHMAKING_DEFENSE_SKILL_MAX;
+  }
+  const impacto = ((numero - MATCHMAKING_DEFENSE_SKILL_BASELINE) / (MATCHMAKING_DEFENSE_SCORE_MAX - MATCHMAKING_DEFENSE_SKILL_BASELINE)) * MATCHMAKING_DEFENSE_SKILL_MAX;
+  return clampMatchmaking(impacto, MATCHMAKING_DEFENSE_SKILL_MIN, MATCHMAKING_DEFENSE_SKILL_MAX);
+}
+
+function crearRangoDefensaMatchmaking(jugadores = []) {
+  const scores = (jugadores || [])
+    .map(jugador => numeroFinitoMatchmaking(jugador?.scoreDefensivoTracking))
+    .filter(score => score !== null);
+  if (!scores.length) {
+    return { min: null, max: null, rango: 0, usaRango: false };
+  }
+
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const rango = max - min;
+  return {
+    min,
+    max,
+    rango,
+    usaRango: scores.length > 1 && rango > MATCHMAKING_DEFENSE_RANGE_EPSILON
+  };
+}
+
+function obtenerPuntosDefensaRankingDirectoMatchmaking(jugador) {
+  const candidatos = [
+    jugador?.puntosDefensaTrackingPromedio,
+    jugador?.puntos_defensa_tracking_promedio,
+    jugador?.defensaTrackingPromedio,
+    jugador?.rankingDefenseSkill,
+    jugador?.skillDefensaRanking
+  ];
+
+  for (const valor of candidatos) {
+    const numero = numeroFinitoMatchmaking(valor);
+    if (numero !== null) return numero;
+  }
+
+  return null;
+}
+
+function calcularRendimientoAtaqueRankingMatchmaking(jugador) {
+  const pj = Math.max(Number(jugador?.pj) || 0, 1);
+  const golesPP = (Number(jugador?.goles) || 0) / pj;
+  const mvpPP = (Number(jugador?.mvp_count) || 0) / pj;
+  const acePP = (Number(jugador?.ace_count) || 0) / pj;
+  const asistPP = (Number(jugador?.asistencias) || 0) / pj;
+  const cagadasPP = (Number(jugador?.cagadas_en_gol ?? jugador?.cagadasEnGol) || 0) / pj;
+  const puntosPP = (Number(jugador?.total_puntos) || 0) / pj;
+
+  return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
+}
+
+function calcularRendimientoArqueroRankingMatchmaking(jugador) {
+  const pj = Math.max(Number(jugador?.pj) || 0, 1);
+  return ((Number(jugador?.atajadas) || 0) / pj) * MATCHMAKING_RANKING_SAVE_WEIGHT;
+}
+
+function calcularSkillRankingIndividualMatchmaking(jugador, puntosDefensaTracking = 0) {
+  return calcularRendimientoAtaqueRankingMatchmaking(jugador)
+    + calcularRendimientoArqueroRankingMatchmaking(jugador)
+    + numeroSeguroMatchmaking(puntosDefensaTracking);
 }
 
 function obtenerIdJugadorMatchmaking(jugador) {
@@ -62,6 +162,324 @@ function obtenerPulmonTrackingMatchmaking(jugador) {
   return null;
 }
 
+function obtenerScoreDefensivoMatchmaking(jugador) {
+  return obtenerScoreDefensivoTrackingMatchmaking(jugador) ?? 0;
+}
+
+function obtenerScoreDefensivoTrackingMatchmaking(jugador) {
+  const candidatos = [
+    jugador?.advanced_defense_score,
+    jugador?.advanced_defense?.score,
+    jugador?.tracking?.advanced_defense_score,
+    jugador?.tracking?.advanced_defense?.score,
+    jugador?.metrics?.advanced_defense_score,
+    jugador?.metrics?.advanced_defense?.score,
+    jugador?.scoreDefensivoPromedio,
+    jugador?.scoreDefensivoMatchmaking,
+    jugador?.scoreDefensivoTracking,
+    jugador?.defenseScore,
+    jugador?.defense_score,
+    jugador?.defense?.defense_score,
+    jugador?.tracking?.defense_score,
+    jugador?.tracking?.defense?.defense_score,
+    jugador?.metrics?.defense_score,
+    jugador?.metrics?.defense?.defense_score
+  ];
+
+  for (const valor of candidatos) {
+    const numero = numeroFinitoMatchmaking(valor);
+    if (numero !== null && numero > 0) return clampMatchmaking(numero, 0, 100);
+  }
+
+  return null;
+}
+
+async function asegurarTrackingMatchmakingListo() {
+  if (typeof window === 'undefined') return null;
+  const trackingApi = window.T5TrackingIntegration;
+  if (!trackingApi) return null;
+
+  try {
+    if (typeof trackingApi.ensureMatchmakingTrackingReady === 'function') {
+      return await trackingApi.ensureMatchmakingTrackingReady();
+    }
+    if (typeof trackingApi.refreshTrackingCaches === 'function') {
+      await trackingApi.refreshTrackingCaches();
+    }
+  } catch (error) {
+    console.warn('[matchmaking] tracking no disponible para armonia:', error?.message || error);
+  }
+
+  return null;
+}
+
+function normalizarLadoCanchaMatchmaking(lado) {
+  const valor = String(lado || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (valor.includes('left') || valor.includes('izq')) return 'left';
+  if (valor.includes('right') || valor.includes('der')) return 'right';
+  return '';
+}
+
+function obtenerHeatmapCrudoJugadorMatchmaking(jugador) {
+  return jugador?.trackingHeatmap
+    || jugador?.tracking?.heatmap
+    || jugador?.heatmap
+    || jugador?.metrics?.heatmap
+    || null;
+}
+
+function obtenerLadoPropioJugadorMatchmaking(jugador, heatmap = null) {
+  const candidatos = [
+    jugador?.own_side,
+    jugador?.ownSide,
+    jugador?.metrics?.own_side,
+    jugador?.metrics?.ownSide,
+    jugador?.tracking?.own_side,
+    jugador?.tracking?.ownSide,
+    jugador?.tracking?.metrics?.own_side,
+    jugador?.tracking?.metrics?.ownSide,
+    jugador?.tracking?.latest?.own_side,
+    jugador?.tracking?.latest?.metrics?.own_side,
+    heatmap?.source_own_side
+  ];
+
+  return candidatos.map(normalizarLadoCanchaMatchmaking).find(Boolean) || '';
+}
+
+function orientarHeatmapDefensaAtaqueMatchmaking(heatmap, jugador) {
+  if (!heatmap || heatmap.orientation === 'defense_to_attack') return heatmap || null;
+  const ladoPropio = obtenerLadoPropioJugadorMatchmaking(jugador, heatmap);
+  if (!ladoPropio) return heatmap;
+  const normalized = normalizarHeatmapMatchmaking(heatmap);
+  if (!normalized.total || !normalized.counts.length) return heatmap;
+
+  const counts = normalized.counts.map(row => {
+    const normalizedRow = [];
+    for (let x = 0; x < Math.max(normalized.xBins, row.length); x += 1) {
+      normalizedRow.push(numeroSeguroMatchmaking(row?.[x], 0));
+    }
+    return ladoPropio === 'right' ? normalizedRow.reverse() : normalizedRow;
+  });
+
+  return {
+    ...heatmap,
+    counts,
+    x_bins: counts[0]?.length || normalized.xBins,
+    y_bins: counts.length || normalized.yBins,
+    orientation: 'defense_to_attack',
+    source_own_side: ladoPropio
+  };
+}
+
+function obtenerHeatmapJugadorMatchmaking(jugador) {
+  return orientarHeatmapDefensaAtaqueMatchmaking(obtenerHeatmapCrudoJugadorMatchmaking(jugador), jugador);
+}
+
+function normalizarHeatmapMatchmaking(heatmap) {
+  const counts = heatmap?.counts || [];
+  if (!Array.isArray(counts) || counts.length === 0) {
+    return { xBins: 0, yBins: 0, counts: [], flat: [], total: 0 };
+  }
+  const yBins = counts.length;
+  const xBins = Math.max(...counts.map(row => Array.isArray(row) ? row.length : 0), 0);
+  const flat = [];
+  let total = 0;
+  const normalizedCounts = counts.map(row => {
+    const normalizedRow = [];
+    for (let x = 0; x < xBins; x += 1) {
+      const value = numeroSeguroMatchmaking(row?.[x], 0);
+      normalizedRow.push(value);
+      flat.push(value);
+      total += value;
+    }
+    return normalizedRow;
+  });
+  return {
+    xBins: numeroSeguroMatchmaking(heatmap?.x_bins, xBins) || xBins,
+    yBins: numeroSeguroMatchmaking(heatmap?.y_bins, yBins) || yBins,
+    counts: normalizedCounts,
+    flat,
+    total
+  };
+}
+
+function tieneHeatmapMatchmaking(jugador) {
+  return normalizarHeatmapMatchmaking(obtenerHeatmapJugadorMatchmaking(jugador)).total > 0;
+}
+
+function combinarHeatmapsMatchmaking(heatmaps = []) {
+  const normalized = heatmaps.map(normalizarHeatmapMatchmaking).filter(item => item.total > 0 && item.counts.length);
+  if (!normalized.length) return null;
+  const yBins = normalized[0].counts.length;
+  const xBins = normalized[0].counts[0]?.length || 0;
+  const counts = Array.from({ length: yBins }, () => Array(xBins).fill(0));
+  normalized.forEach(heatmap => {
+    for (let y = 0; y < yBins; y += 1) {
+      for (let x = 0; x < xBins; x += 1) {
+        counts[y][x] += numeroSeguroMatchmaking(heatmap.counts[y]?.[x], 0);
+      }
+    }
+  });
+  return { counts, x_bins: xBins, y_bins: yBins };
+}
+
+function coberturaHeatmapMatchmaking(heatmap, thresholdRatio = 0.01) {
+  const normalized = normalizarHeatmapMatchmaking(heatmap);
+  if (!normalized.total || !normalized.flat.length) return 0;
+  const maxValue = Math.max(...normalized.flat);
+  if (maxValue <= 0) return 0;
+  const threshold = maxValue * thresholdRatio;
+  const active = normalized.flat.filter(value => value > threshold).length;
+  return (active / normalized.flat.length) * 100;
+}
+
+function solapamientoHeatmapMatchmaking(heatmapA, heatmapB) {
+  const a = normalizarHeatmapMatchmaking(heatmapA);
+  const b = normalizarHeatmapMatchmaking(heatmapB);
+  if (!a.total || !b.total) return 0;
+  const len = Math.min(a.flat.length, b.flat.length);
+  let overlap = 0;
+  for (let i = 0; i < len; i += 1) {
+    overlap += Math.min(a.flat[i] / a.total, b.flat[i] / b.total);
+  }
+  return overlap * 100;
+}
+
+function solapamientoEquipoHeatmapMatchmaking(jugadores = []) {
+  const heatmaps = jugadores.map(obtenerHeatmapJugadorMatchmaking).filter(heatmap => normalizarHeatmapMatchmaking(heatmap).total > 0);
+  if (heatmaps.length < 2) return 0;
+  let total = 0;
+  let pares = 0;
+  for (let i = 0; i < heatmaps.length; i += 1) {
+    for (let j = i + 1; j < heatmaps.length; j += 1) {
+      total += solapamientoHeatmapMatchmaking(heatmaps[i], heatmaps[j]);
+      pares += 1;
+    }
+  }
+  return pares > 0 ? total / pares : 0;
+}
+
+function posicionDominanteHeatmapMatchmaking(heatmap, pitch = MATCHMAKING_PITCH) {
+  const normalized = normalizarHeatmapMatchmaking(heatmap);
+  if (!normalized.total || !normalized.flat.length) return null;
+  const maxValue = Math.max(...normalized.flat);
+  if (maxValue <= 0) return null;
+
+  const cells = [];
+  normalized.counts.forEach((row, y) => {
+    row.forEach((value, x) => {
+      if (value <= 0) return;
+      cells.push({
+        x,
+        y,
+        value,
+        centerX: ((x + 0.5) / Math.max(normalized.xBins, 1)) * pitch.width,
+        centerY: ((y + 0.5) / Math.max(normalized.yBins, 1)) * pitch.height
+      });
+    });
+  });
+  if (!cells.length) return null;
+
+  const threshold = maxValue * 0.62;
+  let selected = cells.filter(cell => cell.value >= threshold);
+  if (selected.length < 3) {
+    selected = [...cells].sort((a, b) => b.value - a.value).slice(0, Math.min(4, cells.length));
+  } else {
+    const maxCells = Math.max(3, Math.ceil(cells.length * 0.18));
+    selected = selected.sort((a, b) => b.value - a.value).slice(0, maxCells);
+  }
+  const weight = selected.reduce((sum, cell) => sum + cell.value, 0);
+  if (!weight) return null;
+  return {
+    x: selected.reduce((sum, cell) => sum + cell.centerX * cell.value, 0) / weight,
+    y: selected.reduce((sum, cell) => sum + cell.centerY * cell.value, 0) / weight,
+    source: 'heatmap'
+  };
+}
+
+function posicionNaturalJugadorMatchmaking(jugador, pitch = MATCHMAKING_PITCH) {
+  const direct = jugador?.dominantPosition
+    || jugador?.dominant_position_m
+    || jugador?.metrics?.dominant_position_m
+    || jugador?.tracking?.dominant_position_m;
+  if (direct && Number.isFinite(Number(direct.x)) && Number.isFinite(Number(direct.y))) {
+    return { x: Number(direct.x), y: Number(direct.y), source: 'heatmap' };
+  }
+  return posicionDominanteHeatmapMatchmaking(obtenerHeatmapJugadorMatchmaking(jugador), pitch);
+}
+
+function obtenerEtiquetasPosicionJugadorMatchmaking(jugador = {}) {
+  const fuentes = [
+    jugador?.jugadorPosicionesMatchmaking,
+    jugador?.jugadores?.jugador_posicion,
+    jugador?.jugador_posicion,
+    jugador?.data?.jugadores?.jugador_posicion,
+    jugador?.data?.jugador_posicion,
+    jugador?.historicoMatchmaking?.jugadores?.jugador_posicion,
+    jugador?.historicoMatchmaking?.jugador_posicion
+  ];
+
+  for (const fuente of fuentes) {
+    if (Array.isArray(fuente) && fuente.length > 0) return fuente;
+  }
+
+  return [];
+}
+
+function obtenerTextoEtiquetaPosicionMatchmaking(posicion = {}) {
+  return posicion?.posicion?.nombre
+    || posicion?.posiciones?.nombre
+    || posicion?.nombre
+    || posicion?.posicion_nombre
+    || posicion?.label
+    || '';
+}
+
+function normalizarRolVisualCanchaMatchmaking(rol, incluirArquero = false) {
+  return rol === 'arquero' && !incluirArquero ? 'defensa' : rol;
+}
+
+function obtenerRolEtiquetaCanchaMatchmaking(jugador, opciones = {}) {
+  const incluirArquero = opciones.incluirArquero === true;
+  if (normalizarRolPartido(jugador?.rolPartido || jugador?.rol_matchmaking) === ROL_PARTIDO_ARQUERO) {
+    return normalizarRolVisualCanchaMatchmaking('arquero', incluirArquero);
+  }
+
+  const etiquetas = [...obtenerEtiquetasPosicionJugadorMatchmaking(jugador)]
+    .sort((a, b) => Number(Boolean(b?.es_primaria)) - Number(Boolean(a?.es_primaria)));
+  const texto = normalizarBusquedaMatchmaking(etiquetas.map(obtenerTextoEtiquetaPosicionMatchmaking).join(' '));
+  if (!texto) return null;
+  if (texto.includes('arquero')) return normalizarRolVisualCanchaMatchmaking('arquero', incluirArquero);
+  if (texto.includes('defen') || texto.includes('central') || texto.includes('lateral')) return 'defensa';
+  if (texto.includes('medio') || texto.includes('mediocampo') || texto.includes('volante')) return 'medio';
+  if (texto.includes('ata') || texto.includes('delanter') || texto.includes('punta')) return 'ataque';
+  return null;
+}
+
+function evaluarArmoniaEquipoMatchmaking(equipo = []) {
+  const jugadoresConHeatmap = (equipo || []).filter(tieneHeatmapMatchmaking);
+  const heatmaps = jugadoresConHeatmap.map(obtenerHeatmapJugadorMatchmaking);
+  const combined = combinarHeatmapsMatchmaking(heatmaps);
+  const coveragePct = combined ? coberturaHeatmapMatchmaking(combined) : 0;
+  const overlapPct = solapamientoEquipoHeatmapMatchmaking(jugadoresConHeatmap);
+  const coverageScore = clampMatchmaking(coveragePct * 1.35, 0, 100);
+  const overlapScore = jugadoresConHeatmap.length >= 2 ? clampMatchmaking(100 - overlapPct, 0, 100) : 0;
+  const score = jugadoresConHeatmap.length >= 2
+    ? clampMatchmaking((coverageScore * 0.62) + (overlapScore * 0.38), 0, 100)
+    : 0;
+
+  return {
+    playersWithHeatmap: jugadoresConHeatmap.length,
+    coveragePct,
+    overlapPct,
+    score,
+    usable: jugadoresConHeatmap.length >= 2
+  };
+}
+
 class GeneticTeamOptimizer {
   constructor() {
     this.sinergias = new Map();
@@ -82,7 +500,10 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: 1.25,
       golesRecibidosEquipo: 1.25,
       pulmonTrackingTotal: 1.4,
-      cantidadArqueros: 25
+      cantidadArqueros: 25,
+      scoreDefensivoTotal: 0.22,
+      armoniaHeatmap: 0.18,
+      equilibrioArmoniaHeatmap: 0.08
     };
   }
 
@@ -91,10 +512,11 @@ class GeneticTeamOptimizer {
    * @param {Array} jugadores - Array de objetos jugador con estadísticas
    */
   setJugadores(jugadores) {
-    const jugadoresProcesados = jugadores.map(jugador => {
+    const jugadoresProcesadosBase = jugadores.map(jugador => {
       const jugadorId = obtenerIdJugadorMatchmaking(jugador);
       const rolPartido = normalizarRolPartido(jugador.rolPartido || jugador.rol_matchmaking);
       const rendimientoJugador = this.calcularRendimientoJugador(jugador);
+      const rendimientoArqueroRanking = calcularRendimientoArqueroRankingMatchmaking(jugador);
       const rendimientoArqueroDisponible = this.calcularRendimientoArquero(jugador);
       const esArquero = rolPartido === ROL_PARTIDO_ARQUERO;
       const historicoMatchmaking = jugador.historicoMatchmaking
@@ -105,11 +527,20 @@ class GeneticTeamOptimizer {
           }
         : null;
       const rendimientoHistoricoMatchmaking = historicoMatchmaking
-        ? (esArquero
-            ? this.calcularRendimientoArquero(historicoMatchmaking)
-            : this.calcularRendimientoJugador(historicoMatchmaking))
+        ? this.calcularRendimientoTotal(historicoMatchmaking)
         : null;
       const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
+      const scoreDefensivoTracking = obtenerScoreDefensivoTrackingMatchmaking(jugador);
+      const scoreDefensivoMatchmaking = scoreDefensivoTracking ?? 0;
+      const puntosDefensaRankingDirecto = obtenerPuntosDefensaRankingDirectoMatchmaking(jugador);
+      const impactoSkillDefensa = puntosDefensaRankingDirecto ?? 0;
+      const rendimientoTotal = calcularSkillRankingIndividualMatchmaking(jugador, impactoSkillDefensa);
+      const trackingHeatmap = obtenerHeatmapJugadorMatchmaking(jugador);
+      const dominantPosition = posicionNaturalJugadorMatchmaking({
+        ...jugador,
+        trackingHeatmap
+      });
+      const jugadorPosicionesMatchmaking = obtenerEtiquetasPosicionJugadorMatchmaking(jugador);
 
       return {
         id: jugadorId,
@@ -118,12 +549,16 @@ class GeneticTeamOptimizer {
         origenRendimiento: jugador.origenRendimiento || MODO_RENDIMIENTO_HISTORICO,
         partidosRecientesSolicitados: jugador.partidosRecientesSolicitados || 0,
         partidosRecientesUsados: jugador.partidosRecientesUsados || 0,
-        rendimientoTotal: esArquero ? rendimientoArqueroDisponible : rendimientoJugador,
+        rendimientoTotal,
+        skillBaseMatchmaking: rendimientoTotal,
         rendimientoHistoricoMatchmaking: Number.isFinite(rendimientoHistoricoMatchmaking) ? rendimientoHistoricoMatchmaking : null,
         rendimientoAtaque: esArquero ? 0 : rendimientoJugador,
         rendimientoArquero: esArquero ? rendimientoArqueroDisponible : 0,
         rendimientoJugador,
+        rendimientoArqueroRanking,
         rendimientoArqueroDisponible,
+        impactoSkillDefensa,
+        puntosDefensaRankingDirecto,
         golesFavorEquipo: esArquero ? 0 : Number(jugador.goles_favor_equipo) || 0,
         golesRecibidosEquipo: esArquero ? Number(jugador.goles_recibidos_equipo) || 0 : 0,
         cantidadArqueros: esArquero ? 1 : 0,
@@ -138,10 +573,17 @@ class GeneticTeamOptimizer {
         matchmakingVersus: jugador.matchmakingVersus && typeof jugador.matchmakingVersus === 'object' ? jugador.matchmakingVersus : {},
         matchmakingJuntos: jugador.matchmakingJuntos && typeof jugador.matchmakingJuntos === 'object' ? jugador.matchmakingJuntos : {},
         matchmakingDinamica: jugador.matchmakingDinamica && typeof jugador.matchmakingDinamica === 'object' ? jugador.matchmakingDinamica : null,
+        rachaActualMatchmaking: jugador.rachaActualMatchmaking && typeof jugador.rachaActualMatchmaking === 'object' ? jugador.rachaActualMatchmaking : null,
         distribucionTramos: jugador.distribucionTramos || jugador.momentosPerfil?.distribucionTramos || null,
         trackingDistanceKmAvg: numeroSeguroMatchmaking(jugador.trackingDistanceKmAvg ?? jugador.distance_km_avg ?? jugador.tracking?.distance_km_avg),
         trackingDistancePer40Km: numeroSeguroMatchmaking(jugador.trackingDistancePer40Km ?? jugador.distance_per_40_min_km ?? jugador.tracking?.distance_per_40_min_km),
         pulmonTracking,
+        scoreDefensivoTracking,
+        scoreDefensivoMatchmaking,
+        trackingHeatmap,
+        dominantPosition,
+        jugadorPosicionesMatchmaking,
+        jugador_posicion: jugadorPosicionesMatchmaking,
         trackingGoalsScoredLocations: Array.isArray(jugador.trackingGoalsScoredLocations)
           ? jugador.trackingGoalsScoredLocations
           : (Array.isArray(jugador.goal_locations) ? jugador.goal_locations : []),
@@ -152,6 +594,20 @@ class GeneticTeamOptimizer {
       };
     });
 
+    const rangoDefensaMatchmaking = crearRangoDefensaMatchmaking(jugadoresProcesadosBase);
+    const jugadoresProcesados = jugadoresProcesadosBase.map(jugador => {
+      const impactoSkillDefensa = jugador.puntosDefensaRankingDirecto !== null
+        ? jugador.puntosDefensaRankingDirecto
+        : calcularImpactoSkillDefensaMatchmaking(jugador.scoreDefensivoTracking, rangoDefensaMatchmaking);
+      const rendimientoTotal = calcularSkillRankingIndividualMatchmaking(jugador, impactoSkillDefensa);
+      return {
+        ...jugador,
+        impactoSkillDefensa,
+        rendimientoTotal,
+        skillBaseMatchmaking: rendimientoTotal
+      };
+    });
+
     const sumaImpacto = jugadoresProcesados.reduce((total, jugador) => (
       total + Math.abs(Number(jugador.rendimientoTotal) || 0)
     ), 0);
@@ -159,7 +615,7 @@ class GeneticTeamOptimizer {
 
     this.jugadores = jugadoresProcesados.map(jugador => ({
       ...jugador,
-      skillMatchmaking: jugador.rendimientoTotal,
+      skillMatchmaking: jugador.skillBaseMatchmaking,
       impactoMatchmaking: sumaImpacto > 0
         ? (Math.abs(Number(jugador.rendimientoTotal) || 0) / sumaImpacto) * 100
         : impactoFallback
@@ -170,25 +626,15 @@ class GeneticTeamOptimizer {
    * Calcula el rendimiento total de un jugador
    */
   calcularRendimientoTotal(jugador) {
-    const rolPartido = normalizarRolPartido(jugador.rolPartido || jugador.rol_matchmaking);
-    return rolPartido === ROL_PARTIDO_ARQUERO
-      ? this.calcularRendimientoArquero(jugador)
-      : this.calcularRendimientoJugador(jugador);
+    const puntosDefensa = obtenerPuntosDefensaRankingDirectoMatchmaking(jugador) ?? 0;
+    return calcularSkillRankingIndividualMatchmaking(jugador, puntosDefensa);
   }
 
   /**
    * Calcula el rendimiento de un jugador de campo
    */
   calcularRendimientoJugador(jugador) {
-    const pj = jugador.pj || 1;
-    const golesPP = (jugador.goles || 0) / pj;
-    const mvpPP = (jugador.mvp_count || 0) / pj;
-    const acePP = (jugador.ace_count || 0) / pj;
-    const asistPP = (jugador.asistencias || 0) / pj;
-    const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
-    const puntosPP = (jugador.total_puntos || 0) / pj;
-    
-    return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
+    return calcularRendimientoAtaqueRankingMatchmaking(jugador);
   }
 
   calcularRendimientoAtaque(jugador) {
@@ -199,10 +645,11 @@ class GeneticTeamOptimizer {
    * Calcula el rendimiento de arquero de un jugador
    */
   calcularRendimientoArquero(jugador) {
-    const pjArquero = Math.max(
-      Number(jugador.pj_arquero ?? jugador.pjArquero ?? jugador.pj) || 0,
-      1
-    );
+    const pjArqueroRegistrado = Number(jugador.pj_arquero ?? jugador.pjArquero);
+    const pjFallback = Number(jugador.pj) || 0;
+    const pjArquero = Number.isFinite(pjArqueroRegistrado) && pjArqueroRegistrado > 0
+      ? pjArqueroRegistrado
+      : Math.max(pjFallback, 1);
     const atajadas = Number(jugador.atajadas) || 0;
     const golesRecibidos = Number(jugador.goles_recibidos_arquero ?? jugador.golesRecibidosArquero) || 0;
     const atajadasPP = atajadas / pjArquero;
@@ -405,6 +852,7 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: 0,
       golesRecibidosEquipo: 0,
       pulmonTrackingTotal: 0,
+      scoreDefensivoTotal: 0,
       cantidadArqueros: 0
     };
     const stats2 = {
@@ -414,6 +862,7 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: 0,
       golesRecibidosEquipo: 0,
       pulmonTrackingTotal: 0,
+      scoreDefensivoTotal: 0,
       cantidadArqueros: 0
     };
 
@@ -421,22 +870,24 @@ class GeneticTeamOptimizer {
       const jugador = this.jugadores[i];
       const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
       if (individuo[i] === 0) {
-        equipo1.push(jugador.nombre);
+        equipo1.push(jugador);
         stats1.rendimientoTotal += jugador.rendimientoTotal;
         stats1.rendimientoAtaque += jugador.rendimientoAtaque;
         stats1.rendimientoArquero += jugador.rendimientoArquero;
         stats1.golesFavorEquipo += jugador.golesFavorEquipo;
         stats1.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
         stats1.pulmonTrackingTotal += pulmonTracking || 0;
+        stats1.scoreDefensivoTotal += obtenerScoreDefensivoMatchmaking(jugador);
         stats1.cantidadArqueros += jugador.cantidadArqueros;
       } else {
-        equipo2.push(jugador.nombre);
+        equipo2.push(jugador);
         stats2.rendimientoTotal += jugador.rendimientoTotal;
         stats2.rendimientoAtaque += jugador.rendimientoAtaque;
         stats2.rendimientoArquero += jugador.rendimientoArquero;
         stats2.golesFavorEquipo += jugador.golesFavorEquipo;
         stats2.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
         stats2.pulmonTrackingTotal += pulmonTracking || 0;
+        stats2.scoreDefensivoTotal += obtenerScoreDefensivoMatchmaking(jugador);
         stats2.cantidadArqueros += jugador.cantidadArqueros;
       }
     }
@@ -445,6 +896,8 @@ class GeneticTeamOptimizer {
     const size2 = equipo2.length;
     
     if (size1 === 0 || size2 === 0) return 1000;
+    const armonia1 = evaluarArmoniaEquipoMatchmaking(equipo1);
+    const armonia2 = evaluarArmoniaEquipoMatchmaking(equipo2);
 
     const avg1 = {
       rendimientoTotal: stats1.rendimientoTotal / size1,
@@ -453,7 +906,9 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: stats1.golesFavorEquipo / size1,
       golesRecibidosEquipo: stats1.golesRecibidosEquipo / size1,
       pulmonTrackingTotal: stats1.pulmonTrackingTotal,
-      cantidadArqueros: stats1.cantidadArqueros
+      scoreDefensivoTotal: stats1.scoreDefensivoTotal,
+      cantidadArqueros: stats1.cantidadArqueros,
+      armoniaHeatmap: armonia1
     };
 
     const avg2 = {
@@ -463,7 +918,9 @@ class GeneticTeamOptimizer {
       golesFavorEquipo: stats2.golesFavorEquipo / size2,
       golesRecibidosEquipo: stats2.golesRecibidosEquipo / size2,
       pulmonTrackingTotal: stats2.pulmonTrackingTotal,
-      cantidadArqueros: stats2.cantidadArqueros
+      scoreDefensivoTotal: stats2.scoreDefensivoTotal,
+      cantidadArqueros: stats2.cantidadArqueros,
+      armoniaHeatmap: armonia2
     };
 
     return this.calcularFitnessBalanceado(avg1, avg2);
@@ -486,6 +943,18 @@ class GeneticTeamOptimizer {
     fitness += Math.abs(avg1.golesRecibidosEquipo - avg2.golesRecibidosEquipo) * this.fitnessWeights.golesRecibidosEquipo;
     fitness += Math.abs((avg1.pulmonTrackingTotal || 0) - (avg2.pulmonTrackingTotal || 0)) * this.fitnessWeights.pulmonTrackingTotal;
     fitness += Math.abs((avg1.cantidadArqueros || 0) - (avg2.cantidadArqueros || 0)) * this.fitnessWeights.cantidadArqueros;
+    fitness += Math.abs((avg1.scoreDefensivoTotal || 0) - (avg2.scoreDefensivoTotal || 0)) * this.fitnessWeights.scoreDefensivoTotal;
+    const armonia1 = avg1.armoniaHeatmap;
+    const armonia2 = avg2.armoniaHeatmap;
+    if (armonia1?.usable) {
+      fitness += (100 - armonia1.score) * this.fitnessWeights.armoniaHeatmap * Math.min(1, armonia1.playersWithHeatmap / 5);
+    }
+    if (armonia2?.usable) {
+      fitness += (100 - armonia2.score) * this.fitnessWeights.armoniaHeatmap * Math.min(1, armonia2.playersWithHeatmap / 5);
+    }
+    if (armonia1?.usable && armonia2?.usable) {
+      fitness += Math.abs(armonia1.score - armonia2.score) * this.fitnessWeights.equilibrioArmoniaHeatmap;
+    }
     return fitness;
   }
 
@@ -564,9 +1033,11 @@ class GeneticTeamOptimizer {
       golesRecibidosEquipo: 0,
       winrate: 0,
       pulmonTrackingTotal: 0,
+      scoreDefensivoTotal: 0,
       cantidadArqueros: 0,
       impactoMatchmaking: 0,
-      jugadoresConPulmonTracking: 0
+      jugadoresConPulmonTracking: 0,
+      jugadoresConScoreDefensivoTracking: 0
     };
 
     for (const jugador of equipo) {
@@ -581,11 +1052,17 @@ class GeneticTeamOptimizer {
         stats.pulmonTrackingTotal += pulmonTracking;
         stats.jugadoresConPulmonTracking += 1;
       }
+      const scoreDefensivo = obtenerScoreDefensivoTrackingMatchmaking(jugador);
+      if (scoreDefensivo !== null && scoreDefensivo > 0) {
+        stats.scoreDefensivoTotal += scoreDefensivo;
+        stats.jugadoresConScoreDefensivoTracking += 1;
+      }
       stats.cantidadArqueros += jugador.cantidadArqueros;
       stats.impactoMatchmaking += jugador.impactoMatchmaking || 0;
     }
 
     const size = equipo.length;
+    const armonia = evaluarArmoniaEquipoMatchmaking(equipo);
     return {
       rendimientoTotal: stats.rendimientoTotal,
       rendimientoAtaque: stats.rendimientoAtaque,
@@ -596,10 +1073,18 @@ class GeneticTeamOptimizer {
       pulmonPromedio: stats.jugadoresConPulmonTracking > 0 ? stats.pulmonTrackingTotal / stats.jugadoresConPulmonTracking : 0,
       pulmonTotal: stats.pulmonTrackingTotal,
       pulmonTrackingTotal: stats.pulmonTrackingTotal,
+      scoreDefensivoPromedio: stats.jugadoresConScoreDefensivoTracking > 0 ? stats.scoreDefensivoTotal / stats.jugadoresConScoreDefensivoTracking : 0,
+      scoreDefensivoTotal: stats.scoreDefensivoTotal,
       jugadoresConPulmonTracking: stats.jugadoresConPulmonTracking,
+      jugadoresConScoreDefensivoTracking: stats.jugadoresConScoreDefensivoTracking,
       cantidadArqueros: stats.cantidadArqueros,
       impactoMatchmaking: stats.impactoMatchmaking,
-      jugadores: size
+      jugadores: size,
+      armoniaHeatmapScore: armonia.score,
+      heatmapCoveragePct: armonia.coveragePct,
+      heatmapOverlapPct: armonia.overlapPct,
+      heatmapPlayers: armonia.playersWithHeatmap,
+      heatmapHarmonyUsable: armonia.usable
     };
   }
 }
@@ -621,27 +1106,13 @@ let ultimosJugadoresUsados = ''; // Para recordar la última configuración
 let modoRendimientoMatchmaking = MODO_RENDIMIENTO_HISTORICO;
 let partidosRecientesMatchmaking = PARTIDOS_RECIENTES_DEFAULT;
 let seleccionIntercambioMatchmaking = null;
-
-function obtenerPosicionesJugador(jugador) {
-  return jugador?.jugadores?.jugador_posicion || jugador?.jugador_posicion || [];
-}
-
-function esPosicionArquero(posicionJugador) {
-  const nombre = posicionJugador?.posicion?.nombre
-    || posicionJugador?.posiciones?.nombre
-    || posicionJugador?.nombre
-    || posicionJugador?.posicion_nombre
-    || '';
-
-  return String(nombre).toLowerCase().includes('arquero');
-}
+let resultadoLiveMatchmaking = null;
+let asignacionLiveAnterior = {};
+let recalculoLiveVersion = 0;
+let ultimoNombreAgregadoLive = '';
 
 function obtenerRolInicialPartido(jugador) {
-  const posicionPrimaria = obtenerPosicionesJugador(jugador).find(posicion => posicion?.es_primaria);
-
-  return esPosicionArquero(posicionPrimaria)
-    ? ROL_PARTIDO_ARQUERO
-    : ROL_PARTIDO_JUGADOR;
+  return normalizarRolPartido(jugador?.rolPartido || jugador?.rol_matchmaking);
 }
 
 function escaparTextoParaJs(valor) {
@@ -675,6 +1146,1028 @@ function obtenerConfiguracionRendimientoMatchmaking() {
   };
 }
 
+function normalizarBusquedaMatchmaking(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function datosJugadoresMatchmakingDisponibles() {
+  return Array.isArray(window.datosJugadores) ? window.datosJugadores : [];
+}
+
+function obtenerPartidoIdsRankingMatchmaking(jugadores = []) {
+  return [...new Set((jugadores || []).flatMap(jugador => [
+    jugador?.partido_id,
+    ...(Array.isArray(jugador?.partido_ids) ? jugador.partido_ids : []),
+    ...(Array.isArray(jugador?.partidoIds) ? jugador.partidoIds : [])
+  ]).map(valor => String(valor || '').trim()).filter(Boolean))];
+}
+
+async function asegurarPuntosDefensaRankingMatchmaking(datos = []) {
+  if (!Array.isArray(datos) || datos.length === 0) return datos;
+  if (datos.every(jugador => obtenerPuntosDefensaRankingDirectoMatchmaking(jugador) !== null)) {
+    return datos;
+  }
+
+  const cargarPromedios = window.cargarPromediosDefensaTrackingJugadores;
+  if (typeof cargarPromedios !== 'function') return datos;
+
+  try {
+    const universoRanking = datosJugadoresMatchmakingDisponibles().length
+      ? datosJugadoresMatchmakingDisponibles()
+      : datos;
+    const idsRanking = universoRanking.map(obtenerIdJugadorMatchmaking).filter(Boolean);
+    const partidoIdsRanking = obtenerPartidoIdsRankingMatchmaking(universoRanking);
+    const promedios = await cargarPromedios(idsRanking, partidoIdsRanking);
+
+    return datos.map(jugador => {
+      if (obtenerPuntosDefensaRankingDirectoMatchmaking(jugador) !== null) return jugador;
+      const jugadorId = obtenerIdJugadorMatchmaking(jugador);
+      const defensa = promedios?.get?.(String(jugadorId || ''));
+      if (!defensa) return jugador;
+      return {
+        ...jugador,
+        scoreDefensivoPromedio: defensa.scoreDefensivoPromedio ?? jugador.scoreDefensivoPromedio ?? null,
+        puntosDefensaTrackingPromedio: defensa.puntosDefensaTrackingPromedio ?? 0,
+        partidosConDefensaTracking: defensa.partidosConDefensaTracking ?? jugador.partidosConDefensaTracking ?? 0
+      };
+    });
+  } catch (error) {
+    console.warn('[matchmaking] no se pudo cargar DEF de ranking:', error?.message || error);
+    return datos;
+  }
+}
+
+function nombreDatoJugadorMatchmaking(jugador) {
+  return jugador?.jugadores?.nombre || jugador?.nombre || '';
+}
+
+function idDatoJugadorMatchmaking(jugador) {
+  return obtenerIdJugadorMatchmaking(jugador);
+}
+
+function sincronizarInputJugadoresPartido() {
+  const input = document.getElementById('input-jugadores-partido');
+  if (input) {
+    input.value = jugadoresSeleccionados.map(jugador => jugador.nombre).join(', ');
+  }
+}
+
+function poblarOpcionesJugadoresMatchmaking() {
+  const datalist = document.getElementById('matchmaking-player-options');
+  if (!datalist) return;
+  const usados = new Set(jugadoresSeleccionados.map(jugador => String(jugador.id)));
+  datalist.innerHTML = datosJugadoresMatchmakingDisponibles()
+    .filter(jugador => !usados.has(String(idDatoJugadorMatchmaking(jugador))))
+    .map(jugador => nombreDatoJugadorMatchmaking(jugador))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .map(nombre => `<option value="${escaparHtmlMatchmaking(nombre)}"></option>`)
+    .join('');
+}
+
+function resolverDatoJugadorPorNombreMatchmaking(nombre) {
+  const buscado = normalizarBusquedaMatchmaking(nombre);
+  if (!buscado) return null;
+  const candidatos = datosJugadoresMatchmakingDisponibles();
+  return candidatos.find(jugador => normalizarBusquedaMatchmaking(nombreDatoJugadorMatchmaking(jugador)) === buscado)
+    || candidatos.find(jugador => normalizarBusquedaMatchmaking(nombreDatoJugadorMatchmaking(jugador)).startsWith(buscado))
+    || candidatos.find(jugador => normalizarBusquedaMatchmaking(nombreDatoJugadorMatchmaking(jugador)).includes(buscado))
+    || null;
+}
+
+function crearJugadorSeleccionadoMatchmaking(jugador, rolesPrevios = new Map()) {
+  const jugadorId = idDatoJugadorMatchmaking(jugador);
+  if (!jugadorId) return null;
+  return {
+    id: jugadorId,
+    nombre: nombreDatoJugadorMatchmaking(jugador),
+    data: jugador,
+    rolPartido: normalizarRolPartido(rolesPrevios.get(String(jugadorId)) || obtenerRolInicialPartido(jugador))
+  };
+}
+
+function agregarJugadorSeleccionadoMatchmaking(jugador, opciones = {}) {
+  const seleccionado = crearJugadorSeleccionadoMatchmaking(jugador);
+  if (!seleccionado) return false;
+  if (jugadoresSeleccionados.some(actual => String(actual.id) === String(seleccionado.id))) {
+    if (!opciones.silencioso) window.showToast?.(`${seleccionado.nombre} ya esta en el armado`, 'warning');
+    return false;
+  }
+  if (jugadoresSeleccionados.length >= 10) {
+    if (!opciones.silencioso) window.showToast?.('El armado ya tiene 10 jugadores', 'warning');
+    return false;
+  }
+
+  jugadoresSeleccionados.push(seleccionado);
+  ultimoNombreAgregadoLive = seleccionado.nombre;
+  sincronizarInputJugadoresPartido();
+  actualizarJugadoresSeleccionados();
+  actualizarSelectsRestricciones();
+  validarEjecucion();
+  recalcularAutoEquiposLive('alta');
+  return true;
+}
+
+window.agregarJugadorAutoMatchmaking = function() {
+  const input = document.getElementById('input-jugador-live-matchmaking');
+  const nombre = input?.value?.trim() || '';
+  if (!nombre) {
+    window.showToast?.('Ingresa un jugador', 'warning');
+    return;
+  }
+
+  const jugador = resolverDatoJugadorPorNombreMatchmaking(nombre);
+  if (!jugador) {
+    window.showToast?.(`No encontre a "${nombre}" en la tabla de jugadores`, 'error');
+    return;
+  }
+
+  if (agregarJugadorSeleccionadoMatchmaking(jugador)) {
+    if (input) input.value = '';
+    input?.focus();
+  }
+};
+
+window.quitarJugadorAutoMatchmaking = function(jugadorId) {
+  const jugador = jugadoresSeleccionados.find(actual => String(actual.id) === String(jugadorId));
+  jugadoresSeleccionados = jugadoresSeleccionados.filter(actual => String(actual.id) !== String(jugadorId));
+  delete asignacionLiveAnterior[String(jugadorId)];
+  ultimoNombreAgregadoLive = '';
+  sincronizarInputJugadoresPartido();
+  actualizarJugadoresSeleccionados();
+  actualizarSelectsRestricciones();
+  validarEjecucion();
+  recalcularAutoEquiposLive(jugador ? 'baja' : '');
+};
+
+window.limpiarAutoEquipos = function() {
+  jugadoresSeleccionados = [];
+  resultadoLiveMatchmaking = null;
+  asignacionLiveAnterior = {};
+  ultimoNombreAgregadoLive = '';
+  sincronizarInputJugadoresPartido();
+  actualizarJugadoresSeleccionados();
+  actualizarSelectsRestricciones();
+  validarEjecucion();
+  recalcularAutoEquiposLive('limpiar');
+};
+
+function contarBitsMatchmaking(mask, n) {
+  let count = 0;
+  for (let i = 0; i < n; i += 1) {
+    if (mask & (1 << i)) count += 1;
+  }
+  return count;
+}
+
+function indiceJugadorPorNombreMatchmaking(jugadores, nombre) {
+  const buscado = normalizarBusquedaMatchmaking(nombre);
+  return jugadores.findIndex(jugador => normalizarBusquedaMatchmaking(jugador.nombre) === buscado);
+}
+
+function cumpleRestriccionesIndividuoMatchmaking(individuo, jugadores, restricciones = {}) {
+  for (const [nombre1, nombre2] of restricciones.juntas || []) {
+    const idx1 = indiceJugadorPorNombreMatchmaking(jugadores, nombre1);
+    const idx2 = indiceJugadorPorNombreMatchmaking(jugadores, nombre2);
+    if (idx1 >= 0 && idx2 >= 0 && individuo[idx1] !== individuo[idx2]) return false;
+  }
+
+  for (const [nombre1, nombre2] of restricciones.enfrentadas || []) {
+    const idx1 = indiceJugadorPorNombreMatchmaking(jugadores, nombre1);
+    const idx2 = indiceJugadorPorNombreMatchmaking(jugadores, nombre2);
+    if (idx1 >= 0 && idx2 >= 0 && individuo[idx1] === individuo[idx2]) return false;
+  }
+
+  return true;
+}
+
+function asignacionDesdeIndividuoMatchmaking(individuo, jugadores) {
+  return jugadores.reduce((acc, jugador, index) => {
+    acc[String(jugador.id || jugador.nombre)] = individuo[index];
+    return acc;
+  }, {});
+}
+
+function contarMovimientosMatchmaking(individuo, jugadores, asignacionAnterior = {}) {
+  return jugadores.reduce((total, jugador, index) => {
+    const key = String(jugador.id || jugador.nombre);
+    return Object.prototype.hasOwnProperty.call(asignacionAnterior, key) && asignacionAnterior[key] !== individuo[index]
+      ? total + 1
+      : total;
+  }, 0);
+}
+
+function calcularCriterioBalanceLiveMatchmaking(jugadores = [], individuo = []) {
+  const resumen = {
+    size1: 0,
+    size2: 0,
+    rendimiento1: 0,
+    rendimiento2: 0,
+    ataque1: 0,
+    ataque2: 0
+  };
+
+  jugadores.forEach((jugador, index) => {
+    const target = individuo[index] === 0 ? '1' : '2';
+    resumen[`size${target}`] += 1;
+    resumen[`rendimiento${target}`] += numeroSeguroMatchmaking(jugador.rendimientoTotal);
+    resumen[`ataque${target}`] += numeroSeguroMatchmaking(jugador.rendimientoAtaque);
+  });
+
+  const avgRendimiento1 = resumen.size1 > 0 ? resumen.rendimiento1 / resumen.size1 : 0;
+  const avgRendimiento2 = resumen.size2 > 0 ? resumen.rendimiento2 / resumen.size2 : 0;
+  const avgAtaque1 = resumen.size1 > 0 ? resumen.ataque1 / resumen.size1 : 0;
+  const avgAtaque2 = resumen.size2 > 0 ? resumen.ataque2 / resumen.size2 : 0;
+  const mismosJugadores = resumen.size1 === resumen.size2;
+
+  return {
+    ...resumen,
+    rendimientoDiff: mismosJugadores
+      ? Math.abs(resumen.rendimiento1 - resumen.rendimiento2)
+      : Math.abs(avgRendimiento1 - avgRendimiento2),
+    ataqueDiff: mismosJugadores
+      ? Math.abs(resumen.ataque1 - resumen.ataque2)
+      : Math.abs(avgAtaque1 - avgAtaque2),
+    rendimientoTotalDiff: Math.abs(resumen.rendimiento1 - resumen.rendimiento2),
+    rendimientoAvgDiff: Math.abs(avgRendimiento1 - avgRendimiento2)
+  };
+}
+
+function compararCandidatosBalanceLiveMatchmaking(candidato, mejor) {
+  if (!mejor) return true;
+  const epsilon = 0.05;
+  const campos = ['fitness', 'rendimientoDiff', 'ataqueDiff', 'movimientos', 'desbalance'];
+
+  for (const campo of campos) {
+    const valorCandidato = numeroSeguroMatchmaking(candidato[campo]);
+    const valorMejor = numeroSeguroMatchmaking(mejor[campo]);
+    if (valorCandidato < valorMejor - epsilon) return true;
+    if (valorCandidato > valorMejor + epsilon) return false;
+  }
+
+  return false;
+}
+
+function optimizarEquiposExactoLiveMatchmaking(datosJugadores, restricciones = {}, asignacionAnterior = {}) {
+  const optimizer = new GeneticTeamOptimizer();
+  optimizer.setRestricciones(restricciones.enfrentadas || [], restricciones.juntas || []);
+  optimizer.setJugadores(datosJugadores);
+
+  const n = optimizer.jugadores.length;
+  if (n === 0) return null;
+
+  if (n === 1) {
+    const individuo = [0];
+    const resultado = optimizer.procesarResultado(individuo, 0);
+    const asignacion = asignacionDesdeIndividuoMatchmaking(individuo, optimizer.jugadores);
+    resultado.matchmakingLive = { asignacion, movimientos: 0 };
+    return { resultado, asignacion };
+  }
+
+  const minEquipo = Math.floor(n / 2);
+  const maxEquipo = Math.ceil(n / 2);
+  let mejor = null;
+
+  for (let mask = 0; mask < (1 << n); mask += 1) {
+    const equipo1Size = contarBitsMatchmaking(mask, n);
+    if (equipo1Size !== minEquipo && equipo1Size !== maxEquipo) continue;
+
+    const individuo = optimizer.jugadores.map((_, index) => (mask & (1 << index)) ? 0 : 1);
+    if (!cumpleRestriccionesIndividuoMatchmaking(individuo, optimizer.jugadores, restricciones)) continue;
+
+    const fitness = optimizer.evaluarIndividuo(individuo);
+    if (!Number.isFinite(fitness)) continue;
+
+    const movimientos = contarMovimientosMatchmaking(individuo, optimizer.jugadores, asignacionAnterior);
+    const desbalance = Math.abs(equipo1Size - (n - equipo1Size));
+    const criterio = calcularCriterioBalanceLiveMatchmaking(optimizer.jugadores, individuo);
+    const candidato = {
+      individuo,
+      fitness,
+      movimientos,
+      desbalance,
+      ...criterio
+    };
+
+    if (compararCandidatosBalanceLiveMatchmaking(candidato, mejor)) {
+      mejor = candidato;
+    }
+  }
+
+  if (!mejor) {
+    throw new Error('No hay una particion valida con las restricciones actuales');
+  }
+
+  const resultado = optimizer.procesarResultado(mejor.individuo, mejor.fitness);
+  const asignacion = asignacionDesdeIndividuoMatchmaking(mejor.individuo, optimizer.jugadores);
+  resultado.matchmakingLive = { asignacion, movimientos: mejor.movimientos };
+  return { resultado, asignacion };
+}
+
+async function prepararDatosLiveMatchmaking(configuracion) {
+  let datos = jugadoresSeleccionados.map(jugador => ({
+    ...jugador.data,
+    rolPartido: jugador.rolPartido
+  }));
+
+  if (configuracion.modo === MODO_RENDIMIENTO_RECIENTE) {
+    datos = await cargarEstadisticasRecientesJugadores(
+      jugadoresSeleccionados,
+      configuracion.partidos,
+      configuracion.temporadaId
+    );
+  }
+
+  datos = await asegurarPuntosDefensaRankingMatchmaking(datos);
+
+  return enriquecerJugadoresConMomentosMatchmaking(datos, configuracion.temporadaId);
+}
+
+function obtenerMovimientosLiveMatchmaking(asignacionAnterior = {}, asignacionActual = {}) {
+  return jugadoresSeleccionados
+    .filter(jugador => {
+      const key = String(jugador.id);
+      return Object.prototype.hasOwnProperty.call(asignacionAnterior, key)
+        && Object.prototype.hasOwnProperty.call(asignacionActual, key)
+        && asignacionAnterior[key] !== asignacionActual[key];
+    })
+    .map(jugador => jugador.nombre);
+}
+
+function obtenerRolCanchaLiveMatchmaking(jugador, opciones = {}) {
+  const incluirArquero = opciones.incluirArquero === true;
+  const posicion = posicionNaturalJugadorMatchmaking(jugador);
+  if (!posicion) return obtenerRolEtiquetaCanchaMatchmaking(jugador, { incluirArquero });
+  const ataque = clampMatchmaking(numeroSeguroMatchmaking(posicion.x, MATCHMAKING_PITCH.width / 2) / MATCHMAKING_PITCH.width, 0, 1);
+  if (ataque <= 0.16) return normalizarRolVisualCanchaMatchmaking('arquero', incluirArquero);
+  if (ataque <= 0.42) return 'defensa';
+  if (ataque >= 0.68) return 'ataque';
+  return 'medio';
+}
+
+function obtenerBoundsEquipoCanchaLiveMatchmaking(equipoKey) {
+  return equipoKey === 'equipo1'
+    ? { x0: 6.6, x1: 48.0, y0: 14, y1: 86 }
+    : { x0: 52.0, x1: 93.4, y0: 14, y1: 86 };
+}
+
+function proyectarNormCanchaLiveMatchmaking(norm, equipoKey) {
+  const bounds = obtenerBoundsEquipoCanchaLiveMatchmaking(equipoKey);
+  const xNorm = clampMatchmaking(numeroSeguroMatchmaking(norm?.x, 0.5), 0, 1);
+  const yNorm = clampMatchmaking(numeroSeguroMatchmaking(norm?.y, 0.5), 0, 1);
+  const width = bounds.x1 - bounds.x0;
+  const height = bounds.y1 - bounds.y0;
+  return {
+    x: equipoKey === 'equipo1'
+      ? bounds.x0 + (xNorm * width)
+      : bounds.x1 - (xNorm * width),
+    y: bounds.y0 + (yNorm * height)
+  };
+}
+
+function obtenerBoundsNormCanchaLiveMatchmaking(norm, equipoKey, radioX = 0.1, radioY = 0.15) {
+  const x = clampMatchmaking(numeroSeguroMatchmaking(norm?.x, 0.5), 0, 1);
+  const y = clampMatchmaking(numeroSeguroMatchmaking(norm?.y, 0.5), 0, 1);
+  const x0Norm = clampMatchmaking(x - radioX, 0.04, 0.96);
+  const x1Norm = clampMatchmaking(x + radioX, 0.04, 0.96);
+  const y0Norm = clampMatchmaking(y - radioY, 0.05, 0.95);
+  const y1Norm = clampMatchmaking(y + radioY, 0.05, 0.95);
+  const p0 = proyectarNormCanchaLiveMatchmaking({ x: x0Norm, y: y0Norm }, equipoKey);
+  const p1 = proyectarNormCanchaLiveMatchmaking({ x: x1Norm, y: y1Norm }, equipoKey);
+  const centro = proyectarNormCanchaLiveMatchmaking(norm, equipoKey);
+  return {
+    x0: Math.min(p0.x, p1.x),
+    x1: Math.max(p0.x, p1.x),
+    y0: Math.min(p0.y, p1.y),
+    y1: Math.max(p0.y, p1.y),
+    centerX: centro.x,
+    centerY: centro.y
+  };
+}
+
+function obtenerAnchorRolFallbackCanchaLiveMatchmaking(role) {
+  if (role === 'ataque') return { x: 0.82, y: 0.5 };
+  if (role === 'medio') return { x: 0.52, y: 0.5 };
+  if (role === 'defensa') return { x: 0.22, y: 0.5 };
+  return null;
+}
+
+function obtenerAnchorJugadorCapasCanchaLiveMatchmaking(jugador) {
+  const posicion = posicionNaturalJugadorMatchmaking(jugador);
+  if (posicion) {
+    return {
+      x: clampMatchmaking(numeroSeguroMatchmaking(posicion.x) / MATCHMAKING_PITCH.width, 0, 1),
+      y: clampMatchmaking(numeroSeguroMatchmaking(posicion.y) / MATCHMAKING_PITCH.height, 0, 1),
+      source: posicion.source || 'tracking',
+      tracking: true,
+      role: obtenerRolCanchaLiveMatchmaking(jugador)
+    };
+  }
+
+  const role = obtenerRolEtiquetaCanchaMatchmaking(jugador, { incluirArquero: false });
+  const fallback = obtenerAnchorRolFallbackCanchaLiveMatchmaking(role);
+  if (!fallback) return null;
+  return {
+    ...fallback,
+    source: 'etiqueta',
+    tracking: false,
+    role
+  };
+}
+
+function detectarCapasCanchaLiveMatchmaking(items = [], lambda = MATCHMAKING_KEEPER_ROTATION.layerLambda) {
+  const n = items.length;
+  if (!n) return { capas: [], costo: 0 };
+  const orden = [...items].sort((a, b) => numeroSeguroMatchmaking(a.anchor?.x) - numeroSeguroMatchmaking(b.anchor?.x));
+  let mejor = null;
+
+  for (let mask = 0; mask < (1 << Math.max(n - 1, 0)); mask += 1) {
+    const capas = [[orden[0]]];
+    for (let i = 1; i < n; i += 1) {
+      if (mask & (1 << (i - 1))) capas.push([]);
+      capas[capas.length - 1].push(orden[i]);
+    }
+
+    let costo = 0;
+    capas.forEach(capa => {
+      const mx = capa.reduce((sum, item) => sum + numeroSeguroMatchmaking(item.anchor?.x), 0) / capa.length;
+      costo += capa.reduce((sum, item) => {
+        const dx = numeroSeguroMatchmaking(item.anchor?.x) - mx;
+        return sum + (dx * dx);
+      }, 0);
+    });
+    costo += lambda * (capas.length - 1);
+
+    if (!mejor || costo < mejor.costo) mejor = { capas, costo };
+  }
+
+  return mejor || { capas: [orden], costo: 0 };
+}
+
+function normalizarXsCapasCanchaLiveMatchmaking(capas = []) {
+  if (!capas.length) return [];
+  const minSep = MATCHMAKING_KEEPER_ROTATION.minLayerSep;
+  const xs = capas.map(capa => {
+    const mean = capa.reduce((sum, item) => sum + numeroSeguroMatchmaking(item.anchor?.x), 0) / capa.length;
+    return clampMatchmaking(0.18 + (mean * 0.74), 0.18, 0.92);
+  });
+
+  for (let i = 1; i < xs.length; i += 1) {
+    if (xs[i] - xs[i - 1] < minSep) xs[i] = xs[i - 1] + minSep;
+  }
+
+  const exceso = xs.length ? xs[xs.length - 1] - 0.92 : 0;
+  if (exceso > 0) {
+    for (let i = 0; i < xs.length; i += 1) xs[i] -= exceso;
+  }
+
+  return xs.map(x => clampMatchmaking(x, 0.16, 0.92));
+}
+
+function posicionarCapasCanchaLiveMatchmaking(capas = []) {
+  const xs = normalizarXsCapasCanchaLiveMatchmaking(capas);
+  const posiciones = [];
+  capas.forEach((capa, capaIndex) => {
+    const ordenY = [...capa].sort((a, b) => numeroSeguroMatchmaking(a.anchor?.y) - numeroSeguroMatchmaking(b.anchor?.y));
+    ordenY.forEach((item, index) => {
+      const y = ordenY.length === 1
+        ? [0.3, 0.5, 0.7].reduce((mejor, candidato) => (
+            Math.abs(candidato - numeroSeguroMatchmaking(item.anchor?.y, 0.5)) < Math.abs(mejor - numeroSeguroMatchmaking(item.anchor?.y, 0.5))
+              ? candidato
+              : mejor
+          ), 0.5)
+        : (index + 1) / (ordenY.length + 1);
+      posiciones.push({
+        item,
+        norm: { x: xs[capaIndex], y },
+        slotRole: `capa-${capaIndex + 1}`
+      });
+    });
+  });
+  return posiciones;
+}
+
+function claveJugadorCanchaLiveMatchmaking(jugador = {}) {
+  return String(jugador?.id || jugador?.nombre || obtenerNombreJugadorMatchmaking(jugador));
+}
+
+function generarEscenariosArqueroCanchaLiveMatchmaking(items = [], equipoKey) {
+  if (!items.length) return [];
+  return items.map(itemArquero => {
+    const campo = items.filter(item => claveJugadorCanchaLiveMatchmaking(item.jugador) !== claveJugadorCanchaLiveMatchmaking(itemArquero.jugador));
+    const { capas, costo } = detectarCapasCanchaLiveMatchmaking(campo);
+    const etiqueta = capas.length ? capas.map(capa => capa.length).join('-') : '0';
+    const posiciones = [
+      {
+        item: itemArquero,
+        norm: MATCHMAKING_KEEPER_ROTATION.keeperSlot,
+        slotRole: 'arquero',
+        isKeeper: true
+      },
+      ...posicionarCapasCanchaLiveMatchmaking(capas)
+    ];
+
+    const markers = posiciones.map(posicion => {
+      const punto = proyectarNormCanchaLiveMatchmaking(posicion.norm, equipoKey);
+      return {
+        jugador: posicion.item.jugador,
+        x: punto.x,
+        y: punto.y,
+        source: posicion.item.anchor.source,
+        formation: etiqueta,
+        slotRole: posicion.slotRole,
+        columnBounds: obtenerBoundsNormCanchaLiveMatchmaking(
+          posicion.norm,
+          equipoKey,
+          posicion.isKeeper ? 0.045 : 0.11,
+          posicion.isKeeper ? 0.18 : 0.15
+        ),
+        isFallback: !posicion.item.anchor.tracking,
+        isKeeper: Boolean(posicion.isKeeper)
+      };
+    });
+
+    return {
+      keeperKey: claveJugadorCanchaLiveMatchmaking(itemArquero.jugador),
+      keeperName: obtenerNombreJugadorMatchmaking(itemArquero.jugador),
+      etiqueta,
+      costo,
+      markers: resolverOverlapsMarcadoresCanchaLiveMatchmaking(markers, equipoKey)
+    };
+  }).sort((a, b) => a.costo - b.costo);
+}
+
+function porcentajeAPixelCanchaLiveMatchmaking(punto) {
+  return {
+    x: (numeroSeguroMatchmaking(punto?.x) / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.width,
+    y: (numeroSeguroMatchmaking(punto?.y) / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.height
+  };
+}
+
+function pixelAPorcentajeCanchaLiveMatchmaking(punto) {
+  return {
+    x: (numeroSeguroMatchmaking(punto?.x) / MATCHMAKING_LIVE_PITCH_PIXELS.width) * 100,
+    y: (numeroSeguroMatchmaking(punto?.y) / MATCHMAKING_LIVE_PITCH_PIXELS.height) * 100
+  };
+}
+
+function boundsAPixelCanchaLiveMatchmaking(bounds) {
+  return {
+    x0: (bounds.x0 / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.width,
+    x1: (bounds.x1 / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.width,
+    y0: (bounds.y0 / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.height,
+    y1: (bounds.y1 / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.height
+  };
+}
+
+function resolverOverlapsMarcadoresCanchaLiveMatchmaking(marcadores = [], equipoKey) {
+  if (!Array.isArray(marcadores) || marcadores.length < 2) return marcadores;
+
+  const boundsEquipo = obtenerBoundsEquipoCanchaLiveMatchmaking(equipoKey);
+  const boundsPxEquipo = boundsAPixelCanchaLiveMatchmaking(boundsEquipo);
+  const config = MATCHMAKING_LIVE_MARKER_COLLISION;
+  const puntos = marcadores.map((marker, index) => {
+    const px = porcentajeAPixelCanchaLiveMatchmaking(marker);
+    const boundsMarker = marker.columnBounds || boundsEquipo;
+    const boundsPx = boundsAPixelCanchaLiveMatchmaking(boundsMarker);
+    const columnCenterX = ((numeroSeguroMatchmaking(boundsMarker.centerX, (boundsMarker.x0 + boundsMarker.x1) / 2)) / 100) * MATCHMAKING_LIVE_PITCH_PIXELS.width;
+    return {
+      index,
+      x: px.x,
+      y: px.y,
+      anchorX: px.x,
+      anchorY: px.y,
+      boundsPx,
+      columnCenterX
+    };
+  });
+
+  for (let it = 0; it < config.iterations; it += 1) {
+    for (let i = 0; i < puntos.length; i += 1) {
+      for (let j = i + 1; j < puntos.length; j += 1) {
+        let dx = puntos[j].x - puntos[i].x;
+        let dy = puntos[j].y - puntos[i].y;
+        let distancia = Math.hypot(dx, dy / config.verticalScale);
+
+        if (distancia === 0) {
+          const angle = ((i + 1) * 1.791) + ((j + 1) * 0.977);
+          dx = Math.cos(angle);
+          dy = Math.sin(angle) * config.verticalScale;
+          distancia = Math.hypot(dx, dy / config.verticalScale);
+        }
+
+        if (distancia < config.minDistPx) {
+          const push = (config.minDistPx - distancia) / 2;
+          const ux = dx / distancia;
+          const uy = (dy / config.verticalScale) / distancia;
+          puntos[i].x -= ux * push;
+          puntos[i].y -= uy * push * config.verticalScale;
+          puntos[j].x += ux * push;
+          puntos[j].y += uy * push * config.verticalScale;
+        }
+      }
+    }
+
+    puntos.forEach(punto => {
+      punto.x += (punto.anchorX - punto.x) * config.anchorPull;
+      punto.y += (punto.anchorY - punto.y) * config.anchorPull;
+      punto.x += (punto.x - punto.anchorX) * config.visualSpread;
+      punto.y += (punto.y - punto.anchorY) * config.visualSpread;
+      punto.x += (punto.columnCenterX - punto.x) * config.columnCenterPull;
+      punto.x = clampMatchmaking(punto.x, punto.boundsPx?.x0 ?? boundsPxEquipo.x0, punto.boundsPx?.x1 ?? boundsPxEquipo.x1);
+      punto.y = clampMatchmaking(punto.y, punto.boundsPx?.y0 ?? boundsPxEquipo.y0, punto.boundsPx?.y1 ?? boundsPxEquipo.y1);
+    });
+  }
+
+  return marcadores.map((marker, index) => {
+    const punto = puntos[index];
+    const porcentual = pixelAPorcentajeCanchaLiveMatchmaking(punto);
+    return {
+      ...marker,
+      anchorX: marker.x,
+      anchorY: marker.y,
+      x: porcentual.x,
+      y: porcentual.y,
+      hasCollisionOffset: Math.hypot(porcentual.x - marker.x, porcentual.y - marker.y) > 0.1
+    };
+  });
+}
+
+function prepararMarcadoresLiveEquipoMatchmaking(jugadores = [], equipoKey) {
+  const color = equipoKey === 'equipo1' ? MATCHMAKING_TEAM_THEMES.equipo1.color : MATCHMAKING_TEAM_THEMES.equipo2.color;
+  const items = jugadores
+    .map(jugador => {
+      const anchor = obtenerAnchorJugadorCapasCanchaLiveMatchmaking(jugador);
+      if (!anchor) return null;
+      return { jugador, anchor };
+    })
+    .filter(Boolean);
+  const escenarios = generarEscenariosArqueroCanchaLiveMatchmaking(items, equipoKey)
+    .map(escenario => ({
+      ...escenario,
+      markers: escenario.markers.map(marker => ({ ...marker, color, teamKey: equipoKey }))
+    }));
+  const escenarioInicial = escenarios[0] || { etiqueta: '', keeperName: '', markers: [] };
+
+  return {
+    marcadores: escenarioInicial.markers,
+    escenarios,
+    formacion: escenarioInicial.etiqueta,
+    arquero: escenarioInicial.keeperName
+  };
+}
+
+function obtenerJugadoresSinTrackingCanchaLiveMatchmaking(resultado) {
+  return [
+    ...(resultado?.equipo1?.jugadores || []),
+    ...(resultado?.equipo2?.jugadores || [])
+  ].filter(jugador => !posicionNaturalJugadorMatchmaking(jugador) && !obtenerRolEtiquetaCanchaMatchmaking(jugador, { incluirArquero: false }));
+}
+
+const rotacionArqueroCanchaMatchmaking = {
+  escenarios: { equipo1: [], equipo2: [] },
+  index: 0,
+  timer: null,
+  manualPaused: false,
+  hoverPaused: false
+};
+
+function totalEscenariosRotacionArqueroMatchmaking() {
+  return Math.max(
+    rotacionArqueroCanchaMatchmaking.escenarios.equipo1?.length || 0,
+    rotacionArqueroCanchaMatchmaking.escenarios.equipo2?.length || 0
+  );
+}
+
+function escenarioRotacionEquipoMatchmaking(equipoKey, index = rotacionArqueroCanchaMatchmaking.index) {
+  const escenarios = rotacionArqueroCanchaMatchmaking.escenarios[equipoKey] || [];
+  if (!escenarios.length) return null;
+  return escenarios[index % escenarios.length];
+}
+
+function estaPausadaRotacionArqueroMatchmaking() {
+  return rotacionArqueroCanchaMatchmaking.manualPaused || rotacionArqueroCanchaMatchmaking.hoverPaused;
+}
+
+function actualizarUiRotacionArqueroMatchmaking() {
+  const pitch = document.querySelector('[data-matchmaking-keeper-pitch]');
+  if (!pitch) return;
+  const pausada = estaPausadaRotacionArqueroMatchmaking();
+  const total = totalEscenariosRotacionArqueroMatchmaking();
+  const button = pitch.querySelector('[data-keeper-rotation-toggle]');
+  if (button) {
+    button.innerHTML = `<i class="bi ${pausada ? 'bi-play-fill' : 'bi-pause-fill'}"></i>`;
+    button.setAttribute('aria-label', pausada ? 'Reanudar rotacion de arqueros' : 'Pausar rotacion de arqueros');
+  }
+  const escenarioActual = pitch.querySelector('[data-keeper-scenario]');
+  if (escenarioActual) {
+    escenarioActual.textContent = total > 0 ? `${rotacionArqueroCanchaMatchmaking.index + 1}/${total}` : '0/0';
+  }
+  pitch.querySelectorAll('[data-keeper-dot]').forEach(dot => {
+    dot.classList.toggle('is-active', Number(dot.dataset.keeperDot) === rotacionArqueroCanchaMatchmaking.index);
+  });
+}
+
+function aplicarEscenarioRotacionArqueroMatchmaking() {
+  const pitch = document.querySelector('[data-matchmaking-keeper-pitch]');
+  if (!pitch) return;
+
+  ['equipo1', 'equipo2'].forEach(equipoKey => {
+    const escenario = escenarioRotacionEquipoMatchmaking(equipoKey);
+    if (!escenario) return;
+    const keeper = pitch.querySelector(`[data-keeper-name="${equipoKey}"]`);
+    const formacion = pitch.querySelector(`[data-keeper-formation="${equipoKey}"]`);
+    if (keeper) keeper.textContent = escenario.keeperName || '-';
+    if (formacion) formacion.textContent = escenario.etiqueta || '-';
+
+    const markersByKey = new Map(
+      (escenario.markers || []).map(marker => [claveJugadorCanchaLiveMatchmaking(marker.jugador), marker])
+    );
+    pitch.querySelectorAll(`[data-marker-team="${equipoKey}"]`).forEach(markerEl => {
+      const marker = markersByKey.get(markerEl.dataset.playerKey);
+      if (!marker) {
+        markerEl.hidden = true;
+        return;
+      }
+      markerEl.hidden = false;
+      markerEl.style.setProperty('--marker-x', `${marker.x.toFixed(1)}%`);
+      markerEl.style.setProperty('--marker-y', `${marker.y.toFixed(1)}%`);
+      markerEl.classList.toggle('is-fallback', Boolean(marker.isFallback));
+      markerEl.classList.toggle('is-keeper', Boolean(marker.isKeeper));
+      markerEl.title = `${obtenerNombreJugadorMatchmaking(marker.jugador)} - ${marker.isKeeper ? 'ataja' : `capa ${marker.formation || ''}`} - posicion ${marker.source}${marker.hasCollisionOffset ? ' - separado para evitar overlap' : ''}`;
+    });
+  });
+
+  actualizarUiRotacionArqueroMatchmaking();
+}
+
+function reiniciarTimerRotacionArqueroMatchmaking() {
+  if (rotacionArqueroCanchaMatchmaking.timer) {
+    clearInterval(rotacionArqueroCanchaMatchmaking.timer);
+    rotacionArqueroCanchaMatchmaking.timer = null;
+  }
+  if (estaPausadaRotacionArqueroMatchmaking()) {
+    actualizarUiRotacionArqueroMatchmaking();
+    return;
+  }
+  const total = totalEscenariosRotacionArqueroMatchmaking();
+  if (total <= 1) {
+    actualizarUiRotacionArqueroMatchmaking();
+    return;
+  }
+  rotacionArqueroCanchaMatchmaking.timer = setInterval(() => {
+    const totalActual = totalEscenariosRotacionArqueroMatchmaking();
+    if (totalActual <= 1) return;
+    rotacionArqueroCanchaMatchmaking.index = (rotacionArqueroCanchaMatchmaking.index + 1) % totalActual;
+    aplicarEscenarioRotacionArqueroMatchmaking();
+  }, MATCHMAKING_KEEPER_ROTATION.intervalMs);
+  actualizarUiRotacionArqueroMatchmaking();
+}
+
+function iniciarRotacionArqueroMatchmaking() {
+  const total = totalEscenariosRotacionArqueroMatchmaking();
+  if (total === 0) return;
+  rotacionArqueroCanchaMatchmaking.index = clampMatchmaking(rotacionArqueroCanchaMatchmaking.index, 0, total - 1);
+  aplicarEscenarioRotacionArqueroMatchmaking();
+  reiniciarTimerRotacionArqueroMatchmaking();
+}
+
+function detenerRotacionArqueroMatchmaking() {
+  if (rotacionArqueroCanchaMatchmaking.timer) clearInterval(rotacionArqueroCanchaMatchmaking.timer);
+  rotacionArqueroCanchaMatchmaking.timer = null;
+}
+
+window.toggleRotacionArqueroMatchmaking = function() {
+  rotacionArqueroCanchaMatchmaking.manualPaused = !rotacionArqueroCanchaMatchmaking.manualPaused;
+  reiniciarTimerRotacionArqueroMatchmaking();
+};
+
+window.seleccionarEscenarioArqueroMatchmaking = function(index) {
+  const total = totalEscenariosRotacionArqueroMatchmaking();
+  if (!total) return;
+  rotacionArqueroCanchaMatchmaking.index = clampMatchmaking(Number(index) || 0, 0, total - 1);
+  rotacionArqueroCanchaMatchmaking.manualPaused = true;
+  aplicarEscenarioRotacionArqueroMatchmaking();
+  reiniciarTimerRotacionArqueroMatchmaking();
+};
+
+window.setHoverRotacionArqueroMatchmaking = function(valor) {
+  rotacionArqueroCanchaMatchmaking.hoverPaused = Boolean(valor);
+  reiniciarTimerRotacionArqueroMatchmaking();
+};
+
+function renderizarCanchaLiveMatchmaking(resultado) {
+  const canchaEquipo1 = prepararMarcadoresLiveEquipoMatchmaking(resultado?.equipo1?.jugadores || [], 'equipo1');
+  const canchaEquipo2 = prepararMarcadoresLiveEquipoMatchmaking(resultado?.equipo2?.jugadores || [], 'equipo2');
+  rotacionArqueroCanchaMatchmaking.escenarios = {
+    equipo1: canchaEquipo1.escenarios || [],
+    equipo2: canchaEquipo2.escenarios || []
+  };
+  rotacionArqueroCanchaMatchmaking.index = 0;
+  rotacionArqueroCanchaMatchmaking.manualPaused = false;
+  rotacionArqueroCanchaMatchmaking.hoverPaused = false;
+  const marcadores = [
+    ...(canchaEquipo1.marcadores || []),
+    ...(canchaEquipo2.marcadores || [])
+  ];
+  const sinTracking = obtenerJugadoresSinTrackingCanchaLiveMatchmaking(resultado);
+  const totalEscenarios = Math.max(canchaEquipo1.escenarios?.length || 0, canchaEquipo2.escenarios?.length || 0);
+
+  return `
+    <section
+      class="matchmaking-live-pitch"
+      aria-label="Cancha del armado automatico"
+      data-matchmaking-keeper-pitch
+    >
+      <div class="matchmaking-live-pitch__inner">
+        <svg viewBox="0 0 720 360" aria-hidden="true">
+          <g stroke="rgba(231,236,245,0.24)" fill="none" stroke-width="1.2">
+            <rect x="6" y="6" width="708" height="348" rx="8"></rect>
+            <line x1="360" y1="6" x2="360" y2="354"></line>
+            <circle cx="360" cy="180" r="42"></circle>
+            <rect x="6" y="105" width="70" height="150"></rect>
+            <rect x="644" y="105" width="70" height="150"></rect>
+            <circle cx="72" cy="180" r="2"></circle>
+            <circle cx="648" cy="180" r="2"></circle>
+          </g>
+        </svg>
+        <span class="matchmaking-live-tag is-team-1">Equipo 1</span>
+        <span class="matchmaking-live-tag is-team-2">Equipo 2</span>
+        <div
+          class="matchmaking-keeper-cycle"
+          onmouseenter="setHoverRotacionArqueroMatchmaking(true)"
+          onmouseleave="setHoverRotacionArqueroMatchmaking(false)"
+        >
+          <div class="matchmaking-keeper-cycle__teams">
+            <span style="--team-color:${MATCHMAKING_TEAM_THEMES.equipo1.color};">
+              E1 ataja <b data-keeper-name="equipo1">${escaparHtmlMatchmaking(canchaEquipo1.arquero || '-')}</b>
+              <em data-keeper-formation="equipo1">${escaparHtmlMatchmaking(canchaEquipo1.formacion || '-')}</em>
+            </span>
+            <span style="--team-color:${MATCHMAKING_TEAM_THEMES.equipo2.color};">
+              E2 ataja <b data-keeper-name="equipo2">${escaparHtmlMatchmaking(canchaEquipo2.arquero || '-')}</b>
+              <em data-keeper-formation="equipo2">${escaparHtmlMatchmaking(canchaEquipo2.formacion || '-')}</em>
+            </span>
+          </div>
+          <div class="matchmaking-keeper-cycle__controls">
+            <span class="matchmaking-keeper-cycle__step" data-keeper-scenario>${totalEscenarios ? `1/${totalEscenarios}` : '0/0'}</span>
+            <div class="matchmaking-keeper-cycle__dots">
+              ${Array.from({ length: totalEscenarios }, (_, index) => `
+                <button
+                  type="button"
+                  data-keeper-dot="${index}"
+                  class="${index === 0 ? 'is-active' : ''}"
+                  aria-label="Ver escenario ${index + 1}"
+                  onclick="seleccionarEscenarioArqueroMatchmaking(${index})"
+                ></button>
+              `).join('')}
+            </div>
+            <button type="button" class="matchmaking-keeper-cycle__toggle" data-keeper-rotation-toggle onclick="toggleRotacionArqueroMatchmaking()" aria-label="Pausar rotacion de arqueros">
+              <i class="bi bi-pause-fill"></i>
+            </button>
+          </div>
+        </div>
+        ${marcadores.map(marker => `
+          <div
+            class="matchmaking-live-marker${marker.isFallback ? ' is-fallback' : ''}${marker.isKeeper ? ' is-keeper' : ''}"
+            data-marker-team="${escaparHtmlMatchmaking(marker.teamKey || '')}"
+            data-player-key="${escaparHtmlMatchmaking(claveJugadorCanchaLiveMatchmaking(marker.jugador))}"
+            style="--marker-x:${marker.x.toFixed(1)}%; --marker-y:${marker.y.toFixed(1)}%; --team-color:${marker.color};"
+            title="${escaparHtmlMatchmaking(obtenerNombreJugadorMatchmaking(marker.jugador))} - ${marker.isKeeper ? 'ataja' : `capa ${escaparHtmlMatchmaking(marker.formation || '')}`} - posicion ${escaparHtmlMatchmaking(marker.source)}${marker.hasCollisionOffset ? ' - separado para evitar overlap' : ''}"
+          >
+            <span class="matchmaking-live-marker__disc">${escaparHtmlMatchmaking(inicialesJugadorMatchmaking(obtenerNombreJugadorMatchmaking(marker.jugador)))}</span>
+            <span class="matchmaking-live-marker__name">${escaparHtmlMatchmaking(obtenerNombreJugadorMatchmaking(marker.jugador))}</span>
+          </div>
+        `).join('')}
+      </div>
+      ${sinTracking.length ? `
+        <div class="matchmaking-live-untracked">
+          <span>Sin tracking ni etiqueta para ubicar:</span>
+          ${sinTracking.map(jugador => `<b>${escaparHtmlMatchmaking(jugador.nombre)}</b>`).join('')}
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+
+function renderizarPreviewLiveMatchmaking(resultado, asignacionAnterior = {}, motivo = '') {
+  const container = document.getElementById('matchmaking-live-preview');
+  const feedback = document.getElementById('matchmaking-live-feedback');
+  if (!container) return;
+
+  if (!resultado) {
+    container.innerHTML = '';
+    if (feedback) feedback.innerHTML = '&nbsp;';
+    detenerRotacionArqueroMatchmaking();
+    return;
+  }
+
+  if (
+    seleccionIntercambioMatchmaking?.scope === 'live' &&
+    !obtenerJugadorResultadoIntercambioMatchmaking(
+      resultado,
+      seleccionIntercambioMatchmaking.equipoKey,
+      seleccionIntercambioMatchmaking.index
+    )
+  ) {
+    seleccionIntercambioMatchmaking = null;
+  }
+
+  const totalJugadores = jugadoresSeleccionados.length;
+  const faltan = Math.max(10 - totalJugadores, 0);
+  const asignacionActual = resultado.matchmakingLive?.asignacion || {};
+  const movimientos = obtenerMovimientosLiveMatchmaking(asignacionAnterior, asignacionActual);
+  const maxImpacto = maxImpactoJugadoresMatchmaking(resultado);
+  const jugadorClave = obtenerJugadorClaveMatchmaking(resultado);
+  const estado = totalJugadores >= 10
+    ? 'Listo para aplicar'
+    : `Faltan ${faltan} jugador${faltan === 1 ? '' : 'es'}`;
+
+  if (feedback) {
+    const agregado = ultimoNombreAgregadoLive && motivo === 'alta'
+      ? `<b>${escaparHtmlMatchmaking(ultimoNombreAgregadoLive)}</b> agregado`
+      : '';
+    const rebalanceo = movimientos.length
+      ? `Rebalanceo: ${movimientos.map(escaparHtmlMatchmaking).join(', ')}`
+      : '';
+    feedback.innerHTML = [agregado, rebalanceo].filter(Boolean).join(' - ') || '&nbsp;';
+  }
+
+  container.innerHTML = `
+    <div class="matchmaking-balance-root">
+      <div class="matchmaking-balance-wrap">
+        <div class="matchmaking-live-status">
+          <span><strong>${totalJugadores}/10</strong> jugadores</span>
+          <span>${estado}</span>
+          <span>Fitness ${numeroSeguroMatchmaking(resultado.fitness).toFixed(2)}</span>
+        </div>
+        ${renderizarEstadoIntercambioMatchmaking(resultado, 'live')}
+        ${renderizarBalanzaMatchmaking(resultado)}
+        ${renderizarCanchaLiveMatchmaking(resultado)}
+        <div class="matchmaking-teams-grid">
+          ${renderizarEquipoBalanceMatchmaking(resultado, 'equipo1', { maxImpacto, jugadorClave, contextoIntercambio: 'live' })}
+          ${renderizarEquipoBalanceMatchmaking(resultado, 'equipo2', { maxImpacto, jugadorClave, contextoIntercambio: 'live' })}
+        </div>
+        ${renderizarHitosPartidoMatchmaking(resultado)}
+      </div>
+    </div>
+  `;
+  iniciarRotacionArqueroMatchmaking();
+}
+
+async function recalcularAutoEquiposLive(motivo = '') {
+  const version = ++recalculoLiveVersion;
+  poblarOpcionesJugadoresMatchmaking();
+  validarEjecucion();
+
+  const container = document.getElementById('matchmaking-live-preview');
+  const feedback = document.getElementById('matchmaking-live-feedback');
+  if (!container) return;
+
+  if (jugadoresSeleccionados.length === 0) {
+    resultadoLiveMatchmaking = null;
+    window.ultimoResultadoGenetico = null;
+    container.innerHTML = '';
+    if (feedback) feedback.innerHTML = '&nbsp;';
+    return;
+  }
+
+  if (feedback) feedback.textContent = 'Calculando balance...';
+
+  try {
+    const configuracion = obtenerConfiguracionRendimientoMatchmaking();
+    const restricciones = obtenerRestricciones();
+    const asignacionAnterior = { ...asignacionLiveAnterior };
+    const datos = await prepararDatosLiveMatchmaking(configuracion);
+    if (version !== recalculoLiveVersion) return;
+
+    const optimizado = optimizarEquiposExactoLiveMatchmaking(datos, restricciones, asignacionAnterior);
+    const resultado = optimizado.resultado;
+    resultado.configuracionRendimiento = configuracion;
+    resultadoLiveMatchmaking = resultado;
+    window.ultimoResultadoGenetico = resultado;
+    asignacionLiveAnterior = optimizado.asignacion;
+
+    renderizarPreviewLiveMatchmaking(resultado, asignacionAnterior, motivo);
+    validarEjecucion();
+  } catch (error) {
+    console.error('Error recalculando auto equipos live:', error);
+    resultadoLiveMatchmaking = null;
+    window.ultimoResultadoGenetico = null;
+    container.innerHTML = `
+      <div class="alert alert-warning mb-0">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        ${escaparHtmlMatchmaking(error.message || 'No se pudo recalcular el armado')}
+      </div>
+    `;
+    if (feedback) feedback.innerHTML = '&nbsp;';
+    validarEjecucion();
+  }
+}
+
 window.actualizarModoRendimientoMatchmaking = function() {
   const configuracion = obtenerConfiguracionRendimientoMatchmaking();
   modoRendimientoMatchmaking = configuracion.modo;
@@ -696,6 +2189,7 @@ window.actualizarModoRendimientoMatchmaking = function() {
       ? `El balance usa las últimas ${configuracion.partidos} apariciones de cada jugador${configuracion.temporadaId ? ' en la temporada activa' : ''}.`
       : 'El balance usa las estadísticas históricas/temporada que ya ves en la tabla.';
   }
+  recalcularAutoEquiposLive('modo');
 };
 
 function obtenerEquipoGolEnPartidoMatchmaking(gol, jugadoresPartido = []) {
@@ -811,7 +2305,29 @@ function crearResumenJugadorMomentosMatchmaking() {
     recibidosArquero: [],
     versus: new Map(),
     juntos: new Map(),
-    dinamica: crearDinamicaMatchmakingVacia()
+    dinamica: crearDinamicaMatchmakingVacia(),
+    rachaActual: {
+      tipo: null,
+      cantidad: 0
+    }
+  };
+}
+
+function actualizarRachaActualJugadorMatchmaking(resumen, resultado) {
+  if (!resumen) return;
+  if (resultado !== 'win' && resultado !== 'defeat') {
+    resumen.rachaActual = { tipo: null, cantidad: 0 };
+    return;
+  }
+
+  if (resumen.rachaActual.tipo === resultado) {
+    resumen.rachaActual.cantidad += 1;
+    return;
+  }
+
+  resumen.rachaActual = {
+    tipo: resultado,
+    cantidad: 1
   };
 }
 
@@ -922,6 +2438,14 @@ async function enriquecerJugadoresConMomentosMatchmaking(jugadores, temporadaId 
         resumen.dinamica.partidos += 1;
         resumen.dinamica.cagadas += calcularCagadasJugadorPartidoMatchmaking(partido, jp);
 
+        if (equipoGanador === equipoJugador) {
+          actualizarRachaActualJugadorMatchmaking(resumen, 'win');
+        } else if (equipoGanador === 1 || equipoGanador === 2) {
+          actualizarRachaActualJugadorMatchmaking(resumen, 'defeat');
+        } else {
+          actualizarRachaActualJugadorMatchmaking(resumen, 'draw');
+        }
+
         if (primerEquipoGol && primerEquipoGol !== equipoJugador) {
           resumen.dinamica.arrancoPerdiendo += 1;
           if (equipoGanador === equipoJugador) {
@@ -993,7 +2517,8 @@ async function enriquecerJugadoresConMomentosMatchmaking(jugadores, temporadaId 
         momentosGolesRecibidosArqueroMatchmaking: momentos.recibidosArquero,
         matchmakingVersus: convertirVersusMatchmaking(momentos.versus),
         matchmakingJuntos: convertirVersusMatchmaking(momentos.juntos),
-        matchmakingDinamica: momentos.dinamica
+        matchmakingDinamica: momentos.dinamica,
+        rachaActualMatchmaking: momentos.rachaActual.cantidad >= 2 ? momentos.rachaActual : { tipo: null, cantidad: 0 }
       };
     });
   } catch (error) {
@@ -1085,7 +2610,8 @@ async function cargarEstadisticasRecientesJugadores(jugadores, cantidadPartidos,
         goleador_id,
         asistidor_id,
         equipo,
-        es_gol_en_contra
+        es_gol_en_contra,
+        cagada_jugador_id
       )
     `)
     .order('fecha', { ascending: false });
@@ -1143,7 +2669,7 @@ async function cargarEstadisticasRecientesJugadores(jugadores, cantidadPartidos,
         stats.goles_recibidos_equipo += golesEquipo1;
       }
 
-      stats.cagadas_en_gol += Number(jp.cagadas) || 0;
+      stats.cagadas_en_gol += calcularCagadasJugadorPartidoMatchmaking(partido, jp);
       stats.atajadas += Number(jp.atajadas) || 0;
       stats.mvp_count += jp.mvp ? 1 : 0;
       stats.ace_count += jp.ace ? 1 : 0;
@@ -1205,26 +2731,30 @@ window.abrirModalAutoEquipos = function() {
   // Si hay jugadores usados previamente, restaurarlos
   const inputJugadores = document.getElementById('input-jugadores-partido');
   if (ultimosJugadoresUsados && ultimosJugadoresUsados.length > 0) {
-    inputJugadores.value = ultimosJugadoresUsados;
+    if (inputJugadores) inputJugadores.value = ultimosJugadoresUsados;
     // Trigger del evento para cargar los jugadores
     buscarJugadoresDisponibles();
   } else {
     // Si no hay jugadores previos, resetear todo
     jugadoresSeleccionados = [];
-    inputJugadores.value = '';
+    if (inputJugadores) inputJugadores.value = '';
     actualizarJugadoresSeleccionados();
+    recalcularAutoEquiposLive('abrir');
   }
+
+  poblarOpcionesJugadoresMatchmaking();
 
   if (typeof window.actualizarModoRendimientoMatchmaking === 'function') {
     window.actualizarModoRendimientoMatchmaking();
   }
   
   modal.show();
+  setTimeout(() => document.getElementById('input-jugador-live-matchmaking')?.focus(), 150);
 };
 
 // Función para buscar jugadores mientras se escribe
 window.buscarJugadoresDisponibles = function() {
-  const input = document.getElementById('input-jugadores-partido').value;
+  const input = document.getElementById('input-jugadores-partido')?.value || '';
   const nombres = input.split(',').map(n => n.trim()).filter(n => n.length > 0);
   
   if (!window.datosJugadores || window.datosJugadores.length === 0) {
@@ -1235,24 +2765,19 @@ window.buscarJugadoresDisponibles = function() {
   // Buscar coincidencias
   const rolesPrevios = new Map(jugadoresSeleccionados.map(jugador => [String(jugador.id), jugador.rolPartido]));
   jugadoresSeleccionados = [];
-  nombres.forEach(nombre => {
-    const jugador = window.datosJugadores.find(j => 
-      (j.jugadores?.nombre || j.nombre).toLowerCase().includes(nombre.toLowerCase())
-    );
-    if (jugador && !jugadoresSeleccionados.find(js => js.id === jugador.jugadores?.id || jugador.id)) {
-      const jugadorId = jugador.jugadores?.id || jugador.id;
-      jugadoresSeleccionados.push({
-        id: jugadorId,
-        nombre: jugador.jugadores?.nombre || jugador.nombre,
-        data: jugador,
-        rolPartido: normalizarRolPartido(rolesPrevios.get(String(jugadorId)) || obtenerRolInicialPartido(jugador))
-      });
+  nombres.slice(0, 10).forEach(nombre => {
+    const jugador = resolverDatoJugadorPorNombreMatchmaking(nombre);
+    const seleccionado = jugador ? crearJugadorSeleccionadoMatchmaking(jugador, rolesPrevios) : null;
+    if (seleccionado && !jugadoresSeleccionados.find(js => String(js.id) === String(seleccionado.id))) {
+      jugadoresSeleccionados.push(seleccionado);
     }
   });
   
+  sincronizarInputJugadoresPartido();
   actualizarJugadoresSeleccionados();
   actualizarSelectsRestricciones();
   validarEjecucion();
+  recalcularAutoEquiposLive('restaurar');
 };
 
 // Función para actualizar la vista de jugadores seleccionados
@@ -1263,16 +2788,19 @@ window.cambiarRolJugadorSeleccionado = function(jugadorId, rolPartido) {
   jugador.rolPartido = normalizarRolPartido(rolPartido);
   actualizarJugadoresSeleccionados();
   validarEjecucion();
+  recalcularAutoEquiposLive('rol');
 };
 
 function actualizarJugadoresSeleccionados() {
   const container = document.getElementById('jugadores-seleccionados');
+  if (!container) return;
+  poblarOpcionesJugadoresMatchmaking();
   
   if (jugadoresSeleccionados.length === 0) {
     container.innerHTML = `
       <div class="text-center text-light-emphasis">
         <i class="bi bi-person-plus"></i>
-        Escribe los nombres de los jugadores arriba
+        Agrega jugadores arriba
       </div>
     `;
     return;
@@ -1285,7 +2813,7 @@ function actualizarJugadoresSeleccionados() {
         ${jugadoresSeleccionados.length} jugadores seleccionados
       </span>
       <span class="text-light-emphasis small">
-        ${jugadoresSeleccionados.length >= 10 ? 'Listo para armar equipos' : 'Necesitas al menos 10'}
+        ${jugadoresSeleccionados.length >= 10 ? 'Listo para aplicar' : `Faltan ${10 - jugadoresSeleccionados.length}`}
       </span>
     </div>
     <div class="player-cards-container">
@@ -1298,7 +2826,7 @@ function actualizarJugadoresSeleccionados() {
         return `
           <span class="player-card player-role-card">
             <span class="player-role-info">
-              <span class="player-role-name">${j.nombre}</span>
+              <span class="player-role-name">${escaparHtmlMatchmaking(j.nombre)}</span>
               <small class="text-light-emphasis">(${j.data.pj || 0}PJ, ${j.data.winrate || 0}%)</small>
             </span>
             <span class="btn-group btn-group-sm role-toggle" role="group" aria-label="Rol de ${j.nombre}">
@@ -1317,6 +2845,14 @@ function actualizarJugadoresSeleccionados() {
                 onclick="cambiarRolJugadorSeleccionado('${jugadorId}', '${ROL_PARTIDO_ARQUERO}')"
               >
                 <i class="bi bi-shield-fill me-1"></i>Arquero
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-danger"
+                title="Quitar jugador"
+                onclick="quitarJugadorAutoMatchmaking('${jugadorId}')"
+              >
+                <i class="bi bi-x-lg"></i>
               </button>
             </span>
           </span>
@@ -1357,6 +2893,7 @@ window.eliminarPareja = function(tipo, index) {
   const elemento = document.getElementById(`pareja-${tipo}-${index}`);
   if (elemento) {
     elemento.remove();
+    recalcularAutoEquiposLive('restriccion');
   }
 };
 
@@ -1383,13 +2920,17 @@ function actualizarSelectsRestricciones() {
 // Función para validar si se puede ejecutar el algoritmo
 function validarEjecucion() {
   const boton = document.getElementById('btn-ejecutar-algoritmo');
+  const botonLive = document.getElementById('btn-aplicar-equipos-live');
+  const botonAgregar = document.getElementById('btn-add-live-matchmaking');
   const puedeEjecutar = jugadoresSeleccionados.length >= 10;
   
-  boton.disabled = !puedeEjecutar;
+  if (boton) boton.disabled = !puedeEjecutar;
+  if (botonLive) botonLive.disabled = !puedeEjecutar || !resultadoLiveMatchmaking;
+  if (botonAgregar) botonAgregar.disabled = jugadoresSeleccionados.length >= 10;
   
-  if (puedeEjecutar) {
+  if (boton && puedeEjecutar) {
     boton.innerHTML = '<i class="bi bi-play-fill me-2"></i>Ejecutar Algoritmo';
-  } else {
+  } else if (boton) {
     boton.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>Necesitas ${10 - jugadoresSeleccionados.length} jugadores más`;
   }
 }
@@ -1420,6 +2961,32 @@ function obtenerRestricciones() {
 
 // Event listeners que se ejecutan cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', function() {
+  const inputLive = document.getElementById('input-jugador-live-matchmaking');
+  if (inputLive) {
+    inputLive.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        window.agregarJugadorAutoMatchmaking();
+      }
+    });
+  }
+
+  const btnAplicarLive = document.getElementById('btn-aplicar-equipos-live');
+  if (btnAplicarLive) {
+    btnAplicarLive.addEventListener('click', () => {
+      if (jugadoresSeleccionados.length < 10 || !resultadoLiveMatchmaking) {
+        window.showToast?.('Completa 10 jugadores para aplicar equipos', 'warning');
+        return;
+      }
+      ultimosJugadoresUsados = document.getElementById('input-jugadores-partido')?.value || '';
+      document.getElementById('btn-aplicar-equipos')?.click();
+    });
+  }
+
+  ['parejas-enfrentadas', 'parejas-juntas'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => recalcularAutoEquiposLive('restriccion'));
+  });
+
   // Event listener para ejecutar el algoritmo
   const btnEjecutar = document.getElementById('btn-ejecutar-algoritmo');
   if (btnEjecutar) {
@@ -1440,7 +3007,10 @@ document.addEventListener('DOMContentLoaded', function() {
       // Cambiar a la sección de progreso
       document.getElementById('config-section').style.display = 'none';
       document.getElementById('progress-section').style.display = 'block';
-      
+      document.getElementById('best-fitness').textContent = 'Tracking...';
+
+      await asegurarTrackingMatchmakingListo();
+
       // Configurar el optimizador
       geneticOptimizer = new GeneticTeamOptimizer();
       geneticOptimizer.populationSize = population;
@@ -1479,6 +3049,8 @@ document.addEventListener('DOMContentLoaded', function() {
           );
           document.getElementById('best-fitness').textContent = '--';
         }
+
+        datosJugadoresSeleccionados = await asegurarPuntosDefensaRankingMatchmaking(datosJugadoresSeleccionados);
 
         datosJugadoresSeleccionados = await enriquecerJugadoresConMomentosMatchmaking(
           datosJugadoresSeleccionados,
@@ -1548,14 +3120,11 @@ document.addEventListener('DOMContentLoaded', function() {
             jugadores: {
               id: jugadorCompleto.id,
               nombre: jugadorCompleto.nombre,
-              pulmon: jugadorCompleto.data.jugadores?.pulmon || jugadorCompleto.data.pulmon,
-              jugador_posicion: jugadorCompleto.data.jugadores?.jugador_posicion || []
+              pulmon: jugadorCompleto.data.jugadores?.pulmon || jugadorCompleto.data.pulmon
             },
-            jugador_posicion: jugadorCompleto.data.jugadores?.jugador_posicion || [],
             // Agregar estadísticas para compatibilidad
             ...jugadorCompleto.data
           };
-          
           window.equipo1.push(jugadorParaEquipo);
         }
       });
@@ -1571,14 +3140,11 @@ document.addEventListener('DOMContentLoaded', function() {
             jugadores: {
               id: jugadorCompleto.id,
               nombre: jugadorCompleto.nombre,
-              pulmon: jugadorCompleto.data.jugadores?.pulmon || jugadorCompleto.data.pulmon,
-              jugador_posicion: jugadorCompleto.data.jugadores?.jugador_posicion || []
+              pulmon: jugadorCompleto.data.jugadores?.pulmon || jugadorCompleto.data.pulmon
             },
-            jugador_posicion: jugadorCompleto.data.jugadores?.jugador_posicion || [],
             // Agregar estadísticas para compatibilidad
             ...jugadorCompleto.data
           };
-          
           window.equipo2.push(jugadorParaEquipo);
         }
       });
@@ -1723,42 +3289,261 @@ function maxImpactoJugadoresMatchmaking(resultado) {
   return Math.max(1, ...impactos);
 }
 
+function obtenerRachaRelacionalJugadorMatchmaking(jugador) {
+  const relaciones = [
+    ...Object.values(jugador?.matchmakingVersus || {}),
+    ...Object.values(jugador?.matchmakingJuntos || {})
+  ];
+  const mejor = relaciones.reduce((actual, stat) => {
+    const racha = Number(stat?.rachaVictoriasActual) || 0;
+    return racha > actual ? racha : actual;
+  }, 0);
+
+  return mejor >= 2
+    ? { tipo: 'win', cantidad: mejor, origen: 'relacional', titulo: 'Racha positiva en cruces del grupo' }
+    : null;
+}
+
+function obtenerRachaVisualJugadorMatchmaking(jugador) {
+  const rachaActual = jugador?.rachaActualMatchmaking;
+  const cantidadActual = Number(rachaActual?.cantidad) || 0;
+  if ((rachaActual?.tipo === 'win' || rachaActual?.tipo === 'defeat') && cantidadActual >= 2) {
+    return {
+      tipo: rachaActual.tipo,
+      cantidad: cantidadActual,
+      origen: 'actual',
+      titulo: rachaActual.tipo === 'win'
+        ? `En racha de ${cantidadActual} victorias`
+        : `En racha de ${cantidadActual} derrotas`
+    };
+  }
+
+  return obtenerRachaRelacionalJugadorMatchmaking(jugador);
+}
+
+function obtenerStatsHitosJugadorMatchmaking(jugador = {}) {
+  return jugador?.historicoMatchmaking || jugador;
+}
+
+function obtenerNumeroHitoJugadorMatchmaking(jugador = {}, campo) {
+  const stats = obtenerStatsHitosJugadorMatchmaking(jugador);
+  return numeroSeguroMatchmaking(stats?.[campo] ?? jugador?.[campo]);
+}
+
+function siguienteNumeroRedondoMatchmaking(valor, tipo = 'base') {
+  const numero = Math.max(0, Math.floor(Number(valor) || 0));
+  const hitos = tipo === 'partidos'
+    ? [10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500]
+    : [10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 750, 1000];
+  return hitos.find(hito => hito > numero) || (Math.ceil((numero + 1) / 100) * 100);
+}
+
+function esNumeroRedondoPartidoMatchmaking(numero) {
+  const n = Math.floor(Number(numero) || 0);
+  if (n < 10) return false;
+  if (n <= 50) return n % 10 === 0;
+  return n % 25 === 0;
+}
+
+function crearHitoMatchmaking(key, prioridad, icono, titulo, texto) {
+  return { key, prioridad, icono, titulo, texto };
+}
+
+function generarHitosNumerosRedondosMatchmaking(jugadores = []) {
+  return jugadores.flatMap(jugador => {
+    const nombre = escaparHtmlMatchmaking(jugador?.nombre || 'Jugador');
+    const jugadorId = escaparHtmlMatchmaking(String(jugador?.id || jugador?.nombre || nombre));
+    const hitos = [];
+    const pjActuales = obtenerNumeroHitoJugadorMatchmaking(jugador, 'pj');
+    const proximoPartido = pjActuales + 1;
+    if (esNumeroRedondoPartidoMatchmaking(proximoPartido)) {
+      hitos.push(crearHitoMatchmaking(
+        `partido:${jugadorId}:${proximoPartido}`,
+        120 + proximoPartido,
+        'bi-calendar-event',
+        `Partido numero ${proximoPartido}`,
+        `Este puede ser el partido numero <strong>${proximoPartido}</strong> de <strong>${nombre}</strong>.`
+      ));
+    }
+
+    const metricas = [
+      { campo: 'goles', label: 'goles', maxNecesarios: 3, icono: 'bi-bullseye', prioridad: 100 },
+      { campo: 'asistencias', label: 'asistencias', maxNecesarios: 2, icono: 'bi-bezier2', prioridad: 92 },
+      { campo: 'atajadas', label: 'atajadas', maxNecesarios: 8, icono: 'bi-shield-fill-check', prioridad: 84 }
+    ];
+
+    metricas.forEach(metrica => {
+      const actual = obtenerNumeroHitoJugadorMatchmaking(jugador, metrica.campo);
+      const hito = siguienteNumeroRedondoMatchmaking(actual, metrica.campo);
+      const faltan = hito - actual;
+      if (faltan <= 0 || faltan > metrica.maxNecesarios) return;
+      hitos.push(crearHitoMatchmaking(
+        `${metrica.campo}:${jugadorId}:${hito}`,
+        metrica.prioridad + (metrica.maxNecesarios - faltan),
+        metrica.icono,
+        `${nombre} puede llegar a ${hito}`,
+        `En este partido <strong>${nombre}</strong> puede llegar a <strong>${hito} ${metrica.label}</strong>${faltan === 1 ? '' : ` si suma ${faltan}`}.`
+      ));
+    });
+
+    return hitos;
+  });
+}
+
+function generarHitosRachasVsRivalMatchmaking(equipo = [], rival = []) {
+  const rivalesPorId = new Map(
+    (rival || [])
+      .map(jugador => [String(jugador.id || ''), jugador])
+      .filter(([id]) => id)
+  );
+  const hitos = [];
+
+  (equipo || []).forEach(jugador => {
+    Object.entries(jugador?.matchmakingVersus || {}).forEach(([rivalId, stat]) => {
+      const rivalJugador = rivalesPorId.get(String(rivalId));
+      if (!rivalJugador) return;
+
+      const racha = Number(stat?.rachaVictoriasActual) || 0;
+      const pj = Number(stat?.pj) || 0;
+      if (racha < 2 || pj < racha) return;
+
+      const nombre = escaparHtmlMatchmaking(jugador.nombre);
+      const rivalNombre = escaparHtmlMatchmaking(rivalJugador.nombre);
+      hitos.push(crearHitoMatchmaking(
+        `racha:${jugador.id || jugador.nombre}:${rivalJugador.id || rivalJugador.nombre}`,
+        112 + racha,
+        'bi-arrow-up-right-circle',
+        `${nombre} vs ${rivalNombre}`,
+        `En este partido <strong>${nombre}</strong> puede estirar la racha sobre <strong>${rivalNombre}</strong> a <strong>${racha + 1}</strong> victorias seguidas.`
+      ));
+    });
+  });
+
+  return hitos;
+}
+
+function generarHitosPaternidadMatchmaking(equipo = [], rival = []) {
+  const rivalesPorId = new Map(
+    (rival || [])
+      .map(jugador => [String(jugador.id || ''), jugador])
+      .filter(([id]) => id)
+  );
+  const usados = new Set();
+  const hitos = [];
+
+  (equipo || []).forEach(jugador => {
+    Object.entries(jugador?.matchmakingVersus || {}).forEach(([rivalId, stat]) => {
+      const rivalJugador = rivalesPorId.get(String(rivalId));
+      if (!rivalJugador) return;
+
+      const key = [String(jugador.id || jugador.nombre), String(rivalJugador.id || rivalJugador.nombre)].sort().join(':');
+      if (usados.has(key)) return;
+      usados.add(key);
+
+      const victorias = Number(stat?.victorias) || 0;
+      const derrotas = Number(stat?.derrotas) || 0;
+      const pj = Number(stat?.pj) || victorias + derrotas + (Number(stat?.empates) || 0);
+      const diferencia = Math.abs(victorias - derrotas);
+      if (pj < 3 || diferencia > 1) return;
+
+      const nombre = escaparHtmlMatchmaking(jugador.nombre);
+      const rivalNombre = escaparHtmlMatchmaking(rivalJugador.nombre);
+      const estado = victorias === derrotas
+        ? `llegan empatados ${victorias}-${derrotas}`
+        : `${victorias > derrotas ? nombre : rivalNombre} llega apenas arriba ${Math.max(victorias, derrotas)}-${Math.min(victorias, derrotas)}`;
+      hitos.push(crearHitoMatchmaking(
+        `paternidad:${key}`,
+        108 + pj,
+        'bi-diagram-3',
+        `Paternidad en juego`,
+        `En este partido se define la paternidad entre <strong>${nombre}</strong> y <strong>${rivalNombre}</strong>: ${estado}.`
+      ));
+    });
+  });
+
+  return hitos;
+}
+
+function generarHitosPartidoMatchmaking(resultado) {
+  const equipo1 = resultado?.equipo1?.jugadores || [];
+  const equipo2 = resultado?.equipo2?.jugadores || [];
+  const jugadores = [...equipo1, ...equipo2];
+  const hitos = [
+    ...generarHitosNumerosRedondosMatchmaking(jugadores),
+    ...generarHitosRachasVsRivalMatchmaking(equipo1, equipo2),
+    ...generarHitosRachasVsRivalMatchmaking(equipo2, equipo1),
+    ...generarHitosPaternidadMatchmaking(equipo1, equipo2),
+    ...generarHitosPaternidadMatchmaking(equipo2, equipo1)
+  ];
+  const usados = new Set();
+  return hitos
+    .filter(hito => {
+      if (!hito?.key || usados.has(hito.key)) return false;
+      usados.add(hito.key);
+      return true;
+    })
+    .sort((a, b) => b.prioridad - a.prioridad)
+    .slice(0, 4);
+}
+
+function renderizarHitosPartidoMatchmaking(resultado) {
+  const hitos = generarHitosPartidoMatchmaking(resultado);
+  if (!hitos.length) return '';
+
+  return `
+    <section class="matchmaking-match-facts" aria-label="Hitos posibles del partido">
+      <header>
+        <span>Hitos posibles</span>
+        <strong>Si se juega este armado</strong>
+      </header>
+      <div class="matchmaking-match-facts__grid">
+        ${hitos.map(hito => `
+          <article class="matchmaking-match-fact">
+            <i class="bi ${escaparHtmlMatchmaking(hito.icono)}" aria-hidden="true"></i>
+            <div>
+              <h4>${hito.titulo}</h4>
+              <p>${hito.texto}</p>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderizarJugadorResultadoMatchmaking(jugador, equipoKey = '', index = 0, opciones = {}) {
   const skill = Number(jugador.skillMatchmaking ?? jugador.rendimientoTotal) || 0;
   const impacto = Number(jugador.impactoMatchmaking) || 0;
-  const rolArquero = jugador.rolPartido === ROL_PARTIDO_ARQUERO;
+  const contextoIntercambio = opciones.contextoIntercambio || 'resultado';
   const estaSeleccionado = seleccionIntercambioMatchmaking &&
+    seleccionIntercambioMatchmaking.scope === contextoIntercambio &&
     seleccionIntercambioMatchmaking.equipoKey === equipoKey &&
     Number(seleccionIntercambioMatchmaking.index) === Number(index);
-  const partidosRecientes = jugador.origenRendimiento === MODO_RENDIMIENTO_RECIENTE
-    ? `<small class="text-light-emphasis">${jugador.partidosRecientesUsados}/${jugador.partidosRecientesSolicitados} PJ</small>`
-    : '';
-  const maxImpacto = Math.max(1, numeroSeguroMatchmaking(opciones.maxImpacto, 1));
-  const anchoImpacto = Math.max(4, Math.min(100, (impacto / maxImpacto) * 100));
-  const tema = MATCHMAKING_TEAM_THEMES[equipoKey] || MATCHMAKING_TEAM_THEMES.equipo1;
   const esClave = opciones.jugadorClave && String(opciones.jugadorClave.id || opciones.jugadorClave.nombre) === String(jugador.id || jugador.nombre);
-  const rolTexto = rolArquero ? 'Arquero' : 'Jugador';
+  const permiteIntercambio = opciones.intercambio !== false;
+  const partidosRecientes = jugador.origenRendimiento === MODO_RENDIMIENTO_RECIENTE
+    ? ` - ${jugador.partidosRecientesUsados}/${jugador.partidosRecientesSolicitados} PJ recientes`
+    : '';
+  const title = permiteIntercambio
+    ? `${estaSeleccionado ? 'Cancelar seleccion' : 'Seleccionar para intercambiar'} - Skill ${skill.toFixed(1)} - impacto ${impacto.toFixed(1)}%${partidosRecientes}`
+    : `Skill ${skill.toFixed(1)} - impacto ${impacto.toFixed(1)}%${partidosRecientes}`;
 
   return `
     <button
       type="button"
       class="matchmaking-player-row matchmaking-swap-player ${estaSeleccionado ? 'is-selected' : ''} ${esClave ? 'is-key' : ''}"
-      onclick="seleccionarJugadorIntercambioMatchmaking('${equipoKey}', ${index})"
+      ${permiteIntercambio ? `onclick="seleccionarJugadorIntercambioMatchmaking('${equipoKey}', ${index}, '${contextoIntercambio}')"` : ''}
       aria-pressed="${estaSeleccionado ? 'true' : 'false'}"
-      title="${estaSeleccionado ? 'Cancelar seleccion' : 'Seleccionar para intercambiar'}"
+      title="${escaparHtmlMatchmaking(title)}"
     >
-      <span class="matchmaking-player-row__top">
+      <span class="matchmaking-player-row__grip" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
+      <span class="matchmaking-player-row__body">
         <span class="matchmaking-player-row__name">
           ${escaparHtmlMatchmaking(jugador.nombre)}
-          ${esClave ? '<i class="bi bi-star-fill matchmaking-player-row__star" title="Jugador clave"></i>' : ''}
         </span>
-        <span class="matchmaking-player-row__role">${rolTexto}</span>
-        <span class="matchmaking-player-row__skill">Skill ${skill.toFixed(1)}</span>
-        <span class="matchmaking-player-row__impact">${impacto.toFixed(1)}%</span>
-        ${partidosRecientes}
-      </span>
-      <span class="matchmaking-player-bar">
-        <span class="matchmaking-player-bar__fill" style="width:${anchoImpacto.toFixed(1)}%; background:${tema.color};"></span>
+        <span class="matchmaking-player-row__meta">
+          Skill ${skill.toFixed(1)} &middot; Impacto ${impacto.toFixed(1)}%
+        </span>
       </span>
     </button>
   `;
@@ -2511,7 +4296,7 @@ function iconoNotaAtencionMatchmaking(nota = '') {
   if (texto.includes('advertencia') || texto.includes('cagadas') || texto.includes('no exponer') || texto.includes('le cuesta')) {
     return '<i class="bi bi-exclamation-triangle-fill"></i>';
   }
-  if (texto.includes('racha')) return '<i class="bi bi-fire"></i>';
+  if (texto.includes('racha')) return '<i class="bi bi-calendar2-check-fill"></i>';
   if (texto.includes('winrate') || texto.includes('duelo')) return '<i class="bi bi-diagram-3-fill"></i>';
   if (texto.includes('gol') || texto.includes('tiro')) return '<i class="bi bi-bullseye"></i>';
   if (texto.includes('vuelta') || texto.includes('remont')) return '<i class="bi bi-arrow-return-right"></i>';
@@ -2526,6 +4311,7 @@ function obtenerCalculadorMatchmaking() {
 
 function convertirStatsEquipoAFitnessMatchmaking(stats = {}) {
   const jugadores = Math.max(1, Number(stats.jugadores) || 0);
+  const playersWithHeatmap = Number(stats.heatmapPlayers) || 0;
   return {
     rendimientoTotal: (Number(stats.rendimientoTotal) || 0) / jugadores,
     rendimientoAtaque: (Number(stats.rendimientoAtaque) || 0) / jugadores,
@@ -2533,7 +4319,15 @@ function convertirStatsEquipoAFitnessMatchmaking(stats = {}) {
     golesFavorEquipo: Number(stats.golesFavorPromedio) || 0,
     golesRecibidosEquipo: Number(stats.golesRecibidosPromedio) || 0,
     pulmonTrackingTotal: numeroSeguroMatchmaking(stats.pulmonTrackingTotal ?? stats.pulmonTotal),
-    cantidadArqueros: Number(stats.cantidadArqueros) || 0
+    scoreDefensivoTotal: numeroSeguroMatchmaking(stats.scoreDefensivoTotal),
+    cantidadArqueros: Number(stats.cantidadArqueros) || 0,
+    armoniaHeatmap: {
+      playersWithHeatmap,
+      coveragePct: numeroSeguroMatchmaking(stats.heatmapCoveragePct),
+      overlapPct: numeroSeguroMatchmaking(stats.heatmapOverlapPct),
+      score: numeroSeguroMatchmaking(stats.armoniaHeatmapScore),
+      usable: Boolean(stats.heatmapHarmonyUsable) || playersWithHeatmap >= 2
+    }
   };
 }
 
@@ -2557,11 +4351,47 @@ function obtenerJugadorResultadoIntercambioMatchmaking(resultado, equipoKey, ind
   return jugadores[Number(index)] || null;
 }
 
-window.cancelarIntercambioMatchmaking = function() {
-  seleccionIntercambioMatchmaking = null;
-  if (window.ultimoResultadoGenetico) {
-    mostrarResultados(window.ultimoResultadoGenetico);
+function actualizarAsignacionLiveDesdeResultadoMatchmaking(resultado) {
+  if (!resultado?.equipo1?.jugadores || !resultado?.equipo2?.jugadores) return {};
+
+  const asignacion = {};
+  resultado.equipo1.jugadores.forEach(jugador => {
+    asignacion[String(jugador.id || jugador.nombre)] = 0;
+  });
+  resultado.equipo2.jugadores.forEach(jugador => {
+    asignacion[String(jugador.id || jugador.nombre)] = 1;
+  });
+
+  resultado.matchmakingLive = {
+    ...(resultado.matchmakingLive || {}),
+    asignacion,
+    manualSwap: true
+  };
+  asignacionLiveAnterior = { ...asignacion };
+  return asignacion;
+}
+
+function renderizarDespuesIntercambioMatchmaking(resultado, scope = 'resultado', feedbackHtml = '') {
+  if (scope === 'live') {
+    resultadoLiveMatchmaking = resultado;
+    window.ultimoResultadoGenetico = resultado;
+    actualizarAsignacionLiveDesdeResultadoMatchmaking(resultado);
+    renderizarPreviewLiveMatchmaking(resultado, resultado.matchmakingLive?.asignacion || {}, 'intercambio');
+    if (feedbackHtml) {
+      const feedback = document.getElementById('matchmaking-live-feedback');
+      if (feedback) feedback.innerHTML = feedbackHtml;
+    }
+    validarEjecucion();
+    return;
   }
+
+  mostrarResultados(resultado);
+}
+
+window.cancelarIntercambioMatchmaking = function(scope = 'resultado') {
+  seleccionIntercambioMatchmaking = null;
+  const resultado = scope === 'live' ? resultadoLiveMatchmaking : window.ultimoResultadoGenetico;
+  if (resultado) renderizarDespuesIntercambioMatchmaking(resultado, scope);
 };
 
 window.toggleMetricasMatchmaking = function(button) {
@@ -2578,30 +4408,30 @@ window.toggleMetricasMatchmaking = function(button) {
     : `Ver metricas sin datos (${rows.length})`;
 };
 
-window.seleccionarJugadorIntercambioMatchmaking = function(equipoKey, index) {
-  const resultado = window.ultimoResultadoGenetico;
+window.seleccionarJugadorIntercambioMatchmaking = function(equipoKey, index, scope = 'resultado') {
+  const resultado = scope === 'live' ? resultadoLiveMatchmaking : window.ultimoResultadoGenetico;
   const equipoValido = equipoKey === 'equipo1' || equipoKey === 'equipo2';
   const jugador = equipoValido ? obtenerJugadorResultadoIntercambioMatchmaking(resultado, equipoKey, index) : null;
   if (!jugador) return;
 
-  if (!seleccionIntercambioMatchmaking) {
-    seleccionIntercambioMatchmaking = { equipoKey, index: Number(index) };
-    mostrarResultados(resultado);
+  if (!seleccionIntercambioMatchmaking || seleccionIntercambioMatchmaking.scope !== scope) {
+    seleccionIntercambioMatchmaking = { equipoKey, index: Number(index), scope };
+    renderizarDespuesIntercambioMatchmaking(resultado, scope);
     return;
   }
 
   const seleccion = seleccionIntercambioMatchmaking;
   if (seleccion.equipoKey === equipoKey) {
     seleccionIntercambioMatchmaking =
-      Number(seleccion.index) === Number(index) ? null : { equipoKey, index: Number(index) };
-    mostrarResultados(resultado);
+      Number(seleccion.index) === Number(index) ? null : { equipoKey, index: Number(index), scope };
+    renderizarDespuesIntercambioMatchmaking(resultado, scope);
     return;
   }
 
   const jugadorSeleccionado = obtenerJugadorResultadoIntercambioMatchmaking(resultado, seleccion.equipoKey, seleccion.index);
   if (!jugadorSeleccionado) {
-    seleccionIntercambioMatchmaking = { equipoKey, index: Number(index) };
-    mostrarResultados(resultado);
+    seleccionIntercambioMatchmaking = { equipoKey, index: Number(index), scope };
+    renderizarDespuesIntercambioMatchmaking(resultado, scope);
     return;
   }
 
@@ -2612,15 +4442,19 @@ window.seleccionarJugadorIntercambioMatchmaking = function(equipoKey, index) {
 
   seleccionIntercambioMatchmaking = null;
   recalcularResultadoIntercambioMatchmaking(resultado);
-  mostrarResultados(resultado);
+  renderizarDespuesIntercambioMatchmaking(
+    resultado,
+    scope,
+    `Intercambio manual: <b>${escaparHtmlMatchmaking(jugadorSeleccionado.nombre)}</b> &harr; <b>${escaparHtmlMatchmaking(jugador.nombre)}</b>`
+  );
 
   if (typeof window.showToast === 'function') {
     window.showToast('Equipos recalculados tras el intercambio', 'success');
   }
 };
 
-function renderizarEstadoIntercambioMatchmaking(resultado) {
-  if (!seleccionIntercambioMatchmaking) return '';
+function renderizarEstadoIntercambioMatchmaking(resultado, scope = 'resultado') {
+  if (!seleccionIntercambioMatchmaking || seleccionIntercambioMatchmaking.scope !== scope) return '';
 
   const jugador = obtenerJugadorResultadoIntercambioMatchmaking(
     resultado,
@@ -2637,7 +4471,7 @@ function renderizarEstadoIntercambioMatchmaking(resultado) {
         Seleccionado: <strong>${escaparHtmlMatchmaking(jugador.nombre)}</strong>
         <small>${equipoTexto}</small>
       </span>
-      <button type="button" class="btn btn-sm btn-outline-light" onclick="cancelarIntercambioMatchmaking()">
+      <button type="button" class="btn btn-sm btn-outline-light" onclick="cancelarIntercambioMatchmaking('${scope}')">
         Cancelar
       </button>
     </div>
@@ -2646,6 +4480,43 @@ function renderizarEstadoIntercambioMatchmaking(resultado) {
 
 function formatearNumeroMatchmaking(valor, decimales = 1, sufijo = '') {
   return `${numeroSeguroMatchmaking(valor).toFixed(decimales)}${sufijo}`;
+}
+
+function porcentajeRendimientoEquipoMatchmaking(stats1 = {}, stats2 = {}) {
+  const rendimiento1 = Math.max(0, numeroSeguroMatchmaking(stats1.rendimientoTotal));
+  const rendimiento2 = Math.max(0, numeroSeguroMatchmaking(stats2.rendimientoTotal));
+  const total = rendimiento1 + rendimiento2;
+  if (total <= 0) return { equipo1: 50, equipo2: 50 };
+  return {
+    equipo1: (rendimiento1 / total) * 100,
+    equipo2: (rendimiento2 / total) * 100
+  };
+}
+
+function obtenerVeredictoBalanceMatchmaking(stats1 = {}, stats2 = {}) {
+  const rendimiento1 = numeroSeguroMatchmaking(stats1.rendimientoTotal);
+  const rendimiento2 = numeroSeguroMatchmaking(stats2.rendimientoTotal);
+  const delta = Math.abs(rendimiento1 - rendimiento2);
+  const lider = rendimiento1 >= rendimiento2 ? 'Equipo 1' : 'Equipo 2';
+
+  if (delta <= 1) {
+    return {
+      clase: 'is-even',
+      texto: `&check; Partido parejo &middot; &Delta; ${delta.toFixed(1)} pts`
+    };
+  }
+
+  if (delta <= 4) {
+    return {
+      clase: 'is-edge',
+      texto: `${lider} apenas arriba &middot; &Delta; ${delta.toFixed(1)} pts`
+    };
+  }
+
+  return {
+    clase: 'is-gap',
+    texto: `Ventaja ${lider} &middot; &Delta; ${delta.toFixed(1)} pts`
+  };
 }
 
 function renderizarContextoMatchmaking(etiquetaBaseRendimiento) {
@@ -2663,7 +4534,8 @@ function renderizarContextoMatchmaking(etiquetaBaseRendimiento) {
 function renderizarBalanzaMatchmaking(resultado) {
   const stats1 = resultado.equipo1.estadisticas;
   const stats2 = resultado.equipo2.estadisticas;
-  const impactoPct = porcentajeImpactoEquipoMatchmaking(stats1, stats2);
+  const rendimientoPct = porcentajeRendimientoEquipoMatchmaking(stats1, stats2);
+  const veredicto = obtenerVeredictoBalanceMatchmaking(stats1, stats2);
   return `
     <section class="matchmaking-beam">
       <div class="matchmaking-beam__scores">
@@ -2671,42 +4543,925 @@ function renderizarBalanzaMatchmaking(resultado) {
           <div class="matchmaking-beam__score" style="color:${MATCHMAKING_TEAM_THEMES.equipo1.color};">${stats1.rendimientoTotal.toFixed(1)}</div>
           <div class="matchmaking-beam__label">Equipo 1</div>
         </div>
-        <div class="matchmaking-beam__center">
-          <div class="matchmaking-beam__label">Rendimiento</div>
-          <div class="matchmaking-beam__label" style="opacity:.62;">Matchmaking</div>
-        </div>
+        <span class="matchmaking-beam__chip ${veredicto.clase}">${veredicto.texto}</span>
         <div style="text-align:right;">
           <div class="matchmaking-beam__score" style="color:${MATCHMAKING_TEAM_THEMES.equipo2.color};">${stats2.rendimientoTotal.toFixed(1)}</div>
           <div class="matchmaking-beam__label">Equipo 2</div>
         </div>
       </div>
       <div class="matchmaking-beam__track">
-        <div class="matchmaking-beam__side" style="width:${impactoPct.equipo1.toFixed(1)}%; background:${MATCHMAKING_TEAM_THEMES.equipo1.color};"></div>
-        <div class="matchmaking-beam__side" style="width:${impactoPct.equipo2.toFixed(1)}%; background:${MATCHMAKING_TEAM_THEMES.equipo2.color};"></div>
+        <div class="matchmaking-beam__side" style="width:${rendimientoPct.equipo1.toFixed(1)}%; background:${MATCHMAKING_TEAM_THEMES.equipo1.color};"></div>
+        <div class="matchmaking-beam__side" style="width:${rendimientoPct.equipo2.toFixed(1)}%; background:${MATCHMAKING_TEAM_THEMES.equipo2.color};"></div>
         <div class="matchmaking-beam__mid"></div>
       </div>
       <div class="matchmaking-beam__pcts">
-        <span>${impactoPct.equipo1.toFixed(1)}% del impacto</span>
-        <span>${impactoPct.equipo2.toFixed(1)}% del impacto</span>
+        <span>${rendimientoPct.equipo1.toFixed(1)}% del rendimiento</span>
+        <span>${rendimientoPct.equipo2.toFixed(1)}% del rendimiento</span>
       </div>
     </section>
+  `;
+}
+
+function renderizarTotalesEquipoMatchmaking(resultado, equipoKey) {
+  const stats = resultado?.[equipoKey]?.estadisticas || {};
+  const tienePulmonPromedio = numeroSeguroMatchmaking(stats.jugadoresConPulmonTracking) > 0;
+  const pulmonValor = tienePulmonPromedio
+    ? stats.pulmonPromedio
+    : (stats.pulmonTrackingTotal ?? stats.pulmonTotal);
+  return `
+    <div class="matchmaking-team-totals">
+      <div class="matchmaking-team-total-row">
+        <span>Rendimiento total</span>
+        <b>${formatearNumeroMatchmaking(stats.rendimientoTotal, 1)}</b>
+      </div>
+      <div class="matchmaking-team-total-row">
+        <span>Ataque</span>
+        <span>${formatearNumeroMatchmaking(stats.rendimientoAtaque, 1)}</span>
+      </div>
+      <div class="matchmaking-team-total-row">
+        <span>Arquero</span>
+        <span>${formatearNumeroMatchmaking(stats.rendimientoArquero, 1)}</span>
+      </div>
+      <div class="matchmaking-team-total-row">
+        <span>Defensa</span>
+        <span>${formatearNumeroMatchmaking(stats.scoreDefensivoTotal, 1)}</span>
+      </div>
+      <div class="matchmaking-team-total-row">
+        <span>Pulmon</span>
+        <span>${formatearNumeroMatchmaking(pulmonValor, 1)}</span>
+      </div>
+    </div>
   `;
 }
 
 function renderizarEquipoBalanceMatchmaking(resultado, equipoKey, opciones = {}) {
   const tema = MATCHMAKING_TEAM_THEMES[equipoKey] || MATCHMAKING_TEAM_THEMES.equipo1;
   const jugadores = resultado?.[equipoKey]?.jugadores || [];
+  const subtitulo = opciones.intercambio === false ? 'plantel sugerido' : 'clic para intercambiar';
   return `
     <section class="matchmaking-team-panel" style="--team-color:${tema.color}; --team-soft:${tema.soft};">
       <header class="matchmaking-team-panel__header">
         <span class="matchmaking-team-panel__dot"></span>
         <h3>${tema.name}</h3>
-        <span class="matchmaking-team-panel__sub">impacto por jugador</span>
+        <span class="matchmaking-team-panel__sub">${subtitulo}</span>
       </header>
       <div class="matchmaking-team-players">
         ${jugadores.map((jugador, index) => renderizarJugadorResultadoMatchmaking(jugador, equipoKey, index, opciones)).join('')}
       </div>
-      ${renderizarNotasAtencionEquipoMatchmaking(resultado, equipoKey)}
+      ${renderizarTotalesEquipoMatchmaking(resultado, equipoKey)}
+    </section>
+  `;
+}
+
+window.toggleDimensionMatchmaking = function(button) {
+  const row = button?.closest('.matchmaking-dim');
+  if (!row) return;
+  const abierto = row.classList.toggle('is-open');
+  button.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+};
+
+function nombreEquipoMatchmaking(equipoKey) {
+  return equipoKey === 'equipo1' ? 'Equipo 1' : 'Equipo 2';
+}
+
+function crearDimensionAnalisisMatchmaking(opciones) {
+  const valor1 = numeroSeguroMatchmaking(opciones.valor1);
+  const valor2 = numeroSeguroMatchmaking(opciones.valor2);
+  const decimales = opciones.decimales ?? 1;
+  const sufijo = opciones.sufijo || '';
+  const formatear = opciones.formato || ((valor) => formatearNumeroMatchmaking(valor, decimales, sufijo));
+  const diferenciaBase = opciones.menorEsMejor ? valor2 - valor1 : valor1 - valor2;
+  const diferenciaAbsoluta = Math.abs(diferenciaBase);
+  const umbral = numeroSeguroMatchmaking(opciones.umbral, 0);
+  const balanceada = diferenciaAbsoluta <= umbral;
+  const ganador = balanceada ? '' : (diferenciaBase > 0 ? 'equipo1' : 'equipo2');
+  const escala = Math.max(numeroSeguroMatchmaking(opciones.escala, diferenciaAbsoluta || 1), diferenciaAbsoluta || 1);
+  const ancho = balanceada
+    ? 7
+    : clampMatchmaking((diferenciaAbsoluta / escala) * 44, 8, 44);
+  const detalle = opciones.detalle || '';
+  const numeros = opciones.numeros || `${opciones.label} - Equipo 1: ${formatear(valor1)} | Equipo 2: ${formatear(valor2)}`;
+
+  return {
+    key: opciones.key,
+    label: opciones.label,
+    valor1,
+    valor2,
+    valor1Texto: formatear(valor1),
+    valor2Texto: formatear(valor2),
+    diferenciaAbsoluta,
+    balanceada,
+    ganador,
+    ancho,
+    detalle,
+    numeros
+  };
+}
+
+function dimensionesAnalisisMatchmaking(resultado) {
+  const e1 = resultado?.equipo1?.estadisticas || {};
+  const e2 = resultado?.equipo2?.estadisticas || {};
+  const cagadas1 = obtenerCagadasEquipoMatchmaking(resultado?.equipo1?.jugadores || []);
+  const cagadas2 = obtenerCagadasEquipoMatchmaking(resultado?.equipo2?.jugadores || []);
+  const fisico1 = numeroSeguroMatchmaking(e1.pulmonPromedio);
+  const fisico2 = numeroSeguroMatchmaking(e2.pulmonPromedio);
+  const fisicoLabel = fisico1 > 0 || fisico2 > 0 ? 'Pulmon promedio' : 'Pulmon total';
+  const fisicoValor1 = fisico1 > 0 || fisico2 > 0 ? fisico1 : numeroSeguroMatchmaking(e1.pulmonTrackingTotal ?? e1.pulmonTotal);
+  const fisicoValor2 = fisico1 > 0 || fisico2 > 0 ? fisico2 : numeroSeguroMatchmaking(e2.pulmonTrackingTotal ?? e2.pulmonTotal);
+
+  return [
+    crearDimensionAnalisisMatchmaking({
+      key: 'general',
+      label: 'General',
+      valor1: e1.rendimientoTotal,
+      valor2: e2.rendimientoTotal,
+      decimales: 1,
+      umbral: 1,
+      escala: 12,
+      detalle: 'Rendimiento total usado por el algoritmo para contestar si el partido quedo parejo.',
+      numeros: `Puntos - Equipo 1: ${formatearNumeroMatchmaking(e1.rendimientoTotal, 1)} | Equipo 2: ${formatearNumeroMatchmaking(e2.rendimientoTotal, 1)}`
+    }),
+    crearDimensionAnalisisMatchmaking({
+      key: 'experiencia',
+      label: 'Experiencia',
+      valor1: e1.winratePromedio,
+      valor2: e2.winratePromedio,
+      decimales: 1,
+      sufijo: '%',
+      umbral: 4,
+      escala: 25,
+      detalle: 'Compara el winrate promedio del equipo. Sirve como proxy de experiencia competitiva.',
+      numeros: `Winrate promedio - Equipo 1: ${formatearNumeroMatchmaking(e1.winratePromedio, 1, '%')} | Equipo 2: ${formatearNumeroMatchmaking(e2.winratePromedio, 1, '%')}`
+    }),
+    crearDimensionAnalisisMatchmaking({
+      key: 'arquero',
+      label: 'Arquero',
+      valor1: e1.rendimientoArquero,
+      valor2: e2.rendimientoArquero,
+      decimales: 1,
+      umbral: 2,
+      escala: 20,
+      detalle: 'Suma el rendimiento asignado a quienes juegan como arquero en cada equipo.',
+      numeros: `Rendimiento arquero - Equipo 1: ${formatearNumeroMatchmaking(e1.rendimientoArquero, 1)} | Equipo 2: ${formatearNumeroMatchmaking(e2.rendimientoArquero, 1)}`
+    }),
+    crearDimensionAnalisisMatchmaking({
+      key: 'solidez',
+      label: 'Solidez',
+      valor1: cagadas1.porPartido,
+      valor2: cagadas2.porPartido,
+      decimales: 2,
+      menorEsMejor: true,
+      umbral: 0.12,
+      escala: 0.6,
+      detalle: 'Compara cagadas por partido estimadas para el grupo. En esta dimension, menos es mejor.',
+      numeros: `Cagadas/PJ - Equipo 1: ${formatearNumeroMatchmaking(cagadas1.porPartido, 2)} | Equipo 2: ${formatearNumeroMatchmaking(cagadas2.porPartido, 2)}`
+    }),
+    crearDimensionAnalisisMatchmaking({
+      key: 'ataque',
+      label: 'Ataque',
+      valor1: e1.golesFavorPromedio,
+      valor2: e2.golesFavorPromedio,
+      decimales: 2,
+      umbral: 0.25,
+      escala: 1.2,
+      detalle: 'Compara goles a favor por partido del grupo, una lectura directa del potencial ofensivo.',
+      numeros: `Goles a favor/PJ - Equipo 1: ${formatearNumeroMatchmaking(e1.golesFavorPromedio, 2)} | Equipo 2: ${formatearNumeroMatchmaking(e2.golesFavorPromedio, 2)}`
+    }),
+    crearDimensionAnalisisMatchmaking({
+      key: 'fisico',
+      label: 'Fisico',
+      valor1: fisicoValor1,
+      valor2: fisicoValor2,
+      decimales: 1,
+      umbral: 1,
+      escala: 8,
+      detalle: 'Compara la capacidad fisica disponible con el mejor dato de pulmon/tracking que tenga cada jugador.',
+      numeros: `${fisicoLabel} - Equipo 1: ${formatearNumeroMatchmaking(fisicoValor1, 1)} | Equipo 2: ${formatearNumeroMatchmaking(fisicoValor2, 1)}`
+    })
+  ];
+}
+
+function renderizarDimensionAnalisisMatchmaking(dimension, index) {
+  const fillClass = dimension.balanceada
+    ? 'is-even'
+    : (dimension.ganador === 'equipo1' ? 'to1' : 'to2');
+  const e1Win = dimension.ganador === 'equipo1';
+  const e2Win = dimension.ganador === 'equipo2';
+  return `
+    <div class="matchmaking-dim ${dimension.balanceada ? 'is-balanced' : ''} ${index === 0 ? 'is-open' : ''}">
+      <button type="button" class="matchmaking-dim__head" onclick="toggleDimensionMatchmaking(this)" aria-expanded="${index === 0 ? 'true' : 'false'}">
+        <span class="matchmaking-dim__value is-left ${e1Win ? 'is-win' : ''}">${escaparHtmlMatchmaking(dimension.valor1Texto)}</span>
+        <span class="matchmaking-dim__bar">
+          <span class="matchmaking-dim__name">${escaparHtmlMatchmaking(dimension.label)}${dimension.balanceada ? ' <b>=</b>' : ''}</span>
+          <span class="matchmaking-dim__track"></span>
+          <span class="matchmaking-dim__mid"></span>
+          <span class="matchmaking-dim__fill ${fillClass}" style="width:${dimension.ancho.toFixed(1)}%;"></span>
+        </span>
+        <span class="matchmaking-dim__value is-right ${e2Win ? 'is-win' : ''}">${escaparHtmlMatchmaking(dimension.valor2Texto)}</span>
+      </button>
+      <div class="matchmaking-dim__detail">
+        ${escaparHtmlMatchmaking(dimension.detalle)}
+        <span>${escaparHtmlMatchmaking(dimension.numeros)}</span>
+      </div>
+    </div>
+  `;
+}
+
+const MATCHMAKING_RADAR_AXES = [
+  { key: 'arquero', label: 'Arquero' },
+  { key: 'defensa', label: 'Defensa' },
+  { key: 'medio', label: 'Medio' },
+  { key: 'ataque', label: 'Ataque' }
+];
+
+function calcularRadarRolesEquipoMatchmaking(jugadores = []) {
+  const buckets = MATCHMAKING_RADAR_AXES.reduce((acc, axis) => {
+    acc[axis.key] = [];
+    return acc;
+  }, {});
+
+  jugadores.forEach(jugador => {
+    const rol = obtenerRolCanchaLiveMatchmaking(jugador, { incluirArquero: true });
+    if (!rol) return;
+    const key = rol === 'arquero' || rol === 'defensa' || rol === 'ataque' ? rol : 'medio';
+    const valor = key === 'arquero'
+      ? numeroSeguroMatchmaking(jugador.rendimientoArquero || (jugador.rolPartido === ROL_PARTIDO_ARQUERO ? jugador.rendimientoTotal : 0))
+      : numeroSeguroMatchmaking(jugador.skillMatchmaking ?? jugador.rendimientoTotal);
+    if (valor > 0) buckets[key].push(valor);
+  });
+
+  return MATCHMAKING_RADAR_AXES.reduce((acc, axis) => {
+    const valores = buckets[axis.key] || [];
+    acc[axis.key] = valores.length
+      ? valores.reduce((sum, valor) => sum + valor, 0) / valores.length
+      : 0;
+    return acc;
+  }, {});
+}
+
+function puntoRadarMatchmaking(index, frac, cx = 150, cy = 112, radio = 74) {
+  const angulo = -Math.PI / 2 + index * (2 * Math.PI / MATCHMAKING_RADAR_AXES.length);
+  return [
+    cx + Math.cos(angulo) * radio * frac,
+    cy + Math.sin(angulo) * radio * frac
+  ];
+}
+
+function puntosPoligonoRadarMatchmaking(valores) {
+  return valores
+    .map((valor, index) => puntoRadarMatchmaking(index, valor).map(n => n.toFixed(1)).join(','))
+    .join(' ');
+}
+
+function renderizarCirculosRadarMatchmaking(valores, clase) {
+  return valores.map((valor, index) => {
+    const [x, y] = puntoRadarMatchmaking(index, valor);
+    return `<circle class="${clase}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"></circle>`;
+  }).join('');
+}
+
+function renderizarRadarSuperpuestoMatchmaking(resultado) {
+  const raw1 = calcularRadarRolesEquipoMatchmaking(resultado?.equipo1?.jugadores || []);
+  const raw2 = calcularRadarRolesEquipoMatchmaking(resultado?.equipo2?.jugadores || []);
+  const valores1 = MATCHMAKING_RADAR_AXES.map(axis => {
+    const max = Math.max(100, raw1[axis.key] || 0, raw2[axis.key] || 0);
+    return raw1[axis.key] > 0 ? clampMatchmaking(raw1[axis.key] / max, 0.08, 1) : 0.08;
+  });
+  const valores2 = MATCHMAKING_RADAR_AXES.map(axis => {
+    const max = Math.max(100, raw1[axis.key] || 0, raw2[axis.key] || 0);
+    return raw2[axis.key] > 0 ? clampMatchmaking(raw2[axis.key] / max, 0.08, 1) : 0.08;
+  });
+
+  return `
+    <div class="matchmaking-radar-box">
+      <h4>Rendimiento por tracking</h4>
+      <svg viewBox="0 0 300 220" role="img" aria-label="Radar comparativo segun posicion dominante de tracking">
+        ${[0.33, 0.66, 1].map(frac => `
+          <polygon class="matchmaking-radar-grid" points="${puntosPoligonoRadarMatchmaking(MATCHMAKING_RADAR_AXES.map(() => frac))}"></polygon>
+        `).join('')}
+        ${MATCHMAKING_RADAR_AXES.map((axis, index) => {
+          const [x, y] = puntoRadarMatchmaking(index, 1);
+          const [lx, ly] = puntoRadarMatchmaking(index, 1.23);
+          return `
+            <line class="matchmaking-radar-axis" x1="150" y1="112" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"></line>
+            <text class="matchmaking-radar-label" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}">${escaparHtmlMatchmaking(axis.label)}</text>
+          `;
+        }).join('')}
+        <polygon class="matchmaking-radar-area is-team-1" points="${puntosPoligonoRadarMatchmaking(valores1)}"></polygon>
+        <polygon class="matchmaking-radar-area is-team-2" points="${puntosPoligonoRadarMatchmaking(valores2)}"></polygon>
+        ${renderizarCirculosRadarMatchmaking(valores1, 'matchmaking-radar-dot is-team-1')}
+        ${renderizarCirculosRadarMatchmaking(valores2, 'matchmaking-radar-dot is-team-2')}
+      </svg>
+      <div class="matchmaking-radar-legend">
+        <span><i style="background:${MATCHMAKING_TEAM_THEMES.equipo1.color};"></i>Equipo 1</span>
+        <span><i style="background:${MATCHMAKING_TEAM_THEMES.equipo2.color};"></i>Equipo 2</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderizarAnalisisEmparejamientoMatchmaking(resultado) {
+  const dimensiones = dimensionesAnalisisMatchmaking(resultado);
+  return `
+    <section class="matchmaking-analysis-panel">
+      <h3>Analisis del emparejamiento</h3>
+      <p>La barra se inclina hacia el equipo favorecido. Toca una dimension para ver el detalle.</p>
+      <div class="matchmaking-dim-list">
+        ${dimensiones.map((dimension, index) => renderizarDimensionAnalisisMatchmaking(dimension, index)).join('')}
+      </div>
+      ${renderizarRadarSuperpuestoMatchmaking(resultado)}
+    </section>
+  `;
+}
+
+function direccionAtaqueMatchmaking(equipoKey) {
+  return { side: 'right', chip: 'DEF &rarr; ATA', text: 'Perfil de defensa a ataque' };
+}
+
+function offsetEtiquetaPitchMatchmaking(leftPct, topPct, index) {
+  const offsetY = [-36, 36, -58, 58, 0][index % 5];
+  let offsetX = 0;
+  if (leftPct < 28) offsetX = 62;
+  if (leftPct > 72) offsetX = -62;
+  if (topPct < 18) return { x: offsetX, y: Math.max(36, Math.abs(offsetY)) };
+  if (topPct > 82) return { x: offsetX, y: -Math.max(36, Math.abs(offsetY)) };
+  return { x: offsetX, y: offsetY };
+}
+
+function colorAreaJugadorMatchmaking(index) {
+  return MATCHMAKING_AREA_COLORS[index % MATCHMAKING_AREA_COLORS.length];
+}
+
+function crearKeyJugadorArmoniaMatchmaking(jugador, index) {
+  const id = obtenerIdJugadorMatchmaking(jugador) || obtenerNombreJugadorMatchmaking(jugador) || `jugador-${index}`;
+  return String(id).replace(/[^a-zA-Z0-9_-]/g, '-');
+}
+
+function inicialesJugadorMatchmaking(nombre = '') {
+  const limpio = String(nombre || 'J')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  const partes = limpio.split(/\s+/).filter(Boolean);
+  const base = partes.length > 1
+    ? `${partes[0][0] || ''}${partes[1][0] || ''}`
+    : limpio.slice(0, 2);
+  return (base || 'J').toUpperCase();
+}
+
+function obtenerPicoSuavizadoArmoniaMatchmaking(buckets, cols, rows) {
+  let best = null;
+  buckets.forEach(cell => {
+    let smoothed = 0;
+    let weight = 0;
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const x = cell.x + dx;
+        const y = cell.y + dy;
+        if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
+        const neighbor = buckets.get(`${x}:${y}`);
+        const w = dx === 0 && dy === 0 ? 4 : (Math.abs(dx) + Math.abs(dy) === 1 ? 2 : 1);
+        smoothed += numeroSeguroMatchmaking(neighbor?.value, 0) * w;
+        weight += w;
+      }
+    }
+    const score = weight ? smoothed / weight : cell.value;
+    if (
+      !best
+      || score > best.score
+      || (score === best.score && cell.value > best.value)
+      || (score === best.score && cell.value === best.value && `${cell.y}:${cell.x}` < `${best.y}:${best.x}`)
+    ) {
+      best = { x: cell.x, y: cell.y, value: cell.value, score };
+    }
+  });
+  return best;
+}
+
+function resolverColisionesMarcadoresArmoniaMatchmaking(players = []) {
+  const markers = players.map((player, index) => ({
+    playerKey: player.playerKey,
+    index,
+    x: numeroSeguroMatchmaking(player.center?.x, 50),
+    y: numeroSeguroMatchmaking(player.center?.y, 25)
+  }));
+
+  for (let iteration = 0; iteration < 40; iteration += 1) {
+    let moved = false;
+    for (let i = 0; i < markers.length; i += 1) {
+      for (let j = i + 1; j < markers.length; j += 1) {
+        const a = markers[i];
+        const b = markers[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance < 0.01) {
+          const angle = (((a.index + 1) * 41) + ((b.index + 1) * 17)) * (Math.PI / 180);
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          distance = Math.hypot(dx, dy);
+        }
+        if (distance >= MATCHMAKING_HARMONY_MARKER_MIN_DISTANCE) continue;
+
+        const push = (MATCHMAKING_HARMONY_MARKER_MIN_DISTANCE - distance) / 2;
+        dx /= distance;
+        dy /= distance;
+        a.x -= dx * push;
+        a.y -= dy * push;
+        b.x += dx * push;
+        b.y += dy * push;
+        moved = true;
+      }
+    }
+
+    markers.forEach(marker => {
+      marker.x = clampMatchmaking(marker.x, MATCHMAKING_HARMONY_MARKER_PADDING, 100 - MATCHMAKING_HARMONY_MARKER_PADDING);
+      marker.y = clampMatchmaking(marker.y, MATCHMAKING_HARMONY_MARKER_PADDING, 50 - MATCHMAKING_HARMONY_MARKER_PADDING);
+    });
+    if (!moved) break;
+  }
+
+  return new Map(markers.map(marker => [marker.playerKey, { x: marker.x, y: marker.y }]));
+}
+
+function anchoEtiquetaEjeArmoniaMatchmaking(nombre = '') {
+  return clampMatchmaking(9 + (String(nombre).length * 0.8), 12, 22);
+}
+
+function hayColisionEtiquetaEjeArmoniaMatchmaking(laneItems, item, x) {
+  const last = laneItems[laneItems.length - 1];
+  if (!last) return false;
+  const minGap = ((last.widthPct + item.widthPct) / 2) + 1.6;
+  return (x - last.labelPct) < minGap;
+}
+
+function ajustarCarrilEtiquetasEjeArmoniaMatchmaking(laneItems) {
+  if (!laneItems.length) return;
+  laneItems.sort((a, b) => a.labelPct - b.labelPct);
+  for (let i = 1; i < laneItems.length; i += 1) {
+    const prev = laneItems[i - 1];
+    const current = laneItems[i];
+    const minGap = ((prev.widthPct + current.widthPct) / 2) + 1.6;
+    if (current.labelPct - prev.labelPct < minGap) {
+      current.labelPct = prev.labelPct + minGap;
+    }
+  }
+
+  const last = laneItems[laneItems.length - 1];
+  const overflow = (last.labelPct + (last.widthPct / 2)) - 100;
+  if (overflow > 0) {
+    laneItems.forEach(item => {
+      item.labelPct -= overflow;
+    });
+  }
+
+  const first = laneItems[0];
+  const underflow = (first.widthPct / 2) - first.labelPct;
+  if (underflow > 0) {
+    laneItems.forEach(item => {
+      item.labelPct += underflow;
+    });
+  }
+
+  for (let i = 1; i < laneItems.length; i += 1) {
+    const prev = laneItems[i - 1];
+    const current = laneItems[i];
+    const minGap = ((prev.widthPct + current.widthPct) / 2) + 1.6;
+    if (current.labelPct - prev.labelPct < minGap) {
+      current.labelPct = prev.labelPct + minGap;
+    }
+  }
+}
+
+function resolverEtiquetasEjeArmoniaMatchmaking(players = []) {
+  const sorted = players.map((player, index) => {
+    const dotPct = clampMatchmaking(numeroSeguroMatchmaking(player.ataquePct, 0.5) * 100, 0, 100);
+    return {
+      playerKey: player.playerKey,
+      index,
+      dotPct,
+      labelPct: dotPct,
+      widthPct: anchoEtiquetaEjeArmoniaMatchmaking(player.nombre)
+    };
+  }).sort((a, b) => a.dotPct - b.dotPct || a.index - b.index);
+  const lanes = { up: [], down: [] };
+
+  sorted.forEach((item, order) => {
+    let lane = order % 2 === 0 ? 'up' : 'down';
+    const otherLane = lane === 'up' ? 'down' : 'up';
+    if (
+      hayColisionEtiquetaEjeArmoniaMatchmaking(lanes[lane], item, item.labelPct)
+      && !hayColisionEtiquetaEjeArmoniaMatchmaking(lanes[otherLane], item, item.labelPct)
+    ) {
+      lane = otherLane;
+    }
+    item.lane = lane;
+    lanes[lane].push(item);
+  });
+
+  ajustarCarrilEtiquetasEjeArmoniaMatchmaking(lanes.up);
+  ajustarCarrilEtiquetasEjeArmoniaMatchmaking(lanes.down);
+
+  return new Map([...lanes.up, ...lanes.down].map(item => [
+    item.playerKey,
+    {
+      dotPct: item.dotPct,
+      labelPct: clampMatchmaking(item.labelPct, item.widthPct / 2, 100 - (item.widthPct / 2)),
+      lane: item.lane
+    }
+  ]));
+}
+
+function crearGridHeatmapArmoniaMatchmaking(jugador, index, equipoKey) {
+  const nombre = obtenerNombreJugadorMatchmaking(jugador);
+  const playerKey = crearKeyJugadorArmoniaMatchmaking(jugador, index);
+  const color = colorAreaJugadorMatchmaking(index);
+  const heatmap = normalizarHeatmapMatchmaking(obtenerHeatmapJugadorMatchmaking(jugador));
+  if (!heatmap.total || !heatmap.flat.length) {
+    return { jugador, nombre, playerKey, color, hasHeatmap: false, cells: [] };
+  }
+
+  const { cols, rows } = MATCHMAKING_HARMONY_GRID;
+  const buckets = new Map();
+  heatmap.counts.forEach((row, y) => {
+    row.forEach((value, x) => {
+      const n = numeroSeguroMatchmaking(value, 0);
+      if (n <= 0) return;
+      const gx = clampMatchmaking(Math.floor(((x + 0.5) / Math.max(heatmap.xBins, 1)) * cols), 0, cols - 1);
+      const gy = clampMatchmaking(Math.floor(((y + 0.5) / Math.max(heatmap.yBins, 1)) * rows), 0, rows - 1);
+      const key = `${gx}:${gy}`;
+      const actual = buckets.get(key) || { x: gx, y: gy, value: 0 };
+      actual.value += n;
+      buckets.set(key, actual);
+    });
+  });
+
+  const allCells = Array.from(buckets.values());
+  const maxValue = allCells.reduce((max, cell) => Math.max(max, cell.value), 0);
+  if (maxValue <= 0) return { jugador, nombre, playerKey, color, hasHeatmap: false, cells: [] };
+  const peakCell = obtenerPicoSuavizadoArmoniaMatchmaking(buckets, cols, rows)
+    || allCells[0]
+    || { x: Math.floor(cols / 2), y: Math.floor(rows / 2), value: maxValue };
+
+  const threshold = maxValue * 0.18;
+  let cells = allCells.filter(cell => cell.value >= threshold);
+  if (cells.length < 6) {
+    cells = [...allCells].sort((a, b) => b.value - a.value).slice(0, Math.min(10, allCells.length));
+  }
+
+  const total = cells.reduce((sum, cell) => sum + cell.value, 0);
+  const pesoAtaque = cells.reduce((sum, cell) => {
+    const estaEnCampoRival = cell.x >= cols / 2;
+    return estaEnCampoRival ? sum + cell.value : sum;
+  }, 0);
+  const ataquePct = total ? pesoAtaque / total : 0.5;
+
+  return {
+    jugador,
+    nombre,
+    playerKey,
+    color,
+    hasHeatmap: true,
+    initials: inicialesJugadorMatchmaking(nombre),
+    ataquePct,
+    peak: peakCell,
+    center: {
+      x: (((peakCell.x + 0.5) / cols) * 100),
+      y: (((peakCell.y + 0.5) / rows) * 50)
+    },
+    cells: cells.map(cell => ({
+      ...cell,
+      ratio: cell.value / maxValue
+    }))
+  };
+}
+
+function crearModeloCanchaArmoniaMatchmaking(jugadores = [], equipoKey) {
+  const players = jugadores.map((jugador, index) => crearGridHeatmapArmoniaMatchmaking(jugador, index, equipoKey));
+  const withHeatmap = players.filter(player => player.hasHeatmap);
+  const withoutHeatmap = players.filter(player => !player.hasHeatmap);
+  const cellsByKey = new Map();
+  const markerLayout = resolverColisionesMarcadoresArmoniaMatchmaking(withHeatmap);
+  const axisLayout = resolverEtiquetasEjeArmoniaMatchmaking(withHeatmap);
+
+  withHeatmap.forEach(player => {
+    player.marker = markerLayout.get(player.playerKey) || player.center;
+    player.axis = axisLayout.get(player.playerKey) || {
+      dotPct: clampMatchmaking(numeroSeguroMatchmaking(player.ataquePct, 0.5) * 100, 0, 100),
+      labelPct: clampMatchmaking(numeroSeguroMatchmaking(player.ataquePct, 0.5) * 100, 0, 100),
+      lane: 'up'
+    };
+  });
+
+  withHeatmap.forEach(player => {
+    player.cells.forEach(cell => {
+      const key = `${cell.x}:${cell.y}`;
+      if (!cellsByKey.has(key)) cellsByKey.set(key, { x: cell.x, y: cell.y, owners: [] });
+      cellsByKey.get(key).owners.push({
+        playerKey: player.playerKey,
+        nombre: player.nombre,
+        color: player.color,
+        value: cell.value,
+        ratio: cell.ratio
+      });
+    });
+  });
+
+  const cells = Array.from(cellsByKey.values()).map(cell => ({
+    ...cell,
+    owners: cell.owners.sort((a, b) => b.value - a.value)
+  }));
+
+  return { players, withHeatmap, withoutHeatmap, cells };
+}
+
+function renderizarLineasCanchaArmoniaMatchmaking() {
+  return `
+    <g class="matchmaking-harmony-lines">
+      <rect x="1.2" y="1.2" width="97.6" height="47.6" rx="1.6"></rect>
+      <line x1="50" y1="1.2" x2="50" y2="48.8"></line>
+      <circle cx="50" cy="25" r="6.5"></circle>
+      <rect x="1.2" y="14.5" width="10.5" height="21"></rect>
+      <rect x="88.3" y="14.5" width="10.5" height="21"></rect>
+    </g>
+  `;
+}
+
+function ratioCeldaArmoniaMatchmaking(cell = {}) {
+  const direct = numeroFinitoMatchmaking(cell.ratio);
+  if (direct !== null) return clampMatchmaking(direct, 0, 1);
+  const ownerRatios = (cell.owners || [])
+    .map(owner => numeroFinitoMatchmaking(owner.ratio))
+    .filter(value => value !== null);
+  if (ownerRatios.length) return clampMatchmaking(Math.max(...ownerRatios), 0, 1);
+  return 1;
+}
+
+function renderizarManchasJugadorArmoniaMatchmaking(cells = [], color) {
+  const { cols, rows } = MATCHMAKING_HARMONY_GRID;
+  const cellW = 100 / cols;
+  const cellH = 50 / rows;
+
+  return [...cells]
+    .sort((a, b) => ratioCeldaArmoniaMatchmaking(a) - ratioCeldaArmoniaMatchmaking(b))
+    .map(cell => {
+      const ratio = ratioCeldaArmoniaMatchmaking(cell);
+      return `
+    <ellipse
+      cx="${((cell.x + 0.5) * cellW).toFixed(2)}"
+      cy="${((cell.y + 0.5) * cellH).toFixed(2)}"
+      rx="${(cellW * (0.72 + ratio * 0.55)).toFixed(2)}"
+      ry="${(cellH * (0.72 + ratio * 0.55)).toFixed(2)}"
+      fill="${color}"
+      opacity="${(0.38 + ratio * 0.54).toFixed(2)}"
+    ></ellipse>
+  `;
+    }).join('');
+}
+
+function renderizarCapasCanchaArmoniaMatchmaking(modelo, filterId) {
+  const overlapCells = modelo.cells.filter(cell => cell.owners.length > 1);
+  const softFilter = escaparHtmlMatchmaking(filterId);
+
+  return `
+    <defs>
+      <filter id="${softFilter}" x="-16%" y="-16%" width="132%" height="132%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="0.72"></feGaussianBlur>
+      </filter>
+    </defs>
+    <g class="matchmaking-harmony-layers">
+      ${modelo.withHeatmap.map(player => `
+        <g
+          class="matchmaking-harmony-player-layer"
+          data-player-key="${escaparHtmlMatchmaking(player.playerKey)}"
+          filter="url(#${softFilter})"
+        >
+          <title>${escaparHtmlMatchmaking(player.nombre)}</title>
+          ${renderizarManchasJugadorArmoniaMatchmaking(player.cells, player.color)}
+        </g>
+      `).join('')}
+      <g class="matchmaking-harmony-overlap-layer" filter="url(#${softFilter})">
+        <title>Solape entre jugadores</title>
+        ${renderizarManchasJugadorArmoniaMatchmaking(overlapCells, '#ff6bd6')}
+      </g>
+    </g>
+  `;
+}
+
+function renderizarMarcadoresCanchaArmoniaMatchmaking(modelo) {
+  return modelo.withHeatmap.map(player => `
+    <g class="matchmaking-harmony-marker" data-player-key="${escaparHtmlMatchmaking(player.playerKey)}" transform="translate(${player.marker.x.toFixed(2)} ${player.marker.y.toFixed(2)})">
+      <circle r="2.9" fill="rgba(8, 13, 26, 0.94)" stroke="${player.color}" stroke-width="0.75"></circle>
+      <text text-anchor="middle" dominant-baseline="central">${escaparHtmlMatchmaking(player.initials)}</text>
+      <title>${escaparHtmlMatchmaking(player.nombre)}</title>
+    </g>
+  `).join('');
+}
+
+function renderizarSvgCanchaArmoniaMatchmaking(modelo, temaName, cardId) {
+  if (!modelo.withHeatmap.length) {
+    return `
+      <div class="matchmaking-harmony-empty-pitch">
+        <span>Sin mapas de calor para ${escaparHtmlMatchmaking(temaName)}</span>
+      </div>
+    `;
+  }
+
+  const filterId = `matchmaking-harmony-soft-${crearKeyJugadorArmoniaMatchmaking({ id: cardId }, 0)}`;
+  return `
+    <svg class="matchmaking-harmony-svg" viewBox="-4 -3 108 56" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mapa de armonia territorial ${escaparHtmlMatchmaking(temaName)}">
+      <rect class="matchmaking-harmony-bg" x="0" y="0" width="100" height="50" rx="2"></rect>
+      ${renderizarCapasCanchaArmoniaMatchmaking(modelo, filterId)}
+      ${renderizarLineasCanchaArmoniaMatchmaking()}
+      ${renderizarMarcadoresCanchaArmoniaMatchmaking(modelo)}
+    </svg>
+  `;
+}
+
+function claseMetricaArmoniaMatchmaking(value, type) {
+  const n = clampMatchmaking(numeroSeguroMatchmaking(value), 0, 100);
+  if (type === 'overlap') {
+    if (n >= 75) return 'bad';
+    if (n >= 55) return 'warn';
+    return 'good';
+  }
+  if (n >= 70) return 'good';
+  if (n >= 45) return 'warn';
+  return 'bad';
+}
+
+function renderizarMetricaArmoniaMatchmaking(label, value, type, usable = true) {
+  const n = clampMatchmaking(numeroSeguroMatchmaking(value), 0, 100);
+  const fillClass = claseMetricaArmoniaMatchmaking(n, type);
+  return `
+    <div class="matchmaking-harmony-metric">
+      <div class="matchmaking-harmony-metric__top">
+        <span>${label}</span>
+        <strong>${usable ? `${n.toFixed(0)}%` : '-'}</strong>
+      </div>
+      <div class="matchmaking-harmony-bar">
+        <span class="matchmaking-harmony-bar__fill is-${fillClass}" style="width:${usable ? n.toFixed(0) : 0}%"></span>
+      </div>
+    </div>
+  `;
+}
+
+function renderizarLeyendaArmoniaMatchmaking(modelo, cardId) {
+  if (!modelo.withHeatmap.length) return '';
+  return `
+    <div class="matchmaking-harmony-legend" aria-label="Jugadores con mapa de calor">
+      ${modelo.withHeatmap.map(player => `
+        <button
+          type="button"
+          class="matchmaking-harmony-chip"
+          data-player-key="${escaparHtmlMatchmaking(player.playerKey)}"
+          onclick="aislarJugadorArmoniaMatchmaking('${escaparTextoParaJs(cardId)}', '${escaparTextoParaJs(player.playerKey)}')"
+          title="${escaparHtmlMatchmaking(player.nombre)}: posicion dominante por heatmap"
+        >
+          <span class="matchmaking-harmony-chip__swatch" style="background:${player.color}"></span>
+          <span>${escaparHtmlMatchmaking(player.nombre)}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderizarEjeArmoniaMatchmaking(modelo) {
+  if (!modelo.withHeatmap.length) return '';
+  return `
+    <div class="matchmaking-harmony-axis">
+      <span>Defensa</span>
+      <div class="matchmaking-harmony-axis__track">
+        ${modelo.withHeatmap.map((player, index) => `
+          <i
+            class="matchmaking-harmony-axis__dot"
+            data-player-key="${escaparHtmlMatchmaking(player.playerKey)}"
+            style="left:${player.axis.dotPct.toFixed(1)}%; background:${player.color};"
+            title="${escaparHtmlMatchmaking(player.nombre)}"
+          ></i>
+          <em
+            class="matchmaking-harmony-axis__name ${player.axis.lane === 'down' ? 'is-down' : 'is-up'}"
+            data-player-key="${escaparHtmlMatchmaking(player.playerKey)}"
+            style="left:${player.axis.labelPct.toFixed(1)}%;"
+          >${escaparHtmlMatchmaking(player.nombre)}</em>
+        `).join('')}
+      </div>
+      <span>Ataque</span>
+    </div>
+  `;
+}
+
+function renderizarBancoArmoniaMatchmaking(modelo, cardId, heatmapPlayers) {
+  const bench = modelo.withoutHeatmap;
+  return `
+    <div class="matchmaking-harmony-bench">
+      <span>Sin tracking:</span>
+      <div class="matchmaking-harmony-bench__list">
+        ${bench.length ? bench.map(player => `
+          <span class="matchmaking-harmony-bench-chip">
+            <span></span>${escaparHtmlMatchmaking(player.nombre)}
+          </span>
+        `).join('') : '<span class="matchmaking-harmony-bench-empty">Todos con tracking</span>'}
+      </div>
+      <button
+        type="button"
+        class="matchmaking-overlap-toggle"
+        onclick="toggleSolapeArmoniaMatchmaking('${escaparTextoParaJs(cardId)}', this)"
+        aria-pressed="false"
+        ${heatmapPlayers >= 2 ? '' : 'disabled'}
+      >
+        <span></span>Solape
+      </button>
+    </div>
+  `;
+}
+
+window.aislarJugadorArmoniaMatchmaking = function(cardId, playerKey) {
+  const card = document.querySelector(`[data-harmony-card="${cardId}"]`);
+  if (!card) return;
+  const nextActive = card.dataset.activePlayer === playerKey ? '' : playerKey;
+  card.dataset.activePlayer = nextActive;
+
+  card.querySelectorAll('.matchmaking-harmony-chip').forEach(chip => {
+    chip.classList.toggle('is-active', !!nextActive && chip.dataset.playerKey === nextActive);
+  });
+  card.querySelectorAll('.matchmaking-harmony-player-layer').forEach(layer => {
+    const isTarget = layer.dataset.playerKey === nextActive;
+    layer.classList.toggle('is-dimmed', !!nextActive && !isTarget);
+    layer.classList.toggle('is-focus', !!nextActive && isTarget);
+  });
+  card.querySelectorAll('.matchmaking-harmony-overlap-layer').forEach(layer => {
+    layer.classList.toggle('is-dimmed', !!nextActive);
+  });
+  card.querySelectorAll('.matchmaking-harmony-marker, .matchmaking-harmony-axis__dot, .matchmaking-harmony-axis__name').forEach(item => {
+    item.classList.toggle('is-dimmed', !!nextActive && item.dataset.playerKey !== nextActive);
+  });
+};
+
+window.toggleSolapeArmoniaMatchmaking = function(cardId, button) {
+  const card = document.querySelector(`[data-harmony-card="${cardId}"]`);
+  if (!card) return;
+  const enabled = card.classList.toggle('is-showing-overlap');
+  if (button) {
+    button.classList.toggle('is-active', enabled);
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+  }
+};
+
+function renderizarCanchaEquipoMatchmaking(resultado, equipoKey) {
+  const tema = MATCHMAKING_TEAM_THEMES[equipoKey] || MATCHMAKING_TEAM_THEMES.equipo1;
+  const jugadores = resultado?.[equipoKey]?.jugadores || [];
+  const stats = resultado?.[equipoKey]?.estadisticas || {};
+  const ataque = direccionAtaqueMatchmaking(equipoKey);
+  const heatmapPlayers = numeroSeguroMatchmaking(stats.heatmapPlayers);
+  const score = numeroSeguroMatchmaking(stats.armoniaHeatmapScore);
+  const coverage = numeroSeguroMatchmaking(stats.heatmapCoveragePct);
+  const overlap = numeroSeguroMatchmaking(stats.heatmapOverlapPct);
+  const modelo = crearModeloCanchaArmoniaMatchmaking(jugadores, equipoKey);
+  const cardId = `matchmaking-armonia-${equipoKey}`;
+
+  return `
+    <section class="matchmaking-pitch-card" style="--team-color:${tema.color};" data-harmony-card="${cardId}">
+      <header class="matchmaking-pitch-card__header">
+        <div>
+          <h4>${tema.name}</h4>
+          <span>${heatmapPlayers}/${jugadores.length} con mapa de calor</span>
+        </div>
+        <span class="matchmaking-pitch-card__attack">${ataque.chip}</span>
+        <strong title="Score de armonia territorial">${heatmapPlayers >= 2 ? score.toFixed(0) : '-'}</strong>
+      </header>
+      <div class="matchmaking-harmony-metrics">
+        ${renderizarMetricaArmoniaMatchmaking('Cobertura', coverage, 'coverage', heatmapPlayers > 0)}
+        ${renderizarMetricaArmoniaMatchmaking('Solape', overlap, 'overlap', heatmapPlayers >= 2)}
+      </div>
+      <div class="matchmaking-pitch" aria-label="Mapa de posiciones ${tema.name}">
+        ${renderizarSvgCanchaArmoniaMatchmaking(modelo, tema.name, cardId)}
+        <div class="matchmaking-pitch-attack is-${ataque.side}">${ataque.chip}</div>
+      </div>
+      ${renderizarLeyendaArmoniaMatchmaking(modelo, cardId)}
+      ${renderizarEjeArmoniaMatchmaking(modelo)}
+      ${renderizarBancoArmoniaMatchmaking(modelo, cardId, heatmapPlayers)}
+    </section>
+  `;
+}
+
+function renderizarMapaArmoniaMatchmaking(resultado) {
+  const e1 = resultado?.equipo1?.estadisticas || {};
+  const e2 = resultado?.equipo2?.estadisticas || {};
+  const totalHeatmaps = numeroSeguroMatchmaking(e1.heatmapPlayers) + numeroSeguroMatchmaking(e2.heatmapPlayers);
+  return `
+    <section class="matchmaking-harmony">
+      <div class="matchmaking-harmony__title">
+        <div>
+          <h3>Armonia territorial</h3>
+          <p>Premia cobertura de cancha y bajo solape entre mapas de calor. Los jugadores sin tracking quedan fuera del campo para no inventar una posicion.</p>
+        </div>
+        <span>${totalHeatmaps} heatmaps usados</span>
+      </div>
+      <div class="matchmaking-harmony__grid">
+        ${renderizarCanchaEquipoMatchmaking(resultado, 'equipo1')}
+        ${renderizarCanchaEquipoMatchmaking(resultado, 'equipo2')}
+      </div>
     </section>
   `;
 }
@@ -2736,6 +5491,10 @@ function filasComparativaMatchmaking(resultado) {
     crearFilaComparativaMatchmaking('Rendimiento Jugadores', e1.rendimientoAtaque, e2.rendimientoAtaque, { siempreVisible: true, decimales: 1 }),
     crearFilaComparativaMatchmaking('Winrate Promedio', e1.winratePromedio, e2.winratePromedio, { siempreVisible: true, decimales: 1, sufijo: '%' }),
     crearFilaComparativaMatchmaking('Goles a Favor / Partido', e1.golesFavorPromedio, e2.golesFavorPromedio, { siempreVisible: true, decimales: 2 }),
+    crearFilaComparativaMatchmaking('Score Defensivo Total', e1.scoreDefensivoTotal, e2.scoreDefensivoTotal, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Score Defensivo Promedio', e1.scoreDefensivoPromedio, e2.scoreDefensivoPromedio, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Jugadores con Defensa Tracking', e1.jugadoresConScoreDefensivoTracking, e2.jugadoresConScoreDefensivoTracking, { formato: (valor) => String(Math.round(valor)) }),
+    crearFilaComparativaMatchmaking('Armonia territorial', e1.armoniaHeatmapScore, e2.armoniaHeatmapScore, { decimales: 0 }),
     crearFilaComparativaMatchmaking('Rendimiento Arqueros', e1.rendimientoArquero, e2.rendimientoArquero, { decimales: 1 }),
     crearFilaComparativaMatchmaking('Arqueros', e1.cantidadArqueros, e2.cantidadArqueros, { formato: (valor) => String(Math.round(valor)) }),
     crearFilaComparativaMatchmaking('Pulmon Promedio', e1.pulmonPromedio, e2.pulmonPromedio, { decimales: 1 }),
@@ -2761,37 +5520,9 @@ function renderizarComparativaMatchmaking(resultado) {
 }
 
 function renderizarFooterMatchmaking(resultado) {
-  const stats1 = resultado.equipo1.estadisticas;
-  const stats2 = resultado.equipo2.estadisticas;
-  const difPulmon = Math.abs(
-    numeroSeguroMatchmaking(stats1.pulmonTrackingTotal ?? stats1.pulmonTotal)
-    - numeroSeguroMatchmaking(stats2.pulmonTrackingTotal ?? stats2.pulmonTotal)
-  );
-
   return `
     <section class="matchmaking-footer">
-      <div class="matchmaking-footer-grid">
-        <div class="matchmaking-footer-metric">
-          <small>Fitness Score</small>
-          <strong>${resultado.fitness.toFixed(2)}</strong>
-        </div>
-        <div class="matchmaking-footer-metric">
-          <small>Dif. Matchmaking</small>
-          <strong>${Math.abs(stats1.rendimientoTotal - stats2.rendimientoTotal).toFixed(1)}</strong>
-        </div>
-        <div class="matchmaking-footer-metric">
-          <small>Dif. Impacto</small>
-          <strong>${Math.abs(stats1.impactoMatchmaking - stats2.impactoMatchmaking).toFixed(1)}%</strong>
-        </div>
-        <div class="matchmaking-footer-metric">
-          <small>Dif. Goles a favor</small>
-          <strong>${Math.abs(stats1.golesFavorPromedio - stats2.golesFavorPromedio).toFixed(2)}</strong>
-        </div>
-        <div class="matchmaking-footer-metric">
-          <small>Dif. Pulmon</small>
-          <strong>${difPulmon.toFixed(1)}</strong>
-        </div>
-      </div>
+      <span>Fitness ${resultado.fitness.toFixed(2)}</span>
       ${mostrarRestriccionesAplicadas()}
     </section>
   `;
@@ -2831,11 +5562,12 @@ function mostrarResultados(resultado) {
             ${renderizarEstadoIntercambioMatchmaking(resultado)}
           </div>
           ${renderizarBalanzaMatchmaking(resultado)}
-          <div class="matchmaking-teams-grid">
+          <div class="matchmaking-layout-grid">
             ${renderizarEquipoBalanceMatchmaking(resultado, 'equipo1', { maxImpacto, jugadorClave })}
+            ${renderizarAnalisisEmparejamientoMatchmaking(resultado)}
             ${renderizarEquipoBalanceMatchmaking(resultado, 'equipo2', { maxImpacto, jugadorClave })}
           </div>
-          ${renderizarComparativaMatchmaking(resultado)}
+          ${renderizarHitosPartidoMatchmaking(resultado)}
           ${renderizarFooterMatchmaking(resultado)}
         </div>
       </div>
@@ -3104,7 +5836,6 @@ function forzarActualizacionManual() {
         <div class="d-flex align-items-center">
           <i class="bi bi-grip-vertical text-muted me-2"></i>
           <span class="text-white fw-medium me-2">${jugador.nombre}</span>
-          ${mostrarPosicionesJugador(jugador.jugador_posicion)}
         </div>
         <button onclick="quitarJugador('${containerId.includes('1') ? 'equipo1' : 'equipo2'}', ${index})" class="btn btn-sm btn-outline-danger">
           <i class="bi bi-x"></i>

@@ -45,6 +45,106 @@ const JUGADORES_FOTOS_BUCKET = 'jugadores-fotos';
 const FOTO_PERFIL_MAX_BYTES = 5 * 1024 * 1024;
 const FOTO_PERFIL_TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+function normalizarEquipoNumero(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return null;
+  return [0, 1, 2].includes(numero) ? numero : null;
+}
+
+function calcularMarcadorDesdeItemsEquipo(items = []) {
+  const marcador = { equipo1: 0, equipo2: 0, total: 0 };
+  (items || []).forEach(item => {
+    const equipo = normalizarEquipoNumero(item?.equipo);
+    if (equipo === 1) marcador.equipo1 += 1;
+    if (equipo === 2) marcador.equipo2 += 1;
+  });
+  marcador.total = marcador.equipo1 + marcador.equipo2;
+  return marcador;
+}
+
+function obtenerGanadorDesdeMarcador(marcador = {}) {
+  const equipo1 = Number(marcador.equipo1) || 0;
+  const equipo2 = Number(marcador.equipo2) || 0;
+  if (equipo1 + equipo2 === 0) return null;
+  if (equipo1 > equipo2) return 1;
+  if (equipo2 > equipo1) return 2;
+  return 0;
+}
+
+function formatearResultadoDesdeMarcador(marcador = {}) {
+  const equipo1 = Number(marcador.equipo1) || 0;
+  const equipo2 = Number(marcador.equipo2) || 0;
+  return equipo2 > equipo1 ? `${equipo2}-${equipo1}` : `${equipo1}-${equipo2}`;
+}
+
+function calcularMarcadorDesdeGolesPartido(partido) {
+  const goles = Array.isArray(partido?.goles) ? partido.goles : [];
+  const golesConEquipo = goles.map(gol => {
+    let equipo = normalizarEquipoNumero(gol?.equipo);
+    if (equipo !== 1 && equipo !== 2 && gol?.goleador_id && Array.isArray(partido?.jugador_partido)) {
+      const jugadorPartido = partido.jugador_partido.find(jp => String(jp.jugador_id) === String(gol.goleador_id));
+      equipo = normalizarEquipoNumero(jugadorPartido?.equipo);
+    }
+    return { equipo };
+  });
+  return calcularMarcadorDesdeItemsEquipo(golesConEquipo);
+}
+
+function resolverEquipoGanadorPartido(partido) {
+  const marcador = calcularMarcadorDesdeGolesPartido(partido);
+  const ganadorPorGoles = obtenerGanadorDesdeMarcador(marcador);
+  if (ganadorPorGoles !== null) return ganadorPorGoles;
+
+  const ganadorGuardado = normalizarEquipoNumero(partido?.equipo_ganador);
+  return ganadorGuardado ?? 0;
+}
+
+function obtenerResultadoEquipoPartido(partido, equipo) {
+  const equipoNormalizado = normalizarEquipoNumero(equipo);
+  if (equipoNormalizado !== 1 && equipoNormalizado !== 2) return null;
+  const equipoGanador = resolverEquipoGanadorPartido(partido);
+  if (equipoGanador === 0) return 'empate';
+  return equipoGanador === equipoNormalizado ? 'victoria' : 'derrota';
+}
+
+function obtenerCagadaJugadorIdGol(gol) {
+  const jugadorId = gol?.cagada_jugador_id ?? gol?.cagada_id ?? null;
+  if (!jugadorId || jugadorId === 'nadie') return null;
+  return jugadorId;
+}
+
+function contarCagadasGolJugador(goles = [], jugadorId) {
+  const jugadorKey = String(jugadorId || '');
+  if (!jugadorKey) return 0;
+  return (goles || []).filter(gol => String(obtenerCagadaJugadorIdGol(gol) || '') === jugadorKey).length;
+}
+
+function crearMapaCagadasGolesPorPartidoJugador(goles = []) {
+  const mapa = new Map();
+  (goles || []).forEach(gol => {
+    const jugadorId = obtenerCagadaJugadorIdGol(gol);
+    const partidoId = gol?.partido_id;
+    if (!jugadorId || !partidoId) return;
+    const key = `${String(partidoId)}::${String(jugadorId)}`;
+    mapa.set(key, (mapa.get(key) || 0) + 1);
+  });
+  return mapa;
+}
+
+function obtenerCagadasGolesMapa(mapa, partidoId, jugadorId) {
+  if (!mapa || !partidoId || !jugadorId) return 0;
+  return mapa.get(`${String(partidoId)}::${String(jugadorId)}`) || 0;
+}
+
+function calcularCagadasParticipacionConGoles(participacion, golesPartido = [], jugadorIdFallback = null) {
+  const jugadorId = participacion?.jugador_id || jugadorIdFallback;
+  return resolverCagadasJugadorPartidoTemporada(
+    participacion,
+    contarCagadasGolJugador(golesPartido, jugadorId)
+  );
+}
+
 // Función para verificar estado de autenticación
 async function verificarAutenticacion() {
   try {
@@ -521,6 +621,270 @@ function esErrorTablaFaltante(error, tabla) {
 
 function esErrorColumnaCagadaFaltante(error) {
   return esErrorColumnaFaltante(error, 'cagada_jugador_id');
+}
+
+const TRACKING_DEFENSE_SCORE_MAX = 100;
+const TRACKING_DEFENSE_SKILL_BASELINE = 50;
+const TRACKING_DEFENSE_SKILL_MAX = 11;
+const TRACKING_DEFENSE_MATCH_BONUS_MAX = 10;
+const TRACKING_DEFENSE_RANGE_EPSILON = 0.001;
+const PERFIL_MURALLA_DEFENSIVA_SCORE_MIN = 70;
+const HISTORIAL_DEFENSE_BONUS_BASE_MAX = 8;
+const HISTORIAL_DEFENSE_BONUS_CAP = 11;
+const HISTORIAL_DEFENSE_LOAD_MULTIPLIER_MAX = 1.3;
+const HISTORIAL_SCORE_MIN = 1;
+const HISTORIAL_SCORE_MAX = 10;
+const PERFIL_GUARDIAN_ARCO_ATAJADAS_PP_MIN = 5;
+
+function numeroFinitoONull(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function limitarNumero(valor, min, max) {
+  return Math.max(min, Math.min(max, valor));
+}
+
+function normalizarIdsFiltro(valores = []) {
+  const lista = Array.isArray(valores) ? valores : [valores];
+  return [...new Set(
+    lista
+      .flatMap(valor => Array.isArray(valor) ? valor : [valor])
+      .map(valor => String(valor || '').trim())
+      .filter(Boolean)
+  )];
+}
+
+function obtenerPartidoIdsEstadisticasJugadores(estadisticas = []) {
+  return normalizarIdsFiltro((estadisticas || []).flatMap(jugador => [
+    jugador?.partido_id,
+    ...(Array.isArray(jugador?.partido_ids) ? jugador.partido_ids : []),
+    ...(Array.isArray(jugador?.partidoIds) ? jugador.partidoIds : [])
+  ]));
+}
+
+function obtenerScoreDefensaTracking(filaTracking = null) {
+  if (!filaTracking) return null;
+
+  const scoreAvanzado = numeroFinitoONull(filaTracking.advanced_defense_score);
+  if (scoreAvanzado !== null) {
+    return limitarNumero(scoreAvanzado, 0, TRACKING_DEFENSE_SCORE_MAX);
+  }
+
+  const scoreMovimiento = numeroFinitoONull(filaTracking.defense_score);
+  if (scoreMovimiento !== null) {
+    return limitarNumero(scoreMovimiento, 0, TRACKING_DEFENSE_SCORE_MAX);
+  }
+
+  return null;
+}
+
+function calcularPuntosDefensaTracking(filaTracking = null) {
+  const score = obtenerScoreDefensaTracking(filaTracking);
+  return calcularImpactoSkillDefensaTracking(score);
+}
+
+function calcularImpactoSkillDefensaTracking(score, rangoDefensa = null) {
+  const numero = numeroFinitoONull(score);
+  if (numero === null) return 0;
+  if (rangoDefensa?.usaRango) {
+    const normalizado = (numero - rangoDefensa.min) / rangoDefensa.rango;
+    return limitarNumero(normalizado, 0, 1) * TRACKING_DEFENSE_SKILL_MAX;
+  }
+  const impacto = ((numero - TRACKING_DEFENSE_SKILL_BASELINE) / (TRACKING_DEFENSE_SCORE_MAX - TRACKING_DEFENSE_SKILL_BASELINE)) * TRACKING_DEFENSE_SKILL_MAX;
+  return limitarNumero(impacto, 0, TRACKING_DEFENSE_SKILL_MAX);
+}
+
+function formatearImpactoSkillDefensaTracking(valor) {
+  const numero = Number(valor) || 0;
+  return numero >= 0 ? `+${numero.toFixed(1)}` : numero.toFixed(1);
+}
+
+function calcularRangoDefensaTrackingPartido(partido = null) {
+  const mapa = partido?._tracking_defensa_jugadores;
+  if (!(mapa instanceof Map) || mapa.size === 0) {
+    return { min: null, max: null, rango: 0, cantidad: 0, usaRango: false };
+  }
+
+  const scores = [...mapa.values()]
+    .map(obtenerScoreDefensaTracking)
+    .filter(score => Number.isFinite(score));
+  if (!scores.length) {
+    return { min: null, max: null, rango: 0, cantidad: 0, usaRango: false };
+  }
+
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const rango = max - min;
+  return {
+    min,
+    max,
+    rango,
+    cantidad: scores.length,
+    usaRango: scores.length > 1 && rango > TRACKING_DEFENSE_RANGE_EPSILON
+  };
+}
+
+function calcularPuntosDefensaTrackingPartido(filaTracking = null, rangoPartido = null) {
+  const score = obtenerScoreDefensaTracking(filaTracking);
+  if (score === null) return 0;
+  if (rangoPartido?.usaRango) {
+    const normalizado = (score - rangoPartido.min) / rangoPartido.rango;
+    return limitarNumero(normalizado, 0, 1) * TRACKING_DEFENSE_MATCH_BONUS_MAX;
+  }
+  return calcularImpactoSkillDefensaTracking(score);
+}
+
+function calcularPuntosDefensaTrackingHistorial(filaTracking = null, rangoPartido = null, contexto = {}) {
+  const score = obtenerScoreDefensaTracking(filaTracking);
+  if (score === null) return 0;
+
+  let base = calcularImpactoSkillDefensaTracking(score);
+  if (rangoPartido?.usaRango) {
+    const normalizado = (score - rangoPartido.min) / rangoPartido.rango;
+    base = limitarNumero(normalizado, 0, 1) * HISTORIAL_DEFENSE_BONUS_BASE_MAX;
+  }
+
+  const cargaEquipo = Math.max(0, Number(contexto.cargaDefensivaEquipo) || 0);
+  const cargaMaxima = Math.max(1, Number(contexto.cargaDefensivaMaxima) || 1);
+  const cargaRatio = limitarNumero(cargaEquipo / cargaMaxima, 0, 1);
+  const multiplicadorCarga = 1 + (cargaRatio * (HISTORIAL_DEFENSE_LOAD_MULTIPLIER_MAX - 1));
+
+  return limitarNumero(base * multiplicadorCarga, 0, HISTORIAL_DEFENSE_BONUS_CAP);
+}
+
+function obtenerScoreDefensivoResumenPerfil(resumen = {}) {
+  const score = numeroFinitoONull(resumen.scoreDefensivoPromedio);
+  return score === null ? null : limitarNumero(score, 0, TRACKING_DEFENSE_SCORE_MAX);
+}
+
+function tieneMurallaDefensivaPerfil(resumen = {}) {
+  const score = obtenerScoreDefensivoResumenPerfil(resumen);
+  return score !== null
+    && score >= PERFIL_MURALLA_DEFENSIVA_SCORE_MIN
+    && (Number(resumen.partidosConDefensaTracking) || 0) > 0;
+}
+
+function obtenerAtajadasPromedioArqueroPerfil(resumen = {}) {
+  const promedioDirecto = numeroFinitoONull(resumen.atajadasPorPjArquero);
+  if (promedioDirecto !== null) return promedioDirecto;
+
+  const atajadas = numeroFinitoONull(resumen.atajadasArquero ?? resumen.atajadas);
+  const pjArquero = numeroFinitoONull(resumen.pjArquero);
+  if (atajadas !== null && pjArquero !== null && pjArquero > 0) {
+    return atajadas / pjArquero;
+  }
+
+  return 0;
+}
+
+function tieneGuardianArcoPerfil(resumen = {}) {
+  return (Number(resumen.pjArquero) || 0) > 0
+    && obtenerAtajadasPromedioArqueroPerfil(resumen) >= PERFIL_GUARDIAN_ARCO_ATAJADAS_PP_MIN;
+}
+
+async function cargarPromediosDefensaTrackingJugadores(jugadorIds = [], partidoIds = []) {
+  const ids = normalizarIdsFiltro(jugadorIds);
+  const partidosFiltro = normalizarIdsFiltro(partidoIds);
+  const promedios = new Map();
+  if (!ids.length) return promedios;
+
+  const selects = [
+    { select: 'jugador_id, partido_id, defense_score, advanced_defense_score', filtrarPorPartido: true },
+    { select: 'jugador_id, partido_id, advanced_defense_score', filtrarPorPartido: true },
+    { select: 'jugador_id, partido_id, defense_score', filtrarPorPartido: true },
+    { select: 'jugador_id, defense_score, advanced_defense_score', filtrarPorPartido: false },
+    { select: 'jugador_id, advanced_defense_score', filtrarPorPartido: false },
+    { select: 'jugador_id, defense_score', filtrarPorPartido: false }
+  ];
+  let data = [];
+  let ultimoError = null;
+
+  for (const selectConfig of selects) {
+    let query = supabase
+      .from('tracking_player_stats')
+      .select(selectConfig.select)
+      .in('jugador_id', ids);
+
+    if (partidosFiltro.length && selectConfig.filtrarPorPartido) {
+      query = query.in('partido_id', partidosFiltro);
+    }
+
+    const { data: rows, error } = await query;
+
+    if (!error) {
+      data = rows || [];
+      ultimoError = null;
+      break;
+    }
+
+    ultimoError = error;
+    if (esErrorTablaFaltante(error, 'tracking_player_stats')) {
+      console.warn('La tabla tracking_player_stats no existe; no se suma score defensivo.');
+      return promedios;
+    }
+
+    const esColumnaTrackingOpcional =
+      esErrorColumnaFaltante(error, 'advanced_defense_score') ||
+      esErrorColumnaFaltante(error, 'defense_score') ||
+      esErrorColumnaFaltante(error, 'partido_id');
+    if (!esColumnaTrackingOpcional) break;
+  }
+
+  if (ultimoError) {
+    console.warn('No se pudo cargar score defensivo promedio:', ultimoError);
+    return promedios;
+  }
+
+  const acumulados = new Map();
+  (data || []).forEach(row => {
+    const jugadorKey = String(row?.jugador_id || '').trim();
+    if (!jugadorKey) return;
+    const score = obtenerScoreDefensaTracking(row);
+    if (score === null) return;
+    if (!acumulados.has(jugadorKey)) {
+      acumulados.set(jugadorKey, { total: 0, cantidad: 0 });
+    }
+    const actual = acumulados.get(jugadorKey);
+    actual.total += score;
+    actual.cantidad += 1;
+  });
+
+  const resumenesDefensa = [];
+  acumulados.forEach((item, jugadorKey) => {
+    if (!item.cantidad) return;
+    const scorePromedio = item.total / item.cantidad;
+    resumenesDefensa.push({ jugadorKey, scorePromedio, cantidad: item.cantidad });
+  });
+
+  const scoresDefensa = resumenesDefensa.map(item => item.scorePromedio);
+  const minScoreDefensa = scoresDefensa.length ? Math.min(...scoresDefensa) : null;
+  const maxScoreDefensa = scoresDefensa.length ? Math.max(...scoresDefensa) : null;
+  const rangoDefensa = {
+    min: minScoreDefensa,
+    max: maxScoreDefensa,
+    rango: Number.isFinite(minScoreDefensa) && Number.isFinite(maxScoreDefensa) ? maxScoreDefensa - minScoreDefensa : 0,
+    usaRango: scoresDefensa.length > 1 && Number.isFinite(minScoreDefensa) && Number.isFinite(maxScoreDefensa) && (maxScoreDefensa - minScoreDefensa) > TRACKING_DEFENSE_RANGE_EPSILON
+  };
+
+  resumenesDefensa.forEach(({ jugadorKey, scorePromedio, cantidad }) => {
+    promedios.set(jugadorKey, {
+      scoreDefensivoPromedio: scorePromedio,
+      puntosDefensaTrackingPromedio: calcularImpactoSkillDefensaTracking(scorePromedio, rangoDefensa),
+      partidosConDefensaTracking: cantidad
+    });
+  });
+
+  return promedios;
+}
+
+window.cargarPromediosDefensaTrackingJugadores = cargarPromediosDefensaTrackingJugadores;
+
+function obtenerTrackingDefensaJugadorPartido(partido, jugadorId) {
+  if (!partido || !jugadorId) return null;
+  const mapa = partido._tracking_defensa_jugadores;
+  if (!(mapa instanceof Map)) return null;
+  return mapa.get(String(jugadorId)) || null;
 }
 
 function obtenerRutaCompartiblePerfil() {
@@ -3147,6 +3511,7 @@ function calcularMetricasArqueroPerfil(datos = datosPerfilJugador) {
     golesRecibidosArquero: golesRecibidosTotal,
     pjArquero,
     atajadasArquero: atajadas,
+    atajadasPorPjArquero: pjArquero > 0 ? atajadas / pjArquero : 0,
     golesRecibidosPorPjArquero: pjArquero > 0 ? golesRecibidosTotal / pjArquero : 0,
     atajadasPorGolRecibido: golesRecibidosTotal > 0 ? atajadas / golesRecibidosTotal : null,
     minutosArquero,
@@ -3226,9 +3591,13 @@ function obtenerResumenPerfilJugador(datos = datosPerfilJugador) {
   const pp = Math.max(pj - pg - pe, 0);
   const golesCount = goles.filter(g => g.goleador_id === jugadorId && !g.es_gol_en_contra).length;
   const asistenciasCount = goles.filter(g => g.asistidor_id === jugadorId && !g.es_gol_en_contra).length;
-  const cagadasEnGolCount = goles.filter(g => g.cagada_jugador_id === jugadorId).length;
+  const cagadasEnGolCount = contarCagadasGolJugador(goles, jugadorId);
+  const cagadasGolesPorPartidoJugador = crearMapaCagadasGolesPorPartidoJugador(goles);
   const atajadas = participaciones.reduce((sum, p) => sum + (Number(p.atajadas) || 0), 0);
-  const cagadas = participaciones.reduce((sum, p) => sum + (Number(p.cagadas) || 0), 0);
+  const cagadas = participaciones.reduce((sum, p) => {
+    const cagadasDesdeGoles = obtenerCagadasGolesMapa(cagadasGolesPorPartidoJugador, p.partido_id, jugadorId);
+    return sum + resolverCagadasJugadorPartidoTemporada(p, cagadasDesdeGoles);
+  }, 0);
   const mvp = participaciones.filter(p => p.mvp).length;
   const ace = participaciones.filter(p => p.ace).length;
   const puntos = (pg * 3) + pe;
@@ -3258,7 +3627,7 @@ function obtenerResumenPerfilJugador(datos = datosPerfilJugador) {
     if (gol.asistidor_id === jugadorId && !gol.es_gol_en_contra) {
       evento.asistencias += 1;
     }
-    if (gol.cagada_jugador_id === jugadorId) {
+    if (String(obtenerCagadaJugadorIdGol(gol) || '') === String(jugadorId || '')) {
       evento.cagadasEnGol += 1;
     }
 
@@ -3269,10 +3638,18 @@ function obtenerResumenPerfilJugador(datos = datosPerfilJugador) {
     .filter(p => p.partidos)
     .sort((a, b) => new Date(b.partidos.fecha) - new Date(a.partidos.fecha))
     .slice(0, 5)
-    .map(participacion => ({
-      ...participacion,
-      ...eventosPorPartido.get(participacion.partido_id)
-    }));
+    .map(participacion => {
+      const eventosPartido = eventosPorPartido.get(participacion.partido_id) || {
+        goles: 0,
+        asistencias: 0,
+        cagadasEnGol: 0
+      };
+      return {
+        ...participacion,
+        ...eventosPartido,
+        cagadas: resolverCagadasJugadorPartidoTemporada(participacion, eventosPartido.cagadasEnGol)
+      };
+    });
   momentosPerfil.pctGolesImportantes = golesCount > 0 ? (momentosPerfil.golesImportantes / golesCount) * 100 : 0;
   momentosPerfil.pctAbridor = pj > 0 ? (momentosPerfil.primerosGoles / pj) * 100 : 0;
   momentosPerfil.pctVictoriasAbriendo = momentosPerfil.primerosGoles > 0
@@ -3316,7 +3693,8 @@ function calcularRatingPerfilFut(datos = datosPerfilJugador) {
   rating += Math.min((resumen.mvp / pj) * 15, 8);
   rating += Math.min((resumen.ace / pj) * 12, 6);
   rating += Math.min(resumen.atajadasPP, 4);
-  rating -= Math.min((resumen.cagadas / pj) * 3, 6);
+  const cagadasSinGol = Math.max(0, (Number(resumen.cagadas) || 0) - (Number(resumen.cagadasEnGol) || 0));
+  rating -= Math.min((cagadasSinGol / pj) * 3, 6);
   rating -= Math.min((resumen.cagadasEnGol / pj) * 5, 8);
 
   if (pj >= 20) rating += 2;
@@ -3348,7 +3726,8 @@ function calcularInsigniasPerfil(datos = datosPerfilJugador) {
     { iconHtml: '<i class="bi bi-bezier2"></i>', name: 'Asistidor', desc: '10+ asistencias', unlocked: resumen.asistencias >= 10 },
     { iconHtml: '<i class="bi bi-trophy-fill"></i>', name: 'Rey del partido', desc: '5+ MVP', unlocked: resumen.mvp >= 5 },
     { iconHtml: '<i class="bi bi-fire"></i>', name: 'Imparable', desc: '3+ ACE', unlocked: resumen.ace >= 3 },
-    { iconHtml: '<i class="bi bi-shield-fill"></i>', name: 'Muralla', desc: '15+ atajadas', unlocked: resumen.atajadas >= 15 },
+    { iconHtml: '<i class="bi bi-shield-check"></i>', name: 'Muralla', desc: `Score defensivo ${PERFIL_MURALLA_DEFENSIVA_SCORE_MIN}+`, unlocked: tieneMurallaDefensivaPerfil(resumen) },
+    { iconHtml: '<i class="bi bi-shield-lock-fill"></i>', name: 'Guardian del arco', desc: `${PERFIL_GUARDIAN_ARCO_ATAJADAS_PP_MIN}+ atajadas/PJ como arquero`, unlocked: tieneGuardianArcoPerfil(resumen) },
     { iconHtml: '<i class="bi bi-award-fill"></i>', name: 'Veterano', desc: '20+ partidos', unlocked: resumen.pj >= 20 },
     { iconHtml: '<i class="bi bi-graph-up-arrow"></i>', name: 'Winrate elite', desc: '60%+ winrate con 10+ PJ', unlocked: resumen.pj >= 10 && resumen.winrate >= 60 },
     { iconHtml: '<i class="bi bi-crosshair"></i>', name: 'Clutch', desc: '3+ goles clave', unlocked: resumen.golesClave >= 3 },
@@ -3386,8 +3765,8 @@ function obtenerStatsParticipacionPerfil(participacion, jugadorId) {
   const resultado = obtenerResultadoParticipacionPerfil(participacion);
   const goles = golesPartido.filter(gol => String(gol.goleador_id || '') === String(jugadorId || '') && !gol.es_gol_en_contra).length;
   const asistencias = golesPartido.filter(gol => String(gol.asistidor_id || '') === String(jugadorId || '') && !gol.es_gol_en_contra).length;
-  const cagadasEnGol = golesPartido.filter(gol => String(gol.cagada_jugador_id || '') === String(jugadorId || '')).length;
-  const cagadas = (Number(participacion?.cagadas) || 0) + cagadasEnGol;
+  const cagadasEnGol = contarCagadasGolJugador(golesPartido, jugadorId);
+  const cagadas = resolverCagadasJugadorPartidoTemporada(participacion, cagadasEnGol);
   const atajadas = Number(participacion?.atajadas) || 0;
   const skill = calcularSkillPartidoPerfil({
     goles,
@@ -3458,7 +3837,7 @@ function generarTaglinePerfil(resumen = {}) {
 
   const golesPP = Number(resumen.golesPP) || 0;
   const asistenciasPP = Number(resumen.asistenciasPP) || 0;
-  const atajadasPP = Number(resumen.atajadasPP) || 0;
+  const atajadasPPArquero = obtenerAtajadasPromedioArqueroPerfil(resumen);
   const wr = Number(resumen.winrate) || 0;
   const mvpPP = pj > 0 ? (Number(resumen.mvp) || 0) / pj : 0;
   const acePP = pj > 0 ? (Number(resumen.ace) || 0) / pj : 0;
@@ -3469,6 +3848,7 @@ function generarTaglinePerfil(resumen = {}) {
   const pctGolesRemontando = golesTotales > 0 ? (golesRemontando / golesTotales) * 100 : 0;
   const distribucionTramos = resumen.distribucionTramos || {};
   const golesUltimoTramo = Number(distribucionTramos.t45_plus) || 0;
+  const scoreDefensivo = obtenerScoreDefensivoResumenPerfil(resumen);
 
   if (golesClave >= 3) return completarTaglinePerfil(`Clutch de vestuario &middot; ${golesClave} goles clave`, resumen);
   if (pj >= 5 && golesRemontando >= 8 && pctGolesRemontando >= 35) {
@@ -3477,8 +3857,9 @@ function generarTaglinePerfil(resumen = {}) {
   if (golesTotales >= 5 && golesUltimoTramo >= golesTotales * 0.6) return completarTaglinePerfil(`Cierra asesino &middot; ${golesUltimoTramo} goles tarde`, resumen);
   if (pctAbridor >= 30 && pj >= 3) return completarTaglinePerfil(`Abre partidos &middot; ${pctAbridor.toFixed(0)}% de sus PJ`, resumen);
   if (golesPP >= 2) return completarTaglinePerfil(`El killer del area &middot; ${golesPP.toFixed(1)} goles por partido`, resumen);
-  if (atajadasPP >= 6 && golesPP >= 0.6) return completarTaglinePerfil(`Muralla con gol &middot; ${atajadasPP.toFixed(1)} atajadas por partido`, resumen);
-  if (atajadasPP >= 5) return completarTaglinePerfil(`Muralla del arco &middot; ${atajadasPP.toFixed(1)} atajadas por partido`, resumen);
+  if (tieneMurallaDefensivaPerfil(resumen)) return completarTaglinePerfil(`Muralla defensiva &middot; ${scoreDefensivo.toFixed(1)} DEF`, resumen);
+  if (atajadasPPArquero >= 6 && golesPP >= 0.6) return completarTaglinePerfil(`Arquero con gol &middot; ${atajadasPPArquero.toFixed(1)} atajadas/PJ como arquero`, resumen);
+  if (atajadasPPArquero >= PERFIL_GUARDIAN_ARCO_ATAJADAS_PP_MIN) return completarTaglinePerfil(`Guardian del arco &middot; ${atajadasPPArquero.toFixed(1)} atajadas/PJ como arquero`, resumen);
   if (asistenciasPP >= 1.2) return completarTaglinePerfil(`Socio premium &middot; ${asistenciasPP.toFixed(1)} asistencias por partido`, resumen);
   if (mvpPP >= 0.25) return completarTaglinePerfil(`Jugador franquicia &middot; ${resumen.mvp} MVP`, resumen);
   if (acePP >= 0.25) return completarTaglinePerfil(`Rompe partidos &middot; ${resumen.ace} ACE`, resumen);
@@ -3498,7 +3879,7 @@ function obtenerClaseLogroPerfil(nombre = '') {
   if (normalizado.includes('abridor')) return 'is-goal';
   if (normalizado.includes('imparable') || normalizado.includes('ace') || normalizado.includes('clutch')) return 'is-fire';
   if (normalizado.includes('goleador') || normalizado.includes('gol')) return 'is-goal';
-  if (normalizado.includes('muralla') || normalizado.includes('ataj')) return 'is-wall';
+  if (normalizado.includes('muralla') || normalizado.includes('ataj') || normalizado.includes('guardi') || normalizado.includes('arco')) return 'is-wall';
   if (normalizado.includes('mvp') || normalizado.includes('rey') || normalizado.includes('crack')) return 'is-mvp';
   if (normalizado.includes('asist')) return 'is-assist';
   if (normalizado.includes('winrate') || normalizado.includes('talis')) return 'is-winrate';
@@ -3514,6 +3895,7 @@ function obtenerIconoLogroPerfil(logro = {}) {
   if (normalizado.includes('abridor')) return '<i class="bi bi-unlock-fill"></i>';
   if (normalizado.includes('imparable') || normalizado.includes('ace') || normalizado.includes('clutch')) return '<i class="bi bi-fire"></i>';
   if (normalizado.includes('goleador') || normalizado.includes('gol')) return '<i class="bi bi-bullseye"></i>';
+  if (normalizado.includes('guardi') || normalizado.includes('arco')) return '<i class="bi bi-shield-lock-fill"></i>';
   if (normalizado.includes('muralla') || normalizado.includes('ataj')) return '<i class="bi bi-shield-fill"></i>';
   if (normalizado.includes('mvp') || normalizado.includes('rey')) return '<i class="bi bi-trophy-fill"></i>';
   if (normalizado.includes('asist')) return '<i class="bi bi-bezier2"></i>';
@@ -4833,7 +5215,7 @@ async function cargarPerfilJugador(jugadorId) {
     if (errorJugador) throw errorJugador;
 
     // Cargar TODAS las participaciones en partidos (sin filtro de Supabase)
-    const selectParticipacionesConArquero = `
+    const construirSelectParticipacionesPerfil = ({ incluirArquero = true, incluirCagada = true } = {}) => `
         *,
         partido_id,
         partidos (
@@ -4862,18 +5244,19 @@ async function cargarPerfilJugador(jugadorId) {
             id,
             goleador_id,
             asistidor_id,
-            arquero_id,
+            ${incluirCagada ? 'cagada_jugador_id,' : ''}
+            ${incluirArquero ? 'arquero_id,' : ''}
             equipo,
             minuto,
             es_gol_en_contra
           )
         )
       `;
-    const selectParticipacionesSinArquero = selectParticipacionesConArquero.replace(/\s+arquero_id,\r?\n/, '\n');
+    const selectParticipacionesSinArquero = construirSelectParticipacionesPerfil({ incluirArquero: false, incluirCagada: true });
 
     let consultaParticipaciones = await supabase
       .from('jugador_partido')
-      .select(selectParticipacionesConArquero)
+      .select(construirSelectParticipacionesPerfil({ incluirArquero: true, incluirCagada: true }))
       .eq('jugador_id', jugadorId);
 
     if (consultaParticipaciones.error && esErrorColumnaFaltante(consultaParticipaciones.error, 'arquero_id')) {
@@ -4882,6 +5265,21 @@ async function cargarPerfilJugador(jugadorId) {
         .from('jugador_partido')
         .select(selectParticipacionesSinArquero)
         .eq('jugador_id', jugadorId);
+    }
+
+    if (consultaParticipaciones.error && esErrorColumnaCagadaFaltante(consultaParticipaciones.error)) {
+      console.warn('La columna goles.cagada_jugador_id no existe. El historial del perfil se carga sin cagadas desde goles.');
+      consultaParticipaciones = await supabase
+        .from('jugador_partido')
+        .select(construirSelectParticipacionesPerfil({ incluirArquero: true, incluirCagada: false }))
+        .eq('jugador_id', jugadorId);
+
+      if (consultaParticipaciones.error && esErrorColumnaFaltante(consultaParticipaciones.error, 'arquero_id')) {
+        consultaParticipaciones = await supabase
+          .from('jugador_partido')
+          .select(construirSelectParticipacionesPerfil({ incluirArquero: false, incluirCagada: false }))
+          .eq('jugador_id', jugadorId);
+      }
     }
 
     if (consultaParticipaciones.error) throw consultaParticipaciones.error;
@@ -4962,8 +5360,19 @@ async function cargarPerfilJugador(jugadorId) {
     // Contar goles, asistencias y cagadas en gol desde la tabla goles
     const golesCount = golesFiltrados.filter(g => g.goleador_id === jugadorId).length;
     const asistenciasCount = golesFiltrados.filter(g => g.asistidor_id === jugadorId).length;
-    const cagadasEnGolCount = golesFiltrados.filter(g => g.cagada_jugador_id === jugadorId).length;
+    const cagadasEnGolCount = contarCagadasGolJugador(golesFiltrados, jugadorId);
     const premiosHistoricos = await cargarPremiosHistoricosPerfilJugador(jugadorId, temporadaPerfilSeleccionada);
+    const partidoIdsDefensaPerfil = obtenerPartidoIdsEstadisticasJugadores(participacionesFiltradas);
+    let defensaTrackingPerfil = {};
+
+    if (partidoIdsDefensaPerfil.length > 0) {
+      const promediosDefensaPerfil = await cargarPromediosDefensaTrackingJugadores([jugadorId], partidoIdsDefensaPerfil);
+      defensaTrackingPerfil = promediosDefensaPerfil.get(String(jugadorId || '')) || {};
+    }
+
+    const scoreDefensivoPromedio = defensaTrackingPerfil.scoreDefensivoPromedio ?? null;
+    const puntosDefensaTrackingPromedio = defensaTrackingPerfil.puntosDefensaTrackingPromedio ?? 0;
+    const partidosConDefensaTracking = defensaTrackingPerfil.partidosConDefensaTracking ?? 0;
 
     const datosPerfilBase = {
       jugador,
@@ -4973,10 +5382,18 @@ async function cargarPerfilJugador(jugadorId) {
       golesTodas,
       golesCount,
       asistenciasCount,
-      cagadasEnGolCount
+      cagadasEnGolCount,
+      scoreDefensivoPromedio,
+      puntosDefensaTrackingPromedio,
+      partidosConDefensaTracking
     };
 
-    const resumenPerfil = obtenerResumenPerfilJugador(datosPerfilBase);
+    const resumenPerfil = {
+      ...obtenerResumenPerfilJugador(datosPerfilBase),
+      scoreDefensivoPromedio,
+      puntosDefensaTrackingPromedio,
+      partidosConDefensaTracking
+    };
     const insigniasPerfil = calcularInsigniasPerfil({
       ...datosPerfilBase,
       resumenPerfil
@@ -4995,7 +5412,9 @@ async function cargarPerfilJugador(jugadorId) {
       participaciones: participacionesFiltradas.length,
       goles: golesCount,
       asistencias: asistenciasCount,
-      cagadasEnGol: cagadasEnGolCount
+      cagadasEnGol: cagadasEnGolCount,
+      scoreDefensivoPromedio,
+      partidosConDefensaTracking
     });
 
     const renderizarSeccionPerfil = (nombreSeccion, renderFn) => {
@@ -5734,7 +6153,8 @@ function renderizarVideosAsistencias() {
 }
 
 function renderizarVideosCagadas() {
-  const cagadasEnGol = (datosPerfilJugador?.goles || []).filter(g => g.cagada_jugador_id === jugadorPerfilActual);
+  const cagadasEnGol = (datosPerfilJugador?.goles || [])
+    .filter(g => String(obtenerCagadaJugadorIdGol(g) || '') === String(jugadorPerfilActual || ''));
 
   renderizarEventosConVideoPerfil({
     containerId: 'perfil-cagadas-container',
@@ -6042,11 +6462,12 @@ function renderizarPartidosRecientesPerfil() {
 
     const obtenerStatsJugadorDetalle = (partido, jp) => {
       const golesPartido = partido.goles || [];
+      const cagadasEnGol = contarCagadasGolJugador(golesPartido, jp.jugador_id);
       return {
         goles: golesPartido.filter(g => String(g.goleador_id) === String(jp.jugador_id) && !g.es_gol_en_contra).length,
         asistencias: golesPartido.filter(g => String(g.asistidor_id) === String(jp.jugador_id) && !g.es_gol_en_contra).length,
         atajadas: Number(jp.atajadas) || 0,
-        cagadas: Number(jp.cagadas) || 0
+        cagadas: resolverCagadasJugadorPartidoTemporada(jp, cagadasEnGol)
       };
     };
 
@@ -6337,7 +6758,7 @@ function renderizarPartidosRecientesPerfil() {
     const esEmpate = equipoGanador !== 1 && equipoGanador !== 2;
     const misGoles = golesPartido.filter(g => g.goleador_id === jugadorId && !g.es_gol_en_contra).length;
     const misAsists = golesPartido.filter(g => g.asistidor_id === jugadorId && !g.es_gol_en_contra).length;
-    const misCagadas = (Number(part.cagadas) || 0) + golesPartido.filter(g => g.cagada_jugador_id === jugadorId).length;
+    const misCagadas = calcularCagadasParticipacionConGoles(part, golesPartido, jugadorId);
     const atajadas = Number(part.atajadas) || 0;
     const puntos = esVictoria ? 3 : (esEmpate ? 1 : 0);
 
@@ -6418,7 +6839,7 @@ function renderizarPartidosRecientesPerfil() {
     const golesPartido = partido.goles || [];
     const misGoles = golesPartido.filter(g => g.goleador_id === jugadorId && !g.es_gol_en_contra).length;
     const misAsists = golesPartido.filter(g => g.asistidor_id === jugadorId && !g.es_gol_en_contra).length;
-    const misCagadas = (Number(myJp.cagadas) || 0) + golesPartido.filter(g => g.cagada_jugador_id === jugadorId).length;
+    const misCagadas = calcularCagadasParticipacionConGoles(myJp, golesPartido, jugadorId);
     const atajadas = Number(myJp.atajadas) || 0;
     const skill = calcularSkillParticipacionPerfil(part) ?? 0;
     const skillDelta = skill - promedioSkillJugadorPerfil;
@@ -6438,7 +6859,7 @@ function renderizarPartidosRecientesPerfil() {
     const obtenerStatsJugadorDetalle = (jp) => {
       const golesJugador = golesPartido.filter(g => g.goleador_id === jp.jugador_id && !g.es_gol_en_contra).length;
       const asistenciasJugador = golesPartido.filter(g => g.asistidor_id === jp.jugador_id && !g.es_gol_en_contra).length;
-      const cagadasJugador = (Number(jp.cagadas) || 0) + golesPartido.filter(g => g.cagada_jugador_id === jp.jugador_id).length;
+      const cagadasJugador = calcularCagadasParticipacionConGoles(jp, golesPartido);
       return renderStatsCompactasPerfil({
         goles: golesJugador,
         asistencias: asistenciasJugador,
@@ -6762,6 +7183,7 @@ function renderizarEstadisticasDetalladas() {
           <div class="fut-radar-title">Arquero</div>
           <table class="fut-detail-table">
             <tr><td>PJ como arquero</td><td>${resumenFut.pjArquero || 0}</td></tr>
+            <tr><td>Atajadas / PJ como arquero</td><td>${Number(resumenFut.atajadasPorPjArquero || 0).toFixed(2)}</td></tr>
             <tr><td>Goles recibidos como arquero</td><td>${resumenFut.golesRecibidosArquero || 0}</td></tr>
             <tr><td>Goles recibidos / PJ</td><td>${Number(resumenFut.golesRecibidosPorPjArquero || 0).toFixed(2)}</td></tr>
             <tr><td>Atajadas / gol recibido</td><td>${atajadasPorGolTexto}</td></tr>
@@ -8546,7 +8968,8 @@ const initApp = () => {
           const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
           const puntosPP = (jugador.total_puntos || 0) / pj;
           const atajadasPP = (jugador.atajadas || 0) / pj;
-          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.4);
+          const rendDefensaTracking = Number(jugador.puntosDefensaTrackingPromedio) || 0;
+          return (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2) + (atajadasPP * 0.4) + rendDefensaTracking;
         };
 
         aVal = calcularSkill(a);
@@ -8780,9 +9203,38 @@ const initApp = () => {
     const datosFiltrados = datosJugadores.filter(jugador =>
       (jugador.pj || 0) >= filtroPartidosMinimos
     );
+    const obtenerIdJugador = (jugador) => jugador?.jugadores?.id || jugador?.jugador_id || jugador?.id || null;
+    const partidoIdsDefensaTracking = obtenerPartidoIdsEstadisticasJugadores(datosFiltrados);
+    const promediosDefensaTracking = await cargarPromediosDefensaTrackingJugadores(
+      datosFiltrados.map(obtenerIdJugador),
+      partidoIdsDefensaTracking
+    );
+    const datosConDefensaTracking = datosFiltrados.map(jugador => {
+      const jugadorId = obtenerIdJugador(jugador);
+      const defensaTracking = promediosDefensaTracking.get(String(jugadorId || '')) || {};
+      return {
+        ...jugador,
+        scoreDefensivoPromedio: defensaTracking.scoreDefensivoPromedio ?? null,
+        puntosDefensaTrackingPromedio: defensaTracking.puntosDefensaTrackingPromedio ?? 0,
+        partidosConDefensaTracking: defensaTracking.partidosConDefensaTracking ?? 0
+      };
+    });
+    const defensaPorJugador = new Map(datosConDefensaTracking.map(jugador => [
+      String(obtenerIdJugador(jugador) || ''),
+      {
+        scoreDefensivoPromedio: jugador.scoreDefensivoPromedio ?? null,
+        puntosDefensaTrackingPromedio: jugador.puntosDefensaTrackingPromedio ?? 0,
+        partidosConDefensaTracking: jugador.partidosConDefensaTracking ?? 0
+      }
+    ]));
+    datosJugadores = datosJugadores.map(jugador => {
+      const defensaTracking = defensaPorJugador.get(String(obtenerIdJugador(jugador) || ''));
+      return defensaTracking ? { ...jugador, ...defensaTracking } : jugador;
+    });
+    window.datosJugadores = datosJugadores;
 
     // Aplicar ordenamiento a los datos filtrados
-    const sortedData = sortData(datosFiltrados, currentSortField, currentSortOrder);
+    const sortedData = sortData(datosConDefensaTracking, currentSortField, currentSortOrder);
     await renderizarTablaConDatos(sortedData);
     updateSortIndicators();
   }
@@ -9210,7 +9662,7 @@ const initApp = () => {
         emptyDiv.innerHTML = `
           <i class="bi bi-people fs-1 text-secondary mb-3"></i>
           <p class="fw-medium mt-2 mb-1">Aún no hay jugadores.</p>
-          <p class="small text-muted">Usa el campo de arriba para arrastra jugadores aquí.</p>
+          <p class="small text-muted">Usa Armar equipos con IA para generar el 5 vs 5.</p>
         `;
 
         container.appendChild(emptyDiv);
@@ -9877,7 +10329,7 @@ const initApp = () => {
         puntos.push({
           icon: '🥅',
           tipo: 'advantage-team1',
-          titulo: 'Muralla defensiva',
+          titulo: 'Arco blindado',
           descripcion: `El Equipo 1 tiene arqueros con mucha más experiencia (+${difAtajadas.toFixed(2)} atajadas/partido). Será difícil hacerles gol.`,
           stats: `Equipo 1: ${statsEquipo1.atajadasPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.atajadasPorPartido.toFixed(2)} atajadas/partido`
         });
@@ -9893,7 +10345,7 @@ const initApp = () => {
         puntos.push({
           icon: '🥅',
           tipo: 'advantage-team2',
-          titulo: 'Muralla defensiva',
+          titulo: 'Arco blindado',
           descripcion: `El Equipo 2 tiene arqueros con mucha más experiencia (+${Math.abs(difAtajadas).toFixed(2)} atajadas/partido). Será difícil hacerles gol.`,
           stats: `Equipo 1: ${statsEquipo1.atajadasPorPartido.toFixed(2)} | Equipo 2: ${statsEquipo2.atajadasPorPartido.toFixed(2)} atajadas/partido`
         });
@@ -10463,7 +10915,7 @@ const initApp = () => {
       const atajadasPP = stats.atajadas / pj;
 
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-      const rendArquero = atajadasPP * 0.66;
+      const rendArquero = atajadasPP * 0.4;
 
       rendimientoTotalEquipo += rendAtaque + rendArquero;
 
@@ -10974,6 +11426,7 @@ const initApp = () => {
           </td>
         </tr>
       `;
+      actualizarMarcadorAutomatico();
       return;
     }
 
@@ -12592,6 +13045,7 @@ const initApp = () => {
       .sort((a, b) => a.nombre.localeCompare(b.nombre))
       .map(jugador => ({ id: jugador.id, nombre: jugador.nombre, equipo: obtenerEquipoJugadorActual(jugador.id) }));
     const marcador = calcularMarcadorEventos();
+    const resultadoGanador = obtenerResultadoGanadorReviewAutomatico(marcador);
 
     return {
       jugadores,
@@ -12603,8 +13057,8 @@ const initApp = () => {
         fecha: document.getElementById('review-fecha')?.value || '',
         cancha: document.getElementById('review-cancha')?.value || '',
         temporadaId: document.getElementById('review-temporada')?.value || '',
-        resultado: document.getElementById('review-resultado')?.value || `${marcador.equipo1}-${marcador.equipo2}`,
-        ganador: document.getElementById('review-ganador')?.value || ''
+        resultado: resultadoGanador.resultado || document.getElementById('review-resultado')?.value || '',
+        ganador: resultadoGanador.ganador || document.getElementById('review-ganador')?.value || ''
       },
       marcador: `${marcador.equipo1} - ${marcador.equipo2}`,
       eventosCount: eventos.length,
@@ -13462,6 +13916,8 @@ const initApp = () => {
       setValue('review-fin-segundo', datos.finSegundo);
       setValue('review-mvp', datos.mvpId);
       setValue('review-ace', datos.aceId);
+      const marcador = calcularMarcadorEventos();
+      if (marcador.total > 0) sincronizarCamposResultadoReviewDesdeMarcador(marcador);
       actualizarEstadoPopupReview();
     };
 
@@ -14378,6 +14834,116 @@ const initApp = () => {
     return null;
   }
 
+  function obtenerSourceKeyGolCompiladoHistorial(gol, orden) {
+    return `gol-${gol?.id ? String(gol.id) : `orden-${orden}`}`;
+  }
+
+  function crearReviewEventoGolSinteticoHistorial(partido, gol, orden) {
+    const reviewSegundosDirecto = normalizarSegundosVideo(gol?.review_segundos);
+    const minutoPartido = obtenerMinutoPartidoNormalizado(gol);
+    const inicioReview = normalizarSegundosVideo(partido?.review_inicio_segundos) ?? 0;
+    const reviewSegundos = reviewSegundosDirecto ?? (
+      Number.isFinite(minutoPartido)
+        ? Math.max(0, Math.round(inicioReview + (minutoPartido * 60)))
+        : null
+    );
+
+    if (reviewSegundos === null || !gol?.goleador_id) return null;
+
+    const goleadorNombre = obtenerNombreJugadorHistorialPayload(partido, gol.goleador_id);
+    const asistenciaNombre = gol.asistidor_id
+      ? obtenerNombreJugadorHistorialPayload(partido, gol.asistidor_id)
+      : null;
+    const cagadaNombre = gol.cagada_jugador_id
+      ? obtenerNombreJugadorHistorialPayload(partido, gol.cagada_jugador_id)
+      : null;
+    const arqueroNombre = gol.arquero_id
+      ? obtenerNombreJugadorHistorialPayload(partido, gol.arquero_id)
+      : null;
+
+    return {
+      id: obtenerSourceKeyGolCompiladoHistorial(gol, orden),
+      partido_id: partido?.id || null,
+      jugador_id: gol.goleador_id,
+      tipo: 'gol',
+      cantidad: 1,
+      minuto_partido: Number.isFinite(minutoPartido) ? minutoPartido : null,
+      review_segundos: reviewSegundos,
+      metadata: {
+        origen: 'goles_historial',
+        orden,
+        equipo: gol.equipo,
+        es_gol_en_contra: !!gol.es_gol_en_contra,
+        review_segundos: reviewSegundos,
+        goleador_id: gol.goleador_id,
+        goleador_nombre: goleadorNombre,
+        asistidor_id: gol.asistidor_id || null,
+        asistencia_id: gol.asistidor_id || null,
+        asistencia_nombre: asistenciaNombre,
+        cagada_jugador_id: gol.cagada_jugador_id || null,
+        cagada_id: gol.cagada_jugador_id || null,
+        cagada_jugador_nombre: cagadaNombre,
+        cagada_nombre: cagadaNombre,
+        arquero_id: gol.arquero_id || null,
+        arquero_nombre: arqueroNombre,
+        ...calcularMarcadorHastaCompilado(reviewSegundos, minutoPartido, partido?.goles || [])
+      }
+    };
+  }
+
+  function buscarReviewEventoGolCompiladoHistorial(partido, gol, orden) {
+    return buscarReviewEventoGolHistorial(partido, gol, orden) ||
+      crearReviewEventoGolSinteticoHistorial(partido, gol, orden);
+  }
+
+  function obtenerReviewEventosCompiladoHistorial(partido, golesOrdenados = []) {
+    const eventos = Array.isArray(partido?.review_eventos) ? [...partido.review_eventos] : [];
+    const ids = new Set(eventos.map(evento => String(evento.id || '')).filter(Boolean));
+
+    golesOrdenados.forEach((gol, index) => {
+      const existente = buscarReviewEventoGolHistorial(partido, gol, index + 1);
+      if (existente) return;
+
+      const sintetico = crearReviewEventoGolSinteticoHistorial(partido, gol, index + 1);
+      if (!sintetico) return;
+
+      const id = String(sintetico.id || '');
+      if (id && ids.has(id)) return;
+      eventos.push(sintetico);
+      if (id) ids.add(id);
+    });
+
+    return eventos;
+  }
+
+  function completarLinksCagadasReviewHistorialDesdeGoles(partido, golesOrdenados = [], reviewLink = '') {
+    if (!reviewLink) return;
+
+    golesOrdenados.forEach(gol => {
+      const jugadorId = gol.cagada_jugador_id;
+      if (!jugadorId) return;
+
+      const key = String(jugadorId);
+      const linksExistentes = partido._historial_cagadas_links.get(key) || [];
+      const cagadasEsperadas = contarCagadasGolDesdeGolesHistorial(partido, jugadorId);
+      if (linksExistentes.length >= cagadasEsperadas) return;
+
+      const reviewSegundos = normalizarSegundosVideo(gol.review_segundos);
+      const minutoPartido = obtenerMinutoPartidoNormalizado(gol);
+      const segundosDesdeMinuto = Number.isFinite(minutoPartido) ? Math.max(0, Math.round(minutoPartido * 60)) : null;
+      const videoSegundos = reviewSegundos ?? segundosDesdeMinuto;
+      if (videoSegundos === null) return;
+
+      if (!partido._historial_cagadas_links.has(key)) partido._historial_cagadas_links.set(key, []);
+      partido._historial_cagadas_links.get(key).push({
+        video_segundos: videoSegundos,
+        video_origen: 'review',
+        video_link: reviewLink,
+        review_segundos: reviewSegundos
+      });
+    });
+  }
+
   function prepararLinksVideoHistorialPartido(partido) {
     if (!partido || partido._linksVideoHistorialPreparados) return partido;
     partido._linksVideoHistorialPreparados = true;
@@ -14390,6 +14956,8 @@ const initApp = () => {
 
     const tieneReviewEventos = Array.isArray(partido.review_eventos) && partido.review_eventos.length > 0;
     const golesOrdenados = ordenarGolesComoRepeticion(partido.goles || []);
+    const eventosCompilado = compiladoLink ? obtenerReviewEventosCompiladoHistorial(partido, golesOrdenados) : [];
+    const tieneEventosCompilado = eventosCompilado.length > 0;
 
     if (reviewLink && tieneReviewEventos) {
       golesOrdenados.forEach((gol, index) => {
@@ -14428,11 +14996,15 @@ const initApp = () => {
       }
     }
 
-    if (!compiladoLink || !tieneReviewEventos) {
+    if (reviewLink && !tieneEventosCompilado) {
+      completarLinksCagadasReviewHistorialDesdeGoles(partido, golesOrdenados, reviewLink);
+    }
+
+    if (!compiladoLink || !tieneEventosCompilado) {
       return partido;
     }
 
-    const clips = construirClipsCompiladoDesdeEventos(partido.review_eventos, { atajadasMinimas: 3 });
+    const clips = construirClipsCompiladoDesdeEventos(eventosCompilado, { atajadasMinimas: 3 });
     const eventosLinkeables = crearEventosLinkeablesCompilado(clips, reviewLink, compiladoLink);
     if (!eventosLinkeables.some(evento => ['gol', 'asistencia', 'cagada_gol', 'cagada'].includes(evento.tipo))) {
       return partido;
@@ -14447,7 +15019,7 @@ const initApp = () => {
     });
 
     golesOrdenados.forEach((gol, index) => {
-      const eventoGol = buscarReviewEventoGolHistorial(partido, gol, index + 1);
+      const eventoGol = buscarReviewEventoGolCompiladoHistorial(partido, gol, index + 1);
       const linkeablesGol = linkeablesPorClip.get(String(eventoGol?.id || '')) || [];
       const linkGol = linkeablesGol.find(evento => evento.tipo === 'gol');
       if (!linkGol) return;
@@ -14471,6 +15043,7 @@ const initApp = () => {
           review_segundos: evento.review_segundos
         });
       });
+    completarLinksCagadasReviewHistorialDesdeGoles(partido, golesOrdenados, reviewLink);
     return partido;
   }
 
@@ -14829,7 +15402,10 @@ const initApp = () => {
     return Math.max(0, Number(valor) || 0).toFixed(3);
   }
 
-  function obtenerTextoMarcadorOverlay(metadata = {}) {
+  function obtenerTextoMarcadorOverlay(metadata = {}, marcadorFallback = null) {
+    const fallbackTexto = normalizarTextoMarcadorPortada(marcadorFallback);
+    if (fallbackTexto) return fallbackTexto;
+
     if (metadata.marcador_texto) {
       return String(metadata.marcador_texto).replace(/\s*-\s*/g, '-');
     }
@@ -14901,13 +15477,17 @@ const initApp = () => {
     const minutoPartidoTexto = Number.isFinite(minutoPartidoSegundos)
       ? formatearSegundosVideo(minutoPartidoSegundos)
       : formatearTiempoReview(clip.minutoPartido);
-    const marcadorDinamico = calcularMarcadorClipsCompilado(opciones.clipsMarcador, opciones.reviewSegundosMarcador);
+    const marcadorFinal = opciones.marcadorFinal || opciones.marcadorPartido || opciones.marcador;
+    const marcadorFinalTexto = normalizarTextoMarcadorPortada(marcadorFinal);
+    const marcadorDinamico = marcadorFinal
+      ? null
+      : calcularMarcadorClipsCompilado(opciones.clipsMarcador, opciones.reviewSegundosMarcador);
     const datos = {
       titulo: String(clip.etiqueta || 'Jugada').toUpperCase(),
       principal: jugadorNombre,
       detalles: [],
       color: '#facc15',
-      marcador: marcadorDinamico || obtenerTextoMarcadorOverlay(metadata),
+      marcador: marcadorFinalTexto || marcadorDinamico || obtenerTextoMarcadorOverlay(metadata),
       minutoPartido: minutoPartidoTexto,
       tiempo: formatearSegundosVideo(clip.reviewSegundos),
       orden: `${index + 1}/${Math.max(1, total)}`,
@@ -15096,6 +15676,19 @@ const initApp = () => {
       equipo1: Number(marcador?.equipo1 ?? marcador?.local ?? marcador?.scoreLocal) || 0,
       equipo2: Number(marcador?.equipo2 ?? marcador?.visitante ?? marcador?.scoreVisitante) || 0
     };
+  }
+
+  function normalizarTextoMarcadorPortada(marcador) {
+    if (marcador === null || marcador === undefined || marcador === '') return '';
+    if (typeof marcador === 'string') {
+      const match = marcador.match(/(\d+)\s*[-:]\s*(\d+)/);
+      return match ? `${Number(match[1]) || 0}-${Number(match[2]) || 0}` : '';
+    }
+
+    const score = parsearMarcadorPortada(marcador);
+    const tieneCampos = ['equipo1', 'equipo2', 'local', 'visitante', 'scoreLocal', 'scoreVisitante']
+      .some(key => Object.prototype.hasOwnProperty.call(marcador || {}, key));
+    return tieneCampos ? `${score.equipo1}-${score.equipo2}` : '';
   }
 
   function normalizarSiglasEquipoPortada(valor, fallback) {
@@ -15361,7 +15954,7 @@ const initApp = () => {
 
   function normalizarDatosPortadaCompilado(datos = {}) {
     const clips = Array.isArray(datos.clips) ? datos.clips : [];
-    const marcador = parsearMarcadorPortada(datos.marcador || datos.score);
+    const marcador = parsearMarcadorPortada(datos.marcadorFinal || datos.marcadorPartido || datos.marcador || datos.score);
     const equipoGanador = resolverEquipoGanadorPortada(datos, marcador);
     const duracionTotal = Number.isFinite(Number(datos.duracionTotal))
       ? Number(datos.duracionTotal)
@@ -16808,10 +17401,12 @@ const initApp = () => {
     const indiceClip = Math.max(0, clips.indexOf(clipPortada));
     const marcadorLimite = obtenerLimiteMarcadorPortadaCompilado(clips);
     const minutoPartido = Number(clipPortada?.minutoPartido);
+    const marcadorFinal = opciones.marcadorFinal || opciones.marcadorPartido || opciones.marcador || opciones.score || null;
     const overlayBytes = await crearOverlayCompiladoPng(clipPortada, indiceClip, clips.length, {
       minutoPartidoSegundos: Number.isFinite(minutoPartido) ? minutoPartido * 60 : null,
       reviewSegundosMarcador: marcadorLimite,
-      clipsMarcador: clips
+      clipsMarcador: clips,
+      marcadorFinal
     });
     const overlayImage = await crearImagenCompiladoDesdePngBytes(overlayBytes);
     const resumen = crearResumenPortadaCompilado(clips, opciones);
@@ -16969,7 +17564,10 @@ const initApp = () => {
 
   function calcularMarcadorEventos(hastaReviewSegundos = null) {
     const limiteReview = Number(hastaReviewSegundos);
-    const filtrarPorReview = Number.isFinite(limiteReview);
+    const filtrarPorReview = hastaReviewSegundos !== null
+      && hastaReviewSegundos !== undefined
+      && hastaReviewSegundos !== ''
+      && Number.isFinite(limiteReview);
 
     return eventos.reduce((acc, evento) => {
       if (filtrarPorReview) {
@@ -16979,11 +17577,84 @@ const initApp = () => {
         }
       }
 
-      const equipo = Number(evento.equipo);
-      if (equipo === 1) acc.equipo1 += 1;
-      if (equipo === 2) acc.equipo2 += 1;
+      const equipo = normalizarEquipoNumero(evento.equipo);
+      if (equipo === 1) {
+        acc.equipo1 += 1;
+        acc.total += 1;
+      }
+      if (equipo === 2) {
+        acc.equipo2 += 1;
+        acc.total += 1;
+      }
       return acc;
-    }, { equipo1: 0, equipo2: 0 });
+    }, { equipo1: 0, equipo2: 0, total: 0 });
+  }
+
+  function normalizarMarcadorAutomatico(marcador = {}) {
+    const equipo1 = Math.max(0, Number(marcador.equipo1) || 0);
+    const equipo2 = Math.max(0, Number(marcador.equipo2) || 0);
+    const total = Number.isFinite(Number(marcador.total)) ? Math.max(0, Number(marcador.total)) : equipo1 + equipo2;
+    return { equipo1, equipo2, total };
+  }
+
+  function obtenerResultadoGanadorDesdeMarcadorAutomatico(marcador = {}) {
+    const marcadorNormalizado = normalizarMarcadorAutomatico(marcador);
+    if (marcadorNormalizado.total <= 0) {
+      return { marcador: marcadorNormalizado, resultado: '', ganador: '' };
+    }
+
+    const ganador = obtenerGanadorDesdeMarcador(marcadorNormalizado);
+    return {
+      marcador: marcadorNormalizado,
+      resultado: formatearResultadoDesdeMarcador(marcadorNormalizado),
+      ganador: ganador === null ? '' : String(ganador)
+    };
+  }
+
+  function sincronizarCamposResultadoDesdeMarcador(marcador = {}, opciones = {}) {
+    const {
+      resultadoId = 'resultado-final',
+      ganadorId = 'equipo-ganador',
+      marcadorId = 'marcador-actual',
+      actualizarAce = false
+    } = opciones;
+    const datos = obtenerResultadoGanadorDesdeMarcadorAutomatico(marcador);
+
+    const marcadorEl = document.getElementById(marcadorId);
+    if (marcadorEl) marcadorEl.textContent = `${datos.marcador.equipo1} - ${datos.marcador.equipo2}`;
+
+    const resultadoEl = document.getElementById(resultadoId);
+    if (resultadoEl) resultadoEl.value = datos.resultado;
+
+    const ganadorEl = document.getElementById(ganadorId);
+    if (ganadorEl) ganadorEl.value = datos.ganador;
+
+    if (actualizarAce && typeof window.actualizarSelectACE === 'function') {
+      window.actualizarSelectACE();
+    }
+
+    return datos;
+  }
+
+  function sincronizarCamposResultadoPrincipalDesdeMarcador(marcador = calcularMarcadorDesdeItemsEquipo(eventos)) {
+    return sincronizarCamposResultadoDesdeMarcador(marcador, {
+      resultadoId: 'resultado-final',
+      ganadorId: 'equipo-ganador',
+      marcadorId: 'marcador-actual',
+      actualizarAce: true
+    });
+  }
+
+  function sincronizarCamposResultadoReviewDesdeMarcador(marcador = calcularMarcadorEventos()) {
+    return sincronizarCamposResultadoDesdeMarcador(marcador, {
+      resultadoId: 'review-resultado',
+      ganadorId: 'review-ganador',
+      marcadorId: 'review-marcador'
+    });
+  }
+
+  function obtenerResultadoGanadorReviewAutomatico(marcador = calcularMarcadorEventos()) {
+    return obtenerResultadoGanadorDesdeMarcadorAutomatico(marcador);
   }
 
   function renderizarEquipoReview(containerId, equipoNombre, jugadores) {
@@ -17030,17 +17701,10 @@ const initApp = () => {
 
   function renderizarEventosReview() {
     const marcador = calcularMarcadorEventos();
-    const marcadorEl = document.getElementById('review-marcador');
-    const resultadoEl = document.getElementById('review-resultado');
-    const ganadorEl = document.getElementById('review-ganador');
     const countEl = document.getElementById('review-event-count');
     const listEl = document.getElementById('review-eventos-list');
 
-    if (marcadorEl) marcadorEl.textContent = `${marcador.equipo1} - ${marcador.equipo2}`;
-    if (resultadoEl) resultadoEl.value = `${marcador.equipo1}-${marcador.equipo2}`;
-    if (ganadorEl) {
-      ganadorEl.value = marcador.equipo1 > marcador.equipo2 ? '1' : marcador.equipo2 > marcador.equipo1 ? '2' : (eventos.length ? '0' : '');
-    }
+    sincronizarCamposResultadoReviewDesdeMarcador(marcador);
     if (countEl) countEl.textContent = eventos.length;
     actualizarScorebugReview();
 
@@ -17241,6 +17905,7 @@ const initApp = () => {
     const temporadaSelect = document.getElementById('review-temporada');
     const temporadaTexto = temporadaSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
     const marcador = calcularMarcadorEventos();
+    const equipoGanador = obtenerGanadorDesdeMarcador(marcador);
 
     return {
       clips,
@@ -17249,7 +17914,8 @@ const initApp = () => {
       cancha: obtenerValorReviewInput('review-cancha'),
       temporada: temporadaTexto && temporadaTexto !== 'Seleccionar temporada' ? temporadaTexto : '',
       marcador,
-      equipoGanador: marcador.equipo1 > marcador.equipo2 ? 1 : marcador.equipo2 > marcador.equipo1 ? 2 : 0,
+      marcadorFinal: marcador,
+      equipoGanador: equipoGanador ?? 0,
       equipo1,
       equipo2
     };
@@ -17303,6 +17969,7 @@ const initApp = () => {
       '';
     const fecha = obtenerValorReviewInput('review-fecha') || new Date().toISOString().slice(0, 10);
     const marcador = calcularMarcadorEventos();
+    const resultadoGanador = obtenerResultadoGanadorReviewAutomatico(marcador);
     const opcionesCompilado = normalizarOpcionesCompilado();
     const eventosImportantes = reviewSandbox.buenasJugadas.map((item, index) => ({
       orden: index + 1,
@@ -17321,8 +17988,8 @@ const initApp = () => {
         fecha,
         cancha: obtenerValorReviewInput('review-cancha'),
         temporada_id: obtenerValorReviewInput('review-temporada'),
-        resultado: obtenerValorReviewInput('review-resultado') || `${marcador.equipo1}-${marcador.equipo2}`,
-        ganador: obtenerValorReviewInput('review-ganador'),
+        resultado: resultadoGanador.resultado || obtenerValorReviewInput('review-resultado'),
+        ganador: resultadoGanador.ganador || obtenerValorReviewInput('review-ganador'),
         inicio: {
           minuto: obtenerValorReviewInput('review-inicio-minuto'),
           segundo: obtenerValorReviewInput('review-inicio-segundo')
@@ -17871,8 +18538,14 @@ const initApp = () => {
     setValorReviewInput('review-temporada', temporadaId);
     setValorReviewInput('review-mvp', mvpId);
     setValorReviewInput('review-ace', aceId);
-    setValorReviewInput('review-resultado', partido.resultado || obtenerValorReviewInput('review-resultado'));
-    setValorReviewInput('review-ganador', partido.ganador || obtenerValorReviewInput('review-ganador'));
+    const marcadorImportado = calcularMarcadorEventos();
+    if (marcadorImportado.total > 0) {
+      sincronizarCamposResultadoReviewDesdeMarcador(marcadorImportado);
+      sincronizarCamposResultadoPrincipalDesdeMarcador(calcularMarcadorDesdeItemsEquipo(eventos));
+    } else {
+      setValorReviewInput('review-resultado', partido.resultado || obtenerValorReviewInput('review-resultado'));
+      setValorReviewInput('review-ganador', partido.ganador || obtenerValorReviewInput('review-ganador'));
+    }
     updateSearchableSelects(document.getElementById('review-sandbox-content') || document);
     enviarEstadoAnotacionReview();
   }
@@ -17913,8 +18586,10 @@ const initApp = () => {
 
     if (button) button.disabled = true;
     try {
+      const datosPortada = obtenerDatosPortadaCompiladoSandbox(clips);
       await generarPortadaCompiladoDesdeArchivo(file, clips, statusEl, nombreBase, {
         ...opcionesCompilado,
+        ...datosPortada,
         fecha: obtenerValorReviewInput('review-fecha'),
         cancha: obtenerValorReviewInput('review-cancha')
       });
@@ -18127,6 +18802,11 @@ const initApp = () => {
 
     setValue('fecha-partido', document.getElementById('review-fecha')?.value || document.getElementById('fecha-partido')?.value || '');
     setValue('cancha-partido', document.getElementById('review-cancha')?.value || document.getElementById('cancha-partido')?.value || '');
+    const marcador = calcularMarcadorDesdeItemsEquipo(eventos);
+    if (marcador.total > 0) {
+      sincronizarCamposResultadoReviewDesdeMarcador(calcularMarcadorEventos());
+      sincronizarCamposResultadoPrincipalDesdeMarcador(marcador);
+    }
     setValue('resultado-final', document.getElementById('review-resultado')?.value || document.getElementById('resultado-final')?.value || '');
     setValue('equipo-ganador', document.getElementById('review-ganador')?.value || document.getElementById('equipo-ganador')?.value || '');
     setValue('temporada-partido', document.getElementById('review-temporada')?.value || document.getElementById('temporada-partido')?.value || '');
@@ -18619,39 +19299,7 @@ const initApp = () => {
 
   // Función para actualizar el marcador automáticamente basado en los goles
   function actualizarMarcadorAutomatico() {
-      let golesEquipo1 = 0;
-      let golesEquipo2 = 0;
-
-      eventos.forEach(evento => {
-          if (evento.equipo === 1) {
-              golesEquipo1++;
-          } else if (evento.equipo === 2) {
-              golesEquipo2++;
-          }
-      });
-
-      const resultadoField = document.getElementById('resultado-final');
-      if (resultadoField) {
-          resultadoField.value = `${golesEquipo1}-${golesEquipo2}`;
-      }
-
-      // Actualizar marcador visual en tiempo real
-      const marcadorActual = document.getElementById('marcador-actual');
-      if (marcadorActual) {
-          marcadorActual.textContent = `${golesEquipo1} - ${golesEquipo2}`;
-      }
-
-      // Auto-seleccionar equipo ganador si hay diferencia
-      const equipoGanadorSelect = document.getElementById('equipo-ganador');
-      if (equipoGanadorSelect) {
-          if (golesEquipo1 > golesEquipo2) {
-              equipoGanadorSelect.value = '1';
-          } else if (golesEquipo2 > golesEquipo1) {
-              equipoGanadorSelect.value = '2';
-          } else if (golesEquipo1 === golesEquipo2 && golesEquipo1 > 0) {
-              equipoGanadorSelect.value = '0'; // Empate
-          }
-      }
+      sincronizarCamposResultadoPrincipalDesdeMarcador(calcularMarcadorDesdeItemsEquipo(eventos));
   }
 
   async function insertarPartidoConFallbackReview(partidoData) {
@@ -18958,6 +19606,54 @@ const initApp = () => {
       throw new Error(`Error al guardar eventos de review: ${error.message}`);
   }
 
+  function crearTotalesCagadasJugadorPartido({ eventosPartido = [], cagadasManuales = [], golesPartido = [] } = {}) {
+      const totales = new Map();
+      const agregar = (jugadorId, cantidad = 1) => {
+          if (!jugadorId || jugadorId === 'nadie') return;
+          const key = String(jugadorId);
+          const valor = Math.max(0, Number(cantidad) || 0);
+          if (valor <= 0) return;
+          totales.set(key, (totales.get(key) || 0) + valor);
+      };
+
+      eventosPartido.forEach(evento => agregar(evento.cagada_id, 1));
+      golesPartido.forEach(gol => agregar(obtenerCagadaJugadorIdGol(gol), 1));
+      cagadasManuales.forEach(item => agregar(item.jugador_id, item.cantidad));
+
+      return totales;
+  }
+
+  async function sincronizarCagadasJugadorPartido(partidoId, jugadoresPartido = [], totalesCagadas = new Map()) {
+      if (!partidoId) return;
+
+      const jugadorIds = new Set();
+      (jugadoresPartido || []).forEach(jp => {
+          const jugadorId = jp?.jugador_id || jp?.id;
+          if (jugadorId) jugadorIds.add(String(jugadorId));
+      });
+      (totalesCagadas || new Map()).forEach((_, jugadorId) => {
+          if (jugadorId) jugadorIds.add(String(jugadorId));
+      });
+
+      for (const jugadorId of jugadorIds) {
+          const cantidad = Math.max(0, Number(totalesCagadas.get(jugadorId)) || 0);
+          const { error } = await supabase
+              .from('jugador_partido')
+              .update({ cagadas: cantidad })
+              .eq('partido_id', partidoId)
+              .eq('jugador_id', jugadorId);
+
+          if (error) {
+              console.error('Error al sincronizar cagadas:', error);
+              if (error.message && error.message.includes('estadisticas_jugador')) {
+                  console.warn('Error de vista estadisticas_jugador al sincronizar cagadas detectado - Ignorando');
+              } else {
+                  throw new Error(`Error al guardar las cagadas: ${error.message}`);
+              }
+          }
+      }
+  }
+
   async function cargarPartido() {
       // Verificar permisos de administrador
       if (!verificarPermisosAdmin('guardar un partido')) {
@@ -18966,17 +19662,35 @@ const initApp = () => {
 
       const fecha = document.getElementById('fecha-partido').value;
       const cancha = document.getElementById('cancha-partido').value;
-      const resultado = document.getElementById('resultado-final').value;
+      let resultado = document.getElementById('resultado-final').value;
       const equipoGanadorSelect = document.getElementById('equipo-ganador');
-      const equipo_ganador = equipoGanadorSelect ? equipoGanadorSelect.value : null;
+      let equipo_ganador = equipoGanadorSelect ? equipoGanadorSelect.value : null;
       const temporadaPartidoSelect = document.getElementById('temporada-partido');
       const temporada_id = temporadaPartidoSelect ? temporadaPartidoSelect.value : null;
       const youtubeLinkInput = document.getElementById('youtube-link-partido').value.trim();
       const youtube_link = youtubeLinkInput ? obtenerLinkYouTubeReview(youtubeLinkInput) : null;
       const compiladoYoutubeInput = document.getElementById('review-compilado-youtube-link')?.value.trim() || '';
       const compilado_youtube_link = compiladoYoutubeInput ? obtenerLinkYouTubeReview(compiladoYoutubeInput) : null;
-      const guardandoDesdeReview = document.body.dataset.guardandoReviewSandbox === '1';
+      const tieneTimestampReview = item => normalizarSegundosVideo(item?.review_segundos ?? item?.reviewSegundos) !== null;
+      const hayDatosReviewImportados = eventos.some(tieneTimestampReview) ||
+          reviewSandbox.atajadas.some(tieneTimestampReview) ||
+          reviewSandbox.buenasJugadas.some(tieneTimestampReview) ||
+          reviewSandbox.cagadas.some(tieneTimestampReview);
+      const guardandoDesdeReview = document.body.dataset.guardandoReviewSandbox === '1' || hayDatosReviewImportados;
       const review_inicio_segundos = guardandoDesdeReview ? obtenerReviewInicioSegundos() : null;
+
+      const marcadorEventos = calcularMarcadorDesdeItemsEquipo(eventos);
+      const ganadorEventos = obtenerGanadorDesdeMarcador(marcadorEventos);
+      if (marcadorEventos.total > 0) {
+          resultado = formatearResultadoDesdeMarcador(marcadorEventos);
+          const resultadoField = document.getElementById('resultado-final');
+          if (resultadoField) resultadoField.value = resultado;
+
+          if (ganadorEventos !== null) {
+              equipo_ganador = String(ganadorEventos);
+              if (equipoGanadorSelect) equipoGanadorSelect.value = equipo_ganador;
+          }
+      }
 
       if (!fecha || !cancha || !resultado || !equipo_ganador) {
           showToast('Completa todos los datos del partido (fecha, cancha, resultado, equipo ganador).', 'warning');
@@ -19260,28 +19974,14 @@ const initApp = () => {
               console.log('Atajadas actualizadas:', atajadas.length);
           }
 
-          // Actualizar cagadas en jugador_partido
-          if (cagadas.length > 0) {
-              for (const cagada of cagadas) {
-                  const { error: cagadasError } = await supabase
-                      .from('jugador_partido')
-                      .update({ cagadas: cagada.cantidad })
-                      .eq('partido_id', partido_id)
-                      .eq('jugador_id', cagada.jugador_id);
-
-                  if (cagadasError) {
-                      console.error('Error al actualizar cagadas:', cagadasError);
-
-                      // Verificar si es el error específico de la vista estadisticas_jugador
-                      if (cagadasError.message && cagadasError.message.includes('estadisticas_jugador')) {
-                          console.warn('⚠️ Error de vista estadisticas_jugador en cagadas detectado - Ignorando');
-                          // Continuar sin lanzar error
-                      } else {
-                          throw new Error(`Error al guardar las cagadas: ${cagadasError.message}`);
-                      }
-                  }
-              }
-              console.log('Cagadas actualizadas:', cagadas.length);
+          // Mantener compatible el contador historico jugador_partido.cagadas.
+          const totalesCagadasPartido = crearTotalesCagadasJugadorPartido({
+              eventosPartido: eventos,
+              cagadasManuales: cagadas
+          });
+          await sincronizarCagadasJugadorPartido(partido_id, jugadoresPartidoData, totalesCagadasPartido);
+          if (totalesCagadasPartido.size > 0) {
+              console.log('Cagadas sincronizadas:', Array.from(totalesCagadasPartido.entries()));
           }
 
           if (guardandoDesdeReview) {
@@ -19401,8 +20101,13 @@ const initApp = () => {
           if (!resultado[jp.jugador_id]) {
             resultado[jp.jugador_id] = {
               goles_favor_equipo: 0,
-              goles_recibidos_equipo: 0
+              goles_recibidos_equipo: 0,
+              partido_ids: []
             };
+          }
+
+          if (partido.id) {
+            resultado[jp.jugador_id].partido_ids.push(partido.id);
           }
 
           if (jp.equipo === 1) {
@@ -19541,7 +20246,8 @@ const initApp = () => {
             datosJugadores = datosVista.map((jugadorData) => {
               const golesEquipoJugador = golesEquipoPorJugador[jugadorData.jugador_id] || {
                 goles_favor_equipo: 0,
-                goles_recibidos_equipo: 0
+                goles_recibidos_equipo: 0,
+                partido_ids: []
               };
 
               const stats = {
@@ -19554,6 +20260,7 @@ const initApp = () => {
                 goles_en_contra: jugadorData.goles_en_contra || 0,
                 goles_favor_equipo: golesEquipoJugador.goles_favor_equipo || 0,
                 goles_recibidos_equipo: golesEquipoJugador.goles_recibidos_equipo || 0,
+                partido_ids: normalizarIdsFiltro(golesEquipoJugador.partido_ids),
                 asistencias: jugadorData.asistencias || 0,
                 cagadas_en_gol: jugadorData.cagadas_en_gol || 0,
                 mvp_count: jugadorData.mvp_count || 0,
@@ -19595,9 +20302,7 @@ const initApp = () => {
 
     try {
       // Consulta para obtener todos los partidos de la temporada con sus goles
-      let partidosQuery = supabase
-        .from('partidos')
-        .select(`
+      const construirSelectPartidosEstadisticas = ({ incluirCagada = true } = {}) => `
           id,
           temporada_id,
           equipo_ganador,
@@ -19630,16 +20335,28 @@ const initApp = () => {
             asistidor_id,
             equipo,
             es_gol_en_contra
+            ${incluirCagada ? ', cagada_jugador_id' : ''}
           )
-        `);
+        `;
 
-      // Filtrar por temporada si está seleccionada
-      if (temporadaSeleccionada && temporadaSeleccionada !== '') {
-        console.log('🏆 Aplicando filtro de temporada en estadísticas:', temporadaSeleccionada);
-        partidosQuery = partidosQuery.eq('temporada_id', temporadaSeleccionada);
+      const crearQueryPartidosEstadisticas = (incluirCagada = true) => {
+        let query = supabase
+          .from('partidos')
+          .select(construirSelectPartidosEstadisticas({ incluirCagada }));
+
+        if (temporadaSeleccionada && temporadaSeleccionada !== '') {
+          console.log('Aplicando filtro de temporada en estadisticas:', temporadaSeleccionada);
+          query = query.eq('temporada_id', temporadaSeleccionada);
+        }
+
+        return query;
+      };
+
+      let result = await crearQueryPartidosEstadisticas(true);
+      if (result.error && esErrorColumnaCagadaFaltante(result.error)) {
+        console.warn('La columna goles.cagada_jugador_id no existe. Las estadisticas usan el contador historico de jugador_partido.cagadas.');
+        result = await crearQueryPartidosEstadisticas(false);
       }
-
-      const result = await partidosQuery;
 
       console.log('📋 Resultado de consulta partidos con goles:', result);
       console.log('🔍 Partidos obtenidos:', result.data?.length || 0);
@@ -19687,6 +20404,7 @@ const initApp = () => {
               atajadas: 0,
               capitan_defeat: 0,
               bita_defeat: 0,
+              partido_ids: [],
               rendimiento_total: null,
               rendimiento_ataque: null,
               rendimiento_arquero: null
@@ -19697,6 +20415,9 @@ const initApp = () => {
 
           // Incrementar partidos jugados
           stats.pj += 1;
+          if (partido.id) {
+            stats.partido_ids.push(partido.id);
+          }
 
           // Determinar resultado del partido para este jugador
           const equipoGanador = partido.equipo_ganador;
@@ -19721,7 +20442,7 @@ const initApp = () => {
           }
 
           // Sumar estadísticas individuales (SIN goles y asistencias aún)
-          stats.cagadas_en_gol += jp.cagadas || 0;
+          stats.cagadas_en_gol += calcularCagadasParticipacionConGoles(jp, partido.goles || []);
           stats.atajadas += jp.atajadas || 0;
           stats.mvp_count += jp.mvp ? 1 : 0;
           stats.ace_count += jp.ace ? 1 : 0;
@@ -19801,6 +20522,7 @@ const initApp = () => {
         goles: 0,
         goles_favor_equipo: 0,
         goles_recibidos_equipo: 0,
+        partido_ids: [],
         asistencias: 0,
         cagadas_en_gol: 0,
         mvp_count: 0,
@@ -19887,6 +20609,7 @@ const initApp = () => {
         atajadas: jugadorData.atajadas || 0,
         capitan_defeat: jugadorData.capitan_defeat || 0,
         bita_defeat: jugadorData.bita_defeat || 0,
+        partido_ids: normalizarIdsFiltro(jugadorData.partido_ids || jugadorData.partidoIds || []),
         rendimiento_total: jugadorData.rendimiento_total,
         rendimiento_ataque: jugadorData.rendimiento_ataque,
         rendimiento_arquero: jugadorData.rendimiento_arquero
@@ -20636,11 +21359,12 @@ const initApp = () => {
       const cagadasPP = (jugador.cagadas_en_gol || 0) / pj;
       const puntosPP = (jugador.total_puntos || 0) / pj;
       const atajadasPP = (jugador.atajadas || 0) / pj;
+      const rendDefensaTracking = Number(jugador.puntosDefensaTrackingPromedio) || 0;
 
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-      const rendArquero = atajadasPP * 0.66;
+      const rendArquero = atajadasPP * 0.4;
 
-      return rendAtaque + rendArquero;
+      return rendAtaque + rendArquero + rendDefensaTracking;
     };
 
     // Calcular min y max para el espectro de colores
@@ -20682,7 +21406,7 @@ const initApp = () => {
           <div class="position-badge ${positionClass}">${posicion}</div>
         </td>
         <td class="text-center stats-col-skill stats-sticky stats-sticky-skill">
-          <span class="stats-skill-badge ${colorSkill}" title="Skill individual">
+          <span class="stats-skill-badge ${colorSkill}" title="Skill individual: ataque + arquero + defensa tracking">
             ${skillIndividual.toFixed(1)}
           </span>
         </td>
@@ -20990,6 +21714,75 @@ const initApp = () => {
   }
 
   // --- Función para cargar historial de partidos ---
+  async function anexarTrackingDefensaHistorial(partidos = []) {
+    const partidoIds = [...new Set(partidos.map(partido => partido.id).filter(Boolean).map(String))];
+    partidos.forEach(partido => {
+      partido._tracking_defensa_jugadores = new Map();
+      partido._tracking_defensa_disponible = false;
+    });
+    if (!partidoIds.length) return;
+
+    const selects = [
+      'partido_id, jugador_id, defense_score, advanced_defense_score, defense_score_method',
+      'partido_id, jugador_id, defense_score, defense_score_method',
+      'partido_id, jugador_id, defense_score',
+      'partido_id, jugador_id, advanced_defense_score'
+    ];
+    let data = [];
+    let ultimoError = null;
+
+    for (const selectTracking of selects) {
+      const { data: rows, error } = await supabase
+        .from('tracking_player_stats')
+        .select(selectTracking)
+        .in('partido_id', partidoIds)
+        .not('jugador_id', 'is', null);
+
+      if (!error) {
+        data = rows || [];
+        ultimoError = null;
+        break;
+      }
+
+      ultimoError = error;
+      if (esErrorTablaFaltante(error, 'tracking_player_stats')) {
+        console.warn('La tabla tracking_player_stats no existe; el historial no suma defensa tracking.');
+        return;
+      }
+
+      const esColumnaTrackingOpcional =
+        esErrorColumnaFaltante(error, 'advanced_defense_score') ||
+        esErrorColumnaFaltante(error, 'defense_score') ||
+        esErrorColumnaFaltante(error, 'defense_score_method');
+      if (!esColumnaTrackingOpcional) break;
+    }
+
+    if (ultimoError) {
+      console.warn('No se pudo cargar defensa tracking para el historial:', ultimoError);
+      return;
+    }
+
+    const trackingPorPartido = new Map();
+    (data || []).forEach(row => {
+      if (!row?.partido_id || !row?.jugador_id) return;
+      const partidoKey = String(row.partido_id);
+      const jugadorKey = String(row.jugador_id);
+      if (!trackingPorPartido.has(partidoKey)) trackingPorPartido.set(partidoKey, new Map());
+
+      const mapaJugadores = trackingPorPartido.get(partidoKey);
+      const actual = mapaJugadores.get(jugadorKey);
+      if (!actual || calcularPuntosDefensaTracking(row) > calcularPuntosDefensaTracking(actual)) {
+        mapaJugadores.set(jugadorKey, row);
+      }
+    });
+
+    partidos.forEach(partido => {
+      const mapa = trackingPorPartido.get(String(partido.id)) || new Map();
+      partido._tracking_defensa_jugadores = mapa;
+      partido._tracking_defensa_disponible = mapa.size > 0;
+    });
+  }
+
   function obtenerCantidadReviewEventoJugadorRecordsHistorial(partido, tipo, jugadorId) {
     return (partido.review_eventos || [])
       .filter(evento => evento.tipo === tipo && String(evento.jugador_id || '') === String(jugadorId || ''))
@@ -21002,12 +21795,18 @@ const initApp = () => {
       .reduce((sum, evento) => sum + (Number(evento.cantidad) || 1), 0);
   }
 
+  function contarCagadasGolDesdeGolesHistorial(partido, jugadorId) {
+    return contarCagadasGolJugador(partido.goles || [], jugadorId);
+  }
+
   function obtenerCagadasJugadorRecordsHistorial(partido, jp) {
-    const cagadasViejas = Number(jp.cagadas) || 0;
     const cagadasGolReview = obtenerCantidadReviewEventoJugadorRecordsHistorial(partido, 'cagada_gol', jp.jugador_id);
     const cagadasGolMetadata = cagadasGolReview > 0 ? 0 : contarCagadasGolDesdeMetadataReviewRecordsHistorial(partido, jp.jugador_id);
-    const cagadasSueltasReview = cagadasViejas > 0 ? 0 : obtenerCantidadReviewEventoJugadorRecordsHistorial(partido, 'cagada', jp.jugador_id);
-    return cagadasViejas + cagadasGolReview + cagadasGolMetadata + cagadasSueltasReview;
+    const cagadasGolGoles = (cagadasGolReview > 0 || cagadasGolMetadata > 0) ? 0 : contarCagadasGolDesdeGolesHistorial(partido, jp.jugador_id);
+    const cagadasDesdeGol = cagadasGolReview || cagadasGolMetadata || cagadasGolGoles;
+    const cagadasBase = resolverCagadasJugadorPartidoTemporada(jp, cagadasDesdeGol);
+    const cagadasSueltasReview = cagadasBase > 0 ? 0 : obtenerCantidadReviewEventoJugadorRecordsHistorial(partido, 'cagada', jp.jugador_id);
+    return cagadasBase + cagadasSueltasReview;
   }
 
   function calcularMetricasRecordsPartidoHistorial(partido) {
@@ -22267,6 +23066,7 @@ const initApp = () => {
     try {
       recordsPartidoHistorialGlobal = new Map();
       recordsPartidoHistorialGlobalCargado = false;
+      partidosEscalaHistorialGlobal = [];
 
       // Mostrar loading
       container.innerHTML = `
@@ -22417,11 +23217,20 @@ const initApp = () => {
         console.log('ℹ️ No hay partidos para mostrar');
         recordsPartidoHistorialGlobal = new Map();
         recordsPartidoHistorialGlobalCargado = true;
+        partidosEscalaHistorialGlobal = [];
         mostrarMensajeSinPartidos(container);
         return;
       }
 
       await anexarReviewEventosHistorial(partidos);
+      await anexarTrackingDefensaHistorial(partidos);
+      try {
+        partidosEscalaHistorialGlobal = await consultarPartidosParaRecordsHistorial(temporadaSeleccionada);
+        await anexarTrackingDefensaHistorial(partidosEscalaHistorialGlobal);
+      } catch (errorEscala) {
+        console.warn('No se pudo cargar la escala completa de puntajes del historial. Se usa el lote visible:', errorEscala);
+        partidosEscalaHistorialGlobal = partidos;
+      }
       recordsPartidoHistorialGlobal = await cargarRecordsPartidoHistorialGlobal(temporadaSeleccionada);
       recordsPartidoHistorialGlobalCargado = true;
 
@@ -22782,8 +23591,12 @@ const initApp = () => {
 
   console.log('🔍 Función de debug disponible: window.debugAdmin()');
 
-  async function mostrarPartidosBasicos(container, partidos) {
+  async function mostrarPartidosBasicos(container, partidos, opciones = {}) {
     console.log('🎨 Mostrando partidos con detalles completos:', partidos);
+
+    const partidosEscala = Array.isArray(opciones.partidosEscala) && opciones.partidosEscala.length
+      ? opciones.partidosEscala
+      : partidos;
 
     const calcularSkillPartido = ({
       goles = 0,
@@ -22799,17 +23612,8 @@ const initApp = () => {
       return rendAtaque + rendArquero;
     };
 
-    const PENALIZACION_DEFENSOR_POR_GOL = 1.5;
     const UMBRAL_TENDENCIA_SKILL = 0.75;
     const UMBRAL_SKILL_REFERENCIA = 0.5;
-
-    const obtenerPosicionPrimariaJugador = (jugador) => {
-      const posiciones = jugador?.jugador_posicion || [];
-      const primaria = posiciones.find(pos => pos.es_primaria);
-      return primaria?.posicion?.nombre || null;
-    };
-
-    const esDefensor = (jugador) => obtenerPosicionPrimariaJugador(jugador) === 'Defensor';
 
     const obtenerSkillEsperadoJugador = (jugadorId) => {
       try {
@@ -22849,7 +23653,7 @@ const initApp = () => {
       const atajadasPP = (jugadorStats.atajadas || 0) / pj;
 
       const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
-      const rendArquero = atajadasPP * 0.66;
+      const rendArquero = atajadasPP * 0.4;
       return rendAtaque + rendArquero;
     };
 
@@ -22878,11 +23682,13 @@ const initApp = () => {
     };
 
     const obtenerCagadasJugadorPartidoHistorial = (partido, jp) => {
-      const cagadasViejas = Number(jp.cagadas) || 0;
       const cagadasGolReview = obtenerCantidadReviewEventoJugadorHistorial(partido, 'cagada_gol', jp.jugador_id);
       const cagadasGolMetadata = cagadasGolReview > 0 ? 0 : contarCagadasGolDesdeMetadataReviewHistorial(partido, jp.jugador_id);
-      const cagadasSueltasReview = cagadasViejas > 0 ? 0 : obtenerCantidadReviewEventoJugadorHistorial(partido, 'cagada', jp.jugador_id);
-      return cagadasViejas + cagadasGolReview + cagadasGolMetadata + cagadasSueltasReview;
+      const cagadasGolGoles = (cagadasGolReview > 0 || cagadasGolMetadata > 0) ? 0 : contarCagadasGolDesdeGolesHistorial(partido, jp.jugador_id);
+      const cagadasDesdeGol = cagadasGolReview || cagadasGolMetadata || cagadasGolGoles;
+      const cagadasBase = resolverCagadasJugadorPartidoTemporada(jp, cagadasDesdeGol);
+      const cagadasSueltasReview = cagadasBase > 0 ? 0 : obtenerCantidadReviewEventoJugadorHistorial(partido, 'cagada', jp.jugador_id);
+      return cagadasBase + cagadasSueltasReview;
     };
 
     const obtenerBuenasJugadasJugadorPartidoHistorial = (partido, jp) => {
@@ -22898,7 +23704,7 @@ const initApp = () => {
       const totalAsistencias = (partido.goles || []).filter(gol => {
         if (!gol.asistidor_id) return false;
         const asistidor = jugadoresPartido.find(jp => jp.jugador_id === gol.asistidor_id);
-        return !asistidor || asistidor.equipo === gol.equipo;
+        return !asistidor || normalizarEquipoNumero(asistidor.equipo) === normalizarEquipoNumero(gol.equipo);
       }).length;
 
       return {
@@ -22924,6 +23730,119 @@ const initApp = () => {
         metricasPartidoHistorial.set(key, calcularMetricasPartidoHistorial(partido));
       }
       return metricasPartidoHistorial.get(key);
+    };
+
+    const cargaDefensivaHistorialCache = new Map();
+    const obtenerCargaDefensivaPartidoHistorial = (partido) => {
+      const partidoKey = String(partido?.id || '');
+      if (cargaDefensivaHistorialCache.has(partidoKey)) {
+        return cargaDefensivaHistorialCache.get(partidoKey);
+      }
+
+      const metricas = obtenerMetricasPartidoHistorial(partido);
+      const equipos = {
+        1: {
+          golesRecibidos: Number(metricas.golesEquipo2) || 0,
+          atajadas: 0,
+          carga: 0
+        },
+        2: {
+          golesRecibidos: Number(metricas.golesEquipo1) || 0,
+          atajadas: 0,
+          carga: 0
+        }
+      };
+
+      (partido?.jugador_partido || []).forEach(jp => {
+        const equipo = normalizarEquipoNumero(jp.equipo);
+        if (equipo !== 1 && equipo !== 2) return;
+        equipos[equipo].atajadas += Number(jp.atajadas) || 0;
+      });
+
+      [1, 2].forEach(equipo => {
+        equipos[equipo].carga = equipos[equipo].atajadas + (equipos[equipo].golesRecibidos * 1.35);
+      });
+
+      const cargaMaxima = Math.max(equipos[1].carga, equipos[2].carga, 1);
+      const resultado = { equipos, cargaMaxima };
+      cargaDefensivaHistorialCache.set(partidoKey, resultado);
+      return resultado;
+    };
+
+    const statsJugadorHistorialCache = new Map();
+    const calcularStatsJugadorHistorial = (partido, jp) => {
+      const cacheKey = `${String(partido?.id || '')}::${String(jp?.jugador_id || '')}`;
+      if (statsJugadorHistorialCache.has(cacheKey)) {
+        return statsJugadorHistorialCache.get(cacheKey);
+      }
+
+      const golesDelJugador = partido.goles?.filter(gol =>
+        gol.goleador_id === jp.jugador_id && normalizarEquipoNumero(gol.equipo) === normalizarEquipoNumero(jp.equipo)
+      ) || [];
+
+      const asistenciasDelJugador = partido.goles?.filter(gol =>
+        gol.asistidor_id === jp.jugador_id && normalizarEquipoNumero(gol.equipo) === normalizarEquipoNumero(jp.equipo)
+      ) || [];
+
+      const golesJugador = golesDelJugador.length;
+      const asistenciasJugador = asistenciasDelJugador.length;
+      const cagadasJugador = obtenerCagadasJugadorPartidoHistorial(partido, jp);
+      const buenasJugadasJugador = obtenerBuenasJugadasJugadorPartidoHistorial(partido, jp);
+
+      const skillBase = calcularSkillPartido({
+        goles: golesJugador,
+        asistencias: asistenciasJugador,
+        mvp: jp.mvp ? 1 : 0,
+        ace: jp.ace ? 1 : 0,
+        cagadas: cagadasJugador,
+        puntos: jp.puntos || 0,
+        atajadas: jp.atajadas || 0
+      });
+
+      const trackingDefensa = obtenerTrackingDefensaJugadorPartido(partido, jp.jugador_id);
+      const defensaTrackingScore = obtenerScoreDefensaTracking(trackingDefensa);
+      const rangoDefensaTrackingPartido = calcularRangoDefensaTrackingPartido(partido);
+      const cargaDefensiva = obtenerCargaDefensivaPartidoHistorial(partido);
+      const equipoJugador = normalizarEquipoNumero(jp.equipo);
+      const cargaDefensivaEquipo = cargaDefensiva.equipos[equipoJugador]?.carga || 0;
+      const puntosDefensaTracking = calcularPuntosDefensaTrackingHistorial(
+        trackingDefensa,
+        rangoDefensaTrackingPartido,
+        {
+          cargaDefensivaEquipo,
+          cargaDefensivaMaxima: cargaDefensiva.cargaMaxima
+        }
+      );
+      const skill = skillBase + puntosDefensaTracking;
+
+      const skillEsperado = obtenerSkillEsperadoJugador(jp.jugador_id);
+      let tendencia = 'flat';
+      if (skillEsperado !== null && Number.isFinite(skillEsperado)) {
+        if (skill > skillEsperado + UMBRAL_TENDENCIA_SKILL) tendencia = 'â†‘';
+        else if (skill < skillEsperado - UMBRAL_TENDENCIA_SKILL) tendencia = 'â†“';
+      }
+
+      if (tendencia !== 'flat') {
+        tendencia = skill > skillEsperado + UMBRAL_TENDENCIA_SKILL ? 'up' : 'down';
+      }
+
+      const dataJugador = {
+        golesJugador,
+        asistenciasJugador,
+        golesDelJugador,
+        asistenciasDelJugador,
+        cagadasJugador,
+        buenasJugadasJugador,
+        skill,
+        skillBase,
+        defensaTrackingScore,
+        puntosDefensaTracking,
+        cargaDefensivaEquipo,
+        cargaDefensivaMaxima: cargaDefensiva.cargaMaxima,
+        tendencia
+      };
+      statsJugadorHistorialCache.set(cacheKey, dataJugador);
+      return dataJugador;
     };
 
     const recordsPartidoConfigHistorial = [
@@ -23327,11 +24246,12 @@ const initApp = () => {
       });
 
       // Separar jugadores por equipo
-      const equipo1 = partido.jugador_partido?.filter(jp => jp.equipo === 1) || [];
-      const equipo2 = partido.jugador_partido?.filter(jp => jp.equipo === 2) || [];
+      const equipo1 = partido.jugador_partido?.filter(jp => normalizarEquipoNumero(jp.equipo) === 1) || [];
+      const equipo2 = partido.jugador_partido?.filter(jp => normalizarEquipoNumero(jp.equipo) === 2) || [];
 
       const metricasPartido = obtenerMetricasPartidoHistorial(partido);
       const { golesEquipo1, golesEquipo2, totalGoles, totalAtajadas, totalCagadas, totalBuenasJugadas, dinamica } = metricasPartido;
+      const equipoGanadorResuelto = resolverEquipoGanadorPartido(partido);
 
       const obtenerCantidadReviewEventoJugador = (tipo, jugadorId) => {
         return obtenerCantidadReviewEventoJugadorHistorial(partido, tipo, jugadorId);
@@ -23342,11 +24262,13 @@ const initApp = () => {
       };
 
       const obtenerCagadasJugadorPartido = (jp) => {
-        const cagadasViejas = Number(jp.cagadas) || 0;
         const cagadasGolReview = obtenerCantidadReviewEventoJugador('cagada_gol', jp.jugador_id);
         const cagadasGolMetadata = cagadasGolReview > 0 ? 0 : contarCagadasGolDesdeMetadataReview(jp.jugador_id);
-        const cagadasSueltasReview = cagadasViejas > 0 ? 0 : obtenerCantidadReviewEventoJugador('cagada', jp.jugador_id);
-        return cagadasViejas + cagadasGolReview + cagadasGolMetadata + cagadasSueltasReview;
+        const cagadasGolGoles = (cagadasGolReview > 0 || cagadasGolMetadata > 0) ? 0 : contarCagadasGolDesdeGolesHistorial(partido, jp.jugador_id);
+        const cagadasDesdeGol = cagadasGolReview || cagadasGolMetadata || cagadasGolGoles;
+        const cagadasBase = resolverCagadasJugadorPartidoTemporada(jp, cagadasDesdeGol);
+        const cagadasSueltasReview = cagadasBase > 0 ? 0 : obtenerCantidadReviewEventoJugador('cagada', jp.jugador_id);
+        return cagadasBase + cagadasSueltasReview;
       };
 
       const obtenerBuenasJugadasJugadorPartido = (jp) => {
@@ -23354,23 +24276,20 @@ const initApp = () => {
       };
 
       // Calcular estadísticas totales
-      const promedioAtajadasJugador = (partido.jugador_partido && partido.jugador_partido.length)
-        ? totalAtajadas / partido.jugador_partido.length
-        : 0;
-
-      const statsJugadorCache = new Map();
+      const rangoDefensaTrackingPartido = calcularRangoDefensaTrackingPartido(partido);
 
       const obtenerStatsJugadorPartido = (jp) => {
+        return calcularStatsJugadorHistorial(partido, jp);
         if (statsJugadorCache.has(jp.jugador_id)) {
           return statsJugadorCache.get(jp.jugador_id);
         }
 
         const golesDelJugador = partido.goles?.filter(gol =>
-          gol.goleador_id === jp.jugador_id && gol.equipo === jp.equipo
+          gol.goleador_id === jp.jugador_id && normalizarEquipoNumero(gol.equipo) === normalizarEquipoNumero(jp.equipo)
         ) || [];
 
         const asistenciasDelJugador = partido.goles?.filter(gol =>
-          gol.asistidor_id === jp.jugador_id && gol.equipo === jp.equipo
+          gol.asistidor_id === jp.jugador_id && normalizarEquipoNumero(gol.equipo) === normalizarEquipoNumero(jp.equipo)
         ) || [];
 
         const golesJugador = golesDelJugador.length;
@@ -23378,7 +24297,7 @@ const initApp = () => {
         const cagadasJugador = obtenerCagadasJugadorPartido(jp);
         const buenasJugadasJugador = obtenerBuenasJugadasJugadorPartido(jp);
 
-        let skill = calcularSkillPartido({
+        const skillBase = calcularSkillPartido({
           goles: golesJugador,
           asistencias: asistenciasJugador,
           mvp: jp.mvp ? 1 : 0,
@@ -23387,15 +24306,10 @@ const initApp = () => {
           puntos: jp.puntos || 0,
           atajadas: jp.atajadas || 0
         });
-
-        const perdioPartido = (partido.equipo_ganador === 1 || partido.equipo_ganador === 2) && partido.equipo_ganador !== jp.equipo;
-        const aportaAtaque = (golesJugador + asistenciasJugador) > 0;
-        const atajaSobrePromedio = (jp.atajadas || 0) > promedioAtajadasJugador;
-
-        if (esDefensor(jp.jugadores) && !aportaAtaque && perdioPartido && !atajaSobrePromedio) {
-          const golesRecibidos = jp.equipo === 1 ? golesEquipo2 : golesEquipo1;
-          skill -= golesRecibidos * PENALIZACION_DEFENSOR_POR_GOL;
-        }
+        const trackingDefensa = obtenerTrackingDefensaJugadorPartido(partido, jp.jugador_id);
+        const defensaTrackingScore = obtenerScoreDefensaTracking(trackingDefensa);
+        const puntosDefensaTracking = calcularPuntosDefensaTrackingPartido(trackingDefensa, rangoDefensaTrackingPartido);
+        let skill = skillBase + puntosDefensaTracking;
 
         const skillEsperado = obtenerSkillEsperadoJugador(jp.jugador_id);
         let tendencia = '=';
@@ -23404,23 +24318,42 @@ const initApp = () => {
           else if (skill < skillEsperado - UMBRAL_TENDENCIA_SKILL) tendencia = '↓';
         }
 
-        const dataJugador = { golesJugador, asistenciasJugador, golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia };
+        const dataJugador = {
+          golesJugador,
+          asistenciasJugador,
+          golesDelJugador,
+          asistenciasDelJugador,
+          cagadasJugador,
+          buenasJugadasJugador,
+          skill,
+          skillBase,
+          defensaTrackingScore,
+          puntosDefensaTracking,
+          tendencia
+        };
         statsJugadorCache.set(jp.jugador_id, dataJugador);
         return dataJugador;
       };
 
-      const skillValoresPartido = (partido.jugador_partido || []).map(jp => obtenerStatsJugadorPartido(jp).skill);
+      const skillValoresPartido = (partido.jugador_partido || [])
+        .map(jp => obtenerStatsJugadorPartido(jp).skill)
+        .filter(skill => Number.isFinite(skill));
       const promedioSkill = skillValoresPartido.length
         ? skillValoresPartido.reduce((acc, val) => acc + val, 0) / skillValoresPartido.length
         : 0;
       const skillMinPartido = skillValoresPartido.length ? Math.min(...skillValoresPartido) : 0;
       const skillMaxPartido = skillValoresPartido.length ? Math.max(...skillValoresPartido) : 0;
       const rangoSkillPartido = skillMaxPartido - skillMinPartido;
-
       const normalizarPuntajePartido = (skill) => {
         if (!Number.isFinite(skill)) return null;
-        if (rangoSkillPartido <= 0.001) return 5.5;
-        return Math.max(1, Math.min(10, 1 + ((skill - skillMinPartido) / rangoSkillPartido) * 9));
+        if (rangoSkillPartido <= 0.001) return HISTORIAL_SCORE_MAX;
+        return Math.max(
+          HISTORIAL_SCORE_MIN,
+          Math.min(
+            HISTORIAL_SCORE_MAX,
+            HISTORIAL_SCORE_MIN + ((skill - skillMinPartido) / rangoSkillPartido) * (HISTORIAL_SCORE_MAX - HISTORIAL_SCORE_MIN)
+          )
+        );
       };
 
       const obtenerClasePuntajeHistorial = (puntaje) => {
@@ -23447,8 +24380,9 @@ const initApp = () => {
       const youtubeReviewLink = obtenerLinkYouTubeReview(partido.youtube_link);
       const youtubeEventosLink = youtubeReviewLink;
       const numeroPartido = partidos.length - index;
-      const equipo1Ganador = partido.equipo_ganador === 1;
-      const equipo2Ganador = partido.equipo_ganador === 2;
+      const equipoGanadorHistorial = equipoGanadorResuelto;
+      const equipo1Ganador = equipoGanadorHistorial === 1;
+      const equipo2Ganador = equipoGanadorHistorial === 2;
       const esEmpate = !equipo1Ganador && !equipo2Ganador;
       const obtenerPuntajeJugadorHistorial = (jp) => normalizarPuntajePartido(obtenerStatsJugadorPartido(jp).skill);
       const ordenarJugadoresPorPuntajeHistorial = (jugadores = []) => [...jugadores].sort((a, b) => {
@@ -23585,17 +24519,63 @@ const initApp = () => {
         `;
       };
 
+      const obtenerDetalleRangoDefensaTrackingHistorial = () => {
+        if (!rangoDefensaTrackingPartido?.usaRango) return '';
+        return `, rango partido ${rangoDefensaTrackingPartido.min.toFixed(1)}-${rangoDefensaTrackingPartido.max.toFixed(1)}`;
+      };
+
+      const obtenerDetalleReferenciaPuntajeHistorial = () => {
+        if (!skillValoresPartido.length) return '';
+        return `10.0 = mejor del partido (${skillMaxPartido.toFixed(1)} crudo), 1.0 = menor del partido (${skillMinPartido.toFixed(1)} crudo)`;
+      };
+
+      const renderizarTituloPuntajeHistorial = ({ skill, defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima }) => {
+        const partes = [`Rendimiento crudo: ${skill.toFixed(1)}`];
+        if (Number.isFinite(puntosDefensaTracking) && puntosDefensaTracking > 0 && Number.isFinite(defensaTrackingScore)) {
+          const cargaTexto = Number.isFinite(cargaDefensivaEquipo) && Number.isFinite(cargaDefensivaMaxima)
+            ? `, carga defensiva ${cargaDefensivaEquipo.toFixed(1)}/${cargaDefensivaMaxima.toFixed(1)}`
+            : '';
+          partes.push(`DEF ajustado por carga: +${puntosDefensaTracking.toFixed(1)} (${defensaTrackingScore.toFixed(1)}/100${obtenerDetalleRangoDefensaTrackingHistorial()}${cargaTexto})`);
+        }
+        const referenciaTexto = obtenerDetalleReferenciaPuntajeHistorial();
+        if (referenciaTexto) partes.push(referenciaTexto);
+        partes.push(`Promedio crudo del partido: ${promedioSkill.toFixed(1)}`);
+        return partes.join('. ');
+      };
+
+      const renderizarChipDefensaTrackingHistorial = ({ defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima }) => {
+        if (!Number.isFinite(puntosDefensaTracking) || puntosDefensaTracking <= 0 || !Number.isFinite(defensaTrackingScore)) return '';
+        const puntosTexto = puntosDefensaTracking.toFixed(1);
+        const scoreTexto = defensaTrackingScore.toFixed(1);
+        const cargaTexto = Number.isFinite(cargaDefensivaEquipo) && Number.isFinite(cargaDefensivaMaxima)
+          ? `, carga ${cargaDefensivaEquipo.toFixed(1)}/${cargaDefensivaMaxima.toFixed(1)}`
+          : '';
+        return `<span class="historial-player-good-note" title="DEF ajustado por carga: +${puntosTexto} al skill (${scoreTexto}/100${obtenerDetalleRangoDefensaTrackingHistorial()}${cargaTexto})"><i class="bi bi-shield-check"></i>+${puntosTexto}</span>`;
+      };
+
       const renderizarFilaJugadorHistorial = (jp) => {
-        const { golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+        const {
+          golesDelJugador,
+          asistenciasDelJugador,
+          cagadasJugador,
+          buenasJugadasJugador,
+          skill,
+          tendencia,
+          defensaTrackingScore,
+          puntosDefensaTracking,
+          cargaDefensivaEquipo,
+          cargaDefensivaMaxima
+        } = obtenerStatsJugadorPartido(jp);
         const puntaje = normalizarPuntajePartido(skill);
         const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
         const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
         const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
         const nombreJugador = jp.jugadores?.nombre || 'Jugador';
-        const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
-        const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
+        const iconoTendencia = tendencia === 'up' ? '&uarr;' : (tendencia === 'down' ? '&darr;' : '=');
+        const tendenciaClase = tendencia === 'up' ? 'is-up' : (tendencia === 'down' ? 'is-down' : 'is-flat');
+        const tituloPuntaje = renderizarTituloPuntajeHistorial({ skill, defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima });
         const puntajeLabel = Number.isFinite(puntaje)
-          ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
+          ? `<div class="historial-rating ${puntajeClase}" title="${escaparHtmlPlano(tituloPuntaje)}">
               <span class="historial-rating-value">${puntajeTexto}</span>
               <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
             </div>`
@@ -23603,6 +24583,7 @@ const initApp = () => {
         const buenasJugadasHtml = buenasJugadasJugador > 0
           ? `<span class="historial-player-good-note" title="${buenasJugadasJugador} buenas jugadas"><i class="bi bi-stars"></i>${buenasJugadasJugador}</span>`
           : '';
+        const defensaTrackingHtml = renderizarChipDefensaTrackingHistorial({ defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima });
 
         return `
           <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
@@ -23617,6 +24598,7 @@ const initApp = () => {
                 <span class="historial-stat-lane is-mistakes">
                   ${renderizarTextoCarrilHistorial({ tipo: 'mistake', icono: '<i class="bi bi-exclamation-triangle-fill"></i>', cantidad: cagadasJugador, label: 'cagadas' })}
                   ${buenasJugadasHtml}
+                  ${defensaTrackingHtml}
                 </span>
               </div>
             </div>
@@ -23636,7 +24618,18 @@ const initApp = () => {
       };
 
       const renderizarFilaJugadorHistorialCompacta = (jp) => {
-        const { golesDelJugador, asistenciasDelJugador, cagadasJugador, buenasJugadasJugador, skill, tendencia } = obtenerStatsJugadorPartido(jp);
+        const {
+          golesDelJugador,
+          asistenciasDelJugador,
+          cagadasJugador,
+          buenasJugadasJugador,
+          skill,
+          tendencia,
+          defensaTrackingScore,
+          puntosDefensaTracking,
+          cargaDefensivaEquipo,
+          cargaDefensivaMaxima
+        } = obtenerStatsJugadorPartido(jp);
         const puntaje = normalizarPuntajePartido(skill);
         const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
         const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
@@ -23660,11 +24653,16 @@ const initApp = () => {
         if (buenasJugadasJugador > 0) {
           stats.push(crearChipConteoHistorial('good', 'BJ', buenasJugadasJugador, 'Buenas jugadas'));
         }
+        const defensaTrackingHtml = renderizarChipDefensaTrackingHistorial({ defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima });
+        if (defensaTrackingHtml) {
+          stats.push(defensaTrackingHtml);
+        }
 
-        const iconoTendencia = tendencia === '↑' ? '↑' : (tendencia === '↓' ? '↓' : '=');
-        const tendenciaClase = iconoTendencia === '↑' ? 'is-up' : (iconoTendencia === '↓' ? 'is-down' : 'is-flat');
+        const iconoTendencia = tendencia === 'up' ? '&uarr;' : (tendencia === 'down' ? '&darr;' : '=');
+        const tendenciaClase = tendencia === 'up' ? 'is-up' : (tendencia === 'down' ? 'is-down' : 'is-flat');
+        const tituloPuntaje = renderizarTituloPuntajeHistorial({ skill, defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima });
         const puntajeLabel = Number.isFinite(puntaje)
-          ? `<div class="historial-rating ${puntajeClase}" title="Rendimiento crudo: ${skill.toFixed(1)}. Promedio del partido: ${promedioSkill.toFixed(1)}">
+          ? `<div class="historial-rating ${puntajeClase}" title="${escaparHtmlPlano(tituloPuntaje)}">
               <span class="historial-rating-value">${puntajeTexto}</span>
               <span class="historial-rating-trend ${tendenciaClase}">${iconoTendencia}</span>
             </div>`
@@ -25152,7 +26150,7 @@ const initApp = () => {
         stats.maxDerrotas = Math.max(stats.maxDerrotas, stats.derrotasActuales);
 
         const atajadas = Number(jp.atajadas) || 0;
-        const cagadas = Number(jp.cagadas) || 0;
+        const cagadas = calcularCagadasParticipacionConGoles(jp, partido.goles || []);
         stats.atajadas += atajadas;
         stats.cagadas += cagadas;
         totales.atajadas += atajadas;
@@ -25627,6 +26625,23 @@ const initApp = () => {
         estadisticas = estadisticas.filter(jugador => (jugador.pj || 0) >= filtroPartidos);
       }
 
+      const obtenerIdRankingJugador = (jugador) => jugador?.jugadores?.id || jugador?.jugador_id || jugador?.id || null;
+      const partidoIdsDefensaTracking = obtenerPartidoIdsEstadisticasJugadores(estadisticas);
+      const promediosDefensaTracking = await cargarPromediosDefensaTrackingJugadores(
+        estadisticas.map(obtenerIdRankingJugador),
+        partidoIdsDefensaTracking
+      );
+      estadisticas = estadisticas.map(jugador => {
+        const jugadorId = obtenerIdRankingJugador(jugador);
+        const defensaTracking = promediosDefensaTracking.get(String(jugadorId || '')) || {};
+        return {
+          ...jugador,
+          scoreDefensivoPromedio: defensaTracking.scoreDefensivoPromedio ?? null,
+          puntosDefensaTrackingPromedio: defensaTracking.puntosDefensaTrackingPromedio ?? 0,
+          partidosConDefensaTracking: defensaTracking.partidosConDefensaTracking ?? 0
+        };
+      });
+
       // Función para calcular rendimiento individual
       const calcularRendimiento = (jugador) => {
         const pj = jugador.pj || 1;
@@ -25642,8 +26657,9 @@ const initApp = () => {
 
         const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
         const rendArquero = atajadasPP * 0.4;
+        const rendDefensaTracking = Number(jugador.puntosDefensaTrackingPromedio) || 0;
 
-        return rendAtaque + rendArquero;
+        return rendAtaque + rendArquero + rendDefensaTracking;
       };
 
       // Crear ranking ordenado por skill individual
@@ -25684,9 +26700,15 @@ const initApp = () => {
             aVal = a.jugadores?.nombre || '';
             bVal = b.jugadores?.nombre || '';
             return order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+          } else if (field === 'skill') {
+            aVal = a.rendimiento || 0;
+            bVal = b.rendimiento || 0;
           } else if (field === 'goles_asist') {
             aVal = (a.goles || 0) + (a.asistencias || 0);
             bVal = (b.goles || 0) + (b.asistencias || 0);
+          } else if (field === 'defensa') {
+            aVal = a.puntosDefensaTrackingPromedio || 0;
+            bVal = b.puntosDefensaTrackingPromedio || 0;
           } else if (field === 'ataque') {
             const pjA = a.pj || 1;
             const pjB = b.pj || 1;
@@ -25735,6 +26757,7 @@ const initApp = () => {
                 <th class="text-center sortable-ranking" data-sort="skill" style="width: 60px; cursor: pointer;">Skill <i class="bi bi-arrow-down-up ms-1"></i></th>
                 <th class="text-center sortable-ranking" data-sort="ataque" style="width: 60px; cursor: pointer;">🎯 Ataque <i class="bi bi-arrow-down-up ms-1"></i></th>
                 <th class="text-center sortable-ranking" data-sort="arquero" style="width: 60px; cursor: pointer;">🥅 Arquero <i class="bi bi-arrow-down-up ms-1"></i></th>
+                <th class="text-center sortable-ranking" data-sort="defensa" style="width: 55px; cursor: pointer;">DEF <i class="bi bi-arrow-down-up ms-1"></i></th>
                 <th class="text-center sortable-ranking" data-sort="goles_asist" style="width: 50px; cursor: pointer;">G+A <i class="bi bi-arrow-down-up ms-1"></i></th>
                 <th class="text-center sortable-ranking" data-sort="mvp" style="width: 40px; cursor: pointer;">MVP <i class="bi bi-arrow-down-up ms-1"></i></th>
                 <th class="text-center sortable-ranking" data-sort="ace" style="width: 40px; cursor: pointer;">ACE <i class="bi bi-arrow-down-up ms-1"></i></th>
@@ -25765,6 +26788,15 @@ const initApp = () => {
 
           const rendAtaque = (golesPP * 5) + (mvpPP * 7) + (acePP * 6) + (asistPP * 4) - (cagadasPP * 5) + (puntosPP * 2);
           const rendArquero = atajadasPP * 0.4;
+          const rendDefensaTracking = Number(jugador.puntosDefensaTrackingPromedio) || 0;
+          const scoreDefensivoPromedio = Number(jugador.scoreDefensivoPromedio);
+          const partidosConDefensaTracking = Number(jugador.partidosConDefensaTracking) || 0;
+          const defensaTrackingTexto = partidosConDefensaTracking > 0 && Number.isFinite(scoreDefensivoPromedio)
+            ? formatearImpactoSkillDefensaTracking(rendDefensaTracking)
+            : '-';
+          const defensaTrackingDetalle = partidosConDefensaTracking > 0 && Number.isFinite(scoreDefensivoPromedio)
+            ? `Score defensivo promedio: ${scoreDefensivoPromedio.toFixed(1)}/100 en ${partidosConDefensaTracking} partidos. Bonus relativo del ranking = ${formatearImpactoSkillDefensaTracking(rendDefensaTracking)}`
+            : 'Sin tracking defensivo cargado = +0.0';
 
           const tooltipContent = `Cálculo detallado (por partido):
 ATAQUE:
@@ -25778,6 +26810,9 @@ Subtotal Ataque: ${rendAtaque.toFixed(1)}
 
 ARQUERO:
 • Atajadas: ${atajadasPP.toFixed(2)} × 0.4 = ${rendArquero.toFixed(1)}
+
+DEFENSA:
+â€¢ ${defensaTrackingDetalle}
 
 TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
@@ -25798,6 +26833,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
               </td>
               <td class="text-center">
                 <span class="text-info fw-bold">${rendArquero.toFixed(1)}</span>
+              </td>
+              <td class="text-center">
+                <span class="text-primary fw-bold">${defensaTrackingTexto}</span>
               </td>
               <td class="text-center text-success">${golesAsistencias}</td>
               <td class="text-center text-warning">${jugador.mvp_count || 0}</td>
@@ -25906,6 +26944,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
   // Variable global para almacenar todos los partidos cargados
   let todosLosPartidos = [];
+  let partidosEscalaHistorialGlobal = [];
 
   // ===== Tag Input System =====
   const tagInputState = {
@@ -26113,7 +27152,9 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       partidosFiltrados = partidosFiltrados.slice(0, cantidad);
     }
 
-    mostrarPartidosBasicos(container, partidosFiltrados);
+    mostrarPartidosBasicos(container, partidosFiltrados, {
+      partidosEscala: partidosEscalaHistorialGlobal.length ? partidosEscalaHistorialGlobal : todosLosPartidos
+    });
 
     // Mostrar contador de resultados
     const hayFiltros = jugadorId || companeroIds.length > 0 || rivalIds.length > 0 || resultado;
@@ -26259,18 +27300,21 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   };
 
   function calcularMarcadorPartidoPortada(partido) {
-    const marcador = { equipo1: 0, equipo2: 0 };
-    (partido?.goles || []).forEach(gol => {
-      let equipoGol = Number(gol.equipo);
-      if (equipoGol !== 1 && equipoGol !== 2) {
-        const jugadorPartido = partido?.jugador_partido?.find(jp => jp.jugador_id === gol.goleador_id);
-        equipoGol = Number(jugadorPartido?.equipo);
-      }
+    const marcadorGoles = calcularMarcadorDesdeGolesPartido(partido);
+    if (marcadorGoles.total > 0) {
+      return { equipo1: marcadorGoles.equipo1, equipo2: marcadorGoles.equipo2 };
+    }
 
-      if (equipoGol === 1) marcador.equipo1 += 1;
-      if (equipoGol === 2) marcador.equipo2 += 1;
-    });
-    return marcador;
+    const marcadorGuardado = parsearMarcadorPortada(partido?.resultado);
+    const equipoGanador = normalizarEquipoNumero(partido?.equipo_ganador);
+    const totalGuardado = marcadorGuardado.equipo1 + marcadorGuardado.equipo2;
+    if (totalGuardado <= 0) return marcadorGuardado;
+
+    const mayor = Math.max(marcadorGuardado.equipo1, marcadorGuardado.equipo2);
+    const menor = Math.min(marcadorGuardado.equipo1, marcadorGuardado.equipo2);
+    if (equipoGanador === 1) return { equipo1: mayor, equipo2: menor };
+    if (equipoGanador === 2) return { equipo1: menor, equipo2: mayor };
+    return marcadorGuardado;
   }
 
   function obtenerDatosPortadaPartidoGuardado(partido, clips = []) {
@@ -26282,12 +27326,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       cancha: partido?.cancha || '',
       temporada: partido?.temporadas?.nombre || '',
       marcador,
+      marcadorFinal: marcador,
       equipoGanador: resolverEquipoGanadorPortada({
-        equipoGanador: partido?.equipo_ganador,
+        equipoGanador: resolverEquipoGanadorPartido(partido),
         marcador
       }),
-      equipo1: jugadores.filter(jp => Number(jp.equipo) === 1),
-      equipo2: jugadores.filter(jp => Number(jp.equipo) === 2)
+      equipo1: jugadores.filter(jp => normalizarEquipoNumero(jp.equipo) === 1),
+      equipo2: jugadores.filter(jp => normalizarEquipoNumero(jp.equipo) === 2)
     };
   }
 
@@ -27196,6 +28241,15 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       }
     }
 
+    if (window.partidoEditandoId && columnaCagadaDisponible) {
+      const totalesCagadasPartido = crearTotalesCagadasJugadorPartido({ golesPartido: updates });
+      await sincronizarCagadasJugadorPartido(
+        window.partidoEditandoId,
+        window.partidoEditandoDatos?.jugador_partido || [],
+        totalesCagadasPartido
+      );
+    }
+
     console.log('✅ Tiempos de goles actualizados:', updates);
   }
 
@@ -27772,16 +28826,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     const jugadorData = partido.jugador_partido?.find(jp => jp.jugador_id === jugadorId);
     if (!jugadorData) return null;
 
-    const equipoJugador = jugadorData.equipo;
-    const equipoGanador = partido.equipo_ganador;
-
-    if (equipoGanador === null || equipoGanador === 0) {
-      return 'empate';
-    } else if (equipoGanador === equipoJugador) {
-      return 'victoria';
-    } else {
-      return 'derrota';
-    }
+    return obtenerResultadoEquipoPartido(partido, jugadorData.equipo);
   };
 
   const crearParejaMundial = (jugadorA, jugadorB) => ({
@@ -27837,12 +28882,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   const obtenerParejasPorEquipo = (partido) => {
     const equipos = new Map();
     (partido.jugador_partido || []).forEach(jp => {
-      if (!jp.jugador_id || !jp.equipo) return;
-      if (!equipos.has(jp.equipo)) equipos.set(jp.equipo, new Map());
-      equipos.get(jp.equipo).set(jp.jugador_id, {
+      const equipo = normalizarEquipoNumero(jp.equipo);
+      if (!jp.jugador_id || (equipo !== 1 && equipo !== 2)) return;
+      if (!equipos.has(equipo)) equipos.set(equipo, new Map());
+      equipos.get(equipo).set(jp.jugador_id, {
         id: jp.jugador_id,
         nombre: jp.jugadores?.nombre || `Jugador ${jp.jugador_id}`,
-        equipo: jp.equipo
+        equipo
       });
     });
 
@@ -27860,9 +28906,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   };
 
   const determinarResultadoEquipo = (partido, equipo) => {
-    const equipoGanador = partido.equipo_ganador;
-    if (equipoGanador === null || equipoGanador === 0) return 'empate';
-    return equipoGanador === equipo ? 'victoria' : 'derrota';
+    return obtenerResultadoEquipoPartido(partido, equipo);
   };
 
   const registrarPartidosJugadoresParejas = (partido) => {
@@ -28945,7 +29989,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
 
       let query = supabase
         .from('partidos')
-        .select(`*, jugador_partido(*, jugadores(id, nombre))`)
+        .select(`
+          *,
+          jugador_partido(*, jugadores(id, nombre)),
+          goles(id, goleador_id, equipo)
+        `)
         .order('fecha', { ascending: true });
 
       if (temporadaSeleccionada && temporadaSeleccionada !== 'all') {

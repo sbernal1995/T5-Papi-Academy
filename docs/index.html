@@ -116,7 +116,7 @@
               /* Team cards específicas */
         .team-card {
           max-width: 480px;
-          min-height: 780px;
+          min-height: 520px;
           position: relative;
           z-index: 1;
         }
@@ -4061,6 +4061,247 @@
         margin-top: 8px;
       }
 
+      .matchmaking-live-status {
+        background: rgba(76, 141, 255, 0.08);
+        border: 1px solid rgba(76, 141, 255, 0.22);
+        border-radius: 12px;
+        color: #b9c4d8;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        padding: 10px 14px;
+      }
+
+      .matchmaking-live-help + .form-text {
+        display: none;
+      }
+
+      #config-section > .alert-info:not(.matchmaking-live-intro) {
+        display: none !important;
+      }
+
+      .matchmaking-live-pitch {
+        background: #0f2418;
+        border: 1px solid rgba(53, 211, 153, 0.16);
+        border-radius: 14px;
+        overflow: hidden;
+        padding: 10px;
+        position: relative;
+      }
+
+      .matchmaking-live-pitch__inner {
+        aspect-ratio: 2 / 1;
+        min-height: 260px;
+        position: relative;
+      }
+
+      .matchmaking-live-pitch__inner svg {
+        display: block;
+        height: 100%;
+        width: 100%;
+      }
+
+      .matchmaking-live-tag {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        position: absolute;
+        text-transform: uppercase;
+        top: 12px;
+      }
+
+      .matchmaking-live-tag.is-team-1 {
+        color: #4c8dff;
+        left: 14px;
+      }
+
+      .matchmaking-live-tag.is-team-2 {
+        color: #ff5d5d;
+        right: 14px;
+      }
+
+      .matchmaking-keeper-cycle {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        left: 50%;
+        max-width: min(72%, 520px);
+        pointer-events: auto;
+        position: absolute;
+        top: 9px;
+        transform: translateX(-50%);
+        z-index: 4;
+      }
+
+      .matchmaking-keeper-cycle__teams {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+      }
+
+      .matchmaking-keeper-cycle__teams span {
+        align-items: center;
+        background: rgba(10, 15, 30, 0.72);
+        border: 1px solid color-mix(in srgb, var(--team-color) 55%, transparent);
+        border-radius: 999px;
+        color: #e7ecf5;
+        display: inline-flex;
+        font-size: 0.63rem;
+        font-weight: 850;
+        gap: 5px;
+        line-height: 1;
+        padding: 5px 8px;
+        white-space: nowrap;
+      }
+
+      .matchmaking-keeper-cycle__teams b {
+        color: #f6c453;
+        font-weight: 950;
+      }
+
+      .matchmaking-keeper-cycle__teams em {
+        color: var(--team-color);
+        font-style: normal;
+        font-weight: 950;
+      }
+
+      .matchmaking-keeper-cycle__controls {
+        align-items: center;
+        display: flex;
+        gap: 7px;
+        justify-content: center;
+      }
+
+      .matchmaking-keeper-cycle__step {
+        background: rgba(10, 15, 30, 0.72);
+        border: 1px solid rgba(231, 236, 245, 0.22);
+        border-radius: 999px;
+        color: rgba(231, 236, 245, 0.82);
+        font-size: 0.62rem;
+        font-weight: 900;
+        line-height: 1;
+        padding: 5px 7px;
+      }
+
+      .matchmaking-keeper-cycle__dots {
+        display: flex;
+        gap: 5px;
+      }
+
+      .matchmaking-keeper-cycle__dots button,
+      .matchmaking-keeper-cycle__toggle {
+        appearance: none;
+        background: rgba(10, 15, 30, 0.72);
+        border: 1px solid rgba(231, 236, 245, 0.26);
+        color: #e7ecf5;
+        cursor: pointer;
+      }
+
+      .matchmaking-keeper-cycle__dots button {
+        border-radius: 999px;
+        height: 8px;
+        padding: 0;
+        width: 8px;
+      }
+
+      .matchmaking-keeper-cycle__dots button.is-active {
+        background: #f6c453;
+        border-color: #f6c453;
+      }
+
+      .matchmaking-keeper-cycle__toggle {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        height: 22px;
+        justify-content: center;
+        padding: 0;
+        width: 22px;
+      }
+
+      .matchmaking-live-marker {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        left: var(--marker-x);
+        position: absolute;
+        top: var(--marker-y);
+        transform: translate(-50%, -50%);
+        transition: left 0.65s ease, top 0.65s ease;
+        z-index: 2;
+      }
+
+      .matchmaking-live-marker__disc {
+        align-items: center;
+        background: rgba(10, 15, 30, 0.92);
+        border: 2px solid var(--team-color);
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34);
+        color: #fff;
+        display: flex;
+        font-size: 0.72rem;
+        font-weight: 800;
+        height: 34px;
+        justify-content: center;
+        width: 34px;
+      }
+
+      .matchmaking-live-marker.is-fallback .matchmaking-live-marker__disc {
+        background: rgba(10, 15, 30, 0.76);
+        border-style: dashed;
+      }
+
+      .matchmaking-live-marker.is-keeper .matchmaking-live-marker__disc {
+        background: rgba(246, 196, 83, 0.16);
+        border-color: #f6c453;
+        box-shadow: 0 0 0 3px rgba(246, 196, 83, 0.14), 0 8px 18px rgba(0, 0, 0, 0.34);
+        color: #fff8db;
+      }
+
+      .matchmaking-live-marker__name {
+        background: rgba(10, 15, 30, 0.78);
+        border-radius: 6px;
+        color: #e7ecf5;
+        font-size: 0.68rem;
+        font-weight: 700;
+        max-width: 92px;
+        overflow: hidden;
+        padding: 2px 6px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .matchmaking-live-untracked {
+        align-items: center;
+        color: rgba(231, 236, 245, 0.72);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 0.72rem;
+        font-weight: 760;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .matchmaking-live-untracked span {
+        color: rgba(231, 236, 245, 0.52);
+        font-weight: 850;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-live-untracked b {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        color: #e7ecf5;
+        font-size: 0.7rem;
+        padding: 3px 7px;
+      }
+
       .matchmaking-teams-grid {
         display: grid;
         gap: 20px;
@@ -4235,6 +4476,486 @@
         text-align: center;
       }
 
+      .matchmaking-harmony {
+        background: var(--mb-card);
+        border: 1px solid var(--mb-line);
+        border-radius: 12px;
+        padding: 18px;
+      }
+
+      .matchmaking-harmony__title {
+        align-items: flex-start;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .matchmaking-harmony__title h3 {
+        color: var(--mb-text);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1.25rem;
+        font-weight: 800;
+        margin: 0;
+      }
+
+      .matchmaking-harmony__title p {
+        color: var(--mb-muted);
+        font-size: 0.78rem;
+        line-height: 1.35;
+        margin: 2px 0 0;
+      }
+
+      .matchmaking-harmony__title > span {
+        color: var(--mb-skill);
+        flex: 0 0 auto;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-harmony__grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+      }
+
+      .matchmaking-pitch-card {
+        background: rgba(14, 21, 38, 0.72);
+        border: 1px solid var(--mb-line);
+        border-top: 3px solid var(--team-color);
+        border-radius: 12px;
+        overflow: hidden;
+        padding: 14px 14px 16px;
+      }
+
+      .matchmaking-pitch-card__header {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .matchmaking-pitch-card__header > div {
+        min-width: 0;
+      }
+
+      .matchmaking-pitch-card__header h4 {
+        color: var(--mb-text);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1.18rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        line-height: 1;
+        margin: 0;
+      }
+
+      .matchmaking-pitch-card__header span {
+        color: var(--mb-muted);
+        font-size: 0.72rem;
+      }
+
+      .matchmaking-pitch-card__header strong {
+        color: var(--team-color);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 2.4rem;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .matchmaking-pitch-card__attack {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        color: var(--mb-text) !important;
+        font-size: 0.74rem !important;
+        font-weight: 850;
+        padding: 5px 8px;
+        white-space: nowrap;
+      }
+
+      .matchmaking-harmony-metrics {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin: 8px 0 12px;
+      }
+
+      .matchmaking-harmony-metric {
+        min-width: 0;
+      }
+
+      .matchmaking-harmony-metric__top {
+        align-items: center;
+        color: var(--mb-muted);
+        display: flex;
+        font-size: 0.72rem;
+        gap: 8px;
+        justify-content: space-between;
+        margin-bottom: 5px;
+      }
+
+      .matchmaking-harmony-metric__top strong {
+        color: var(--mb-text);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .matchmaking-harmony-bar {
+        background: rgba(2, 6, 23, 0.7);
+        border-radius: 999px;
+        height: 5px;
+        overflow: hidden;
+      }
+
+      .matchmaking-harmony-bar__fill {
+        border-radius: inherit;
+        display: block;
+        height: 100%;
+      }
+
+      .matchmaking-harmony-bar__fill.is-good {
+        background: #35d399;
+      }
+
+      .matchmaking-harmony-bar__fill.is-warn {
+        background: #f5c443;
+      }
+
+      .matchmaking-harmony-bar__fill.is-bad {
+        background: #ff5d5d;
+      }
+
+      .matchmaking-pitch {
+        align-items: center;
+        aspect-ratio: 2 / 1;
+        background: #0f2418;
+        border: 1px solid rgba(53, 211, 153, 0.16);
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        min-height: 250px;
+        overflow: hidden;
+        padding: 8px;
+        position: relative;
+      }
+
+      .matchmaking-pitch-attack {
+        background: rgba(2, 6, 23, 0.68);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        border-radius: 999px;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        padding: 6px 10px;
+        position: absolute;
+        top: 10px;
+        z-index: 6;
+      }
+
+      .matchmaking-pitch-attack.is-left {
+        left: 12px;
+      }
+
+      .matchmaking-pitch-attack.is-right {
+        right: 12px;
+      }
+
+      .matchmaking-harmony-svg {
+        display: block;
+        height: 100%;
+        max-height: 100%;
+        max-width: 100%;
+        position: relative;
+        width: 100%;
+        z-index: 1;
+      }
+
+      .matchmaking-harmony-bg {
+        fill: #0f2418;
+      }
+
+      .matchmaking-harmony-lines {
+        fill: none;
+        pointer-events: none;
+        stroke: rgba(231, 236, 245, 0.24);
+        stroke-width: 0.32;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .matchmaking-harmony-layers {
+        isolation: isolate;
+      }
+
+      .matchmaking-harmony-player-layer {
+        mix-blend-mode: screen;
+        opacity: 0.42;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .matchmaking-harmony-player-layer.is-dimmed {
+        opacity: 0.04;
+      }
+
+      .matchmaking-harmony-player-layer.is-focus {
+        opacity: 0.68;
+      }
+
+      .matchmaking-harmony-player-layer ellipse,
+      .matchmaking-harmony-overlap-layer ellipse {
+        shape-rendering: auto;
+      }
+
+      .matchmaking-harmony-overlap-layer {
+        fill: #ff6bd6;
+        mix-blend-mode: normal;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .matchmaking-pitch-card.is-showing-overlap .matchmaking-harmony-overlap-layer {
+        opacity: 0.48;
+      }
+
+      .matchmaking-pitch-card.is-showing-overlap .matchmaking-harmony-overlap-layer.is-dimmed {
+        opacity: 0.18;
+      }
+
+      .matchmaking-harmony-marker {
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .matchmaking-harmony-marker.is-dimmed {
+        opacity: 0.14;
+      }
+
+      .matchmaking-harmony-marker circle {
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+        vector-effect: non-scaling-stroke;
+      }
+
+      .matchmaking-harmony-marker text {
+        fill: #f8fafc;
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 2.25px;
+        font-weight: 900;
+      }
+
+      .matchmaking-harmony-empty-pitch {
+        align-items: center;
+        aspect-ratio: 2 / 1;
+        color: var(--mb-muted);
+        display: flex;
+        font-size: 0.82rem;
+        font-weight: 700;
+        justify-content: center;
+        min-height: 210px;
+      }
+
+      .matchmaking-harmony-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .matchmaking-harmony-chip {
+        align-items: center;
+        background: rgba(8, 13, 26, 0.72);
+        border: 1px solid var(--mb-line);
+        border-radius: 999px;
+        color: var(--mb-text);
+        display: inline-flex;
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 800;
+        gap: 7px;
+        min-height: 31px;
+        padding: 5px 10px 5px 8px;
+      }
+
+      .matchmaking-harmony-chip:hover,
+      .matchmaking-harmony-chip.is-active {
+        border-color: rgba(248, 250, 252, 0.72);
+      }
+
+      .matchmaking-harmony-chip:focus-visible,
+      .matchmaking-overlap-toggle:focus-visible {
+        outline: 2px solid #38bdf8;
+        outline-offset: 2px;
+      }
+
+      .matchmaking-harmony-chip__swatch {
+        border-radius: 999px;
+        flex: 0 0 10px;
+        height: 10px;
+        width: 10px;
+      }
+
+      .matchmaking-harmony-axis {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .matchmaking-harmony-axis > span {
+        color: var(--mb-muted);
+        flex: 0 0 auto;
+        font-size: 0.64rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-harmony-axis__track {
+        flex: 1 1 auto;
+        height: 38px;
+        min-width: 0;
+        position: relative;
+      }
+
+      .matchmaking-harmony-axis__track::before {
+        background: linear-gradient(90deg, rgba(96, 165, 250, 0.48), rgba(148, 163, 184, 0.22), rgba(251, 113, 133, 0.48));
+        border-radius: 999px;
+        content: '';
+        height: 3px;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      .matchmaking-harmony-axis__track::after {
+        background: var(--mb-line);
+        bottom: 8px;
+        content: '';
+        left: 50%;
+        position: absolute;
+        top: 8px;
+        width: 1px;
+      }
+
+      .matchmaking-harmony-axis__dot {
+        border: 2px solid rgba(8, 13, 26, 0.95);
+        border-radius: 999px;
+        height: 12px;
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        transition: opacity 0.2s ease;
+        width: 12px;
+        z-index: 2;
+      }
+
+      .matchmaking-harmony-axis__name {
+        color: var(--mb-muted);
+        font-size: 0.62rem;
+        font-style: normal;
+        font-weight: 800;
+        max-width: 68px;
+        overflow: hidden;
+        position: absolute;
+        text-overflow: ellipsis;
+        transform: translateX(-50%);
+        transition: opacity 0.2s ease;
+        white-space: nowrap;
+      }
+
+      .matchmaking-harmony-axis__name.is-up {
+        top: 0;
+      }
+
+      .matchmaking-harmony-axis__name.is-down {
+        bottom: 0;
+      }
+
+      .matchmaking-harmony-axis__dot.is-dimmed,
+      .matchmaking-harmony-axis__name.is-dimmed {
+        opacity: 0.18;
+      }
+
+      .matchmaking-harmony-bench {
+        align-items: center;
+        color: var(--mb-muted);
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        min-width: 0;
+      }
+
+      .matchmaking-harmony-bench > span {
+        flex: 0 0 auto;
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .matchmaking-harmony-bench__list {
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .matchmaking-harmony-bench-chip,
+      .matchmaking-harmony-bench-empty {
+        align-items: center;
+        border: 1px dashed rgba(148, 163, 184, 0.32);
+        border-radius: 999px;
+        color: var(--mb-muted);
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 800;
+        gap: 6px;
+        padding: 4px 9px;
+      }
+
+      .matchmaking-harmony-bench-chip span {
+        background: #5b6780;
+        border-radius: 999px;
+        height: 8px;
+        width: 8px;
+      }
+
+      .matchmaking-overlap-toggle {
+        align-items: center;
+        background: transparent;
+        border: 1px solid var(--mb-line);
+        border-radius: 999px;
+        color: var(--mb-muted);
+        display: inline-flex;
+        flex: 0 0 auto;
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 900;
+        gap: 7px;
+        padding: 5px 11px;
+      }
+
+      .matchmaking-overlap-toggle span {
+        border: 2px solid #ff6bd6;
+        border-radius: 3px;
+        height: 11px;
+        width: 11px;
+      }
+
+      .matchmaking-overlap-toggle.is-active {
+        border-color: #ff6bd6;
+        color: var(--mb-text);
+      }
+
+      .matchmaking-overlap-toggle:disabled {
+        cursor: not-allowed;
+        opacity: 0.44;
+      }
+
       .matchmaking-stats {
         background: var(--mb-card);
         border: 1px solid var(--mb-line);
@@ -4353,13 +5074,502 @@
         border-color: var(--mb-line) !important;
       }
 
-      @media (max-width: 720px) {
+      .matchmaking-layout-grid {
+        align-items: start;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(220px, 0.72fr) minmax(360px, 1.15fr) minmax(220px, 0.72fr);
+      }
+
+      .matchmaking-beam__scores {
+        align-items: center;
+      }
+
+      .matchmaking-beam__chip {
+        border: 1px solid rgba(53, 211, 153, 0.35);
+        border-radius: 999px;
+        color: var(--mb-skill);
+        display: inline-flex;
+        flex: 0 1 auto;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        line-height: 1;
+        padding: 7px 14px;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      .matchmaking-beam__chip.is-even {
+        background: rgba(53, 211, 153, 0.08);
+      }
+
+      .matchmaking-beam__chip.is-edge {
+        background: rgba(245, 196, 67, 0.09);
+        border-color: rgba(245, 196, 67, 0.32);
+        color: var(--mb-amber);
+      }
+
+      .matchmaking-beam__chip.is-gap {
+        background: rgba(255, 93, 93, 0.08);
+        border-color: rgba(255, 93, 93, 0.28);
+        color: #ff9a9a;
+      }
+
+      .matchmaking-team-panel {
+        padding: 14px;
+      }
+
+      .matchmaking-team-panel__header {
+        margin-bottom: 10px;
+      }
+
+      .matchmaking-team-panel__sub {
+        font-size: 0.62rem;
+      }
+
+      .matchmaking-match-facts {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--mb-line);
+        border-radius: 10px;
+        padding: 8px;
+      }
+
+      .matchmaking-match-facts header {
+        align-items: baseline;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+
+      .matchmaking-match-facts header span {
+        color: var(--mb-text);
+        font-size: 0.7rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-match-facts header strong {
+        color: var(--mb-muted);
+        font-size: 0.66rem;
+        font-weight: 800;
+      }
+
+      .matchmaking-match-facts__grid {
+        display: grid;
+        gap: 5px;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+      }
+
+      .matchmaking-match-fact {
+        align-items: flex-start;
+        background: rgba(8, 13, 26, 0.32);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 7px;
+        display: flex;
+        gap: 6px;
+        min-height: 52px;
+        padding: 7px 8px;
+      }
+
+      .matchmaking-match-fact i {
+        color: var(--mb-skill);
+        flex: 0 0 auto;
+        font-size: 0.84rem;
+        line-height: 1.1;
+        margin-top: 1px;
+      }
+
+      .matchmaking-match-fact h4 {
+        color: var(--mb-text);
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 0.69rem;
+        font-weight: 900;
+        line-height: 1.15;
+        margin: 0 0 2px;
+      }
+
+      .matchmaking-match-fact p {
+        color: var(--mb-muted);
+        font-size: 0.65rem;
+        font-weight: 720;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .matchmaking-match-fact strong {
+        color: var(--mb-text);
+        font-weight: 900;
+      }
+
+      .matchmaking-player-row {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        min-height: 36px;
+        padding: 8px;
+      }
+
+      .matchmaking-player-row__grip {
+        color: var(--mb-muted);
+        flex: 0 0 auto;
+        font-size: 0.9rem;
+        opacity: 0.62;
+      }
+
+      .matchmaking-player-row__body {
+        display: grid;
+        flex: 1 1 auto;
+        gap: 2px;
+        margin-right: auto;
+        min-width: 0;
+      }
+
+      .matchmaking-player-row__name {
+        display: block;
+      }
+
+      .matchmaking-player-row__meta {
+        color: var(--mb-muted);
+        display: block;
+        font-size: 0.68rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        line-height: 1.15;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .matchmaking-team-totals {
+        border-top: 1px solid var(--mb-line);
+        margin-top: 12px;
+        padding-top: 10px;
+      }
+
+      .matchmaking-team-total-row {
+        align-items: baseline;
+        color: var(--mb-muted);
+        display: flex;
+        font-size: 0.78rem;
+        font-variant-numeric: tabular-nums;
+        justify-content: space-between;
+        padding: 3px 0;
+      }
+
+      .matchmaking-team-total-row b,
+      .matchmaking-team-total-row span:last-child {
+        color: var(--mb-text);
+      }
+
+      .matchmaking-team-total-row b {
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1rem;
+      }
+
+      .matchmaking-analysis-panel {
+        background: var(--mb-card);
+        border: 1px solid var(--mb-line);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .matchmaking-analysis-panel h3 {
+        color: var(--mb-text);
+        font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        margin: 0 0 2px;
+        text-align: center;
+      }
+
+      .matchmaking-analysis-panel > p {
+        color: var(--mb-muted);
+        font-size: 0.72rem;
+        line-height: 1.35;
+        margin: 0 0 12px;
+        text-align: center;
+      }
+
+      .matchmaking-dim + .matchmaking-dim {
+        margin-top: 2px;
+      }
+
+      .matchmaking-dim__head {
+        align-items: center;
+        appearance: none;
+        background: transparent;
+        border: 0;
+        border-radius: 10px;
+        color: inherit;
+        cursor: pointer;
+        display: grid;
+        font: inherit;
+        gap: 10px;
+        grid-template-columns: 64px minmax(0, 1fr) 64px;
+        padding: 9px 10px;
+        width: 100%;
+      }
+
+      .matchmaking-dim__head:hover,
+      .matchmaking-dim__head:focus-visible {
+        background: var(--mb-card-soft);
+        outline: none;
+      }
+
+      .matchmaking-dim__value {
+        color: var(--mb-muted);
+        font-size: 0.74rem;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .matchmaking-dim__value.is-left {
+        text-align: right;
+      }
+
+      .matchmaking-dim__value.is-right {
+        text-align: left;
+      }
+
+      .matchmaking-dim__value.is-win {
+        color: var(--mb-text);
+        font-weight: 900;
+      }
+
+      .matchmaking-dim__bar {
+        display: block;
+        height: 30px;
+        min-width: 0;
+        position: relative;
+      }
+
+      .matchmaking-dim__name {
+        color: var(--mb-muted);
+        font-size: 0.64rem;
+        font-weight: 900;
+        left: 50%;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        position: absolute;
+        text-transform: uppercase;
+        top: 0;
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
+
+      .matchmaking-dim__name b {
+        color: var(--mb-skill);
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+
+      .matchmaking-dim__track {
+        background: var(--mb-card-soft);
+        border-radius: 999px;
+        height: 8px;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 17px;
+      }
+
+      .matchmaking-dim__mid {
+        background: rgba(231, 236, 245, 0.42);
+        height: 16px;
+        left: 50%;
+        position: absolute;
+        top: 13px;
+        transform: translateX(-50%);
+        width: 2px;
+      }
+
+      .matchmaking-dim__fill {
+        border-radius: 999px;
+        height: 8px;
+        position: absolute;
+        top: 17px;
+      }
+
+      .matchmaking-dim__fill.to1 {
+        background: linear-gradient(270deg, rgba(76, 141, 255, 0.24), #4c8dff);
+        right: 50%;
+      }
+
+      .matchmaking-dim__fill.to2 {
+        background: linear-gradient(90deg, rgba(255, 93, 93, 0.24), #ff5d5d);
+        left: 50%;
+      }
+
+      .matchmaking-dim__fill.is-even {
+        background: var(--mb-skill);
+        left: 50%;
+        opacity: 0.86;
+        transform: translateX(-50%);
+      }
+
+      .matchmaking-dim__detail {
+        border-left: 2px solid var(--mb-line);
+        color: #b9c4d8;
+        display: none;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        margin: 0 10px 6px;
+        padding: 2px 12px 12px;
+      }
+
+      .matchmaking-dim__detail span {
+        color: var(--mb-muted);
+        display: block;
+        font-size: 0.72rem;
+        font-variant-numeric: tabular-nums;
+        margin-top: 4px;
+      }
+
+      .matchmaking-dim.is-open .matchmaking-dim__detail {
+        display: block;
+      }
+
+      .matchmaking-radar-box {
+        border-top: 1px solid var(--mb-line);
+        margin-top: 16px;
+        padding-top: 12px;
+      }
+
+      .matchmaking-radar-box h4 {
+        color: var(--mb-muted);
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        margin: 0 0 6px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-radar-box svg {
+        display: block;
+        height: auto;
+        margin: 0 auto;
+        max-width: 320px;
+        width: 100%;
+      }
+
+      .matchmaking-radar-grid,
+      .matchmaking-radar-axis {
+        fill: none;
+        stroke: rgba(148, 163, 184, 0.2);
+        stroke-width: 1;
+      }
+
+      .matchmaking-radar-label {
+        dominant-baseline: central;
+        fill: var(--mb-muted);
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 10px;
+        font-weight: 800;
+        text-anchor: middle;
+      }
+
+      .matchmaking-radar-area {
+        stroke-width: 2;
+      }
+
+      .matchmaking-radar-area.is-team-1 {
+        fill: rgba(76, 141, 255, 0.16);
+        stroke: #4c8dff;
+      }
+
+      .matchmaking-radar-area.is-team-2 {
+        fill: rgba(255, 93, 93, 0.16);
+        stroke: #ff5d5d;
+      }
+
+      .matchmaking-radar-dot.is-team-1 {
+        fill: #4c8dff;
+      }
+
+      .matchmaking-radar-dot.is-team-2 {
+        fill: #ff5d5d;
+      }
+
+      .matchmaking-radar-legend {
+        color: var(--mb-muted);
+        display: flex;
+        font-size: 0.72rem;
+        gap: 18px;
+        justify-content: center;
+        margin-top: 4px;
+      }
+
+      .matchmaking-radar-legend span {
+        align-items: center;
+        display: inline-flex;
+        gap: 6px;
+      }
+
+      .matchmaking-radar-legend i {
+        border-radius: 3px;
+        display: inline-block;
+        height: 9px;
+        width: 9px;
+      }
+
+      .matchmaking-footer {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        padding: 10px 14px;
+      }
+
+      .matchmaking-footer > span {
+        color: var(--mb-muted);
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .matchmaking-footer .small {
+        margin: 0 !important;
+      }
+
+      .matchmaking-footer .border-top {
+        border-top: 0 !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+      }
+
+      @media (max-width: 920px) {
         .matchmaking-balance-root {
           padding: 14px;
         }
 
+        .matchmaking-layout-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .matchmaking-analysis-panel {
+          order: -1;
+        }
+
         .matchmaking-teams-grid {
           grid-template-columns: 1fr;
+        }
+
+        .matchmaking-harmony__grid {
+          grid-template-columns: 1fr;
+        }
+
+        .matchmaking-harmony__title {
+          display: grid;
+        }
+
+        .matchmaking-pitch {
+          min-height: 220px;
         }
 
         .matchmaking-beam {
@@ -4382,6 +5592,25 @@
 
         .matchmaking-stats__row {
           grid-template-columns: 0.8fr 1.4fr 0.8fr;
+        }
+      }
+
+      @media (max-width: 575px) {
+        .matchmaking-beam__scores {
+          flex-wrap: wrap;
+        }
+
+        .matchmaking-beam__chip {
+          justify-content: center;
+          order: 3;
+          width: 100%;
+        }
+
+        .matchmaking-dim__head {
+          gap: 8px;
+          grid-template-columns: 54px minmax(0, 1fr) 54px;
+          padding-left: 6px;
+          padding-right: 6px;
         }
       }
 
@@ -8742,15 +9971,15 @@
             <div class="text-center mb-4">
               <h2 class="h3 text-white mb-2">
                 <span class="me-2">⚔️</span>
-                Armado de Equipos
+                Auto armado de equipos
               </h2>
-              <p class="text-light-emphasis">Agrega jugadores escribiendo sus nombres en cada equipo</p>
+              <p class="text-light-emphasis">La IA arma y rebalancea los equipos a medida que cargas jugadores.</p>
 
               <!-- Botón del Algoritmo Genético -->
               <div class="mt-3">
                 <button id="btn-auto-equipos" class="btn btn-lg btn-gradient btn-enhanced px-4 py-3 btn-ai-special" onclick="abrirModalAutoEquipos()">
                   <i class="bi bi-robot me-2" style="font-size: 1.2rem;"></i>
-                  <span class="fw-bold">Auto-Armar Equipos con IA</span>
+                  <span class="fw-bold">Armar equipos con IA</span>
                 </button>
               </div>
             </div>
@@ -8763,21 +9992,6 @@
                     ⚽
                     Equipo 1
                   </h3>
-                  <div class="input-group mb-3">
-                    <input
-                      type="text"
-                      id="input-equipo1"
-                      class="form-control"
-                      placeholder="Nombre del jugador..."
-                      onkeypress="if(event.key==='Enter') agregarJugadorPorNombre('equipo1')"
-                    >
-                    <button
-                      id="btn-add-equipo1"
-                      onclick="agregarJugadorPorNombre('equipo1')"
-                      class="btn btn-primary btn-enhanced">
-                      <i class="bi bi-plus"></i>
-                    </button>
-                  </div>
                   <div id="equipo1-jugadores" class="team-card-body rounded-2 p-2">
                     <!-- Jugadores aparecerán aquí -->
                   </div>
@@ -8838,21 +10052,6 @@
                     ⚽
                     Equipo 2
                   </h3>
-                  <div class="input-group mb-3">
-                    <input
-                      type="text"
-                      id="input-equipo2"
-                      class="form-control"
-                      placeholder="Nombre del jugador..."
-                      onkeypress="if(event.key==='Enter') agregarJugadorPorNombre('equipo2')"
-                    >
-                    <button
-                      id="btn-add-equipo2"
-                      onclick="agregarJugadorPorNombre('equipo2')"
-                      class="btn btn-danger btn-enhanced">
-                      <i class="bi bi-plus"></i>
-                    </button>
-                  </div>
                   <div id="equipo2-jugadores" class="team-card-body rounded-2 p-2">
                     <!-- Jugadores aparecerán aquí -->
                   </div>
@@ -9729,7 +10928,7 @@
             </h2>
             <div class="text-light-emphasis">
               <strong>Ranking basado en Skill Individual:</strong><br>
-              <small>Rendimiento calculado por partido: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×0.4</small>
+              <small>Rendimiento calculado por partido: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×0.4 + DEF relativo 0-11</small>
             </div>
           </div>
 
@@ -10623,6 +11822,13 @@
 
             <!-- Sección de configuración -->
             <div id="config-section">
+              <div class="alert alert-info matchmaking-live-intro d-flex align-items-center mb-4">
+                <i class="bi bi-info-circle me-2"></i>
+                <div>
+                  <strong>Como funciona</strong><br>
+                  Agrega jugadores de a uno. La IA recalcula el balance y los ubica en la cancha hasta completar 5 vs 5.
+                </div>
+              </div>
               <div class="alert alert-info d-flex align-items-center mb-4">
                 <i class="bi bi-info-circle me-2"></i>
                 <div>
@@ -10665,17 +11871,32 @@
               <div class="mb-4">
                 <h6 class="text-white mb-3">
                   <i class="bi bi-people me-2"></i>
-                  Jugadores para el Partido
+                  Jugadores para el partido
                 </h6>
                 <div class="mb-3">
-                  <label class="form-label text-light">Escribe los nombres de los jugadores que van a jugar:</label>
-                  <input
-                    type="text"
-                    id="input-jugadores-partido"
-                    class="form-control"
-                    placeholder="Ej: Metox, Bou, Cogorno, Kite, Boska, Berni, Never, Darmian, Facu, Fachita"
-                    onkeyup="buscarJugadoresDisponibles()"
-                  >
+                  <label class="form-label text-light">Agregar jugador</label>
+                  <div class="input-group">
+                    <input
+                      type="text"
+                      id="input-jugador-live-matchmaking"
+                      class="form-control"
+                      list="matchmaking-player-options"
+                      placeholder="Nombre del jugador..."
+                      autocomplete="off"
+                    >
+                    <datalist id="matchmaking-player-options"></datalist>
+                    <button
+                      type="button"
+                      id="btn-add-live-matchmaking"
+                      class="btn btn-primary btn-enhanced"
+                      onclick="agregarJugadorAutoMatchmaking()"
+                    >
+                      <i class="bi bi-plus-lg me-1"></i>
+                      Agregar
+                    </button>
+                  </div>
+                  <input type="hidden" id="input-jugadores-partido">
+                  <div class="form-text matchmaking-live-help">Hasta 10 jugadores. El balance se recalcula automaticamente con cada cambio.</div>
                   <div class="form-text">Separar nombres con comas. Mínimo 10 jugadores para armar equipos de 5 vs 5. Después elegí si cada uno juega como jugador o arquero para el balance.</div>
                 </div>
 
@@ -10683,10 +11904,13 @@
                 <div id="jugadores-seleccionados" class="p-3 rounded bg-dark">
                   <div class="text-center text-light-emphasis">
                     <i class="bi bi-person-plus"></i>
-                    Escribe los nombres de los jugadores arriba
+                    Agrega jugadores arriba
                   </div>
                 </div>
               </div>
+
+              <div id="matchmaking-live-feedback" class="text-center small text-light-emphasis mb-3">&nbsp;</div>
+              <div id="matchmaking-live-preview" class="mb-4"></div>
 
               <!-- Restricciones -->
               <div class="mb-4">
@@ -10749,9 +11973,13 @@
               </div>
 
               <div class="d-flex gap-3">
-                <button id="btn-ejecutar-algoritmo" class="btn btn-primary btn-enhanced flex-fill" disabled>
-                  <i class="bi bi-play-fill me-2"></i>
-                  Ejecutar Algoritmo
+                <button id="btn-aplicar-equipos-live" class="btn btn-success btn-enhanced flex-fill" disabled>
+                  <i class="bi bi-check2 me-2"></i>
+                  Aplicar equipos
+                </button>
+                <button type="button" id="btn-limpiar-auto-equipos" class="btn btn-outline-light" onclick="limpiarAutoEquipos()">
+                  <i class="bi bi-trash me-2"></i>
+                  Limpiar
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                   Cancelar
@@ -10990,7 +12218,7 @@
                 <i class="bi bi-info-circle me-2"></i>
                                   <div>
                     <strong>Ranking basado en Skill Individual (por partido):</strong><br>
-                    <small>Rendimiento calculado por: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×0.4</small>
+                    <small>Rendimiento calculado por: Goles×5 + MVP×7 + ACE×6 + Asist×4 - Cagadas×5 + Puntos×2 + Atajadas×0.4 + DEF relativo 0-11</small>
                   </div>
               </div>
             </div>
@@ -11062,11 +12290,11 @@
     <!-- Chart.js completo con todos los componentes -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <!-- Algoritmo Genético -->
-    <script src="./genetic-teams.js?v=matchmaking-balance-visual-2026-07-12"></script>
+    <script src="./genetic-teams.js?v=matchmaking-keeper-rotation-visible-cycle-2026-07-14"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=review-events-pateador-2026-07-12"></script>
+    <script type="module" src="./app.js?v=ranking-defense-nerf-2026-07-14"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
-    <script src="./tracking-integration.js?v=tracking-0.1.23" defer></script>
+    <script src="./tracking-integration.js?v=tracking-defense-nerf-2026-07-14" defer></script>
     <!-- Funcionalidad de Paternidades -->
     <script>
     // ===============================

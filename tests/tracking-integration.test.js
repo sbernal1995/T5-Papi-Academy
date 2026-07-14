@@ -6,6 +6,10 @@ function sampleExport() {
     version: '0.3.2',
     duration_seconds: 600,
     pitch: { width: 32, height: 16 },
+    team_own_sides: {
+      A: { own_side: 'left', rival_side: 'right' },
+      B: { own_side: 'right', rival_side: 'left' }
+    },
     players: [
       {
         player_id: 'P01',
@@ -197,8 +201,10 @@ async function run() {
   assert.strictEqual(normalized.players[0].fis_version, 'FIS v1');
   assert.strictEqual(normalized.players[0].field_seconds, 600);
   assert.strictEqual(normalized.players[0].distance_per_40_min_km, 4.8);
+  assert.strictEqual(normalized.players[0].own_side, 'left');
   assert.strictEqual(normalized.players[1].field_seconds, 480);
   assert.strictEqual(normalized.players[1].distance_per_40_min_km, 3);
+  assert.strictEqual(normalized.players[1].own_side, 'right');
   assert.deepStrictEqual(normalized.players[0].dominant_position_m, { x: 8, y: 4, source: 'heatmap_hotspot' });
   assert.strictEqual(normalized.players[0].goal_locations.length, 1);
   assert.strictEqual(normalized.players[0].goal_locations[0].x, 12.5);
@@ -236,6 +242,20 @@ async function run() {
   const dominant = tracking.heatmapDominantPosition({ counts: [[0, 0], [0, 9]], x_bins: 2, y_bins: 2 }, { width: 32, height: 16 });
   assert.deepStrictEqual(dominant, { x: 24, y: 12, source: 'heatmap_hotspot' });
 
+  const rightSideDefender = tracking.orientHeatmapDefenseToAttack(
+    { counts: [[0, 8], [0, 0]], x_bins: 2, y_bins: 2 },
+    { own_side: 'right' }
+  );
+  assert.deepStrictEqual(rightSideDefender.counts, [[8, 0], [0, 0]]);
+  assert.strictEqual(rightSideDefender.orientation, 'defense_to_attack');
+  const rightSideGoal = tracking.orientPointDefenseToAttack(
+    { x: 8, y: 6, pitch_width_m: 32, pitch_height_m: 16 },
+    { own_side: 'right' }
+  );
+  assert.strictEqual(rightSideGoal.x, 24);
+  assert.strictEqual(rightSideGoal.y, 6);
+  assert.strictEqual(rightSideGoal.orientation, 'defense_to_attack');
+
   const windowSeries = tracking.buildTeamPulmonWindowSeries({ analysis: { duration_seconds: 600 }, players: normalized.players });
   assert.strictEqual(windowSeries.length, 2);
   assert.strictEqual(windowSeries[0].teams.A.distance_m, 700);
@@ -268,6 +288,7 @@ async function run() {
   assert.strictEqual(statsRows[0].fis_valor, 88);
   assert.strictEqual(statsRows[0].goal_locations.length, 1);
   assert.strictEqual(statsRows[0].metrics.goal_locations.length, 1);
+  assert.strictEqual(statsRows[0].metrics.own_side, 'left');
 
   const shotRows = tracking.buildTrackingShotEventRows(normalized, mappings, 'analysis-1', 'match-1');
   assert.strictEqual(shotRows.length, 2);
@@ -331,6 +352,41 @@ async function run() {
   assert.strictEqual(aggregate.physical_dimensions.motor, 90);
   assert.strictEqual(aggregate.advanced_defense_axes.duel, 70);
   assert.strictEqual(aggregate.goal_locations.length, 1);
+
+  const orientedAggregate = tracking.aggregatePlayerRows([
+    {
+      distance_km: 1,
+      avg_speed_kmh: 7,
+      max_speed_kmh: 10,
+      sprints: 1,
+      pulmon_tracking: 50,
+      high_intensity_seconds: 10,
+      coverage_pct: 20,
+      goalkeeper_seconds: 0,
+      own_side: 'left',
+      heatmap: { counts: [[6, 0], [0, 0]], x_bins: 2, y_bins: 2 },
+      goal_locations: [{ order: 1, x: 24, y: 6, pitch_width_m: 32, pitch_height_m: 16 }]
+    },
+    {
+      distance_km: 1,
+      avg_speed_kmh: 7,
+      max_speed_kmh: 10,
+      sprints: 1,
+      pulmon_tracking: 50,
+      high_intensity_seconds: 10,
+      coverage_pct: 20,
+      goalkeeper_seconds: 0,
+      own_side: 'right',
+      heatmap: { counts: [[0, 6], [0, 0]], x_bins: 2, y_bins: 2 },
+      goal_locations: [{ order: 2, x: 8, y: 6, pitch_width_m: 32, pitch_height_m: 16 }]
+    }
+  ]);
+  assert.strictEqual(orientedAggregate.heatmap.orientation, 'defense_to_attack');
+  assert(orientedAggregate.heatmap.counts[0][0] > orientedAggregate.heatmap.counts[0][1]);
+  assert(orientedAggregate.dominant_position_m.x < 16);
+  assert.strictEqual(orientedAggregate.goal_locations.length, 2);
+  assert.deepStrictEqual(orientedAggregate.goal_locations.map(goal => goal.x), [24, 24]);
+  assert.strictEqual(orientedAggregate.goal_locations[1].source_own_side, 'right');
 
   assert.strictEqual(
     tracking.schemaMissingColumn({ message: "Could not find the 'pitch_height_m' column of 'tracking_analyses' in the schema cache" }),
