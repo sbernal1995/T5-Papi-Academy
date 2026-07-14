@@ -20205,6 +20205,7 @@ const initApp = () => {
               id,
               nombre,
               pulmon,
+              foto_url,
               jugador_posicion (
                 posicion_id,
                 es_primaria,
@@ -20319,6 +20320,7 @@ const initApp = () => {
               id,
               nombre,
               pulmon,
+              foto_url,
               jugador_posicion (
                 posicion_id,
                 es_primaria,
@@ -20538,6 +20540,7 @@ const initApp = () => {
           id: jugador.id,
           nombre: jugador.nombre,
           pulmon: jugador.pulmon,
+          foto_url: jugador.foto_url,
           jugador_posicion: jugador.jugador_posicion
         }
       }));

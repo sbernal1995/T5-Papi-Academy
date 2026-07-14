@@ -36,6 +36,7 @@ const MATCHMAKING_DEFENSE_SKILL_MIN = 0;
 const MATCHMAKING_DEFENSE_SKILL_MAX = 11;
 const MATCHMAKING_DEFENSE_RANGE_EPSILON = 0.001;
 const MATCHMAKING_RANKING_SAVE_WEIGHT = 0.4;
+const imagenFotoJugadorMatchmakingCache = new Map();
 
 function normalizarRolPartido(rol) {
   return rol === ROL_PARTIDO_ARQUERO ? ROL_PARTIDO_ARQUERO : ROL_PARTIDO_JUGADOR;
@@ -135,6 +136,73 @@ function obtenerIdJugadorMatchmaking(jugador) {
 
 function obtenerNombreJugadorMatchmaking(jugador) {
   return jugador?.nombre || jugador?.jugadores?.nombre || 'Jugador';
+}
+
+function normalizarUrlFotoJugadorMatchmaking(valor) {
+  const url = String(valor || '').trim();
+  if (!url || ['null', 'undefined'].includes(url.toLowerCase())) return '';
+  if (/^javascript:/i.test(url)) return '';
+  if (/^data:/i.test(url) && !/^data:image\//i.test(url)) return '';
+  return url;
+}
+
+function obtenerFotoJugadorMatchmaking(jugador = {}) {
+  const jugadorId = obtenerIdJugadorMatchmaking(jugador);
+  const nombre = obtenerNombreJugadorMatchmaking(jugador);
+  const jugadorCache = Array.isArray(window.datosJugadores)
+    ? window.datosJugadores.find(item => (
+        jugadorId && String(obtenerIdJugadorMatchmaking(item)) === String(jugadorId)
+      )) || window.datosJugadores.find(item => (
+        nombre && normalizarBusquedaMatchmaking(obtenerNombreJugadorMatchmaking(item)) === normalizarBusquedaMatchmaking(nombre)
+      ))
+    : null;
+  const anidado = jugador?.jugadores || {};
+  const data = jugador?.data || {};
+  const dataAnidado = data?.jugadores || {};
+  const historico = jugador?.historicoMatchmaking || {};
+  const historicoAnidado = historico?.jugadores || {};
+  const cacheAnidado = jugadorCache?.jugadores || {};
+  const candidatos = [
+    jugador?.foto_url,
+    jugador?.fotoUrl,
+    jugador?.photo_url,
+    jugador?.avatar_url,
+    anidado?.foto_url,
+    anidado?.fotoUrl,
+    anidado?.photo_url,
+    anidado?.avatar_url,
+    data?.foto_url,
+    data?.fotoUrl,
+    data?.photo_url,
+    data?.avatar_url,
+    dataAnidado?.foto_url,
+    dataAnidado?.fotoUrl,
+    dataAnidado?.photo_url,
+    dataAnidado?.avatar_url,
+    historico?.foto_url,
+    historico?.fotoUrl,
+    historico?.photo_url,
+    historico?.avatar_url,
+    historicoAnidado?.foto_url,
+    historicoAnidado?.fotoUrl,
+    historicoAnidado?.photo_url,
+    historicoAnidado?.avatar_url,
+    jugadorCache?.foto_url,
+    jugadorCache?.fotoUrl,
+    jugadorCache?.photo_url,
+    jugadorCache?.avatar_url,
+    cacheAnidado?.foto_url,
+    cacheAnidado?.fotoUrl,
+    cacheAnidado?.photo_url,
+    cacheAnidado?.avatar_url
+  ];
+
+  for (const candidato of candidatos) {
+    const url = normalizarUrlFotoJugadorMatchmaking(candidato);
+    if (url) return url;
+  }
+
+  return '';
 }
 
 function obtenerPulmonTrackingMatchmaking(jugador) {
@@ -545,6 +613,7 @@ class GeneticTeamOptimizer {
       return {
         id: jugadorId,
         nombre: obtenerNombreJugadorMatchmaking(jugador),
+        foto_url: obtenerFotoJugadorMatchmaking(jugador),
         rolPartido,
         origenRendimiento: jugador.origenRendimiento || MODO_RENDIMIENTO_HISTORICO,
         partidosRecientesSolicitados: jugador.partidosRecientesSolicitados || 0,
@@ -1960,6 +2029,470 @@ window.setHoverRotacionArqueroMatchmaking = function(valor) {
   reiniciarTimerRotacionArqueroMatchmaking();
 };
 
+function mostrarToastMatchmaking(mensaje, tipo = 'info') {
+  if (typeof window.showToast === 'function') {
+    window.showToast(mensaje, tipo);
+    return;
+  }
+  console[tipo === 'error' ? 'error' : 'log'](mensaje);
+}
+
+function descargarBlobMatchmaking(blob, nombreArchivo) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nombreArchivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function nombreArchivoGifFormacionesMatchmaking() {
+  const fecha = new Date();
+  const pad = valor => String(valor).padStart(2, '0');
+  const stamp = [
+    fecha.getFullYear(),
+    pad(fecha.getMonth() + 1),
+    pad(fecha.getDate()),
+    pad(fecha.getHours()),
+    pad(fecha.getMinutes())
+  ].join('-');
+  return `equipos-formaciones-${stamp}.gif`;
+}
+
+function setEstadoExportGifFormacionesMatchmaking(exportando) {
+  const button = document.querySelector('[data-keeper-gif-export]');
+  if (!button) return;
+  button.disabled = Boolean(exportando);
+  button.innerHTML = exportando
+    ? '<span>GIF</span><i class="bi bi-hourglass-split"></i>'
+    : '<span>GIF</span><i class="bi bi-download"></i>';
+}
+
+function rgbDesdeHexMatchmaking(hex, fallback = '#e7ecf5') {
+  const limpio = String(hex || fallback).replace('#', '').trim();
+  const valor = limpio.length === 3
+    ? limpio.split('').map(char => char + char).join('')
+    : limpio.padEnd(6, '0').slice(0, 6);
+  const numero = Number.parseInt(valor, 16);
+  if (!Number.isFinite(numero)) return rgbDesdeHexMatchmaking(fallback, '#e7ecf5');
+  return {
+    r: (numero >> 16) & 255,
+    g: (numero >> 8) & 255,
+    b: numero & 255
+  };
+}
+
+function colorRgbaMatchmaking(color, alpha = 1) {
+  const rgb = rgbDesdeHexMatchmaking(color);
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function dibujarRectRedondeadoMatchmaking(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function textoEllipsisCanvasMatchmaking(ctx, texto, maxWidth) {
+  const original = String(texto || '');
+  if (ctx.measureText(original).width <= maxWidth) return original;
+  let salida = original;
+  while (salida.length > 1 && ctx.measureText(`${salida}...`).width > maxWidth) {
+    salida = salida.slice(0, -1);
+  }
+  return `${salida}...`;
+}
+
+function dibujarChipGifMatchmaking(ctx, texto, x, y, opciones = {}) {
+  const paddingX = opciones.paddingX ?? 12;
+  const height = opciones.height ?? 28;
+  ctx.font = opciones.font || '800 14px system-ui, -apple-system, Segoe UI, sans-serif';
+  const width = Math.min(opciones.maxWidth || 320, Math.ceil(ctx.measureText(texto).width) + (paddingX * 2));
+  const finalText = textoEllipsisCanvasMatchmaking(ctx, texto, width - (paddingX * 2));
+  dibujarRectRedondeadoMatchmaking(ctx, x, y, width, height, height / 2);
+  ctx.fillStyle = opciones.background || 'rgba(10, 15, 30, 0.78)';
+  ctx.fill();
+  ctx.strokeStyle = opciones.border || 'rgba(231, 236, 245, 0.24)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = opciones.color || '#e7ecf5';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(finalText, x + (width / 2), y + (height / 2) + 0.5);
+  return width;
+}
+
+function dibujarCanchaBaseGifMatchmaking(ctx, layout) {
+  const { x, y, width, height } = layout;
+  ctx.fillStyle = '#07111f';
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  dibujarRectRedondeadoMatchmaking(ctx, x, y, width, height, 16);
+  ctx.fillStyle = '#082413';
+  ctx.fill();
+
+  ctx.save();
+  dibujarRectRedondeadoMatchmaking(ctx, x, y, width, height, 16);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(231, 236, 245, 0.23)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 8, y + 8, width - 16, height - 16);
+  ctx.beginPath();
+  ctx.moveTo(x + (width / 2), y + 8);
+  ctx.lineTo(x + (width / 2), y + height - 8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x + (width / 2), y + (height / 2), 52, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeRect(x + 8, y + (height * 0.28), 88, height * 0.44);
+  ctx.strokeRect(x + width - 96, y + (height * 0.28), 88, height * 0.44);
+  ctx.fillStyle = 'rgba(231, 236, 245, 0.34)';
+  ctx.beginPath();
+  ctx.arc(x + 92, y + (height / 2), 3, 0, Math.PI * 2);
+  ctx.arc(x + width - 92, y + (height / 2), 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function dibujarHeaderGifFormacionesMatchmaking(ctx, index, total, escenario1, escenario2) {
+  ctx.fillStyle = '#e7ecf5';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '900 24px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.fillText('Armado de equipos', 32, 38);
+
+  ctx.font = '800 13px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.fillStyle = 'rgba(231, 236, 245, 0.72)';
+  ctx.fillText(`Escenario ${index + 1}/${total}`, 34, 61);
+
+  const chipY = 26;
+  const chip1 = `E1 ataja ${escenario1?.keeperName || '-'} · ${escenario1?.etiqueta || '-'}`;
+  const chip2 = `E2 ataja ${escenario2?.keeperName || '-'} · ${escenario2?.etiqueta || '-'}`;
+  const width1 = dibujarChipGifMatchmaking(ctx, chip1, 360, chipY, {
+    border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo1.color, 0.68),
+    color: '#e7ecf5',
+    maxWidth: 260
+  });
+  dibujarChipGifMatchmaking(ctx, chip2, 360 + width1 + 10, chipY, {
+    border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo2.color, 0.68),
+    color: '#e7ecf5',
+    maxWidth: 260
+  });
+}
+
+function dibujarImagenCubriendoGifMatchmaking(ctx, image, x, y, width, height) {
+  if (!image) return false;
+  const imageWidth = image.naturalWidth || image.width;
+  const imageHeight = image.naturalHeight || image.height;
+  if (!imageWidth || !imageHeight) return false;
+  const scale = Math.max(width / imageWidth, height / imageHeight);
+  const drawWidth = imageWidth * scale;
+  const drawHeight = imageHeight * scale;
+  const drawX = x + ((width - drawWidth) / 2);
+  const drawY = y + ((height - drawHeight) / 2);
+  try {
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function cargarImagenFotoJugadorMatchmaking(fotoUrl) {
+  const url = normalizarUrlFotoJugadorMatchmaking(fotoUrl);
+  if (!url) return Promise.resolve(null);
+  if (imagenFotoJugadorMatchmakingCache.has(url)) return imagenFotoJugadorMatchmakingCache.get(url);
+
+  const promesa = new Promise(resolve => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = url;
+  });
+
+  imagenFotoJugadorMatchmakingCache.set(url, promesa);
+  return promesa;
+}
+
+async function precargarFotosGifFormacionesMatchmaking(total) {
+  const urls = new Set();
+  for (let index = 0; index < total; index += 1) {
+    ['equipo1', 'equipo2'].forEach(equipoKey => {
+      const escenario = escenarioRotacionEquipoMatchmaking(equipoKey, index);
+      (escenario?.markers || []).forEach(marker => {
+        const url = obtenerFotoJugadorMatchmaking(marker.jugador);
+        if (url) urls.add(url);
+      });
+    });
+  }
+
+  const entradas = await Promise.all([...urls].map(async url => [url, await cargarImagenFotoJugadorMatchmaking(url)]));
+  return new Map(entradas);
+}
+
+function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes = new Map()) {
+  const x = layout.x + ((numeroSeguroMatchmaking(marker?.x) / 100) * layout.width);
+  const y = layout.y + ((numeroSeguroMatchmaking(marker?.y) / 100) * layout.height);
+  const nombre = obtenerNombreJugadorMatchmaking(marker?.jugador);
+  const color = marker?.isKeeper ? '#f6c453' : (marker?.color || '#e7ecf5');
+  const fotoUrl = obtenerFotoJugadorMatchmaking(marker?.jugador);
+  const image = fotoUrl ? imagenes.get(fotoUrl) : null;
+  const radius = marker?.isKeeper ? 21 : 19;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.36)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 6;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = marker?.isKeeper ? 'rgba(246, 196, 83, 0.22)' : 'rgba(10, 15, 30, 0.94)';
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = marker?.isKeeper ? 4 : 3;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius - 3, 0, Math.PI * 2);
+  ctx.clip();
+  const drewImage = dibujarImagenCubriendoGifMatchmaking(ctx, image, x - radius + 3, y - radius + 3, (radius - 3) * 2, (radius - 3) * 2);
+  if (!drewImage) {
+    ctx.fillStyle = marker?.isKeeper ? '#fff8db' : '#ffffff';
+    ctx.font = '900 13px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(inicialesJugadorMatchmaking(nombre), x, y + 0.5);
+  }
+  ctx.restore();
+  ctx.restore();
+
+  ctx.font = '800 12px system-ui, -apple-system, Segoe UI, sans-serif';
+  const texto = textoEllipsisCanvasMatchmaking(ctx, nombre, 92);
+  const width = Math.ceil(ctx.measureText(texto).width) + 14;
+  const labelX = x - (width / 2);
+  const labelY = y + radius + 6;
+  dibujarRectRedondeadoMatchmaking(ctx, labelX, labelY, width, 22, 6);
+  ctx.fillStyle = 'rgba(10, 15, 30, 0.82)';
+  ctx.fill();
+  ctx.fillStyle = '#e7ecf5';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(texto, x, labelY + 11);
+}
+
+function renderizarFrameGifFormacionesMatchmaking(index, total, imagenes = new Map()) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 960;
+  canvas.height = 540;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('No se pudo preparar el canvas del GIF.');
+  const escenario1 = escenarioRotacionEquipoMatchmaking('equipo1', index);
+  const escenario2 = escenarioRotacionEquipoMatchmaking('equipo2', index);
+  const layout = { x: 30, y: 76, width: 900, height: 450 };
+
+  dibujarCanchaBaseGifMatchmaking(ctx, layout);
+  dibujarHeaderGifFormacionesMatchmaking(ctx, index, total, escenario1, escenario2);
+  dibujarChipGifMatchmaking(ctx, 'Equipo 1', layout.x + 14, layout.y + 14, {
+    border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo1.color, 0.7),
+    color: MATCHMAKING_TEAM_THEMES.equipo1.color,
+    maxWidth: 110
+  });
+  dibujarChipGifMatchmaking(ctx, 'Equipo 2', layout.x + layout.width - 104, layout.y + 14, {
+    border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo2.color, 0.7),
+    color: MATCHMAKING_TEAM_THEMES.equipo2.color,
+    maxWidth: 110
+  });
+
+  const markers = [
+    ...(escenario1?.markers || []),
+    ...(escenario2?.markers || [])
+  ].sort((a, b) => Number(Boolean(a.isKeeper)) - Number(Boolean(b.isKeeper)));
+  markers.forEach(marker => dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes));
+  return canvas;
+}
+
+function indicePaletaGifMatchmaking(r, g, b) {
+  return ((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6);
+}
+
+function crearPaletaGifMatchmaking() {
+  const palette = [];
+  for (let r = 0; r < 8; r += 1) {
+    for (let g = 0; g < 8; g += 1) {
+      for (let b = 0; b < 4; b += 1) {
+        palette.push(Math.round((r / 7) * 255), Math.round((g / 7) * 255), Math.round((b / 3) * 255));
+      }
+    }
+  }
+  return palette;
+}
+
+function crearPaletaEnteraGifMatchmaking() {
+  const palette = [];
+  for (let r = 0; r < 8; r += 1) {
+    for (let g = 0; g < 8; g += 1) {
+      for (let b = 0; b < 4; b += 1) {
+        const rr = Math.round((r / 7) * 255);
+        const gg = Math.round((g / 7) * 255);
+        const bb = Math.round((b / 3) * 255);
+        palette.push((rr << 16) | (gg << 8) | bb);
+      }
+    }
+  }
+  return palette;
+}
+
+function bytesTextoGifMatchmaking(texto) {
+  return Array.from(String(texto), char => char.charCodeAt(0) & 255);
+}
+
+function escribirShortGifMatchmaking(bytes, valor) {
+  bytes.push(valor & 255, (valor >> 8) & 255);
+}
+
+function comprimirLzwGifMatchmaking(indices, minCodeSize = 8) {
+  const clearCode = 1 << minCodeSize;
+  const endCode = clearCode + 1;
+  let nextCode = endCode + 1;
+  let codeSize = minCodeSize + 1;
+  const dict = new Map();
+  const output = [];
+  let bitBuffer = 0;
+  let bitCount = 0;
+
+  function writeCode(code) {
+    bitBuffer |= code << bitCount;
+    bitCount += codeSize;
+    while (bitCount >= 8) {
+      output.push(bitBuffer & 255);
+      bitBuffer >>= 8;
+      bitCount -= 8;
+    }
+  }
+
+  function resetDict() {
+    dict.clear();
+    nextCode = endCode + 1;
+    codeSize = minCodeSize + 1;
+  }
+
+  function codeFor(sequence) {
+    return sequence.indexOf(',') === -1 ? Number(sequence) : dict.get(sequence);
+  }
+
+  resetDict();
+  writeCode(clearCode);
+  let prefix = String(indices[0] || 0);
+
+  for (let i = 1; i < indices.length; i += 1) {
+    const current = indices[i];
+    const sequence = `${prefix},${current}`;
+    if (dict.has(sequence)) {
+      prefix = sequence;
+      continue;
+    }
+
+    writeCode(codeFor(prefix));
+    if (nextCode < 4096) {
+      dict.set(sequence, nextCode);
+      nextCode += 1;
+      if (nextCode === (1 << codeSize) && codeSize < 12) codeSize += 1;
+    } else {
+      writeCode(clearCode);
+      resetDict();
+    }
+    prefix = String(current);
+  }
+
+  writeCode(codeFor(prefix));
+  writeCode(endCode);
+  if (bitCount > 0) output.push(bitBuffer & 255);
+  return output;
+}
+
+function indicesCanvasGifMatchmaking(canvas) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const indices = new Uint8Array(canvas.width * canvas.height);
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    indices[p] = indicePaletaGifMatchmaking(data[i], data[i + 1], data[i + 2]);
+  }
+  return indices;
+}
+
+function escribirBloquesGifMatchmaking(bytes, data) {
+  for (let i = 0; i < data.length; i += 255) {
+    const chunk = data.slice(i, i + 255);
+    bytes.push(chunk.length, ...chunk);
+  }
+  bytes.push(0);
+}
+
+function crearGifAnimadoMatchmaking(canvases, delayMs = MATCHMAKING_KEEPER_ROTATION.intervalMs) {
+  if (!canvases.length) throw new Error('No hay frames para exportar.');
+  const GifWriterCtor = typeof GifWriter === 'function'
+    ? GifWriter
+    : (window.GifWriter || globalThis.GifWriter);
+  if (typeof GifWriterCtor !== 'function') {
+    throw new Error('No se pudo cargar el generador de GIF.');
+  }
+
+  const width = canvases[0].width;
+  const height = canvases[0].height;
+  const palette = crearPaletaEnteraGifMatchmaking();
+  const delayCs = Math.max(4, Math.round(delayMs / 10));
+  const maxSize = (width * height * canvases.length * 3) + 65536;
+  const buffer = new Uint8Array(maxSize);
+  const writer = new GifWriterCtor(buffer, width, height, { loop: 0, palette });
+
+  canvases.forEach(canvas => {
+    writer.addFrame(0, 0, width, height, indicesCanvasGifMatchmaking(canvas), {
+      delay: delayCs,
+      disposal: 2
+    });
+  });
+
+  const length = writer.end();
+  return new Blob([buffer.slice(0, length)], { type: 'image/gif' });
+}
+
+window.exportarGifFormacionesMatchmaking = async function() {
+  const total = totalEscenariosRotacionArqueroMatchmaking();
+  if (total <= 0) {
+    mostrarToastMatchmaking('No hay escenarios para exportar.', 'warning');
+    return;
+  }
+
+  try {
+    setEstadoExportGifFormacionesMatchmaking(true);
+    mostrarToastMatchmaking('Generando GIF de formaciones...', 'info');
+    await new Promise(resolve => window.setTimeout(resolve, 20));
+    const imagenes = await precargarFotosGifFormacionesMatchmaking(total);
+    const frames = Array.from({ length: total }, (_, index) => renderizarFrameGifFormacionesMatchmaking(index, total, imagenes));
+    const blob = crearGifAnimadoMatchmaking(frames);
+    descargarBlobMatchmaking(blob, nombreArchivoGifFormacionesMatchmaking());
+    mostrarToastMatchmaking('GIF descargado.', 'success');
+  } catch (error) {
+    console.error('Error exportando GIF de formaciones:', error);
+    mostrarToastMatchmaking(`No se pudo exportar el GIF: ${error.message || error}`, 'error');
+  } finally {
+    setEstadoExportGifFormacionesMatchmaking(false);
+  }
+};
+
 function renderizarCanchaLiveMatchmaking(resultado) {
   const canchaEquipo1 = prepararMarcadoresLiveEquipoMatchmaking(resultado?.equipo1?.jugadores || [], 'equipo1');
   const canchaEquipo2 = prepararMarcadoresLiveEquipoMatchmaking(resultado?.equipo2?.jugadores || [], 'equipo2');
@@ -2028,20 +2561,33 @@ function renderizarCanchaLiveMatchmaking(resultado) {
             <button type="button" class="matchmaking-keeper-cycle__toggle" data-keeper-rotation-toggle onclick="toggleRotacionArqueroMatchmaking()" aria-label="Pausar rotacion de arqueros">
               <i class="bi bi-pause-fill"></i>
             </button>
+            <button type="button" class="matchmaking-keeper-cycle__export" data-keeper-gif-export onclick="exportarGifFormacionesMatchmaking()" aria-label="Exportar GIF de formaciones">
+              <span>GIF</span><i class="bi bi-download"></i>
+            </button>
           </div>
         </div>
-        ${marcadores.map(marker => `
+        ${marcadores.map(marker => {
+          const nombreJugador = obtenerNombreJugadorMatchmaking(marker.jugador);
+          const fotoUrl = obtenerFotoJugadorMatchmaking(marker.jugador);
+          const fotoHtml = fotoUrl
+            ? `<img src="${escaparHtmlMatchmaking(fotoUrl)}" alt="${escaparHtmlMatchmaking(nombreJugador)}" loading="lazy" onerror="const disc=this.closest('.matchmaking-live-marker__disc'); if(disc) disc.classList.remove('has-photo'); this.remove();">`
+            : '';
+          return `
           <div
             class="matchmaking-live-marker${marker.isFallback ? ' is-fallback' : ''}${marker.isKeeper ? ' is-keeper' : ''}"
             data-marker-team="${escaparHtmlMatchmaking(marker.teamKey || '')}"
             data-player-key="${escaparHtmlMatchmaking(claveJugadorCanchaLiveMatchmaking(marker.jugador))}"
             style="--marker-x:${marker.x.toFixed(1)}%; --marker-y:${marker.y.toFixed(1)}%; --team-color:${marker.color};"
-            title="${escaparHtmlMatchmaking(obtenerNombreJugadorMatchmaking(marker.jugador))} - ${marker.isKeeper ? 'ataja' : `capa ${escaparHtmlMatchmaking(marker.formation || '')}`} - posicion ${escaparHtmlMatchmaking(marker.source)}${marker.hasCollisionOffset ? ' - separado para evitar overlap' : ''}"
+            title="${escaparHtmlMatchmaking(nombreJugador)} - ${marker.isKeeper ? 'ataja' : `capa ${escaparHtmlMatchmaking(marker.formation || '')}`} - posicion ${escaparHtmlMatchmaking(marker.source)}${marker.hasCollisionOffset ? ' - separado para evitar overlap' : ''}"
           >
-            <span class="matchmaking-live-marker__disc">${escaparHtmlMatchmaking(inicialesJugadorMatchmaking(obtenerNombreJugadorMatchmaking(marker.jugador)))}</span>
-            <span class="matchmaking-live-marker__name">${escaparHtmlMatchmaking(obtenerNombreJugadorMatchmaking(marker.jugador))}</span>
+            <span class="matchmaking-live-marker__disc${fotoUrl ? ' has-photo' : ''}">
+              ${fotoHtml}
+              <span class="matchmaking-live-marker__initials">${escaparHtmlMatchmaking(inicialesJugadorMatchmaking(nombreJugador))}</span>
+            </span>
+            <span class="matchmaking-live-marker__name">${escaparHtmlMatchmaking(nombreJugador)}</span>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
       ${sinTracking.length ? `
         <div class="matchmaking-live-untracked">
@@ -2595,6 +3141,7 @@ async function cargarEstadisticasRecientesJugadores(jugadores, cantidadPartidos,
           id,
           nombre,
           pulmon,
+          foto_url,
           jugador_posicion (
             posicion_id,
             es_primaria,

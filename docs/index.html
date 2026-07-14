@@ -4192,7 +4192,8 @@
       }
 
       .matchmaking-keeper-cycle__dots button,
-      .matchmaking-keeper-cycle__toggle {
+      .matchmaking-keeper-cycle__toggle,
+      .matchmaking-keeper-cycle__export {
         appearance: none;
         background: rgba(10, 15, 30, 0.72);
         border: 1px solid rgba(231, 236, 245, 0.26);
@@ -4222,6 +4223,24 @@
         width: 22px;
       }
 
+      .matchmaking-keeper-cycle__export {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.62rem;
+        font-weight: 950;
+        gap: 4px;
+        height: 22px;
+        justify-content: center;
+        line-height: 1;
+        padding: 0 8px;
+      }
+
+      .matchmaking-keeper-cycle__export:disabled {
+        cursor: wait;
+        opacity: 0.68;
+      }
+
       .matchmaking-live-marker {
         align-items: center;
         display: flex;
@@ -4247,7 +4266,28 @@
         font-weight: 800;
         height: 34px;
         justify-content: center;
+        overflow: hidden;
+        position: relative;
         width: 34px;
+      }
+
+      .matchmaking-live-marker__disc img {
+        display: block;
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .matchmaking-live-marker__disc.has-photo .matchmaking-live-marker__initials {
+        display: none;
+      }
+
+      .matchmaking-live-marker__initials {
+        align-items: center;
+        display: flex;
+        height: 100%;
+        justify-content: center;
+        width: 100%;
       }
 
       .matchmaking-live-marker.is-fallback .matchmaking-live-marker__disc {
@@ -12289,10 +12329,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js completo con todos los componentes -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- GIF encoder para exportar formaciones -->
+    <script src="https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js"></script>
     <!-- Algoritmo Genético -->
-    <script src="./genetic-teams.js?v=matchmaking-keeper-rotation-visible-cycle-2026-07-14"></script>
+    <script src="./genetic-teams.js?v=matchmaking-profile-photos-2026-07-14"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=ranking-defense-nerf-2026-07-14"></script>
+    <script type="module" src="./app.js?v=matchmaking-profile-photos-2026-07-14"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-defense-nerf-2026-07-14" defer></script>
     <!-- Funcionalidad de Paternidades -->
