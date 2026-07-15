@@ -2269,29 +2269,39 @@ function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes =
   const image = fotoUrl ? imagenes.get(fotoUrl) : null;
   const preview = Boolean(opciones.preview);
   const radius = preview
-    ? (marker?.isKeeper ? 29 : 26)
+    ? (marker?.isKeeper ? 40 : 35)
     : (marker?.isKeeper ? 21 : 19);
+  const innerInset = preview ? 4 : 3;
 
   ctx.save();
   ctx.shadowColor = 'rgba(0, 0, 0, 0.36)';
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 6;
+  ctx.shadowBlur = preview ? 16 : 12;
+  ctx.shadowOffsetY = preview ? 8 : 6;
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fillStyle = marker?.isKeeper ? 'rgba(246, 196, 83, 0.22)' : 'rgba(10, 15, 30, 0.94)';
   ctx.fill();
   ctx.shadowColor = 'transparent';
-  ctx.lineWidth = marker?.isKeeper ? 4 : 3;
+  ctx.lineWidth = preview
+    ? (marker?.isKeeper ? 6 : 5)
+    : (marker?.isKeeper ? 4 : 3);
   ctx.strokeStyle = color;
   ctx.stroke();
   ctx.save();
   ctx.beginPath();
-  ctx.arc(x, y, radius - 3, 0, Math.PI * 2);
+  ctx.arc(x, y, radius - innerInset, 0, Math.PI * 2);
   ctx.clip();
-  const drewImage = dibujarImagenCubriendoGifMatchmaking(ctx, image, x - radius + 3, y - radius + 3, (radius - 3) * 2, (radius - 3) * 2);
+  const drewImage = dibujarImagenCubriendoGifMatchmaking(
+    ctx,
+    image,
+    x - radius + innerInset,
+    y - radius + innerInset,
+    (radius - innerInset) * 2,
+    (radius - innerInset) * 2
+  );
   if (!drewImage) {
     ctx.fillStyle = marker?.isKeeper ? '#fff8db' : '#ffffff';
-    ctx.font = `${preview ? '900 16px' : '900 13px'} system-ui, -apple-system, Segoe UI, sans-serif`;
+    ctx.font = `${preview ? '900 24px' : '900 13px'} system-ui, -apple-system, Segoe UI, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(inicialesJugadorMatchmaking(nombre), x, y + 0.5);
@@ -2299,19 +2309,19 @@ function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes =
   ctx.restore();
   ctx.restore();
 
-  ctx.font = `${preview ? '900 18px' : '800 12px'} system-ui, -apple-system, Segoe UI, sans-serif`;
-  const maxTextWidth = preview ? 150 : 92;
-  const labelHeight = preview ? 32 : 22;
+  ctx.font = `${preview ? '900 26px' : '800 12px'} system-ui, -apple-system, Segoe UI, sans-serif`;
+  const maxTextWidth = preview ? 200 : 92;
+  const labelHeight = preview ? 44 : 22;
   const texto = textoEllipsisCanvasMatchmaking(ctx, nombre, maxTextWidth);
-  const width = Math.ceil(ctx.measureText(texto).width) + (preview ? 22 : 14);
+  const width = Math.ceil(ctx.measureText(texto).width) + (preview ? 30 : 14);
   const labelX = x - (width / 2);
-  const labelY = y + radius + (preview ? 8 : 6);
-  dibujarRectRedondeadoMatchmaking(ctx, labelX, labelY, width, labelHeight, preview ? 9 : 6);
-  ctx.fillStyle = preview ? 'rgba(5, 10, 22, 0.9)' : 'rgba(10, 15, 30, 0.82)';
+  const labelY = y + radius + (preview ? -4 : 6);
+  dibujarRectRedondeadoMatchmaking(ctx, labelX, labelY, width, labelHeight, preview ? 12 : 6);
+  ctx.fillStyle = preview ? 'rgba(5, 10, 22, 0.94)' : 'rgba(10, 15, 30, 0.82)';
   ctx.fill();
   if (preview) {
-    ctx.strokeStyle = 'rgba(231, 236, 245, 0.2)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(231, 236, 245, 0.26)';
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
   ctx.fillStyle = '#e7ecf5';
@@ -2330,7 +2340,7 @@ function renderizarFrameGifFormacionesMatchmaking(index, total, imagenes = new M
   const escenario1 = escenarioRotacionEquipoMatchmaking('equipo1', index);
   const escenario2 = escenarioRotacionEquipoMatchmaking('equipo2', index);
   const layout = preview
-    ? { x: 40, y: 106, width: 1120, height: 528 }
+    ? { x: 64, y: 116, width: 1072, height: 520 }
     : { x: 30, y: 76, width: 900, height: 450 };
 
   dibujarCanchaBaseGifMatchmaking(ctx, layout);
