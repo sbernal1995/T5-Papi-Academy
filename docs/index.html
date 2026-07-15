@@ -3874,6 +3874,140 @@
         white-space: nowrap;
       }
 
+      #autoEquiposModal .modal-dialog {
+        max-width: min(980px, calc(100vw - 32px));
+      }
+
+      #autoEquiposModal .modal-body {
+        max-height: calc(100dvh - 132px);
+        overflow: auto;
+      }
+
+      #autoEquiposModal .input-group {
+        align-items: stretch;
+      }
+
+      #jugadores-seleccionados {
+        overflow: hidden;
+      }
+
+      #jugadores-seleccionados .player-cards-container {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr));
+      }
+
+      #jugadores-seleccionados .player-card {
+        margin: 0;
+      }
+
+      #jugadores-seleccionados .player-role-card {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+      }
+
+      @media (max-width: 575px) {
+        #autoEquiposModal .modal-dialog {
+          height: 100dvh;
+          margin: 0;
+          max-width: none;
+          width: 100vw;
+        }
+
+        #autoEquiposModal .modal-content {
+          border-radius: 0;
+          min-height: 100dvh;
+        }
+
+        #autoEquiposModal .modal-header {
+          align-items: flex-start;
+          gap: 10px;
+          padding: 12px 14px;
+        }
+
+        #autoEquiposModal .modal-title {
+          font-size: 1rem;
+          line-height: 1.2;
+        }
+
+        #autoEquiposModal .modal-body {
+          max-height: calc(100dvh - 58px);
+          padding: 12px;
+        }
+
+        #autoEquiposModal .matchmaking-live-intro,
+        #autoEquiposModal .matchmaking-mode-panel,
+        #autoEquiposModal .mb-4 {
+          margin-bottom: 0.85rem !important;
+        }
+
+        #autoEquiposModal .input-group {
+          display: grid;
+          gap: 8px;
+        }
+
+        #autoEquiposModal .input-group > .form-control,
+        #autoEquiposModal .input-group > .btn {
+          border-radius: 8px !important;
+          min-height: 42px;
+          width: 100%;
+        }
+
+        #autoEquiposModal .performance-toggle {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          width: 100%;
+        }
+
+        #jugadores-seleccionados {
+          padding: 10px !important;
+        }
+
+        #jugadores-seleccionados .d-flex.justify-content-between {
+          align-items: flex-start !important;
+          display: grid !important;
+          gap: 4px;
+        }
+
+        #jugadores-seleccionados .player-cards-container {
+          grid-template-columns: 1fr;
+        }
+
+        #jugadores-seleccionados .player-role-card {
+          align-items: stretch;
+          display: grid;
+          gap: 8px;
+        }
+
+        #jugadores-seleccionados .player-role-info {
+          min-width: 0;
+        }
+
+        #jugadores-seleccionados .role-toggle {
+          display: grid;
+          grid-template-columns: 1fr 1fr 40px;
+          width: 100%;
+        }
+
+        #jugadores-seleccionados .role-toggle .btn {
+          align-items: center;
+          display: inline-flex;
+          justify-content: center;
+          min-height: 34px;
+          padding-inline: 0.34rem;
+        }
+
+        #config-section > .d-flex.gap-3.flex-wrap {
+          display: grid !important;
+          gap: 8px !important;
+        }
+
+        #config-section > .d-flex.gap-3.flex-wrap > .btn {
+          width: 100%;
+        }
+      }
+
       .team-result-card {
         background: rgba(255, 255, 255, 0.03);
         border: 2px solid;
@@ -5636,6 +5770,106 @@
       }
 
       @media (max-width: 575px) {
+        .matchmaking-balance-root {
+          border-radius: 12px;
+          margin-inline: -2px;
+          padding: 10px;
+        }
+
+        .matchmaking-balance-wrap {
+          gap: 12px;
+        }
+
+        .matchmaking-live-status {
+          display: grid;
+          gap: 6px;
+          padding: 9px 10px;
+        }
+
+        .matchmaking-live-pitch {
+          margin-inline: -4px;
+          overflow-x: auto;
+          padding: 8px;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .matchmaking-live-pitch__inner {
+          min-height: 320px;
+          min-width: 640px;
+        }
+
+        .matchmaking-live-marker__disc {
+          height: 38px;
+          width: 38px;
+        }
+
+        .matchmaking-live-marker__name {
+          font-size: 0.76rem;
+          font-weight: 800;
+          max-width: 116px;
+          padding: 3px 7px;
+        }
+
+        .matchmaking-keeper-cycle {
+          max-width: 88%;
+          top: 8px;
+        }
+
+        .matchmaking-keeper-cycle__teams span {
+          font-size: 0.68rem;
+          padding: 6px 8px;
+        }
+
+        .matchmaking-teams-grid {
+          gap: 12px;
+          min-width: 0;
+          overflow: hidden;
+          width: 100%;
+        }
+
+        .matchmaking-team-panel {
+          min-width: 0;
+          padding: 12px;
+          width: 100%;
+        }
+
+        .matchmaking-team-panel__header {
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .matchmaking-team-panel__sub {
+          flex: 0 1 auto;
+          margin-left: 0;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        .matchmaking-player-row {
+          box-sizing: border-box;
+          min-width: 0;
+          padding: 8px;
+        }
+
+        .matchmaking-player-row__top {
+          align-items: flex-start;
+          display: grid;
+          gap: 4px;
+          grid-template-columns: minmax(0, 1fr) auto;
+          min-width: 0;
+        }
+
+        .matchmaking-player-row__name {
+          line-height: 1.15;
+          overflow-wrap: anywhere;
+          white-space: normal;
+        }
+
+        .matchmaking-player-row__skill,
+        .matchmaking-player-row__impact {
+          margin-left: 0;
+        }
+
         .matchmaking-beam__scores {
           flex-wrap: wrap;
         }
@@ -12337,9 +12571,9 @@
     <!-- GIF encoder para exportar formaciones -->
     <script src="https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js"></script>
     <!-- Algoritmo Genético -->
-    <script src="./genetic-teams.js?v=team-share-auth-2026-07-15"></script>
+    <script src="./genetic-teams.js?v=team-share-mobile-preview-2026-07-15"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=team-share-auth-2026-07-15"></script>
+    <script type="module" src="./app.js?v=team-share-mobile-preview-2026-07-15"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-defense-nerf-2026-07-14" defer></script>
     <!-- Funcionalidad de Paternidades -->

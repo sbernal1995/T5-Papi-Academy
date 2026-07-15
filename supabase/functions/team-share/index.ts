@@ -112,7 +112,7 @@ async function createShare(req: Request, headers: HeadersInit) {
     .getPublicUrl(previewPath);
 
   const previewUrl = publicUrlData.publicUrl;
-  const title = cleanText(body.title, "Autoarmado T5 Papi Academy", 100);
+  const title = cleanText(body.title, "Autoarmado T5 Papi Academy", 180);
   const description = cleanText(body.description, "Equipo 1 vs Equipo 2", 180);
 
   const { error: insertError } = await admin.from("shared_team_builds").insert({

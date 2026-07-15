@@ -2177,29 +2177,34 @@ function dibujarCanchaBaseGifMatchmaking(ctx, layout) {
   ctx.restore();
 }
 
-function dibujarHeaderGifFormacionesMatchmaking(ctx, index, total, escenario1, escenario2) {
+function dibujarHeaderGifFormacionesMatchmaking(ctx, index, total, escenario1, escenario2, opciones = {}) {
+  const preview = Boolean(opciones.preview);
+  const title = opciones.title || 'Armado de equipos';
   ctx.fillStyle = '#e7ecf5';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
-  ctx.font = '900 24px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.fillText('Armado de equipos', 32, 38);
+  ctx.font = preview
+    ? '900 28px system-ui, -apple-system, Segoe UI, sans-serif'
+    : '900 24px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.fillText(textoEllipsisCanvasMatchmaking(ctx, title, preview ? 760 : 310), 32, preview ? 40 : 38);
 
   ctx.font = '800 13px system-ui, -apple-system, Segoe UI, sans-serif';
   ctx.fillStyle = 'rgba(231, 236, 245, 0.72)';
-  ctx.fillText(`Escenario ${index + 1}/${total}`, 34, 61);
+  ctx.fillText(`Escenario ${index + 1}/${total}`, 34, preview ? 66 : 61);
 
-  const chipY = 26;
+  const chipY = preview ? 54 : 26;
   const chip1 = `E1 ataja ${escenario1?.keeperName || '-'} · ${escenario1?.etiqueta || '-'}`;
   const chip2 = `E2 ataja ${escenario2?.keeperName || '-'} · ${escenario2?.etiqueta || '-'}`;
-  const width1 = dibujarChipGifMatchmaking(ctx, chip1, 360, chipY, {
+  const chipX = preview ? 820 : 360;
+  const width1 = dibujarChipGifMatchmaking(ctx, chip1, chipX, chipY, {
     border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo1.color, 0.68),
     color: '#e7ecf5',
-    maxWidth: 260
+    maxWidth: preview ? 170 : 260
   });
-  dibujarChipGifMatchmaking(ctx, chip2, 360 + width1 + 10, chipY, {
+  dibujarChipGifMatchmaking(ctx, chip2, chipX + width1 + 10, chipY, {
     border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo2.color, 0.68),
     color: '#e7ecf5',
-    maxWidth: 260
+    maxWidth: preview ? 170 : 260
   });
 }
 
@@ -2255,14 +2260,17 @@ async function precargarFotosGifFormacionesMatchmaking(total) {
   return new Map(entradas);
 }
 
-function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes = new Map()) {
+function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes = new Map(), opciones = {}) {
   const x = layout.x + ((numeroSeguroMatchmaking(marker?.x) / 100) * layout.width);
   const y = layout.y + ((numeroSeguroMatchmaking(marker?.y) / 100) * layout.height);
   const nombre = obtenerNombreJugadorMatchmaking(marker?.jugador);
   const color = marker?.isKeeper ? '#f6c453' : (marker?.color || '#e7ecf5');
   const fotoUrl = obtenerFotoJugadorMatchmaking(marker?.jugador);
   const image = fotoUrl ? imagenes.get(fotoUrl) : null;
-  const radius = marker?.isKeeper ? 21 : 19;
+  const preview = Boolean(opciones.preview);
+  const radius = preview
+    ? (marker?.isKeeper ? 29 : 26)
+    : (marker?.isKeeper ? 21 : 19);
 
   ctx.save();
   ctx.shadowColor = 'rgba(0, 0, 0, 0.36)';
@@ -2283,7 +2291,7 @@ function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes =
   const drewImage = dibujarImagenCubriendoGifMatchmaking(ctx, image, x - radius + 3, y - radius + 3, (radius - 3) * 2, (radius - 3) * 2);
   if (!drewImage) {
     ctx.fillStyle = marker?.isKeeper ? '#fff8db' : '#ffffff';
-    ctx.font = '900 13px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.font = `${preview ? '900 16px' : '900 13px'} system-ui, -apple-system, Segoe UI, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(inicialesJugadorMatchmaking(nombre), x, y + 0.5);
@@ -2291,32 +2299,42 @@ function dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes =
   ctx.restore();
   ctx.restore();
 
-  ctx.font = '800 12px system-ui, -apple-system, Segoe UI, sans-serif';
-  const texto = textoEllipsisCanvasMatchmaking(ctx, nombre, 92);
-  const width = Math.ceil(ctx.measureText(texto).width) + 14;
+  ctx.font = `${preview ? '900 18px' : '800 12px'} system-ui, -apple-system, Segoe UI, sans-serif`;
+  const maxTextWidth = preview ? 150 : 92;
+  const labelHeight = preview ? 32 : 22;
+  const texto = textoEllipsisCanvasMatchmaking(ctx, nombre, maxTextWidth);
+  const width = Math.ceil(ctx.measureText(texto).width) + (preview ? 22 : 14);
   const labelX = x - (width / 2);
-  const labelY = y + radius + 6;
-  dibujarRectRedondeadoMatchmaking(ctx, labelX, labelY, width, 22, 6);
-  ctx.fillStyle = 'rgba(10, 15, 30, 0.82)';
+  const labelY = y + radius + (preview ? 8 : 6);
+  dibujarRectRedondeadoMatchmaking(ctx, labelX, labelY, width, labelHeight, preview ? 9 : 6);
+  ctx.fillStyle = preview ? 'rgba(5, 10, 22, 0.9)' : 'rgba(10, 15, 30, 0.82)';
   ctx.fill();
+  if (preview) {
+    ctx.strokeStyle = 'rgba(231, 236, 245, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
   ctx.fillStyle = '#e7ecf5';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(texto, x, labelY + 11);
+  ctx.fillText(texto, x, labelY + (labelHeight / 2) + 0.5);
 }
 
-function renderizarFrameGifFormacionesMatchmaking(index, total, imagenes = new Map()) {
+function renderizarFrameGifFormacionesMatchmaking(index, total, imagenes = new Map(), opciones = {}) {
+  const preview = Boolean(opciones.preview);
   const canvas = document.createElement('canvas');
-  canvas.width = 960;
-  canvas.height = 540;
+  canvas.width = preview ? 1200 : 960;
+  canvas.height = preview ? 675 : 540;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('No se pudo preparar el canvas del GIF.');
   const escenario1 = escenarioRotacionEquipoMatchmaking('equipo1', index);
   const escenario2 = escenarioRotacionEquipoMatchmaking('equipo2', index);
-  const layout = { x: 30, y: 76, width: 900, height: 450 };
+  const layout = preview
+    ? { x: 40, y: 106, width: 1120, height: 528 }
+    : { x: 30, y: 76, width: 900, height: 450 };
 
   dibujarCanchaBaseGifMatchmaking(ctx, layout);
-  dibujarHeaderGifFormacionesMatchmaking(ctx, index, total, escenario1, escenario2);
+  dibujarHeaderGifFormacionesMatchmaking(ctx, index, total, escenario1, escenario2, opciones);
   dibujarChipGifMatchmaking(ctx, 'Equipo 1', layout.x + 14, layout.y + 14, {
     border: colorRgbaMatchmaking(MATCHMAKING_TEAM_THEMES.equipo1.color, 0.7),
     color: MATCHMAKING_TEAM_THEMES.equipo1.color,
@@ -2332,7 +2350,7 @@ function renderizarFrameGifFormacionesMatchmaking(index, total, imagenes = new M
     ...(escenario1?.markers || []),
     ...(escenario2?.markers || [])
   ].sort((a, b) => Number(Boolean(a.isKeeper)) - Number(Boolean(b.isKeeper)));
-  markers.forEach(marker => dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes));
+  markers.forEach(marker => dibujarJugadorGifFormacionesMatchmaking(ctx, marker, layout, imagenes, opciones));
   return canvas;
 }
 
@@ -2525,6 +2543,12 @@ function descripcionEquipoShareMatchmaking(jugadores = []) {
     .join(', ');
 }
 
+function tituloShareAutoarmadoMatchmaking(resultado) {
+  const equipo1Texto = descripcionEquipoShareMatchmaking(resultado?.equipo1?.jugadores || []);
+  const equipo2Texto = descripcionEquipoShareMatchmaking(resultado?.equipo2?.jugadores || []);
+  return `${equipo1Texto || 'Equipo 1'} VS ${equipo2Texto || 'Equipo 2'}`;
+}
+
 function crearPayloadShareMatchmaking(resultado) {
   const equipo1 = resultado?.equipo1?.jugadores || [];
   const equipo2 = resultado?.equipo2?.jugadores || [];
@@ -2555,7 +2579,10 @@ async function generarPreviewPngAutoarmadoMatchmaking(resultado) {
   renderizarCanchaLiveMatchmaking(resultado);
   const total = Math.max(totalEscenariosRotacionArqueroMatchmaking(), 1);
   const imagenes = await precargarFotosGifFormacionesMatchmaking(total);
-  const canvas = renderizarFrameGifFormacionesMatchmaking(0, total, imagenes);
+  const canvas = renderizarFrameGifFormacionesMatchmaking(0, total, imagenes, {
+    preview: true,
+    title: tituloShareAutoarmadoMatchmaking(resultado)
+  });
   return canvas.toDataURL('image/png');
 }
 
@@ -2620,8 +2647,7 @@ window.compartirAutoarmadoMatchmaking = async function() {
 
     const previewImageBase64 = await generarPreviewPngAutoarmadoMatchmaking(resultado);
     const payload = crearPayloadShareMatchmaking(resultado);
-    const equipo1Texto = descripcionEquipoShareMatchmaking(resultado.equipo1.jugadores);
-    const equipo2Texto = descripcionEquipoShareMatchmaking(resultado.equipo2.jugadores);
+    const shareTitle = tituloShareAutoarmadoMatchmaking(resultado);
     const response = await fetch(`${window.SUPABASE_URL}/functions/v1/team-share`, {
       method: 'POST',
       headers: {
@@ -2633,8 +2659,8 @@ window.compartirAutoarmadoMatchmaking = async function() {
         payload,
         previewImageBase64,
         ttlDays: 7,
-        title: 'Autoarmado T5 Papi Academy',
-        description: `E1: ${equipo1Texto} vs E2: ${equipo2Texto}`
+        title: shareTitle,
+        description: 'Autoarmado T5 Papi Academy'
       })
     });
 
