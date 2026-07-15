@@ -1,0 +1,13 @@
+name = "t5-team-share-preview"
+main = "worker.js"
+compatibility_date = "2026-07-14"
+
+routes = [
+  { pattern = "share.t5papiacademy.com", custom_domain = true }
+]
+
+[vars]
+SUPABASE_URL = "https://jqslerzbzxtycwozvtcy.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impxc2xlcnpienh0eWN3b3p2dGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MzI0ODIsImV4cCI6MjA2NjMwODQ4Mn0.zQr-6hMV4O5lVb6Qw-8FSy-bQS9FdZykxA02J0yfx4M"
+APP_BASE_URL = "https://www.t5papiacademy.com"
+DEFAULT_IMAGE_URL = "https://www.t5papiacademy.com/assets/t5-highlights-cover.png"

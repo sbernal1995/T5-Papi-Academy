@@ -1,0 +1,4 @@
+project_id = "jqslerzbzxtycwozvtcy"
+
+[functions.team-share]
+verify_jwt = false

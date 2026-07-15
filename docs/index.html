@@ -12012,10 +12012,14 @@
                 </div>
               </div>
 
-              <div class="d-flex gap-3">
+              <div class="d-flex gap-3 flex-wrap">
                 <button id="btn-aplicar-equipos-live" class="btn btn-success btn-enhanced flex-fill" disabled>
                   <i class="bi bi-check2 me-2"></i>
                   Aplicar equipos
+                </button>
+                <button type="button" id="btn-compartir-auto-equipos" class="btn btn-outline-info btn-enhanced" onclick="compartirAutoarmadoMatchmaking()" disabled>
+                  <i class="bi bi-share me-2"></i>
+                  Compartir link
                 </button>
                 <button type="button" id="btn-limpiar-auto-equipos" class="btn btn-outline-light" onclick="limpiarAutoEquipos()">
                   <i class="bi bi-trash me-2"></i>
@@ -12025,6 +12029,7 @@
                   Cancelar
                 </button>
               </div>
+              <div id="matchmaking-share-feedback" class="form-text text-light-emphasis mt-2">&nbsp;</div>
             </div>
 
             <!-- Sección de progreso -->
@@ -12332,9 +12337,9 @@
     <!-- GIF encoder para exportar formaciones -->
     <script src="https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js"></script>
     <!-- Algoritmo Genético -->
-    <script src="./genetic-teams.js?v=matchmaking-profile-photos-2026-07-14"></script>
+    <script src="./genetic-teams.js?v=team-share-2026-07-14"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=matchmaking-profile-photos-2026-07-14"></script>
+    <script type="module" src="./app.js?v=team-share-2026-07-14"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-defense-nerf-2026-07-14" defer></script>
     <!-- Funcionalidad de Paternidades -->

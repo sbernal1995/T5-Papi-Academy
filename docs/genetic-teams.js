@@ -1308,6 +1308,18 @@ function resolverDatoJugadorPorNombreMatchmaking(nombre) {
     || null;
 }
 
+function resolverDatoJugadorPorIdMatchmaking(jugadorId) {
+  const id = String(jugadorId || '').trim();
+  if (!id) return null;
+  return datosJugadoresMatchmakingDisponibles()
+    .find(jugador => String(idDatoJugadorMatchmaking(jugador) || '') === id) || null;
+}
+
+function resolverDatoJugadorPorReferenciaMatchmaking(referencia = {}) {
+  return resolverDatoJugadorPorIdMatchmaking(referencia.id || referencia.jugador_id)
+    || resolverDatoJugadorPorNombreMatchmaking(referencia.nombre || referencia.name);
+}
+
 function crearJugadorSeleccionadoMatchmaking(jugador, rolesPrevios = new Map()) {
   const jugadorId = idDatoJugadorMatchmaking(jugador);
   if (!jugadorId) return null;
@@ -2493,6 +2505,152 @@ window.exportarGifFormacionesMatchmaking = async function() {
   }
 };
 
+function obtenerResultadoCompartibleMatchmaking() {
+  return resultadoLiveMatchmaking || window.ultimoResultadoGenetico || null;
+}
+
+function crearReferenciaJugadorShareMatchmaking(jugador = {}) {
+  return {
+    id: obtenerIdJugadorMatchmaking(jugador),
+    nombre: obtenerNombreJugadorMatchmaking(jugador),
+    rolPartido: normalizarRolPartido(jugador.rolPartido)
+  };
+}
+
+function descripcionEquipoShareMatchmaking(jugadores = []) {
+  return jugadores
+    .map(jugador => obtenerNombreJugadorMatchmaking(jugador))
+    .filter(Boolean)
+    .slice(0, 5)
+    .join(', ');
+}
+
+function crearPayloadShareMatchmaking(resultado) {
+  const equipo1 = resultado?.equipo1?.jugadores || [];
+  const equipo2 = resultado?.equipo2?.jugadores || [];
+  const seleccionados = jugadoresSeleccionados.map(jugador => ({
+    id: jugador.id,
+    nombre: jugador.nombre,
+    rolPartido: normalizarRolPartido(jugador.rolPartido)
+  }));
+
+  return {
+    version: 1,
+    createdAt: new Date().toISOString(),
+    selectedPlayers: seleccionados,
+    teams: {
+      equipo1: equipo1.map(crearReferenciaJugadorShareMatchmaking),
+      equipo2: equipo2.map(crearReferenciaJugadorShareMatchmaking)
+    },
+    config: obtenerConfiguracionRendimientoMatchmaking(),
+    restrictions: obtenerRestricciones()
+  };
+}
+
+async function generarPreviewPngAutoarmadoMatchmaking(resultado) {
+  if (!resultado?.equipo1?.jugadores?.length || !resultado?.equipo2?.jugadores?.length) {
+    throw new Error('No hay equipos para generar la imagen.');
+  }
+
+  renderizarCanchaLiveMatchmaking(resultado);
+  const total = Math.max(totalEscenariosRotacionArqueroMatchmaking(), 1);
+  const imagenes = await precargarFotosGifFormacionesMatchmaking(total);
+  const canvas = renderizarFrameGifFormacionesMatchmaking(0, total, imagenes);
+  return canvas.toDataURL('image/png');
+}
+
+function setEstadoCompartirMatchmaking(compartiendo) {
+  const button = document.getElementById('btn-compartir-auto-equipos');
+  if (!button) return;
+  button.disabled = Boolean(compartiendo) || !obtenerResultadoCompartibleMatchmaking();
+  button.innerHTML = compartiendo
+    ? '<i class="bi bi-hourglass-split me-2"></i>Compartiendo...'
+    : '<i class="bi bi-share me-2"></i>Compartir link';
+}
+
+function setFeedbackCompartirMatchmaking(html = '') {
+  const feedback = document.getElementById('matchmaking-share-feedback');
+  if (feedback) feedback.innerHTML = html || '&nbsp;';
+}
+
+async function obtenerSesionParaCompartirMatchmaking() {
+  if (!window.supabase?.auth?.getSession) return null;
+  const { data, error } = await window.supabase.auth.getSession();
+  if (error) throw error;
+  return data?.session || null;
+}
+
+async function copiarLinkCompartidoMatchmaking(url) {
+  if (!url) return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      return true;
+    }
+  } catch (error) {
+    console.warn('[matchmaking] no se pudo copiar al portapapeles:', error?.message || error);
+  }
+  return false;
+}
+
+window.compartirAutoarmadoMatchmaking = async function() {
+  const resultado = obtenerResultadoCompartibleMatchmaking();
+  if (!resultado || jugadoresSeleccionados.length < 10) {
+    mostrarToastMatchmaking('Completa el autoarmado antes de compartir.', 'warning');
+    return;
+  }
+
+  try {
+    setEstadoCompartirMatchmaking(true);
+    setFeedbackCompartirMatchmaking('Generando imagen y link...');
+
+    const session = await obtenerSesionParaCompartirMatchmaking();
+    if (!session?.access_token) {
+      window.verificarPermisosAdmin?.('compartir autoarmados');
+      throw new Error('Tenes que iniciar sesion para crear links compartibles.');
+    }
+
+    const previewImageBase64 = await generarPreviewPngAutoarmadoMatchmaking(resultado);
+    const payload = crearPayloadShareMatchmaking(resultado);
+    const equipo1Texto = descripcionEquipoShareMatchmaking(resultado.equipo1.jugadores);
+    const equipo2Texto = descripcionEquipoShareMatchmaking(resultado.equipo2.jugadores);
+    const response = await fetch(`${window.SUPABASE_URL}/functions/v1/team-share`, {
+      method: 'POST',
+      headers: {
+        apikey: window.SUPABASE_ANON_KEY,
+        authorization: `Bearer ${session.access_token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        payload,
+        previewImageBase64,
+        ttlDays: 7,
+        title: 'Autoarmado T5 Papi Academy',
+        description: `E1: ${equipo1Texto} vs E2: ${equipo2Texto}`
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || 'No se pudo crear el link compartible.');
+    }
+
+    const copiado = await copiarLinkCompartidoMatchmaking(data.shareUrl);
+    setFeedbackCompartirMatchmaking(`
+      <span class="text-success">${copiado ? 'Link copiado.' : 'Link creado.'}</span>
+      <a class="link-info ms-2" href="${escaparHtmlMatchmaking(data.shareUrl)}" target="_blank" rel="noopener">${escaparHtmlMatchmaking(data.shareUrl)}</a>
+    `);
+    mostrarToastMatchmaking(copiado ? 'Link copiado al portapapeles.' : 'Link compartible creado.', 'success');
+  } catch (error) {
+    console.error('Error compartiendo autoarmado:', error);
+    setFeedbackCompartirMatchmaking(`<span class="text-warning">${escaparHtmlMatchmaking(error.message || 'No se pudo compartir.')}</span>`);
+    mostrarToastMatchmaking(error.message || 'No se pudo compartir el autoarmado.', 'error');
+  } finally {
+    setEstadoCompartirMatchmaking(false);
+    validarEjecucion();
+  }
+};
+
 function renderizarCanchaLiveMatchmaking(resultado) {
   const canchaEquipo1 = prepararMarcadoresLiveEquipoMatchmaking(resultado?.equipo1?.jugadores || [], 'equipo1');
   const canchaEquipo2 = prepararMarcadoresLiveEquipoMatchmaking(resultado?.equipo2?.jugadores || [], 'equipo2');
@@ -3469,11 +3627,13 @@ function validarEjecucion() {
   const boton = document.getElementById('btn-ejecutar-algoritmo');
   const botonLive = document.getElementById('btn-aplicar-equipos-live');
   const botonAgregar = document.getElementById('btn-add-live-matchmaking');
+  const botonCompartir = document.getElementById('btn-compartir-auto-equipos');
   const puedeEjecutar = jugadoresSeleccionados.length >= 10;
   
   if (boton) boton.disabled = !puedeEjecutar;
   if (botonLive) botonLive.disabled = !puedeEjecutar || !resultadoLiveMatchmaking;
   if (botonAgregar) botonAgregar.disabled = jugadoresSeleccionados.length >= 10;
+  if (botonCompartir) botonCompartir.disabled = !puedeEjecutar || !resultadoLiveMatchmaking;
   
   if (boton && puedeEjecutar) {
     boton.innerHTML = '<i class="bi bi-play-fill me-2"></i>Ejecutar Algoritmo';
@@ -3507,6 +3667,228 @@ function obtenerRestricciones() {
 }
 
 // Event listeners que se ejecutan cuando el DOM está listo
+function obtenerShareIdDesdeUrlMatchmaking() {
+  try {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get('share') || '';
+    return /^[a-z0-9]{8,40}$/i.test(id) ? id : '';
+  } catch {
+    return '';
+  }
+}
+
+function dormirMatchmaking(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
+async function esperarDatosParaShareMatchmaking() {
+  for (let intento = 0; intento < 100; intento += 1) {
+    if (
+      window.supabase &&
+      Array.isArray(window.datosJugadores) &&
+      window.datosJugadores.length > 0 &&
+      document.getElementById('autoEquiposModal')
+    ) {
+      return true;
+    }
+    await dormirMatchmaking(250);
+  }
+  return false;
+}
+
+async function leerAutoarmadoCompartidoMatchmaking(shareId) {
+  const { data, error } = await window.supabase
+    .from('shared_team_builds')
+    .select('id,payload,title,description,preview_url,expires_at,created_at')
+    .eq('id', shareId)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+function referenciasJugadoresShareMatchmaking(payload = {}) {
+  const seleccionados = Array.isArray(payload.selectedPlayers) ? payload.selectedPlayers : [];
+  const equipo1 = Array.isArray(payload.teams?.equipo1) ? payload.teams.equipo1 : [];
+  const equipo2 = Array.isArray(payload.teams?.equipo2) ? payload.teams.equipo2 : [];
+  const refs = [...seleccionados, ...equipo1, ...equipo2];
+  const vistos = new Set();
+
+  return refs.filter(ref => {
+    const key = String(ref?.id || normalizarBusquedaMatchmaking(ref?.nombre || ref?.name) || '');
+    if (!key || vistos.has(key)) return false;
+    vistos.add(key);
+    return true;
+  });
+}
+
+function aplicarConfiguracionShareMatchmaking(config = {}) {
+  const modo = config.modo === MODO_RENDIMIENTO_RECIENTE
+    ? MODO_RENDIMIENTO_RECIENTE
+    : MODO_RENDIMIENTO_HISTORICO;
+  const historico = document.getElementById('performance-mode-historical');
+  const reciente = document.getElementById('performance-mode-recent');
+  if (historico) historico.checked = modo === MODO_RENDIMIENTO_HISTORICO;
+  if (reciente) reciente.checked = modo === MODO_RENDIMIENTO_RECIENTE;
+
+  const inputPartidos = document.getElementById('input-partidos-recientes-matchmaking');
+  if (inputPartidos && config.partidos) inputPartidos.value = config.partidos;
+
+  const temporada = config.temporadaId;
+  if (temporada) {
+    const selector = document.getElementById('selector-temporada');
+    const selectorMobile = document.getElementById('selector-temporada-mobile');
+    if (selector) selector.value = temporada;
+    if (selectorMobile) selectorMobile.value = temporada;
+  }
+}
+
+function renderizarFilasRestriccionShareMatchmaking(tipo, parejas) {
+  const container = document.getElementById(`parejas-${tipo}`);
+  if (!container) return;
+  const rows = parejas.length ? parejas : [['', '']];
+  const operador = tipo === 'enfrentadas' ? 'vs' : '+';
+  const prefijo = tipo === 'enfrentadas' ? 'enfrentado' : 'junto';
+
+  container.innerHTML = rows.map((pareja, index) => `
+    <div class="d-flex gap-2 mb-2" id="pareja-${tipo}-${index}">
+      <select class="form-select form-select-sm" id="${prefijo}1-${index}" data-share-value="${escaparHtmlMatchmaking(pareja[0] || '')}">
+        <option value="">Seleccionar jugador</option>
+      </select>
+      <span class="text-muted align-self-center">${operador}</span>
+      <select class="form-select form-select-sm" id="${prefijo}2-${index}" data-share-value="${escaparHtmlMatchmaking(pareja[1] || '')}">
+        <option value="">Seleccionar jugador</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarPareja('${tipo}', ${index})">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  `).join('');
+
+  contadorParejas[tipo] = rows.length;
+}
+
+function restaurarRestriccionesShareMatchmaking(restrictions = {}) {
+  const enfrentadas = Array.isArray(restrictions.enfrentadas) ? restrictions.enfrentadas : [];
+  const juntas = Array.isArray(restrictions.juntas) ? restrictions.juntas : [];
+  renderizarFilasRestriccionShareMatchmaking('enfrentadas', enfrentadas);
+  renderizarFilasRestriccionShareMatchmaking('juntas', juntas);
+  actualizarSelectsRestricciones();
+
+  document.querySelectorAll('#parejas-enfrentadas select, #parejas-juntas select').forEach(select => {
+    const valor = select.dataset.shareValue || '';
+    if (valor) select.value = valor;
+    delete select.dataset.shareValue;
+  });
+}
+
+function keyReferenciaShareMatchmaking(ref = {}) {
+  return String(ref.id || ref.jugador_id || '').trim()
+    || normalizarBusquedaMatchmaking(ref.nombre || ref.name);
+}
+
+function crearResultadoDesdeShareMatchmaking(payload, datosPreparados) {
+  const optimizer = new GeneticTeamOptimizer();
+  optimizer.setJugadores(datosPreparados);
+
+  const equipo1Refs = Array.isArray(payload.teams?.equipo1) ? payload.teams.equipo1 : [];
+  const equipo2Refs = Array.isArray(payload.teams?.equipo2) ? payload.teams.equipo2 : [];
+  const equipo2Keys = new Set(equipo2Refs.map(keyReferenciaShareMatchmaking).filter(Boolean));
+
+  if (!equipo1Refs.length || !equipo2Keys.size) return null;
+
+  const individuo = optimizer.jugadores.map(jugador => {
+    const keyId = String(jugador.id || '').trim();
+    const keyNombre = normalizarBusquedaMatchmaking(jugador.nombre);
+    return equipo2Keys.has(keyId) || equipo2Keys.has(keyNombre) ? 1 : 0;
+  });
+
+  const cantidadEquipo1 = individuo.filter(valor => valor === 0).length;
+  const cantidadEquipo2 = individuo.filter(valor => valor === 1).length;
+  if (!cantidadEquipo1 || !cantidadEquipo2) return null;
+
+  const fitness = optimizer.evaluarIndividuo(individuo);
+  const resultado = optimizer.procesarResultado(individuo, fitness);
+  resultado.configuracionRendimiento = payload.config || obtenerConfiguracionRendimientoMatchmaking();
+  resultado.matchmakingLive = {
+    asignacion: asignacionDesdeIndividuoMatchmaking(individuo, optimizer.jugadores),
+    shared: true
+  };
+  return resultado;
+}
+
+async function restaurarAutoarmadoCompartidoMatchmaking(share) {
+  const payload = share?.payload || {};
+  const referencias = referenciasJugadoresShareMatchmaking(payload);
+  const rolesPrevios = new Map(referencias.map(ref => [
+    String(ref.id || ref.jugador_id || ''),
+    normalizarRolPartido(ref.rolPartido || ref.rol)
+  ]));
+
+  aplicarConfiguracionShareMatchmaking(payload.config || {});
+  window.abrirModalAutoEquipos?.();
+  await dormirMatchmaking(80);
+
+  jugadoresSeleccionados = [];
+  referencias.slice(0, 10).forEach(ref => {
+    const jugador = resolverDatoJugadorPorReferenciaMatchmaking(ref);
+    const seleccionado = jugador ? crearJugadorSeleccionadoMatchmaking(jugador, rolesPrevios) : null;
+    if (seleccionado && !jugadoresSeleccionados.some(actual => String(actual.id) === String(seleccionado.id))) {
+      jugadoresSeleccionados.push(seleccionado);
+    }
+  });
+
+  if (jugadoresSeleccionados.length === 0) {
+    throw new Error('No encontre los jugadores de este armado.');
+  }
+
+  ultimosJugadoresUsados = jugadoresSeleccionados.map(jugador => jugador.nombre).join(', ');
+  sincronizarInputJugadoresPartido();
+  actualizarJugadoresSeleccionados();
+  restaurarRestriccionesShareMatchmaking(payload.restrictions || {});
+
+  await asegurarTrackingMatchmakingListo();
+  const config = obtenerConfiguracionRendimientoMatchmaking();
+  const datos = await prepararDatosLiveMatchmaking(config);
+  const resultadoCompartido = crearResultadoDesdeShareMatchmaking(payload, datos);
+
+  if (resultadoCompartido) {
+    resultadoLiveMatchmaking = resultadoCompartido;
+    window.ultimoResultadoGenetico = resultadoCompartido;
+    asignacionLiveAnterior = resultadoCompartido.matchmakingLive?.asignacion || {};
+    renderizarPreviewLiveMatchmaking(resultadoCompartido, {}, 'share');
+  } else {
+    await recalcularAutoEquiposLive('share');
+  }
+
+  validarEjecucion();
+  const feedback = document.getElementById('matchmaking-live-feedback');
+  if (feedback) feedback.innerHTML = `<b>${escaparHtmlMatchmaking(share.title || 'Autoarmado compartido')}</b> cargado`;
+}
+
+let cargaShareDesdeUrlIniciadaMatchmaking = false;
+
+window.cargarAutoarmadoCompartidoDesdeUrlMatchmaking = async function() {
+  const shareId = obtenerShareIdDesdeUrlMatchmaking();
+  if (!shareId || cargaShareDesdeUrlIniciadaMatchmaking) return;
+  cargaShareDesdeUrlIniciadaMatchmaking = true;
+
+  try {
+    const listo = await esperarDatosParaShareMatchmaking();
+    if (!listo) throw new Error('No se terminaron de cargar los datos de jugadores.');
+
+    const share = await leerAutoarmadoCompartidoMatchmaking(shareId);
+    if (!share) throw new Error('Este autoarmado no existe o ya expiro.');
+
+    await restaurarAutoarmadoCompartidoMatchmaking(share);
+    mostrarToastMatchmaking('Autoarmado compartido cargado.', 'success');
+  } catch (error) {
+    console.error('Error cargando autoarmado compartido:', error);
+    mostrarToastMatchmaking(error.message || 'No se pudo cargar el autoarmado compartido.', 'error');
+  }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   const inputLive = document.getElementById('input-jugador-live-matchmaking');
   if (inputLive) {
@@ -3517,6 +3899,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  window.setTimeout(() => {
+    window.cargarAutoarmadoCompartidoDesdeUrlMatchmaking?.();
+  }, 500);
 
   const btnAplicarLive = document.getElementById('btn-aplicar-equipos-live');
   if (btnAplicarLive) {

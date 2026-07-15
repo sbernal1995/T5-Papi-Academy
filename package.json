@@ -5,7 +5,9 @@
   "main": "docs/index.html",
   "scripts": {
     "start": "npx serve docs",
-    "test": "node tests/data-export.test.js && node tests/tracking-integration.test.js"
+    "test": "node tests/data-export.test.js && node tests/tracking-integration.test.js",
+    "deploy:supabase:functions": "npx supabase functions deploy --use-api",
+    "deploy:worker": "cd workers/team-share-preview && npx wrangler deploy"
   },
   "keywords": [
     "football",
