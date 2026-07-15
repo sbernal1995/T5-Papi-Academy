@@ -169,14 +169,14 @@ async function getShare(req: Request, headers: HeadersInit) {
 
 async function getUser(req: Request) {
   const authorization = req.headers.get("authorization") ?? "";
-  if (!authorization) return null;
+  const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (!token) return null;
 
   const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false },
-    global: { headers: { authorization } },
   });
 
-  const { data, error } = await client.auth.getUser();
+  const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
   return data.user;
 }

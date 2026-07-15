@@ -2577,7 +2577,15 @@ async function obtenerSesionParaCompartirMatchmaking() {
   if (!window.supabase?.auth?.getSession) return null;
   const { data, error } = await window.supabase.auth.getSession();
   if (error) throw error;
-  return data?.session || null;
+  const session = data?.session || null;
+  if (!session?.expires_at || !window.supabase.auth.refreshSession) return session;
+
+  const venceEnMs = Number(session.expires_at) * 1000 - Date.now();
+  if (venceEnMs > 60_000) return session;
+
+  const { data: refreshedData, error: refreshError } = await window.supabase.auth.refreshSession();
+  if (refreshError) throw refreshError;
+  return refreshedData?.session || session;
 }
 
 async function copiarLinkCompartidoMatchmaking(url) {
