@@ -388,18 +388,36 @@ function esTimestampCompiladoParaLink(item, linkBase = '') {
   if (item?.video_origen !== 'compilado') return false;
   const linkBaseId = extraerVideoId(linkBase);
   const itemVideoId = extraerVideoId(item?.video_link);
+  const compiladoPartidoId = extraerVideoId(
+    item?.partidos?.compilado_youtube_link || item?.compilado_youtube_link
+  );
+  const reviewPartidoId = extraerVideoId(
+    item?.partidos?.youtube_link || item?.youtube_link
+  );
+  if (reviewPartidoId && itemVideoId === reviewPartidoId) return false;
+  if (compiladoPartidoId && itemVideoId !== compiladoPartidoId) return false;
   return Boolean(linkBaseId && itemVideoId && linkBaseId === itemVideoId);
 }
 
 function resolverOrigenVideoEvento(item, linkBase = '') {
+  const linkBaseId = extraerVideoId(linkBase);
+  const compiladoPartidoId = extraerVideoId(
+    item?.partidos?.compilado_youtube_link || item?.compilado_youtube_link
+  );
+  const reviewPartidoId = extraerVideoId(
+    item?.partidos?.youtube_link || item?.youtube_link
+  );
+  if (linkBaseId && compiladoPartidoId && linkBaseId === compiladoPartidoId) return 'compilado';
+  if (linkBaseId && reviewPartidoId && linkBaseId === reviewPartidoId) return 'review';
   return esTimestampCompiladoParaLink(item, linkBase) ? 'compilado' : 'review';
 }
 
 function obtenerSegundosVideoEvento(item, linkBase = '') {
   const origen = resolverOrigenVideoEvento(item, linkBase);
+  // El timestamp y el link forman un par: nunca usar segundos de la otra fuente.
   const candidatos = origen === 'compilado'
-    ? [item?.video_segundos, item?.compilado_segundos, item?.review_segundos]
-    : [item?.review_segundos, item?.video_segundos, item?.compilado_segundos];
+    ? [item?.compilado_segundos, item?.video_origen === 'compilado' ? item?.video_segundos : null]
+    : [item?.review_segundos, item?.video_origen === 'review' ? item?.video_segundos : null];
 
   for (const valor of candidatos) {
     const segundos = normalizarSegundosVideo(valor);
@@ -4972,12 +4990,34 @@ function crearEventosLinkeablesCompiladoPerfil(clips = []) {
   });
 }
 
-function buscarReviewEventoGolPerfil(partido, gol) {
-  const reviewEventos = partido?.review_eventos || [];
+function obtenerSourceKeyGolCompiladoPerfil(gol, orden = null) {
+  return `gol-${gol?.id ? String(gol.id) : `orden-${orden ?? 'sin-orden'}`}`;
+}
 
-  const reviewSegundosGol = Number(gol?.review_segundos);
-  if (Number.isFinite(reviewSegundosGol)) {
+function buscarReviewEventoGolPerfil(partido, gol, eventos = null, orden = null, eventosConsumidos = null) {
+  const reviewEventos = Array.isArray(eventos) ? eventos : (partido?.review_eventos || []);
+  const estaDisponible = evento => !eventosConsumidos?.has(evento);
+  const sourceKey = gol?.id ? obtenerSourceKeyGolCompiladoPerfil(gol) : '';
+  if (sourceKey) {
+    const sintetico = reviewEventos.find(evento =>
+      estaDisponible(evento) && String(evento.id || '') === sourceKey
+    );
+    if (sintetico) return sintetico;
+  }
+
+  if (orden !== null && orden !== undefined) {
+    const porOrden = reviewEventos.find(evento =>
+      estaDisponible(evento) &&
+      evento.tipo === 'gol' &&
+      Number(evento.metadata?.orden) === Number(orden)
+    );
+    if (porOrden) return porOrden;
+  }
+
+  const reviewSegundosGol = normalizarSegundosVideo(gol?.review_segundos);
+  if (reviewSegundosGol !== null) {
     const porReview = reviewEventos.find(evento =>
+      estaDisponible(evento) &&
       evento.tipo === 'gol' &&
       String(evento.jugador_id || '') === String(gol.goleador_id || '') &&
       Math.abs((Number(evento.review_segundos) || 0) - reviewSegundosGol) <= 2
@@ -4988,6 +5028,7 @@ function buscarReviewEventoGolPerfil(partido, gol) {
   const minutoGol = obtenerMinutoPartidoNormalizado(gol);
   if (Number.isFinite(minutoGol)) {
     return reviewEventos.find(evento =>
+      estaDisponible(evento) &&
       evento.tipo === 'gol' &&
       String(evento.jugador_id || '') === String(gol.goleador_id || '') &&
       Math.abs((normalizarMinutoPartido(evento.minuto_partido) || 0) - minutoGol) <= 0.04
@@ -4995,6 +5036,77 @@ function buscarReviewEventoGolPerfil(partido, gol) {
   }
 
   return null;
+}
+
+function crearReviewEventoGolSinteticoPerfil(partido, gol, orden) {
+  const reviewSegundosDirecto = normalizarSegundosVideo(gol?.review_segundos);
+  const minutoPartido = obtenerMinutoPartidoNormalizado(gol);
+  const inicioReview = normalizarSegundosVideo(partido?.review_inicio_segundos) ?? 0;
+  const reviewSegundos = reviewSegundosDirecto ?? (
+    Number.isFinite(minutoPartido)
+      ? Math.max(0, Math.round(inicioReview + (minutoPartido * 60)))
+      : null
+  );
+
+  if (reviewSegundos === null || !gol?.goleador_id) return null;
+
+  return {
+    id: obtenerSourceKeyGolCompiladoPerfil(gol, orden),
+    partido_id: partido?.id || gol.partido_id || null,
+    jugador_id: gol.goleador_id,
+    tipo: 'gol',
+    cantidad: 1,
+    minuto_partido: Number.isFinite(minutoPartido) ? minutoPartido : null,
+    review_segundos: reviewSegundos,
+    metadata: {
+      origen: 'goles_perfil',
+      orden,
+      equipo: gol.equipo,
+      es_gol_en_contra: !!gol.es_gol_en_contra,
+      review_segundos: reviewSegundos,
+      goleador_id: gol.goleador_id,
+      asistidor_id: gol.asistidor_id || null,
+      asistencia_id: gol.asistidor_id || null,
+      cagada_jugador_id: gol.cagada_jugador_id || null,
+      cagada_id: gol.cagada_jugador_id || null,
+      arquero_id: gol.arquero_id || null
+    }
+  };
+}
+
+function obtenerReviewEventosCompiladoPerfil(partido) {
+  const eventos = Array.isArray(partido?.review_eventos) ? [...partido.review_eventos] : [];
+  const ids = new Set(eventos.map(evento => String(evento.id || '')).filter(Boolean));
+  const golesOrdenados = ordenarGolesComoRepeticion(partido?.goles || []);
+  const eventosConsumidos = new Set();
+  const eventoGolPorId = new Map();
+
+  golesOrdenados.forEach((gol, index) => {
+    const existente = buscarReviewEventoGolPerfil(
+      partido,
+      gol,
+      eventos,
+      index + 1,
+      eventosConsumidos
+    );
+    if (existente) {
+      eventosConsumidos.add(existente);
+      if (gol?.id) eventoGolPorId.set(String(gol.id), existente);
+      return;
+    }
+
+    const sintetico = crearReviewEventoGolSinteticoPerfil(partido, gol, index + 1);
+    if (!sintetico) return;
+
+    const id = String(sintetico.id || '');
+    if (id && ids.has(id)) return;
+    eventos.push(sintetico);
+    eventosConsumidos.add(sintetico);
+    if (gol?.id) eventoGolPorId.set(String(gol.id), sintetico);
+    if (id) ids.add(id);
+  });
+
+  return { eventos, eventoGolPorId };
 }
 
 function formatearSegundosVideoPerfil(segundosTotales) {
@@ -5019,7 +5131,7 @@ async function enriquecerGolesPerfilConLinksVideo(goles = [], jugadorId = null) 
 
   const consultaPartidos = supabase
     .from('partidos')
-    .select('*')
+    .select('*, goles(*)')
     .in('id', partidoIds);
   const resultadoPartidos = await Promise.race([
     consultaPartidos,
@@ -5051,30 +5163,40 @@ async function enriquecerGolesPerfilConLinksVideo(goles = [], jugadorId = null) 
   (resultadoPartidos?.data || []).forEach(partido => {
     const partidoId = String(partido.id || '');
     if (!partidoId || !partidosPorId.has(partidoId)) return;
+    const golesPerfil = partidosPorId.get(partidoId).goles;
     partidosPorId.set(partidoId, {
       ...partidosPorId.get(partidoId),
       ...partido,
-      goles: partidosPorId.get(partidoId).goles
+      goles: Array.isArray(partido.goles) ? partido.goles : golesPerfil
     });
   });
 
   const partidos = Array.from(partidosPorId.values());
   if (partidos.length === 0) return goles;
 
-  await Promise.race([
-    anexarReviewEventosPerfil(partidos),
-    new Promise(resolve => setTimeout(resolve, 5000))
+  const resultadoReviewEventos = await Promise.race([
+    anexarReviewEventosPerfil(partidos).then(() => ({ completado: true })),
+    new Promise(resolve => setTimeout(() => resolve({ timeout: true }), 5000))
   ]);
+  if (resultadoReviewEventos?.timeout) {
+    console.warn('La carga de eventos de review excedio el tiempo limite; el perfil conserva los links sin reconstruir el compilado.');
+    return goles;
+  }
 
   partidos.forEach(partido => {
     const partidoId = String(partido.id);
 
     const compiladoLink = obtenerLinkYouTubeReview(partido.compilado_youtube_link) || '';
-    if (!compiladoLink || !Array.isArray(partido.review_eventos) || partido.review_eventos.length === 0) {
+    if (!compiladoLink) {
       return;
     }
 
-    const clips = construirClipsCompiladoPerfil(partido.review_eventos, { atajadasMinimas: 3 });
+    const { eventos: eventosCompilado, eventoGolPorId } = obtenerReviewEventosCompiladoPerfil(partido);
+    if (eventosCompilado.length === 0) return;
+
+    partido._review_eventos_compilado_perfil = eventosCompilado;
+    partido._review_evento_gol_perfil_por_id = eventoGolPorId;
+    const clips = construirClipsCompiladoPerfil(eventosCompilado, { atajadasMinimas: 3 });
     const eventosLinkeables = crearEventosLinkeablesCompiladoPerfil(clips);
     const porClip = new Map();
     eventosLinkeables.forEach(evento => {
@@ -5103,7 +5225,8 @@ async function enriquecerGolesPerfilConLinksVideo(goles = [], jugadorId = null) 
       }
     };
 
-    const eventoGol = buscarReviewEventoGolPerfil(partido, gol);
+    const eventoGol = partido._review_evento_gol_perfil_por_id?.get(String(gol.id || '')) ||
+      buscarReviewEventoGolPerfil(partido, gol, partido._review_eventos_compilado_perfil);
     const eventosClip = eventosLinkeablesPorPartido.get(String(gol.partido_id))?.get(String(eventoGol?.id || '')) || [];
     const tiposPrioritarios = [];
     if (jugadorId && String(gol.goleador_id || '') === String(jugadorId) && !gol.es_gol_en_contra) tiposPrioritarios.push('gol');
@@ -5968,43 +6091,75 @@ function obtenerJugadorPerfilPorId(jugadorId) {
 
 function resolverVideoEventoPerfil(evento) {
   const videoLink = obtenerLinkYouTubeReview(evento?.video_link);
-  const videoSegundosRaw = evento?.video_segundos ?? evento?.compilado_segundos;
-  const videoSegundos = videoSegundosRaw !== null && videoSegundosRaw !== undefined
-    ? Number(videoSegundosRaw)
-    : null;
+  const compiladoPartidoLink = obtenerLinkYouTubeReview(evento?.partidos?.compilado_youtube_link);
+  const reviewPartidoLink = obtenerLinkYouTubeReview(evento?.partidos?.youtube_link);
+  const videoId = extraerVideoId(videoLink);
+  const compiladoPartidoId = extraerVideoId(compiladoPartidoLink);
+  const reviewPartidoId = extraerVideoId(reviewPartidoLink);
+  const videoLinkEsCompilado = Boolean(videoId && compiladoPartidoId && videoId === compiladoPartidoId);
+  const videoLinkEsReview = Boolean(videoId && reviewPartidoId && videoId === reviewPartidoId);
+  const origenCompilado = videoLinkEsCompilado || (
+    evento?.video_origen === 'compilado' && (
+      Boolean(compiladoPartidoLink) || !videoLinkEsReview
+    )
+  );
 
-  if (videoLink && Number.isFinite(videoSegundos) && extraerVideoId(videoLink)) {
-    return {
-      link: videoLink,
-      videoId: extraerVideoId(videoLink),
-      segundos: Math.max(0, Math.round(videoSegundos)),
-      origen: evento?.video_origen === 'compilado' ? 'Resumen' : 'Video'
-    };
+  if (origenCompilado) {
+    const compiladoLink = compiladoPartidoLink || videoLink;
+    const compiladoSegundos = normalizarSegundosVideo(
+      evento?.compilado_segundos ?? (evento?.video_origen === 'compilado' ? evento?.video_segundos : null)
+    );
+    const compiladoId = extraerVideoId(compiladoLink);
+
+    if (compiladoLink && compiladoSegundos !== null && compiladoId) {
+      return {
+        link: compiladoLink,
+        videoId: compiladoId,
+        segundos: compiladoSegundos,
+        origen: 'Resumen'
+      };
+    }
+
+    return null;
   }
 
-  const reviewLink = obtenerLinkYouTubeReview(evento?.partidos?.youtube_link) ||
-    (evento?.video_origen !== 'compilado' ? videoLink : '');
-  const reviewSegundosRaw = evento?.review_segundos;
-  const reviewSegundos = reviewSegundosRaw !== null && reviewSegundosRaw !== undefined
-    ? Number(reviewSegundosRaw)
-    : null;
+  const reviewLink = reviewPartidoLink || (!origenCompilado ? videoLink : '');
+  const reviewSegundos = normalizarSegundosVideo(
+    evento?.review_segundos ?? (
+      evento?.video_origen === 'review' ? evento?.video_segundos : null
+    )
+  );
 
-  if (reviewLink && Number.isFinite(reviewSegundos) && extraerVideoId(reviewLink)) {
+  if (reviewLink && reviewSegundos !== null && extraerVideoId(reviewLink)) {
     return {
       link: reviewLink,
       videoId: extraerVideoId(reviewLink),
-      segundos: Math.max(0, Math.round(reviewSegundos)),
+      segundos: reviewSegundos,
       origen: 'Review'
     };
   }
 
-  const tieneMinuto = evento?.minuto !== null && evento?.minuto !== undefined;
-  const minuto = tieneMinuto ? Number(evento.minuto) : null;
-  if (reviewLink && Number.isFinite(minuto) && extraerVideoId(reviewLink)) {
+  const tieneTimestampConOrigen = normalizarSegundosVideo(evento?.compilado_segundos) !== null ||
+    normalizarSegundosVideo(evento?.review_segundos) !== null;
+  const videoSegundos = !evento?.video_origen && !tieneTimestampConOrigen
+    ? normalizarSegundosVideo(evento?.video_segundos)
+    : null;
+  if (videoLink && videoSegundos !== null && videoId) {
+    return {
+      link: videoLink,
+      videoId,
+      segundos: videoSegundos,
+      origen: 'Video'
+    };
+  }
+
+  const minutoPartido = obtenerMinutoPartidoNormalizado(evento);
+  if (reviewLink && Number.isFinite(minutoPartido) && extraerVideoId(reviewLink)) {
+    const inicioReview = normalizarSegundosVideo(evento?.partidos?.review_inicio_segundos) ?? 0;
     return {
       link: reviewLink,
       videoId: extraerVideoId(reviewLink),
-      segundos: Math.max(0, Math.round(minuto * 60)),
+      segundos: Math.max(0, Math.round(inicioReview + (minutoPartido * 60))),
       origen: 'Review'
     };
   }
