@@ -13,6 +13,9 @@ alter table public.goles
 add column if not exists review_segundos integer;
 
 alter table public.goles
+add column if not exists es_puskas boolean not null default false;
+
+alter table public.goles
 add column if not exists arquero_id uuid references public.jugadores(id) on delete set null;
 
 alter table public.jugadores
@@ -110,6 +113,7 @@ create index if not exists idx_review_eventos_tipo on public.review_eventos(tipo
 create index if not exists idx_review_eventos_review_segundos on public.review_eventos(partido_id, review_segundos);
 create index if not exists idx_goles_review_segundos on public.goles(partido_id, review_segundos);
 create index if not exists idx_goles_arquero_id on public.goles(arquero_id);
+create index if not exists idx_goles_puskas on public.goles(goleador_id, partido_id) where es_puskas = true;
 
 alter table public.review_eventos enable row level security;
 

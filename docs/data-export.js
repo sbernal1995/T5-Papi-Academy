@@ -305,7 +305,8 @@
         cagada_jugador_nombre: getPlayerName(playersById, goal.cagada_jugador_id),
         arquero_id: goal.arquero_id || null,
         arquero_nombre: getPlayerName(playersById, goal.arquero_id),
-        es_gol_en_contra: !!goal.es_gol_en_contra
+        es_gol_en_contra: !!goal.es_gol_en_contra,
+        es_puskas: !!goal.es_puskas
       };
     });
   }
