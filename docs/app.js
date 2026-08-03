@@ -28134,7 +28134,11 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       console.log('🖱️ Editando partido con ID:', partidoId);
 
       // Cargar datos del partido (incluye columnas opcionales si existen)
-      const construirSelectPartidoEdicion = ({ incluirCagada = true, incluirArquero = true } = {}) => `
+      const construirSelectPartidoEdicion = ({
+        incluirCagada = true,
+        incluirArquero = true,
+        incluirPuskas = true
+      } = {}) => `
         *,
         temporadas (
           id,
@@ -28160,19 +28164,22 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           minuto
           ${incluirCagada ? ', cagada_jugador_id' : ''}
           ${incluirArquero ? ', arquero_id' : ''}
+          ${incluirPuskas ? ', es_puskas' : ''}
         )
       `;
 
       window.edicionSoportaCagadaEnGol = true;
       window.edicionSoportaArqueroGol = true;
+      window.edicionSoportaPuskasGol = true;
 
       let incluirCagada = true;
       let incluirArquero = true;
+      let incluirPuskas = true;
       let consultaPartido = null;
-      for (let intento = 0; intento < 3; intento += 1) {
+      for (let intento = 0; intento < 4; intento += 1) {
         consultaPartido = await supabase
           .from('partidos')
-          .select(construirSelectPartidoEdicion({ incluirCagada, incluirArquero }))
+          .select(construirSelectPartidoEdicion({ incluirCagada, incluirArquero, incluirPuskas }))
           .eq('id', partidoId)
           .single();
 
@@ -28189,6 +28196,13 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           console.warn('⚠️ La columna goles.arquero_id no existe. Se deshabilita la edición de arquero en goles.');
           incluirArquero = false;
           window.edicionSoportaArqueroGol = false;
+          continue;
+        }
+
+        if (incluirPuskas && esErrorColumnaFaltante(consultaPartido.error, 'es_puskas')) {
+          console.warn('⚠️ La columna goles.es_puskas no existe. Se deshabilita la edición de Gol Puskás.');
+          incluirPuskas = false;
+          window.edicionSoportaPuskasGol = false;
           continue;
         }
 
@@ -28324,6 +28338,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     if (!container) return;
     const edicionCagadaHabilitada = window.edicionSoportaCagadaEnGol !== false;
     const edicionArqueroHabilitada = window.edicionSoportaArqueroGol !== false;
+    const edicionPuskasHabilitada = window.edicionSoportaPuskasGol !== false;
 
     if (goles.length === 0) {
       container.innerHTML = `
@@ -28347,6 +28362,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const asistidor = gol.asistidor_id ? jugadores.find(j => j.jugador_id === gol.asistidor_id) : null;
       const cagadaSeleccionada = gol.cagada_jugador_id ? String(gol.cagada_jugador_id) : '';
       const arqueroSeleccionado = gol.arquero_id ? String(gol.arquero_id) : '';
+      const golPuskas = esGolPuskas(gol);
+      const puskasInputId = `editar-gol-puskas-${String(gol.id || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
       const goleadorNombre = goleador?.jugadores?.nombre || 'Desconocido';
       const asistidorNombre = asistidor?.jugadores?.nombre || 'Sin asistencia';
@@ -28421,6 +28438,19 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
                 <span class="badge ${gol.equipo === 1 ? 'bg-primary' : 'bg-danger'}">
                   ${gol.equipo === 1 ? '🔵 Equipo 1' : '🔴 Equipo 2'}
                 </span>
+                <div class="form-check form-switch mt-2 text-start d-inline-block">
+                  <input class="form-check-input gol-puskas"
+                         type="checkbox"
+                         role="switch"
+                         id="${puskasInputId}"
+                         data-gol-id="${gol.id}"
+                         ${golPuskas ? 'checked' : ''}
+                         ${edicionPuskasHabilitada ? '' : 'disabled'}>
+                  <label class="form-check-label text-warning small fw-semibold" for="${puskasInputId}">
+                    <i class="bi bi-trophy-fill me-1"></i>Puskás
+                  </label>
+                </div>
+                ${edicionPuskasHabilitada ? '' : '<small class="text-warning d-block">Ejecuta la migración de Puskás</small>'}
               </div>
             </div>
           </div>
@@ -28436,11 +28466,12 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     const container = document.getElementById('editar-goles-container');
     if (!container) return;
 
-    // Obtener todos los inputs de minutos, segundos, cagadas y arqueros
+    // Obtener todos los inputs editables de cada gol
     const inputsMinutos = container.querySelectorAll('.gol-minuto');
     const inputsSegundos = container.querySelectorAll('.gol-segundo');
     const inputsCagadas = container.querySelectorAll('.gol-cagada');
     const inputsArqueros = container.querySelectorAll('.gol-arquero');
+    const inputsPuskas = container.querySelectorAll('.gol-puskas');
 
     // Crear array de updates
     const updates = [];
@@ -28449,6 +28480,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const inputSeg = inputsSegundos[index];
       const inputCagada = inputsCagadas[index];
       const inputArquero = inputsArqueros[index];
+      const inputPuskas = inputsPuskas[index];
       const golId = inputMin.getAttribute('data-gol-id');
 
       const minutos = parseInt(inputMin.value) || 0;
@@ -28456,6 +28488,7 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
       const minutosDecimales = minutos + (segundos / 60);
       const cagada_jugador_id = inputCagada?.value ? inputCagada.value : null;
       const arquero_id = inputArquero?.value ? inputArquero.value : null;
+      const es_puskas = !!inputPuskas?.checked;
 
       // Redondear a 2 decimales para evitar problemas de precisión
       const minutosRedondeados = Math.round(minutosDecimales * 100) / 100;
@@ -28469,26 +28502,32 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         id: golId,
         minuto: minutosValidos > 0 ? minutosValidos : null,
         cagada_jugador_id,
-        arquero_id
+        arquero_id,
+        es_puskas
       });
     });
 
     let columnaCagadaDisponible = window.edicionSoportaCagadaEnGol !== false;
     let columnaArqueroDisponible = window.edicionSoportaArqueroGol !== false;
+    let columnaPuskasDisponible = window.edicionSoportaPuskasGol !== false;
     let avisoCagadaMostrado = false;
     let avisoArqueroMostrado = false;
+    let avisoPuskasMostrado = false;
 
     // Actualizar cada gol en la base de datos
     for (const update of updates) {
       let error = null;
 
-      for (let intento = 0; intento < 3; intento += 1) {
+      for (let intento = 0; intento < 4; intento += 1) {
         const payload = { minuto: update.minuto };
         if (columnaCagadaDisponible) {
           payload.cagada_jugador_id = update.cagada_jugador_id;
         }
         if (columnaArqueroDisponible) {
           payload.arquero_id = update.arquero_id;
+        }
+        if (columnaPuskasDisponible) {
+          payload.es_puskas = update.es_puskas;
         }
 
         const resultado = await supabase
@@ -28515,6 +28554,16 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
           if (!avisoArqueroMostrado) {
             showToast('Se guardaron los tiempos, pero falta la columna arquero_id para editar el arquero.', 'warning');
             avisoArqueroMostrado = true;
+          }
+          continue;
+        }
+
+        if (columnaPuskasDisponible && esErrorColumnaFaltante(error, 'es_puskas')) {
+          columnaPuskasDisponible = false;
+          window.edicionSoportaPuskasGol = false;
+          if (!avisoPuskasMostrado) {
+            showToast('Se guardaron los demás datos del gol, pero falta la columna es_puskas para editar Puskás.', 'warning');
+            avisoPuskasMostrado = true;
           }
           continue;
         }
