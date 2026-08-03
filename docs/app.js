@@ -1,6 +1,11 @@
 // src/app.js
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import {
+  calcularAnchoPuntajeHistorial,
+  normalizarPuntajeHistorial,
+  obtenerMejorSkillHistorico
+} from './history-score.mjs?v=zero-baseline-2026-08-03';
 
 // Cargar variables de entorno desde .env (solo para desarrollo local, en producción usar variables de entorno del build)
 const SUPABASE_URL = window.SUPABASE_URL || '';
@@ -667,8 +672,6 @@ const PERFIL_MURALLA_DEFENSIVA_SCORE_MIN = 70;
 const HISTORIAL_DEFENSE_BONUS_BASE_MAX = 8;
 const HISTORIAL_DEFENSE_BONUS_CAP = 11;
 const HISTORIAL_DEFENSE_LOAD_MULTIPLIER_MAX = 1.3;
-const HISTORIAL_SCORE_MIN = 1;
-const HISTORIAL_SCORE_MAX = 10;
 const PERFIL_GUARDIAN_ARCO_ATAJADAS_PP_MIN = 5;
 
 function numeroFinitoONull(valor) {
@@ -5359,7 +5362,7 @@ async function cargarPerfilJugador(jugadorId) {
     if (errorJugador) throw errorJugador;
 
     // Cargar TODAS las participaciones en partidos (sin filtro de Supabase)
-    const construirSelectParticipacionesPerfil = ({ incluirArquero = true, incluirCagada = true } = {}) => `
+    const construirSelectParticipacionesPerfil = ({ incluirArquero = true, incluirCagada = true, incluirPuskas = true } = {}) => `
         *,
         partido_id,
         partidos (
@@ -5392,38 +5395,43 @@ async function cargarPerfilJugador(jugadorId) {
             ${incluirArquero ? 'arquero_id,' : ''}
             equipo,
             minuto,
+            ${incluirPuskas ? 'es_puskas,' : ''}
             es_gol_en_contra
           )
         )
       `;
-    const selectParticipacionesSinArquero = construirSelectParticipacionesPerfil({ incluirArquero: false, incluirCagada: true });
+    let incluirArqueroPerfil = true;
+    let incluirCagadaPerfil = true;
+    let incluirPuskasPerfil = true;
+    let consultaParticipaciones = { data: null, error: null };
 
-    let consultaParticipaciones = await supabase
-      .from('jugador_partido')
-      .select(construirSelectParticipacionesPerfil({ incluirArquero: true, incluirCagada: true }))
-      .eq('jugador_id', jugadorId);
-
-    if (consultaParticipaciones.error && esErrorColumnaFaltante(consultaParticipaciones.error, 'arquero_id')) {
-      console.warn('La columna goles.arquero_id no existe. El perfil se carga sin métricas de arquero.');
+    for (let intento = 0; intento < 4; intento += 1) {
       consultaParticipaciones = await supabase
         .from('jugador_partido')
-        .select(selectParticipacionesSinArquero)
-        .eq('jugador_id', jugadorId);
-    }
-
-    if (consultaParticipaciones.error && esErrorColumnaCagadaFaltante(consultaParticipaciones.error)) {
-      console.warn('La columna goles.cagada_jugador_id no existe. El historial del perfil se carga sin cagadas desde goles.');
-      consultaParticipaciones = await supabase
-        .from('jugador_partido')
-        .select(construirSelectParticipacionesPerfil({ incluirArquero: true, incluirCagada: false }))
+        .select(construirSelectParticipacionesPerfil({
+          incluirArquero: incluirArqueroPerfil,
+          incluirCagada: incluirCagadaPerfil,
+          incluirPuskas: incluirPuskasPerfil
+        }))
         .eq('jugador_id', jugadorId);
 
-      if (consultaParticipaciones.error && esErrorColumnaFaltante(consultaParticipaciones.error, 'arquero_id')) {
-        consultaParticipaciones = await supabase
-          .from('jugador_partido')
-          .select(construirSelectParticipacionesPerfil({ incluirArquero: false, incluirCagada: false }))
-          .eq('jugador_id', jugadorId);
+      if (!consultaParticipaciones.error) break;
+      if (incluirPuskasPerfil && esErrorColumnaFaltante(consultaParticipaciones.error, 'es_puskas')) {
+        console.warn('La columna goles.es_puskas no existe. El perfil se carga sin distintivos Puskás.');
+        incluirPuskasPerfil = false;
+        continue;
       }
+      if (incluirCagadaPerfil && esErrorColumnaCagadaFaltante(consultaParticipaciones.error)) {
+        console.warn('La columna goles.cagada_jugador_id no existe. El historial del perfil se carga sin cagadas desde goles.');
+        incluirCagadaPerfil = false;
+        continue;
+      }
+      if (incluirArqueroPerfil && esErrorColumnaFaltante(consultaParticipaciones.error, 'arquero_id')) {
+        console.warn('La columna goles.arquero_id no existe. El perfil se carga sin métricas de arquero.');
+        incluirArqueroPerfil = false;
+        continue;
+      }
+      break;
     }
 
     if (consultaParticipaciones.error) throw consultaParticipaciones.error;
@@ -6313,14 +6321,22 @@ function renderizarEventosConVideoPerfil({
  * Renderiza los videos de goles del jugador
  */
 function renderizarVideosGoles() {
-  const goles = (datosPerfilJugador?.goles || []).filter(g => g.goleador_id === jugadorPerfilActual);
+  const golesJugador = (datosPerfilJugador?.goles || []).filter(g => g.goleador_id === jugadorPerfilActual);
+  const soloPuskas = document.getElementById('perfil-filtro-puskas')?.checked === true;
+  const goles = soloPuskas ? golesJugador.filter(esGolPuskas) : golesJugador;
+  const contador = document.getElementById('perfil-goles-filtro-count');
+  if (contador) {
+    contador.textContent = soloPuskas
+      ? `${goles.length} de ${golesJugador.length} goles`
+      : `${golesJugador.length} goles`;
+  }
 
   renderizarEventosConVideoPerfil({
     containerId: 'perfil-videos-container',
     eventos: goles,
     tituloEvento: 'Gol',
     iconoLinea: '⚽',
-    emptyMessage: 'No hay goles registrados',
+    emptyMessage: soloPuskas ? 'No hay goles Puskás registrados' : 'No hay goles registrados',
     mostrarSinVideoFn: esGolPuskas,
     detalleExtraFn: (gol) => {
       const asistidor = obtenerJugadorPerfilPorId(gol.asistidor_id);
@@ -6340,6 +6356,10 @@ function renderizarVideosGoles() {
     }
   });
 }
+
+window.filtrarGolesPuskasPerfil = function() {
+  renderizarVideosGoles();
+};
 
 function renderizarVideosAsistencias() {
   const asistencias = (datosPerfilJugador?.goles || []).filter(g => g.asistidor_id === jugadorPerfilActual);
@@ -6846,6 +6866,11 @@ function renderizarPartidosRecientesPerfil() {
         : '';
       const golClave = obtenerGolClaveJugadorPerfil(partido);
       const minutoGolClave = golClave ? formatearMinutoPartidoNormalizado(golClave.minuto) : '';
+      const golesPuskasPartido = (partido.goles || []).filter(gol =>
+        !gol.es_gol_en_contra
+        && String(gol.goleador_id || '') === String(jugadorId || '')
+        && esGolPuskas(gol)
+      );
       const momentos = momentosPorPartido.get(String(partido.id)) || [];
       const destacado = momentos.length > 0;
 
@@ -6868,8 +6893,9 @@ function renderizarPartidosRecientesPerfil() {
             </div>
             <div class="perfil-match-tags">
               ${golClave ? `<span class="perfil-award-mini is-key-goal" title="Ultimo gol del partido que puso a tu equipo en ventaja"><i class="bi bi-crosshair"></i> Gol clave${minutoGolClave ? ` ${escaparHtmlPlano(minutoGolClave)}` : ''}</span>` : ''}
-              ${myJp.mvp ? '<span class="perfil-award-mini is-mvp">MVP</span>' : ''}
-              ${myJp.ace ? '<span class="perfil-award-mini is-ace">ACE</span>' : ''}
+              ${golesPuskasPartido.length > 0 ? renderizarDistintivoPuskas('is-compact perfil-award-puskas') : ''}
+              ${myJp.mvp ? '<span class="perfil-award-mini is-mvp"><i class="bi bi-trophy-fill"></i> MVP</span>' : ''}
+              ${myJp.ace ? '<span class="perfil-award-mini is-ace"><i class="bi bi-star-fill"></i> ACE</span>' : ''}
               ${stats.cagadas > 0 ? `<span class="perfil-award-mini is-cag">${stats.cagadas} CAG</span>` : ''}
               <span class="perfil-skill-mini ${skillClase}" title="Promedio del jugador: ${promedioSkillJugadorPerfil.toFixed(1)}">
                 <strong>${stats.skill.toFixed(1)}</strong>
@@ -23512,7 +23538,10 @@ const initApp = () => {
       await anexarReviewEventosHistorial(partidos);
       await anexarTrackingDefensaHistorial(partidos);
       try {
-        partidosEscalaHistorialGlobal = await consultarPartidosParaRecordsHistorial(temporadaSeleccionada);
+        partidosEscalaHistorialGlobal = await consultarPartidosParaRecordsHistorial(
+          temporadaSeleccionada,
+          { incluirTodasLasTemporadas: true }
+        );
         await anexarTrackingDefensaHistorial(partidosEscalaHistorialGlobal);
       } catch (errorEscala) {
         console.warn('No se pudo cargar la escala completa de puntajes del historial. Se usa el lote visible:', errorEscala);
@@ -24132,6 +24161,14 @@ const initApp = () => {
       return dataJugador;
     };
 
+    const skillsHistoricos = partidosEscala.flatMap(partido =>
+      (partido.jugador_partido || [])
+        .map(jp => calcularStatsJugadorHistorial(partido, jp).skill)
+        .filter(skill => Number.isFinite(skill))
+    );
+    const mejorSkillHistorico = obtenerMejorSkillHistorico(skillsHistoricos);
+    const normalizarPuntajePartido = (skill) => normalizarPuntajeHistorial(skill, mejorSkillHistorico);
+
     const recordsPartidoConfigHistorial = [
       { key: 'totalGoles', tipo: 'partido-goles', titulo: 'Partido con maxima cantidad de goles', detalle: 'goles totales', iconoHtml: obtenerIconoEventoHistorial('goal'), clase: 'is-goals' },
       { key: 'totalAsistencias', tipo: 'partido-asistencias', titulo: 'Partido con maxima cantidad de asistencias', detalle: 'asistencias totales', iconoHtml: obtenerIconoEventoHistorial('assist'), clase: 'is-assists' },
@@ -24628,21 +24665,6 @@ const initApp = () => {
       const promedioSkill = skillValoresPartido.length
         ? skillValoresPartido.reduce((acc, val) => acc + val, 0) / skillValoresPartido.length
         : 0;
-      const skillMinPartido = skillValoresPartido.length ? Math.min(...skillValoresPartido) : 0;
-      const skillMaxPartido = skillValoresPartido.length ? Math.max(...skillValoresPartido) : 0;
-      const rangoSkillPartido = skillMaxPartido - skillMinPartido;
-      const normalizarPuntajePartido = (skill) => {
-        if (!Number.isFinite(skill)) return null;
-        if (rangoSkillPartido <= 0.001) return HISTORIAL_SCORE_MAX;
-        return Math.max(
-          HISTORIAL_SCORE_MIN,
-          Math.min(
-            HISTORIAL_SCORE_MAX,
-            HISTORIAL_SCORE_MIN + ((skill - skillMinPartido) / rangoSkillPartido) * (HISTORIAL_SCORE_MAX - HISTORIAL_SCORE_MIN)
-          )
-        );
-      };
-
       const obtenerClasePuntajeHistorial = (puntaje) => {
         if (!Number.isFinite(puntaje)) return 'is-neutral';
         if (puntaje >= 8) return 'is-elite';
@@ -24812,8 +24834,8 @@ const initApp = () => {
       };
 
       const obtenerDetalleReferenciaPuntajeHistorial = () => {
-        if (!skillValoresPartido.length) return '';
-        return `10.0 = mejor del partido (${skillMaxPartido.toFixed(1)} crudo), 1.0 = menor del partido (${skillMinPartido.toFixed(1)} crudo)`;
+        if (mejorSkillHistorico <= 0) return '0.0 = no hacer nada';
+        return `10.0 = mejor actuacion historica (${mejorSkillHistorico.toFixed(1)} crudo), 0.0 = no hacer nada (0.0 crudo)`;
       };
 
       const renderizarTituloPuntajeHistorial = ({ skill, defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima }) => {
@@ -24855,7 +24877,7 @@ const initApp = () => {
         } = obtenerStatsJugadorPartido(jp);
         const puntaje = normalizarPuntajePartido(skill);
         const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
-        const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
+        const puntajeAncho = calcularAnchoPuntajeHistorial(puntaje);
         const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
         const nombreJugador = jp.jugadores?.nombre || 'Jugador';
         const iconoTendencia = tendencia === 'up' ? '&uarr;' : (tendencia === 'down' ? '&darr;' : '=');
@@ -24919,9 +24941,13 @@ const initApp = () => {
         } = obtenerStatsJugadorPartido(jp);
         const puntaje = normalizarPuntajePartido(skill);
         const puntajeTexto = Number.isFinite(puntaje) ? puntaje.toFixed(1) : '--';
-        const puntajeAncho = Number.isFinite(puntaje) ? Math.max(8, Math.min(100, puntaje * 10)) : 0;
+        const puntajeAncho = calcularAnchoPuntajeHistorial(puntaje);
         const puntajeClase = obtenerClasePuntajeHistorial(puntaje);
         const nombreJugador = jp.jugadores?.nombre || 'Jugador';
+        const premiosJugadorHtml = [
+          jp.mvp ? crearDistintivoJugadorHistorial('mvp', '<i class="bi bi-trophy-fill"></i>', 'MVP') : '',
+          jp.ace ? crearDistintivoJugadorHistorial('ace', '<i class="bi bi-star-fill"></i>', 'ACE') : ''
+        ].filter(Boolean).join('');
 
         const stats = [];
         if (golesDelJugador.length > 0) {
@@ -24958,7 +24984,10 @@ const initApp = () => {
         return `
           <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
             <div class="historial-player-main">
-              ${renderizarAccesoPerfilJugador(jp.jugador_id, nombreJugador, 'text-white fw-semibold text-start align-baseline')}
+              <div class="historial-player-name-line">
+                ${renderizarAccesoPerfilJugador(jp.jugador_id, nombreJugador, 'text-white fw-semibold text-start align-baseline')}
+                ${premiosJugadorHtml}
+              </div>
               ${stats.length > 0 ? `<div class="historial-player-events">${stats.join(' ')}</div>` : ''}
             </div>
             <div class="historial-player-score">
@@ -25639,6 +25668,7 @@ const initApp = () => {
         total_puntos: 0,
         winrate: 0,
         goles: 0,
+        goles_puskas: 0,
         asistencias: 0,
         atajadas: 0,
         goles_recibidos_arquero: 0,
@@ -26180,6 +26210,7 @@ const initApp = () => {
         equipo,
         es_gol_en_contra,
         cagada_jugador_id,
+        es_puskas,
         minuto,
         review_segundos
       )
@@ -26215,12 +26246,14 @@ const initApp = () => {
         arquero_id,
         equipo,
         es_gol_en_contra,
+        es_puskas,
         minuto,
         review_segundos
       )
     `;
 
     const quitarArqueroSelect = select => select.replace(/\s+arquero_id,\r?\n/, '\n');
+    const quitarPuskasSelect = select => select.replace(/\s+es_puskas,\r?\n/, '\n');
     const ejecutarConsultaPartidosTemporada = (select) => supabase
         .from('partidos')
         .select(select)
@@ -26228,16 +26261,31 @@ const initApp = () => {
         .order('fecha', { ascending: true })
         .order('id', { ascending: true });
 
-    let consulta = await ejecutarConsultaPartidosTemporada(selectConCagada);
-    if (consulta.error && esErrorColumnaCagadaFaltante(consulta.error)) {
-      consulta = await ejecutarConsultaPartidosTemporada(selectSinCagada);
-    }
+    let incluirCagada = true;
+    let incluirArquero = true;
+    let incluirPuskas = true;
+    let consulta = { data: null, error: null };
 
-    if (consulta.error && esErrorColumnaFaltante(consulta.error, 'arquero_id')) {
-      consulta = await ejecutarConsultaPartidosTemporada(quitarArqueroSelect(selectConCagada));
-      if (consulta.error && esErrorColumnaCagadaFaltante(consulta.error)) {
-        consulta = await ejecutarConsultaPartidosTemporada(quitarArqueroSelect(selectSinCagada));
+    for (let intento = 0; intento < 4; intento += 1) {
+      let select = incluirCagada ? selectConCagada : selectSinCagada;
+      if (!incluirArquero) select = quitarArqueroSelect(select);
+      if (!incluirPuskas) select = quitarPuskasSelect(select);
+      consulta = await ejecutarConsultaPartidosTemporada(select);
+
+      if (!consulta.error) break;
+      if (incluirPuskas && esErrorColumnaFaltante(consulta.error, 'es_puskas')) {
+        incluirPuskas = false;
+        continue;
       }
+      if (incluirCagada && esErrorColumnaCagadaFaltante(consulta.error)) {
+        incluirCagada = false;
+        continue;
+      }
+      if (incluirArquero && esErrorColumnaFaltante(consulta.error, 'arquero_id')) {
+        incluirArquero = false;
+        continue;
+      }
+      break;
     }
 
     if (consulta.error) {
@@ -26322,6 +26370,7 @@ const initApp = () => {
         total_puntos: totalPuntos,
         winrate: Number(stat.winrate) || winrateCalculado,
         goles: Number(stat.goles) || 0,
+        goles_puskas: Number(stat.goles_puskas) || 0,
         asistencias: Number(stat.asistencias) || 0,
         atajadas: Number(stat.atajadas) || 0,
         goles_recibidos_arquero: Number(stat.goles_recibidos_arquero) || 0,
@@ -26348,6 +26397,7 @@ const initApp = () => {
       acc.jugadores += jugador.pj > 0 ? 1 : 0;
       acc.partidos = Math.max(acc.partidos, jugador.pj);
       acc.goles += jugador.goles;
+      acc.golesPuskas += jugador.goles_puskas;
       acc.asistencias += jugador.asistencias;
       acc.atajadas += jugador.atajadas;
       acc.golesRecibidosArquero += jugador.goles_recibidos_arquero;
@@ -26360,6 +26410,7 @@ const initApp = () => {
       partidos: 0,
       jugadores: 0,
       goles: 0,
+      golesPuskas: 0,
       asistencias: 0,
       atajadas: 0,
       golesRecibidosArquero: 0,
@@ -26397,6 +26448,7 @@ const initApp = () => {
       partidos: partidos.length,
       jugadores: 0,
       goles: 0,
+      golesPuskas: 0,
       asistencias: 0,
       atajadas: 0,
       golesRecibidosArquero: 0,
@@ -26461,8 +26513,12 @@ const initApp = () => {
           totales.goles += 1;
           if (gol.goleador_id) {
             const statsGoleador = asegurarStatsJugadorTemporada(statsPorJugador, gol.goleador_id);
-            if (statsGoleador) statsGoleador.goles += 1;
+            if (statsGoleador) {
+              statsGoleador.goles += 1;
+              if (esGolPuskas(gol)) statsGoleador.goles_puskas += 1;
+            }
           }
+          if (esGolPuskas(gol)) totales.golesPuskas += 1;
           if (gol.asistidor_id) {
             const statsAsistidor = asegurarStatsJugadorTemporada(statsPorJugador, gol.asistidor_id);
             if (statsAsistidor) {
@@ -26514,6 +26570,57 @@ const initApp = () => {
     };
   };
 
+  const renderizarGolesPuskasTemporadaResumen = (partidos = []) => {
+    const golesPuskas = (partidos || [])
+      .flatMap(partido => (partido.goles || [])
+        .filter(gol => !gol.es_gol_en_contra && esGolPuskas(gol))
+        .map(gol => ({ partido, gol })))
+      .sort((a, b) => {
+        const fechaA = Date.parse(a.partido?.fecha || '') || 0;
+        const fechaB = Date.parse(b.partido?.fecha || '') || 0;
+        if (fechaA !== fechaB) return fechaB - fechaA;
+        return (Number(b.gol?.minuto) || 0) - (Number(a.gol?.minuto) || 0);
+      });
+
+    const cards = golesPuskas.map(({ partido, gol }) => {
+      const jugador = (partido.jugador_partido || [])
+        .find(jp => String(jp.jugador_id || '') === String(gol.goleador_id || ''));
+      const jugadorId = jugador?.jugador_id || gol.goleador_id || null;
+      const nombreJugador = jugador?.jugadores?.nombre || 'Jugador';
+      const fecha = partido.fecha
+        ? new Date(`${partido.fecha}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '')
+        : 'Sin fecha';
+      const minuto = formatearMinutoPartidoNormalizado(gol.minuto);
+      const youtubeLink = obtenerLinkYouTubeReview(partido.youtube_link);
+      const segundosVideo = obtenerSegundosVideoEvento(gol, youtubeLink);
+      const href = youtubeLink
+        ? (Number.isFinite(segundosVideo)
+          ? generarLinkConTimestampSegundos(youtubeLink, segundosVideo)
+          : generarLinkConTimestamp(youtubeLink, gol.minuto))
+        : '';
+
+      return `
+        <article class="season-puskas-card">
+          <div class="season-puskas-card-head">
+            ${renderizarDistintivoPuskas('is-compact')}
+            ${href ? `<a class="btn btn-sm btn-outline-warning" href="${escaparAtributoHtml(href)}" target="_blank" rel="noopener noreferrer" title="Ver Gol Puskás"><i class="bi bi-play-fill"></i></a>` : ''}
+          </div>
+          <div class="season-puskas-player">${jugadorId ? renderizarAccesoPerfilJugador(jugadorId, nombreJugador, 'text-white fw-semibold') : escaparHtmlPlano(nombreJugador)}</div>
+          <div class="season-puskas-meta">${escaparHtmlPlano(fecha)}${minuto ? ` &middot; ${escaparHtmlPlano(minuto)}` : ''}</div>
+        </article>
+      `;
+    }).join('');
+
+    return `
+      <section class="season-dashboard-section" data-season-puskas style="--season-accent:#f59e0b">
+        <h4 class="season-section-title"><i class="bi bi-trophy-fill"></i>Goles Puskás</h4>
+        ${cards
+          ? `<div class="season-puskas-grid">${cards}</div>`
+          : '<p class="text-light-emphasis mb-0">Todavía no hay goles Puskás en esta temporada.</p>'}
+      </section>
+    `;
+  };
+
   const renderizarResumenTemporada = (temporadaNombre, resumen) => {
     const { jugadores, statsPorJugador, totales, records, partidos = [] } = resumen;
     const promedioGoles = totales.partidos > 0 ? (totales.goles / totales.partidos).toFixed(1) : '0.0';
@@ -26531,6 +26638,7 @@ const initApp = () => {
       { icono: 'bi-calendar-check-fill', label: 'Partidos', valor: totales.partidos, color: '#e2e8f0' },
       { icono: 'bi-people-fill', label: 'Jugadores', valor: totales.jugadores, color: '#e2e8f0' },
       { icono: 'bi-bullseye', label: 'Goles', valor: totales.goles, color: colorAtaque },
+      { icono: 'bi-trophy-fill', label: 'Puskás', valor: totales.golesPuskas || 0, color: '#f59e0b' },
       { icono: 'bi-speedometer2', label: 'Goles/PJ', valor: promedioGoles, color: colorRecords },
       { icono: 'bi-bezier2', label: 'Asist.', valor: totales.asistencias, color: colorAtaque },
       { icono: 'bi-shield-fill', label: 'Atajadas', valor: totales.atajadas, color: '#facc15' }
@@ -26550,6 +26658,13 @@ const initApp = () => {
         items: obtenerTopResumenTemporada(jugadores, 'asistencias'),
         formatearValor: valor => `${valor}`,
         color: colorAtaque
+      },
+      {
+        icono: 'bi-trophy-fill',
+        titulo: 'Goles Puskás',
+        items: obtenerTopResumenTemporada(jugadores, 'goles_puskas'),
+        formatearValor: valor => `${valor}`,
+        color: '#f59e0b'
       },
       {
         icono: 'bi-star-fill',
@@ -26691,6 +26806,7 @@ const initApp = () => {
           <td class="text-center"><span class="text-success">${jugador.pg}</span>/<span class="text-warning">${jugador.pe}</span>/<span class="text-danger">${jugador.pp}</span></td>
           <td class="text-center fw-bold ${claseWinrate}">${jugador.winrate.toFixed(0)}%</td>
           <td class="text-center text-success">${jugador.goles}</td>
+          <td class="text-center text-warning">${jugador.goles_puskas || 0}</td>
           <td class="text-center text-info">${jugador.asistencias}</td>
           <td class="text-center text-danger">${jugador.cagadas}</td>
           <td class="text-center">${jugador.atajadas}</td>
@@ -26703,6 +26819,7 @@ const initApp = () => {
       calcularLogrosVideosTemporadaResumen(partidos),
       temporadaNombre
     );
+    const golesPuskasTemporadaHtml = renderizarGolesPuskasTemporadaResumen(partidos);
 
     return `
       <div class="season-summary">
@@ -26720,6 +26837,8 @@ const initApp = () => {
             ${ataqueCards}
           </div>
         </section>
+
+        ${golesPuskasTemporadaHtml}
 
         <section class="season-dashboard-section" style="--season-accent:#ef9f27">
           <h4 class="season-section-title"><i class="bi bi-shield-fill"></i>Arqueros</h4>
@@ -26765,6 +26884,7 @@ const initApp = () => {
                   <th class="text-center">PG/E/PP</th>
                   <th class="text-center">WR</th>
                   <th class="text-center">G</th>
+                  <th class="text-center" title="Goles Puskás"><i class="bi bi-trophy-fill"></i></th>
                   <th class="text-center">A</th>
                   <th class="text-center">Cag.</th>
                   <th class="text-center">Ataj.</th>
@@ -26773,7 +26893,7 @@ const initApp = () => {
                 </tr>
               </thead>
               <tbody>
-                ${filasRanking || '<tr><td colspan="11" class="text-center text-light-emphasis py-4">Sin jugadores para mostrar</td></tr>'}
+                ${filasRanking || '<tr><td colspan="13" class="text-center text-light-emphasis py-4">Sin jugadores para mostrar</td></tr>'}
               </tbody>
             </table>
           </div>

@@ -19,6 +19,13 @@ assert(app.includes('payload.es_puskas = update.es_puskas'), 'La edición del hi
 assert(app.includes("esErrorColumnaFaltante(error, 'es_puskas')"), 'La edición debe tolerar bases sin la migración de Puskás');
 assert(app.includes("renderizarDistintivoPuskas('mt-1 mb-2')"), 'El perfil debe mostrar el distintivo Puskás');
 assert(app.includes('mostrarSinVideoFn: esGolPuskas'), 'El perfil debe mostrar goles Puskás aunque no tengan video');
+assert(html.includes('id="perfil-filtro-puskas"'), 'La pestaña Goles debe permitir filtrar solo los Puskás');
+assert(app.includes('golesJugador.filter(esGolPuskas)'), 'El filtro del perfil debe conservar solo goles Puskás');
+assert(app.includes("renderizarDistintivoPuskas('is-compact perfil-award-puskas')"), 'El historial del jugador debe mostrar su premio Puskás');
+assert(app.includes("crearDistintivoJugadorHistorial('mvp'"), 'El historial de partidos debe mostrar el icono MVP');
+assert(app.includes("crearDistintivoJugadorHistorial('ace'"), 'El historial de partidos debe mostrar el icono ACE');
+assert(app.includes('statsGoleador.goles_puskas += 1'), 'Temporadas debe contar los goles Puskás por jugador');
+assert(app.includes('renderizarGolesPuskasTemporadaResumen(partidos)'), 'Temporadas debe listar los goles Puskás');
 assert(schema.includes('add column if not exists es_puskas boolean not null default false'), 'El schema de review debe agregar goles.es_puskas');
 assert(migration.includes('where es_puskas = true'), 'La migración debe indexar los goles Puskás');
 

@@ -7455,6 +7455,62 @@
         padding-block: 0.14rem;
       }
 
+      .perfil-goals-filter {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(245, 158, 11, 0.24);
+        border-radius: 10px;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.9rem;
+        padding: 0.65rem 0.8rem;
+      }
+
+      .perfil-goals-filter .form-check {
+        margin: 0;
+      }
+
+      .perfil-goals-filter-count {
+        color: rgba(226, 232, 240, 0.68);
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      .perfil-match-tags .perfil-award-puskas {
+        flex-shrink: 0;
+      }
+
+      .season-puskas-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+      }
+
+      .season-puskas-card {
+        background: linear-gradient(145deg, rgba(120, 53, 15, 0.34), rgba(15, 23, 42, 0.82));
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        border-radius: 12px;
+        display: grid;
+        gap: 0.52rem;
+        min-width: 0;
+        padding: 0.82rem;
+      }
+
+      .season-puskas-card-head {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .season-puskas-player {
+        font-size: 0.92rem;
+      }
+
+      .season-puskas-meta {
+        color: rgba(226, 232, 240, 0.68);
+        font-size: 0.76rem;
+      }
+
       .historial-event-mark.is-glove {
         color: #ccfbf1;
       }
@@ -11932,6 +11988,15 @@
 
         <!-- Tab Videos -->
         <div class="tab-pane fade" id="perfil-videos" role="tabpanel">
+          <div class="perfil-goals-filter">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="perfil-filtro-puskas" onchange="filtrarGolesPuskasPerfil()">
+              <label class="form-check-label text-warning fw-semibold" for="perfil-filtro-puskas">
+                <i class="bi bi-trophy-fill me-1"></i>Solo goles Puskás
+              </label>
+            </div>
+            <span class="perfil-goals-filter-count" id="perfil-goles-filtro-count"></span>
+          </div>
           <div class="row g-3" id="perfil-videos-container">
             <div class="col-12 text-center py-5">
               <i class="bi bi-camera-video display-4 text-muted"></i>
@@ -12612,7 +12677,7 @@
     <!-- Algoritmo Genético -->
     <script src="./genetic-teams.js?v=team-share-preview-scale-2026-07-15"></script>
     <!-- Nuestro script JS -->
-    <script type="module" src="./app.js?v=puskas-history-edit-2026-08-03"></script>
+    <script type="module" src="./app.js?v=puskas-profile-season-2026-08-03"></script>
     <script src="./data-export.js?v=export-2026-06-26" defer></script>
     <script src="./tracking-integration.js?v=tracking-defense-nerf-2026-07-14" defer></script>
     <!-- Funcionalidad de Paternidades -->
