@@ -4,8 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 import {
   calcularAnchoPuntajeHistorial,
   normalizarPuntajeHistorial,
-  obtenerMejorSkillHistorico
-} from './history-score.mjs?v=zero-baseline-2026-08-03';
+  obtenerTechoSkillHistorico
+} from './history-score.mjs?v=p95-ceiling-2026-08-04';
 
 // Cargar variables de entorno desde .env (solo para desarrollo local, en producción usar variables de entorno del build)
 const SUPABASE_URL = window.SUPABASE_URL || '';
@@ -24166,8 +24166,8 @@ const initApp = () => {
         .map(jp => calcularStatsJugadorHistorial(partido, jp).skill)
         .filter(skill => Number.isFinite(skill))
     );
-    const mejorSkillHistorico = obtenerMejorSkillHistorico(skillsHistoricos);
-    const normalizarPuntajePartido = (skill) => normalizarPuntajeHistorial(skill, mejorSkillHistorico);
+    const techoSkillHistorico = obtenerTechoSkillHistorico(skillsHistoricos);
+    const normalizarPuntajePartido = (skill) => normalizarPuntajeHistorial(skill, techoSkillHistorico);
 
     const recordsPartidoConfigHistorial = [
       { key: 'totalGoles', tipo: 'partido-goles', titulo: 'Partido con maxima cantidad de goles', detalle: 'goles totales', iconoHtml: obtenerIconoEventoHistorial('goal'), clase: 'is-goals' },
@@ -24834,8 +24834,8 @@ const initApp = () => {
       };
 
       const obtenerDetalleReferenciaPuntajeHistorial = () => {
-        if (mejorSkillHistorico <= 0) return '0.0 = no hacer nada';
-        return `10.0 = mejor actuacion historica (${mejorSkillHistorico.toFixed(1)} crudo), 0.0 = no hacer nada (0.0 crudo)`;
+        if (techoSkillHistorico <= 0) return '0.0 = no hacer nada';
+        return `10.0 = techo competitivo (percentil 95 historico, ${techoSkillHistorico.toFixed(1)} crudo), 0.0 = no hacer nada (0.0 crudo)`;
       };
 
       const renderizarTituloPuntajeHistorial = ({ skill, defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima }) => {
