@@ -6,6 +6,7 @@ import {
   normalizarPuntajeHistorial,
   obtenerTechoSkillHistorico
 } from './history-score.mjs?v=p95-ceiling-2026-08-04';
+import { resolverPremiosPortada } from './cover-awards.mjs?v=awards-2026-08-04';
 
 // Cargar variables de entorno desde .env (solo para desarrollo local, en producción usar variables de entorno del build)
 const SUPABASE_URL = window.SUPABASE_URL || '';
@@ -16215,7 +16216,8 @@ const initApp = () => {
       jugadores: jugadoresDetalle.map(jugador => jugador.nombre).slice(0, 5),
       jugadoresDetalle,
       capitanes: [],
-      mejorJugador: null
+      mejorJugador: null,
+      premioDestacado: ''
     };
   }
 
@@ -16234,10 +16236,24 @@ const initApp = () => {
     const equipo2Siglas = normalizarSiglasEquipoPortada(datos.equipo2Siglas || datos.equipo2Nombre, 'E2');
     const capitanes = calcularCapitanesPortada(clips, datos.equipo1, datos.equipo2);
     const mejores = calcularMejoresJugadoresPortada(clips, datos.equipo1, datos.equipo2);
+    const premios = resolverPremiosPortada({
+      equipo1: datos.equipo1,
+      equipo2: datos.equipo2,
+      mvpId: datos.mvpId ?? datos.mvp_id,
+      aceId: datos.aceId ?? datos.ace_id
+    });
     const equipo1 = normalizarEquipoPortada(datos.equipo1, equipo1Siglas, '#2563eb', equipo1Siglas, 'shield');
     const equipo2 = normalizarEquipoPortada(datos.equipo2, equipo2Siglas, '#dc2626', equipo2Siglas, 'circle');
-    equipo1.mejorJugador = mejores.equipo1;
-    equipo2.mejorJugador = mejores.equipo2;
+    const premioEquipo1 = [premios.mvp, premios.ace].find(premio => premio?.equipo === 1) || null;
+    const premioEquipo2 = [premios.mvp, premios.ace].find(premio => premio?.equipo === 2) || null;
+    equipo1.mejorJugador = premioEquipo1
+      ? normalizarJugadorCanvas(premioEquipo1.jugador, obtenerNombreJugadorPortada(premioEquipo1.jugador))
+      : mejores.equipo1;
+    equipo2.mejorJugador = premioEquipo2
+      ? normalizarJugadorCanvas(premioEquipo2.jugador, obtenerNombreJugadorPortada(premioEquipo2.jugador))
+      : mejores.equipo2;
+    equipo1.premioDestacado = premioEquipo1?.tipo || '';
+    equipo2.premioDestacado = premioEquipo2?.tipo || '';
     equipo1.capitanes = equipo1.mejorJugador?.nombre ? [equipo1.mejorJugador.nombre] : capitanes.equipo1;
     equipo2.capitanes = equipo2.mejorJugador?.nombre ? [equipo2.mejorJugador.nombre] : capitanes.equipo2;
 
@@ -16526,7 +16542,8 @@ const initApp = () => {
   }
 
   function dibujarCapitanesPortada(ctx, equipo, cx, y, maxWidth, fuente) {
-    const texto = (equipo.capitanes?.length ? equipo.capitanes.join(' / ') : 'Sin goles').toUpperCase();
+    const nombre = equipo.capitanes?.length ? equipo.capitanes.join(' / ') : 'Sin goles';
+    const texto = [equipo.premioDestacado, nombre].filter(Boolean).join(' · ').toUpperCase();
     const fontSize = obtenerMedidasFuenteCanvas(ctx, texto, maxWidth - 30, 32, 24, fuente, 900);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
@@ -18210,6 +18227,8 @@ const initApp = () => {
       marcador,
       marcadorFinal: marcador,
       equipoGanador: equipoGanador ?? 0,
+      mvpId: obtenerValorReviewInput('review-mvp') || null,
+      aceId: obtenerValorReviewInput('review-ace') || null,
       equipo1,
       equipo2
     };
@@ -27727,6 +27746,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
   function obtenerDatosPortadaPartidoGuardado(partido, clips = []) {
     const jugadores = partido?.jugador_partido || [];
     const marcador = calcularMarcadorPartidoPortada(partido);
+    const mvp = jugadores.find(jp => jp.mvp);
+    const ace = jugadores.find(jp => jp.ace);
     return {
       clips,
       fecha: partido?.fecha || new Date().toISOString().slice(0, 10),
@@ -27738,6 +27759,8 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
         equipoGanador: resolverEquipoGanadorPartido(partido),
         marcador
       }),
+      mvpId: mvp?.jugador_id || obtenerIdJugadorPortada(mvp),
+      aceId: ace?.jugador_id || obtenerIdJugadorPortada(ace),
       equipo1: jugadores.filter(jp => normalizarEquipoNumero(jp.equipo) === 1),
       equipo2: jugadores.filter(jp => normalizarEquipoNumero(jp.equipo) === 2)
     };
