@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'docs', 'app.js'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'docs', 'index.html'), 'utf8');
 const schema = fs.readFileSync(path.join(root, 'review_events_schema.sql'), 'utf8');
 const migration = fs.readFileSync(
   path.join(root, 'supabase', 'migrations', '20260807000000_compilado_eventos.sql'),
@@ -26,6 +27,10 @@ assert(app.includes(".upsert(filas, { onConflict: 'review_evento_id' })"));
 assert(app.includes('reviewSandbox.compiladoGenerado = {'), 'la review debe retener el mapa producido al generar el archivo');
 assert(app.includes('compiladoGenerado.clips'), 'al guardar el partido debe persistirse el mapa generado');
 assert(app.includes('await anexarCorrelacionesCompilado(partidos)'), 'el historial debe cargar las correlaciones guardadas');
+assert(html.includes('id="review-sync-existing-compilado"'), 'la review debe permitir recuperar un compilado anterior');
+assert(app.includes('sincronizarCompiladoExistenteReviewSandbox'), 'debe existir el flujo de sincronizacion historica');
+assert(app.includes(".select('id', { count: 'exact', head: true })"), 'la sincronizacion debe evitar eventos duplicados');
+assert(app.includes('partido.compilado_youtube_link'), 'la sincronizacion debe exigir el compilado guardado');
 
 const prepararInicio = app.indexOf('function prepararLinksVideoHistorialPartido(partido)');
 const prepararFin = app.indexOf('function renderizarClipsCompiladoHtml', prepararInicio);

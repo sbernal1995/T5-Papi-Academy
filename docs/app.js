@@ -19493,6 +19493,102 @@ const initApp = () => {
     }
   }
 
+  async function buscarPartidoExistenteParaSincronizacionReview() {
+    const fecha = obtenerValorReviewInput('review-fecha');
+    const cancha = obtenerValorReviewInput('review-cancha');
+    const resultado = obtenerValorReviewInput('review-resultado');
+    if (!fecha || !cancha) {
+      throw new Error('El analisis debe incluir fecha y cancha para encontrar el partido existente.');
+    }
+
+    const { data, error } = await supabase
+      .from('partidos')
+      .select('id, fecha, cancha, resultado, review_inicio_segundos, youtube_link, compilado_youtube_link')
+      .eq('fecha', fecha);
+    if (error) throw error;
+
+    const canchaNormalizada = normalizarTextoRutaJugador(cancha);
+    let candidatos = (data || []).filter(partido =>
+      normalizarTextoRutaJugador(partido.cancha) === canchaNormalizada
+    );
+    if (resultado) {
+      const porResultado = candidatos.filter(partido => String(partido.resultado || '') === String(resultado));
+      if (porResultado.length) candidatos = porResultado;
+    }
+
+    if (candidatos.length !== 1) {
+      throw new Error(candidatos.length
+        ? 'Hay mas de un partido coincidente. Revisa fecha, cancha y resultado.'
+        : 'No se encontro un partido existente con la misma fecha, cancha y resultado.');
+    }
+    return candidatos[0];
+  }
+
+  async function sincronizarCompiladoExistenteReviewSandbox() {
+    if (!verificarPermisosAdmin('sincronizar un compilado existente')) return;
+
+    const button = document.getElementById('review-sync-existing-compilado');
+    const statusEl = document.getElementById('review-compilado-status');
+    if (button) button.disabled = true;
+    try {
+      const partido = await buscarPartidoExistenteParaSincronizacionReview();
+      if (!obtenerLinkYouTubeReview(partido.compilado_youtube_link)) {
+        throw new Error('El partido encontrado no tiene un link de compilado de YouTube guardado.');
+      }
+
+      const { count, error: countError } = await supabase
+        .from('review_eventos')
+        .select('id', { count: 'exact', head: true })
+        .eq('partido_id', partido.id);
+      if (countError) throw countError;
+      if (Number(count) > 0) {
+        throw new Error('Ese partido ya tiene eventos de review. No se agregaron duplicados.');
+      }
+
+      const atajadasMinimas = obtenerUmbralAtajadasCompilado();
+      const clips = construirClipsCompiladoSandbox({ atajadasMinimas });
+      if (!clips.length) {
+        throw new Error('El analisis importado no contiene cortes elegibles.');
+      }
+
+      const compiladoGenerado = {
+        clips: clips.map(clip => ({
+          ...clip,
+          duracion: Math.max(0, Number(clip.fin) - Number(clip.inicio))
+        })),
+        firmaFuente: crearFirmaClipsCompilado(clips),
+        atajadasMinimas,
+        generadoEn: new Date().toISOString()
+      };
+      reviewSandbox.compiladoGenerado = compiladoGenerado;
+      setValorReviewInput('review-compilado-youtube-link', partido.compilado_youtube_link);
+      setEstadoCompilado(statusEl, `Guardando ${clips.length} cortes en el partido existente...`, 'info');
+
+      const guardado = await guardarReviewEventosPartido(
+        partido.id,
+        obtenerReviewInicioSegundos(),
+        {
+          mvpId: document.getElementById('review-mvp')?.value || null,
+          aceId: document.getElementById('review-ace')?.value || null,
+          compiladoGenerado
+        }
+      );
+      if (!guardado) {
+        throw new Error('No se pudieron guardar todas las correlaciones del compilado.');
+      }
+
+      setEstadoCompilado(statusEl, `${clips.length} cortes sincronizados con el partido existente.`, 'success');
+      showToast('Compilado existente sincronizado correctamente.', 'success');
+      await cargarHistorialPartidos();
+    } catch (error) {
+      console.error('Error sincronizando compilado existente:', error);
+      setEstadoCompilado(statusEl, obtenerMensajeError(error), 'error');
+      showToast(`No se pudo sincronizar el compilado: ${obtenerMensajeError(error)}`, 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   function initReviewSandbox() {
     if (!document.getElementById('review-sandbox-content')) return;
     if (document.body.dataset.reviewSandboxBound === '1') return;
@@ -19511,6 +19607,7 @@ const initApp = () => {
     document.getElementById('review-add-atajadas')?.addEventListener('click', () => agregarStatReview('atajadas'));
     document.getElementById('review-add-buena-jugada')?.addEventListener('click', agregarBuenaJugadaReview);
     document.getElementById('review-save-partido')?.addEventListener('click', guardarPartidoReviewSandbox);
+    document.getElementById('review-sync-existing-compilado')?.addEventListener('click', sincronizarCompiladoExistenteReviewSandbox);
     document.getElementById('review-export-analysis')?.addEventListener('click', exportarAnalisisReviewSandbox);
     document.getElementById('review-import-analysis')?.addEventListener('click', () => {
       document.getElementById('review-import-analysis-file')?.click();
@@ -20231,7 +20328,7 @@ const initApp = () => {
 
   async function guardarReviewEventosPartido(partidoId, reviewInicioSegundos, opciones = {}) {
       const reviewEventos = construirReviewEventosPartido(partidoId, reviewInicioSegundos, opciones);
-      if (reviewEventos.length === 0) return;
+      if (reviewEventos.length === 0) return false;
 
       const { data: reviewEventosGuardados, error } = await supabase
           .from('review_eventos')
@@ -20255,18 +20352,20 @@ const initApp = () => {
                       fin: clipGenerado.fin,
                       duracion: clipGenerado.duracion
                   }));
-                  await guardarCorrelacionesCompiladoPartido(partidoId, reviewEventosGuardados || [], clipsCorrelacion);
+                  const correlacionesGuardadas = await guardarCorrelacionesCompiladoPartido(partidoId, reviewEventosGuardados || [], clipsCorrelacion);
+                  if (!correlacionesGuardadas) return false;
               } else {
                   showToast('La review cambio despues de generar el compilado. Regeneralo para guardar correlaciones exactas.', 'warning');
+                  return false;
               }
           }
-          return;
+          return true;
       }
 
       if (esErrorTablaFaltante(error, 'review_eventos')) {
           console.warn('La tabla review_eventos no existe. Ejecuta review_events_schema.sql.', error);
           showToast('Partido guardado, pero falta review_eventos. Ejecuta review_events_schema.sql para guardar timestamps de review.', 'warning');
-          return;
+          return false;
       }
 
       console.error('Error al guardar eventos de review:', error);

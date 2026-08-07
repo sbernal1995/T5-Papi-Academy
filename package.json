@@ -1,6 +1,6 @@
 {
   "name": "t5-papi-academy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Proyecto para mostrar jugadores, estadísticas y armar equipos de fútbol entre amigos.",
   "main": "docs/index.html",
   "scripts": {
