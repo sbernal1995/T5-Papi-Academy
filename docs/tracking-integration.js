@@ -1247,6 +1247,94 @@
     });
   }
 
+  function buildPlayerPulmonWindowSeries(rows = []) {
+    const matchRows = (rows || []).filter(row => playerWindows(row).length > 0);
+    if (!matchRows.length) return [];
+
+    const windowSize = 300;
+    const maxEndSeconds = matchRows.reduce((max, row) => (
+      Math.max(max, ...playerWindows(row).map(window => {
+        const start = windowStartSeconds(window);
+        return windowEndSeconds(window, start, windowSize);
+      }))
+    ), 0);
+    const series = [];
+    for (let start = 0; start < maxEndSeconds; start += windowSize) {
+      series.push({
+        start_seconds: start,
+        end_seconds: Math.min(maxEndSeconds, start + windowSize),
+        distance_m: 0,
+        high_intensity_seconds: 0,
+        field_seconds: 0,
+        matches: 0,
+        estimated_distance: false
+      });
+    }
+
+    matchRows.forEach(row => {
+      const windows = playerWindows(row).map(window => {
+        const start = windowStartSeconds(window);
+        const end = windowEndSeconds(window, start, windowSize);
+        const totalSeconds = Math.max(0, end - start);
+        const fieldSeconds = Math.max(0, totalSeconds - goalkeeperOverlapSeconds(row, start, end));
+        return {
+          start,
+          end,
+          fieldSeconds,
+          highIntensity: Math.min(fieldSeconds, windowHighIntensitySeconds(window)),
+          distance: windowDistanceMeters(window)
+        };
+      }).filter(window => window.end > window.start);
+      const hasDistance = windows.some(window => window.distance > 0);
+      const duration = toNumber(row.tracking_analyses?.duration_seconds, maxEndSeconds);
+      const playerMetrics = playerFieldMetrics(row, duration);
+      const rowBuckets = series.map(bucket => windows.reduce((summary, window) => {
+        const overlapStart = Math.max(bucket.start_seconds, window.start);
+        const overlapEnd = Math.min(bucket.end_seconds, window.end);
+        if (overlapEnd <= overlapStart || window.fieldSeconds <= 0) return summary;
+        const fieldSeconds = Math.max(
+          0,
+          overlapEnd - overlapStart - goalkeeperOverlapSeconds(row, overlapStart, overlapEnd)
+        );
+        if (fieldSeconds <= 0) return summary;
+        const fieldRatio = clamp(fieldSeconds / window.fieldSeconds, 0, 1);
+        summary.fieldSeconds += fieldSeconds;
+        summary.highIntensity += Math.min(fieldSeconds, window.highIntensity * fieldRatio);
+        summary.distance += window.distance * fieldRatio;
+        return summary;
+      }, { fieldSeconds: 0, highIntensity: 0, distance: 0 }));
+      const totalWeight = rowBuckets.reduce((sum, bucket) => sum + (bucket.highIntensity * 3) + bucket.fieldSeconds, 0);
+
+      rowBuckets.forEach((rowBucket, index) => {
+        if (rowBucket.fieldSeconds <= 0) return;
+        const fallbackDistance = !hasDistance && totalWeight > 0
+          ? playerMetrics.field_distance_m * (((rowBucket.highIntensity * 3) + rowBucket.fieldSeconds) / totalWeight)
+          : 0;
+        const distance = hasDistance ? rowBucket.distance : fallbackDistance;
+        const bucket = series[index];
+        bucket.distance_m += distance;
+        bucket.high_intensity_seconds += rowBucket.highIntensity;
+        bucket.field_seconds += rowBucket.fieldSeconds;
+        bucket.matches += 1;
+        bucket.estimated_distance = bucket.estimated_distance || (!hasDistance && distance > 0);
+      });
+    });
+
+    return series
+      .filter(window => window.matches > 0)
+      .map(window => ({
+        ...window,
+        distance_m: round(window.distance_m, 1),
+        high_intensity_seconds: round(window.high_intensity_seconds, 1),
+        field_seconds: round(window.field_seconds, 1),
+        distance_m_avg: round(window.distance_m / window.matches, 1),
+        high_intensity_seconds_avg: round(window.high_intensity_seconds / window.matches, 1),
+        km_per_40: window.field_seconds > 0
+          ? round((window.distance_m / 1000) / (window.field_seconds / 2400), 2)
+          : 0
+      }));
+  }
+
   function advancedDefenseFromRaw(raw) {
     const direct = raw?.advanced_defense || raw?.review_analysis?.advanced_defense || {};
     return direct && typeof direct === 'object' ? direct : {};
@@ -1599,6 +1687,8 @@
       .tracking-axis-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.11); overflow: hidden; }
       .tracking-axis-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22d3ee, #60a5fa); }
       .tracking-goal-note { color: #a7acc7; font-size: .8rem; margin-top: .45rem; }
+      .tracking-pulmon-card .tracking-canvas { aspect-ratio: 2.5 / 1; min-height: 310px; }
+      .tracking-pulmon-card .tracking-metric-band { margin-top: .7rem; }
       .tracking-profile-dashboard { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: .75rem; color: #eef2ff; }
       .tracking-profile-panel { background: #2f3040; border: 1px solid rgba(255,255,255,.10); border-radius: 8px; overflow: hidden; box-shadow: 0 14px 34px rgba(0,0,0,.22); }
       .tracking-profile-panel-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 1rem; border-bottom: 1px solid rgba(0,0,0,.28); background: rgba(255,255,255,.025); }
@@ -1682,6 +1772,7 @@
         .tracking-modal-xl { max-width: 100vw; margin: .25rem; }
         .tracking-table { min-width: 720px; }
         .tracking-canvas { min-height: 220px; }
+        .tracking-pulmon-card .tracking-canvas { min-height: 240px; }
         .tracking-canvas-card-featured .tracking-canvas { min-height: 260px; }
       }
     `;
@@ -3615,6 +3706,136 @@
     ctx.restore();
   }
 
+  function drawPlayerPulmonWindowChart(canvas, rows = []) {
+    if (!canvas) return;
+    const { ctx, width, height } = setupCanvas(canvas);
+    const series = buildPlayerPulmonWindowSeries(rows);
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, width, height);
+
+    if (!series.length) {
+      ctx.fillStyle = 'rgba(255,255,255,.74)';
+      ctx.font = `${Math.max(13, width * 0.022)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Sin ventanas temporales para promediar', width / 2, height / 2);
+      ctx.textAlign = 'start';
+      return;
+    }
+
+    const padLeft = Math.max(70, width * 0.095);
+    const padRight = Math.max(22, width * 0.04);
+    const padTop = Math.max(26, height * 0.14);
+    const padBottom = Math.max(52, height * 0.24);
+    const chartW = width - padLeft - padRight;
+    const chartH = height - padTop - padBottom;
+    const values = series.map(window => window.km_per_40).filter(Number.isFinite);
+    let minValue = Math.floor(Math.min(...values) * 10) / 10;
+    let maxValue = Math.ceil(Math.max(...values) * 10) / 10;
+    if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+      minValue = 0;
+      maxValue = 1;
+    }
+    if (minValue === maxValue) {
+      minValue = Math.max(0, minValue - 0.1);
+      maxValue += 0.1;
+    } else {
+      const padding = Math.max(0.05, (maxValue - minValue) * 0.12);
+      minValue = Math.max(0, minValue - padding);
+      maxValue += padding;
+    }
+    const valueRange = Math.max(0.1, maxValue - minValue);
+
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(255,255,255,.62)';
+    ctx.font = `${Math.max(10, width * 0.014)}px system-ui, sans-serif`;
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i += 1) {
+      const y = padTop + chartH - (chartH * i) / 4;
+      const value = minValue + (valueRange * i) / 4;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(width - padRight, y);
+      ctx.stroke();
+      ctx.fillText(value.toFixed(1), padLeft - 8, y + 4);
+    }
+
+    const xFor = index => series.length === 1
+      ? padLeft + chartW / 2
+      : padLeft + (chartW * index) / (series.length - 1);
+    const yFor = value => padTop + chartH - (chartH * clamp((value - minValue) / valueRange, 0, 1));
+
+    ctx.beginPath();
+    series.forEach((window, index) => {
+      const x = xFor(index);
+      const y = yFor(window.km_per_40);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(xFor(series.length - 1), padTop + chartH);
+    ctx.lineTo(xFor(0), padTop + chartH);
+    ctx.closePath();
+    const fill = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+    fill.addColorStop(0, 'rgba(34, 211, 238, .32)');
+    fill.addColorStop(1, 'rgba(34, 211, 238, .02)');
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    ctx.beginPath();
+    series.forEach((window, index) => {
+      const x = xFor(index);
+      const y = yFor(window.km_per_40);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = Math.max(2.5, width / 260);
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    series.forEach((window, index) => {
+      const x = xFor(index);
+      const y = yFor(window.km_per_40);
+      ctx.beginPath();
+      ctx.fillStyle = '#22d3ee';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.arc(x, y, Math.max(4, width * 0.005), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    ctx.strokeStyle = 'rgba(255,255,255,.34)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop);
+    ctx.lineTo(padLeft, padTop + chartH);
+    ctx.lineTo(width - padRight, padTop + chartH);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,.70)';
+    series.forEach((window, index) => {
+      if (index % Math.ceil(series.length / 6) !== 0 && index !== series.length - 1) return;
+      ctx.fillText(formatTime(window.start_seconds), xFor(index), height - padBottom + 22);
+    });
+
+    ctx.textAlign = 'left';
+    ctx.font = `800 ${Math.max(11, width * 0.015)}px system-ui, sans-serif`;
+    ctx.fillStyle = '#22d3ee';
+    ctx.fillText('Promedio del jugador', padLeft, padTop - 7);
+    ctx.fillStyle = 'rgba(255,255,255,.62)';
+    ctx.font = `${Math.max(10, width * 0.013)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Eje X: tramo del partido', padLeft + chartW / 2, height - 8);
+    ctx.save();
+    ctx.translate(16, padTop + chartH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText("Eje Y: ritmo km/40'", 0, 0);
+    ctx.restore();
+  }
+
   function drawGoalLocations(canvas, pitch, goals = []) {
     if (!canvas) return;
     const { ctx, width, height } = setupCanvas(canvas);
@@ -4043,6 +4264,62 @@
     }, delay);
   }
 
+  function playerPulmonWindowLabel(window = {}) {
+    return `${formatTime(window.start_seconds)}-${formatTime(window.end_seconds)}`;
+  }
+
+  function renderPlayerPulmonProfileCard(rows = []) {
+    const series = buildPlayerPulmonWindowSeries(rows);
+    const matchesWithWindows = (rows || []).filter(row => playerWindows(row).length > 0).length;
+    if (!series.length) {
+      return `
+        <div class="tracking-profile-card is-wide tracking-pulmon-card">
+          <h6 class="tracking-profile-section-title">Pulmon durante el partido</h6>
+          <canvas class="tracking-canvas" id="perfil-tracking-pulmon-canvas"></canvas>
+          <div class="tracking-goal-note">Los analisis importados de este jugador todavia no incluyen ventanas temporales para calcular su curva.</div>
+        </div>
+      `;
+    }
+
+    const best = series.reduce((selected, window) => window.km_per_40 > selected.km_per_40 ? window : selected, series[0]);
+    const lowest = series.reduce((selected, window) => window.km_per_40 < selected.km_per_40 ? window : selected, series[0]);
+    const first = series[0];
+    const last = series[series.length - 1];
+    const changePct = first.km_per_40 > 0
+      ? round(((last.km_per_40 - first.km_per_40) / first.km_per_40) * 100, 1)
+      : null;
+    const coverage = series.map(window => window.matches);
+    const minCoverage = Math.min(...coverage);
+    const maxCoverage = Math.max(...coverage);
+    const coverageLabel = minCoverage === maxCoverage ? `${maxCoverage}` : `${minCoverage}-${maxCoverage}`;
+    const estimated = series.some(window => window.estimated_distance);
+
+    return `
+      <div class="tracking-profile-card is-wide tracking-pulmon-card">
+        <h6 class="tracking-profile-section-title">Pulmon durante el partido</h6>
+        <div class="tracking-profile-panel-sub mb-2">Ritmo promedio por tramo en ${matchesWithWindows} ${matchesWithWindows === 1 ? 'partido' : 'partidos'} con ventanas temporales.</div>
+        <canvas class="tracking-canvas" id="perfil-tracking-pulmon-canvas"></canvas>
+        <div class="tracking-metric-band">
+          <div class="tracking-metric-pill">
+            <strong>${playerPulmonWindowLabel(best)}</strong>
+            <span>Mejor tramo · ${best.km_per_40.toFixed(2)} km/40'</span>
+          </div>
+          <div class="tracking-metric-pill">
+            <strong>${playerPulmonWindowLabel(lowest)}</strong>
+            <span>Menor rendimiento · ${lowest.km_per_40.toFixed(2)} km/40'</span>
+          </div>
+          ${changePct === null || series.length < 2 ? '' : `
+          <div class="tracking-metric-pill">
+            <strong>${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}%</strong>
+            <span>Inicio vs. final · ${first.km_per_40.toFixed(2)} a ${last.km_per_40.toFixed(2)} km/40'</span>
+          </div>
+          `}
+        </div>
+        <div class="tracking-goal-note">Cada punto promedia ${coverageLabel} ${maxCoverage === 1 ? 'partido' : 'partidos'} y descuenta el tiempo como arquero. ${estimated ? 'Algunos tramos estiman los metros a partir de la distancia total y la intensidad disponible.' : ''}</div>
+      </div>
+    `;
+  }
+
   async function renderProfileTracking() {
     if (APP.profileRenderInProgress) return;
     APP.profileRenderInProgress = true;
@@ -4142,6 +4419,7 @@
             <div class="mt-3">${renderTrackingAxisList(aggregate.advanced_defense_axes)}</div>
           </div>
           ` : ''}
+          ${renderPlayerPulmonProfileCard(trackingRows)}
           <div class="tracking-profile-card">
             <h6 class="tracking-profile-section-title">Mapa de calor promedio</h6>
             <canvas class="tracking-canvas" id="perfil-tracking-heatmap-canvas"></canvas>
@@ -4162,6 +4440,7 @@
         </div>
       `;
       setTimeout(() => {
+        drawPlayerPulmonWindowChart(document.getElementById('perfil-tracking-pulmon-canvas'), trackingRows);
         drawHeatmap(document.getElementById('perfil-tracking-heatmap-canvas'), DEFAULT_PITCH, aggregate.heatmap, [], { showGoalReference: true });
         drawGoalLocations(document.getElementById('perfil-tracking-goals-canvas'), DEFAULT_PITCH, aggregate.goal_locations || []);
         drawGoalLocations(document.getElementById('perfil-tracking-goals-against-canvas'), DEFAULT_PITCH, goalkeeperConcededGoals);
@@ -4893,6 +5172,7 @@
     combineHeatmaps,
     playerFieldMetrics,
     buildTeamPulmonWindowSeries,
+    buildPlayerPulmonWindowSeries,
     aggregatePlayerRows,
     evaluateTrackingTeam,
     trackingFitnessPenalty,

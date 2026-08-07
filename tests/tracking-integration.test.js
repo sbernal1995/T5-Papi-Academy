@@ -263,6 +263,58 @@ async function run() {
   assert.strictEqual(windowSeries[0].teams.B.estimated_distance, true);
   assert(windowSeries[0].teams.A.km_per_40 > 0);
 
+  const playerWindowSeries = tracking.buildPlayerPulmonWindowSeries([
+    {
+      distance_km: 1.2,
+      goalkeeper_seconds: 0,
+      tracking_analyses: { duration_seconds: 600 },
+      metrics: {
+        windows: [
+          { start_seconds: 0, end_seconds: 300, distance_m: 700, high_intensity_seconds: 20 },
+          { start_seconds: 300, end_seconds: 600, distance_m: 500, high_intensity_seconds: 10 }
+        ]
+      }
+    },
+    {
+      distance_km: 1,
+      goalkeeper_seconds: 0,
+      tracking_analyses: { duration_seconds: 600 },
+      metrics: {
+        windows: [
+          { start_seconds: 0, end_seconds: 300, distance_m: 600, high_intensity_seconds: 15 },
+          { start_seconds: 300, end_seconds: 600, distance_m: 400, high_intensity_seconds: 8 }
+        ]
+      }
+    }
+  ]);
+  assert.strictEqual(playerWindowSeries.length, 2);
+  assert.strictEqual(playerWindowSeries[0].matches, 2);
+  assert.strictEqual(playerWindowSeries[0].distance_m_avg, 650);
+  assert.strictEqual(playerWindowSeries[0].km_per_40, 5.2);
+  assert.strictEqual(playerWindowSeries[1].km_per_40, 3.6);
+  assert(playerWindowSeries[0].km_per_40 > playerWindowSeries[1].km_per_40);
+
+  const unevenFinalWindows = tracking.buildPlayerPulmonWindowSeries([
+    {
+      tracking_analyses: { duration_seconds: 338 },
+      metrics: { windows: [
+        { start_seconds: 0, end_seconds: 300, distance_m: 500 },
+        { start_seconds: 300, end_seconds: 338, distance_m: 60 }
+      ] }
+    },
+    {
+      tracking_analyses: { duration_seconds: 586 },
+      metrics: { windows: [
+        { start_seconds: 0, end_seconds: 300, distance_m: 450 },
+        { start_seconds: 300, end_seconds: 586, distance_m: 420 }
+      ] }
+    }
+  ]);
+  assert.strictEqual(unevenFinalWindows.length, 2);
+  assert.strictEqual(unevenFinalWindows[1].start_seconds, 300);
+  assert.strictEqual(unevenFinalWindows[1].end_seconds, 586);
+  assert.strictEqual(unevenFinalWindows[1].matches, 2);
+
   const teamPenalty = tracking.trackingFitnessPenalty(
     [
       { pulmonTracking: 80, trackingIntensity: 20, trackingHeatmap: { counts: [[5, 0], [0, 0]], x_bins: 2, y_bins: 2 }, trackingGoalkeeperSeconds: 500 },
