@@ -660,6 +660,87 @@ function esErrorTablaFaltante(error, tabla) {
     (textoError.includes('does not exist') || textoError.includes('schema cache') || textoError.includes('relation'));
 }
 
+const COMPILADO_EVENTOS_TABLA = 'compilado_eventos';
+
+function obtenerMetadataEventoCompilado(evento) {
+  const metadata = evento?.metadata;
+  if (!metadata) return {};
+  if (typeof metadata === 'object') return metadata;
+  if (typeof metadata !== 'string') return {};
+  try {
+    const parsed = JSON.parse(metadata);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function anexarCorrelacionesCompilado(partidos = []) {
+  const partidoIds = [...new Set(partidos.map(partido => partido?.id).filter(Boolean).map(String))];
+  partidos.forEach(partido => {
+    partido.compilado_eventos = [];
+  });
+  if (!partidoIds.length) return;
+
+  const { data, error } = await supabase
+    .from(COMPILADO_EVENTOS_TABLA)
+    .select('id, partido_id, review_evento_id, jugador_id, tipo, minuto_partido, review_segundos, compilado_segundos, clip_orden, evento_orden, clip_source_key')
+    .in('partido_id', partidoIds)
+    .order('compilado_segundos', { ascending: true });
+
+  if (error) {
+    if (!esErrorTablaFaltante(error, COMPILADO_EVENTOS_TABLA)) {
+      console.warn('No se pudieron cargar las correlaciones del compilado:', error);
+    }
+    return;
+  }
+
+  const porPartido = new Map();
+  (data || []).forEach(correlacion => {
+    const key = String(correlacion.partido_id || '');
+    if (!porPartido.has(key)) porPartido.set(key, []);
+    porPartido.get(key).push(correlacion);
+  });
+  partidos.forEach(partido => {
+    partido.compilado_eventos = porPartido.get(String(partido.id)) || [];
+  });
+}
+
+function buscarCorrelacionCompilado(partido, {
+  reviewEvento = null,
+  tipo = '',
+  jugadorId = null,
+  reviewSegundos = null,
+  eventoOrden = null
+} = {}) {
+  const correlaciones = Array.isArray(partido?.compilado_eventos) ? partido.compilado_eventos : [];
+  if (!correlaciones.length) return null;
+
+  const tipoNormalizado = String(tipo || reviewEvento?.tipo || '');
+  const jugadorNormalizado = String(jugadorId || reviewEvento?.jugador_id || '');
+  const reviewEventoId = String(reviewEvento?.id || '');
+  const metadata = obtenerMetadataEventoCompilado(reviewEvento);
+  const ordenNormalizado = Number(eventoOrden ?? metadata.orden);
+  const segundosNormalizados = normalizarSegundosVideo(reviewSegundos ?? reviewEvento?.review_segundos);
+
+  if (reviewEventoId) {
+    const exacta = correlaciones.find(item =>
+      String(item.review_evento_id || '') === reviewEventoId &&
+      (!tipoNormalizado || String(item.tipo || '') === tipoNormalizado)
+    );
+    if (exacta) return exacta;
+  }
+
+  return correlaciones.find(item => {
+    if (tipoNormalizado && String(item.tipo || '') !== tipoNormalizado) return false;
+    if (jugadorNormalizado && String(item.jugador_id || '') !== jugadorNormalizado) return false;
+    const segundosItem = normalizarSegundosVideo(item.review_segundos);
+    if (segundosNormalizados !== null && segundosItem !== null && Math.abs(segundosItem - segundosNormalizados) > 2) return false;
+    if (Number.isFinite(ordenNormalizado) && Number(item.evento_orden) !== ordenNormalizado) return false;
+    return true;
+  }) || null;
+}
+
 function esErrorColumnaCagadaFaltante(error) {
   return esErrorColumnaFaltante(error, 'cagada_jugador_id');
 }
@@ -4919,6 +5000,8 @@ async function anexarReviewEventosPerfil(partidos = []) {
   partidos.forEach(partido => {
     partido.review_eventos = eventosPorPartido.get(String(partido.id)) || [];
   });
+
+  await anexarCorrelacionesCompilado(partidos);
 }
 
 function obtenerConfigCompiladoPerfil(tipo, cantidad = 1, opciones = {}) {
@@ -5218,6 +5301,21 @@ async function enriquecerGolesPerfilConLinksVideo(goles = [], jugadorId = null) 
 
     partido._review_eventos_compilado_perfil = eventosCompilado;
     partido._review_evento_gol_perfil_por_id = eventoGolPorId;
+    const correlacionesGuardadas = Array.isArray(partido.compilado_eventos)
+      ? partido.compilado_eventos
+      : [];
+    if (correlacionesGuardadas.length > 0) {
+      const porClip = new Map();
+      correlacionesGuardadas.forEach(evento => {
+        const key = String(evento.clip_source_key || evento.review_evento_id || '');
+        if (!key) return;
+        if (!porClip.has(key)) porClip.set(key, []);
+        porClip.get(key).push(evento);
+      });
+      eventosLinkeablesPorPartido.set(partidoId, porClip);
+      return;
+    }
+
     const clips = construirClipsCompiladoPerfil(eventosCompilado, { atajadasMinimas: 3 });
     const eventosLinkeables = crearEventosLinkeablesCompiladoPerfil(clips);
     const porClip = new Map();
@@ -8935,7 +9033,8 @@ const initApp = () => {
   const reviewSandbox = {
     atajadas: [],
     cagadas: [],
-    buenasJugadas: []
+    buenasJugadas: [],
+    compiladoGenerado: null
   };
   let jugadorEditando = null; // Para saber si estamos editando o agregando
 
@@ -8949,6 +9048,8 @@ const initApp = () => {
   let recordsPartidoHistorialGlobalCargado = false;
   let partidoRecordsPersistenciaDisponible = true;
   let partidoRecordsPersistenciaAvisada = false;
+  let compiladoEventosPersistenciaDisponible = true;
+  let compiladoEventosPersistenciaAvisada = false;
   const PARTIDO_RECORDS_TABLA = 'partido_records';
 
   // Mapeo de iconos de posiciones (se cargará dinámicamente)
@@ -15072,6 +15173,149 @@ const initApp = () => {
     return timeline.flatMap(item => crearEventosLinkeablesClipCompilado(item.clip, item, reviewLink, youtubeCompiladoLink));
   }
 
+  function crearFirmaClipsCompilado(clips = []) {
+    return JSON.stringify((clips || []).map(clip => ({
+      tipo: clip.tipo,
+      jugadorId: clip.jugadorId || null,
+      cantidad: Number(clip.cantidad) || 1,
+      minutoPartido: normalizarMinutoPartido(clip.minutoPartido),
+      reviewSegundos: normalizarSegundosVideo(clip.reviewSegundos),
+      inicio: normalizarSegundosVideo(clip.inicio),
+      fin: normalizarSegundosVideo(clip.fin)
+    })));
+  }
+
+  function buscarReviewEventoParaCorrelacion(reviewEventos, eventoLinkeable, clip, consumidos) {
+    const clipSourceKey = String(eventoLinkeable?.clip_source_key || clip?.sourceKey || '');
+    const tipo = String(eventoLinkeable?.tipo || '');
+    const jugadorId = String(eventoLinkeable?.jugador_id || '');
+    const reviewSegundos = normalizarSegundosVideo(eventoLinkeable?.review_segundos);
+    const ordenClip = Number(obtenerMetadataEventoCompilado(clip).orden ?? clip?.metadata?.orden);
+
+    const candidatos = (reviewEventos || []).filter(evento => {
+      if (!evento?.id || consumidos.has(String(evento.id))) return false;
+      if (String(evento.tipo || '') !== tipo) return false;
+      if (jugadorId && String(evento.jugador_id || '') !== jugadorId) return false;
+      const segundosEvento = normalizarSegundosVideo(evento.review_segundos);
+      return reviewSegundos === null || segundosEvento === null || Math.abs(segundosEvento - reviewSegundos) <= 2;
+    });
+
+    const exactoPorFuente = candidatos.find(evento => String(evento.id || '') === clipSourceKey);
+    if (exactoPorFuente) return exactoPorFuente;
+
+    if (Number.isFinite(ordenClip)) {
+      const exactoPorOrden = candidatos.find(evento =>
+        Number(obtenerMetadataEventoCompilado(evento).orden) === ordenClip
+      );
+      if (exactoPorOrden) return exactoPorOrden;
+    }
+
+    return candidatos[0] || null;
+  }
+
+  function buscarReviewEventoFuenteClip(reviewEventos, clip) {
+    if (!clip) return null;
+    const sourceKey = String(clip.sourceKey || '');
+    const porId = (reviewEventos || []).find(evento => String(evento?.id || '') === sourceKey);
+    if (porId) return porId;
+
+    const tipo = String(clip.tipo || '');
+    const jugadorId = String(clip.jugadorId || '');
+    const reviewSegundos = normalizarSegundosVideo(clip.reviewSegundos);
+    const orden = Number(clip?.metadata?.orden);
+    const candidatos = (reviewEventos || []).filter(evento => {
+      if (!evento?.id || String(evento.tipo || '') !== tipo) return false;
+      if (jugadorId && String(evento.jugador_id || '') !== jugadorId) return false;
+      const segundosEvento = normalizarSegundosVideo(evento.review_segundos);
+      return reviewSegundos === null || segundosEvento === null || Math.abs(segundosEvento - reviewSegundos) <= 2;
+    });
+    if (Number.isFinite(orden)) {
+      const porOrden = candidatos.find(evento => Number(obtenerMetadataEventoCompilado(evento).orden) === orden);
+      if (porOrden) return porOrden;
+    }
+    return candidatos[0] || null;
+  }
+
+  function crearFilasCorrelacionesCompilado(partidoId, reviewEventos = [], clips = []) {
+    const clipsPorSourceKey = new Map(
+      (clips || []).map(clip => [String(clip.sourceKey || ''), clip])
+    );
+    const consumidos = new Set();
+
+    return crearEventosLinkeablesCompilado(clips).map(eventoLinkeable => {
+      const clip = clipsPorSourceKey.get(String(eventoLinkeable.clip_source_key || '')) || null;
+      const reviewEvento = buscarReviewEventoParaCorrelacion(reviewEventos, eventoLinkeable, clip, consumidos);
+      if (!reviewEvento?.id) return null;
+      consumidos.add(String(reviewEvento.id));
+      const metadata = obtenerMetadataEventoCompilado(reviewEvento);
+      const eventoFuenteClip = buscarReviewEventoFuenteClip(reviewEventos, clip);
+
+      return {
+        partido_id: partidoId,
+        review_evento_id: reviewEvento.id,
+        jugador_id: eventoLinkeable.jugador_id || reviewEvento.jugador_id || null,
+        tipo: eventoLinkeable.tipo,
+        minuto_partido: reviewEvento.minuto_partido ?? clip?.minutoPartido ?? null,
+        review_segundos: Math.max(0, Math.round(Number(eventoLinkeable.review_segundos) || 0)),
+        compilado_segundos: Math.max(0, Math.round(Number(eventoLinkeable.compilado_segundos) || 0)),
+        clip_orden: Math.max(1, Math.round(Number(eventoLinkeable.clip_orden) || 1)),
+        evento_orden: Number.isFinite(Number(metadata.orden)) ? Math.round(Number(metadata.orden)) : null,
+        clip_source_key: eventoFuenteClip?.id || eventoLinkeable.clip_source_key || null
+      };
+    }).filter(Boolean);
+  }
+
+  async function guardarCorrelacionesCompiladoPartido(partidoId, reviewEventos = [], clips = []) {
+    if (!partidoId || !compiladoEventosPersistenciaDisponible) return false;
+    const filas = crearFilasCorrelacionesCompilado(partidoId, reviewEventos, clips);
+
+    const { data: existentes, error: selectError } = await supabase
+      .from(COMPILADO_EVENTOS_TABLA)
+      .select('id, review_evento_id')
+      .eq('partido_id', partidoId);
+
+    if (selectError) {
+      if (esErrorTablaFaltante(selectError, COMPILADO_EVENTOS_TABLA)) {
+        compiladoEventosPersistenciaDisponible = false;
+        if (!compiladoEventosPersistenciaAvisada) {
+          compiladoEventosPersistenciaAvisada = true;
+          showToast('Falta la tabla compilado_eventos. Ejecuta la migracion para guardar los minutos del compilado.', 'warning');
+        }
+        return false;
+      }
+      console.error('No se pudieron consultar las correlaciones del compilado:', selectError);
+      showToast('El compilado se genero, pero no se pudieron guardar sus correlaciones.', 'warning');
+      return false;
+    }
+
+    if (filas.length) {
+      const { error: upsertError } = await supabase
+        .from(COMPILADO_EVENTOS_TABLA)
+        .upsert(filas, { onConflict: 'review_evento_id' });
+      if (upsertError) {
+        console.error('No se pudieron insertar las correlaciones del compilado:', upsertError);
+        showToast('El compilado se genero, pero no se pudieron guardar sus correlaciones.', 'warning');
+        return false;
+      }
+    }
+
+    const vigentes = new Set(filas.map(fila => String(fila.review_evento_id)));
+    const idsObsoletos = (existentes || [])
+      .filter(item => !vigentes.has(String(item.review_evento_id)))
+      .map(item => item.id)
+      .filter(Boolean);
+    if (idsObsoletos.length) {
+      const { error: deleteError } = await supabase
+        .from(COMPILADO_EVENTOS_TABLA)
+        .delete()
+        .in('id', idsObsoletos);
+      if (deleteError) {
+        console.warn('Las correlaciones nuevas se guardaron, pero no se pudieron quitar filas obsoletas:', deleteError);
+      }
+    }
+    return true;
+  }
+
   function buscarReviewEventoGolHistorial(partido, gol, orden) {
     const reviewEventos = partido?.review_eventos || [];
     const porOrden = reviewEventos.find(evento =>
@@ -15262,6 +15506,46 @@ const initApp = () => {
             });
           });
       }
+    }
+
+    const correlacionesGuardadas = Array.isArray(partido.compilado_eventos)
+      ? partido.compilado_eventos
+      : [];
+    if (compiladoLink && correlacionesGuardadas.length > 0) {
+      golesOrdenados.forEach((gol, index) => {
+        const eventoGol = buscarReviewEventoGolHistorial(partido, gol, index + 1);
+        const correlacion = buscarCorrelacionCompilado(partido, {
+          reviewEvento: eventoGol,
+          tipo: 'gol',
+          jugadorId: gol.goleador_id,
+          reviewSegundos: gol.review_segundos ?? eventoGol?.review_segundos,
+          eventoOrden: index + 1
+        });
+        if (!correlacion) return;
+
+        gol.video_segundos = Math.max(0, Math.round(Number(correlacion.compilado_segundos) || 0));
+        gol.video_origen = 'compilado';
+        gol.video_link = compiladoLink;
+        gol.compilado_segundos = gol.video_segundos;
+      });
+
+      correlacionesGuardadas
+        .filter(item => item.tipo === 'cagada_gol' || item.tipo === 'cagada')
+        .forEach(item => {
+          if (!item.jugador_id) return;
+          const key = String(item.jugador_id);
+          if (!partido._historial_cagadas_links.has(key)) partido._historial_cagadas_links.set(key, []);
+          partido._historial_cagadas_links.get(key).push({
+            video_segundos: Math.max(0, Math.round(Number(item.compilado_segundos) || 0)),
+            video_origen: 'compilado',
+            video_link: compiladoLink,
+            compilado_segundos: Math.max(0, Math.round(Number(item.compilado_segundos) || 0)),
+            review_segundos: normalizarSegundosVideo(item.review_segundos)
+          });
+        });
+
+      completarLinksCagadasReviewHistorialDesdeGoles(partido, golesOrdenados, reviewLink);
+      return partido;
     }
 
     if (reviewLink && !tieneEventosCompilado) {
@@ -17170,12 +17454,12 @@ const initApp = () => {
   async function generarMp4CompiladoDesdeBeelup(reviewLink, clips, statusEl, nombreBase = 'compilado') {
     if (!clips.length) {
       setEstadoCompilado(statusEl, 'No hay cortes elegibles para generar.', 'warning');
-      return;
+      return null;
     }
 
     if (!obtenerDatosBeelupDesdeUrl(reviewLink)) {
       setEstadoCompilado(statusEl, 'Carga un link valido de Beelup para generar el MP4 automatico.', 'warning');
-      return;
+      return null;
     }
 
     const archivosTemporales = [];
@@ -17190,7 +17474,7 @@ const initApp = () => {
 
       if (!trabajos.length) {
         setEstadoCompilado(statusEl, 'Los cortes quedan fuera de la duracion disponible en Beelup.', 'warning');
-        return;
+        return null;
       }
 
       ffmpeg = await cargarFFmpegWasm(statusEl);
@@ -17277,9 +17561,18 @@ const initApp = () => {
 
       descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}.mp4`);
       setEstadoCompilado(statusEl, `MP4 listo: ${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB descargados.`, 'success');
+      return {
+        clips: trabajos.map(trabajo => ({
+          ...trabajo.clip,
+          inicio: trabajo.inicio,
+          fin: trabajo.fin,
+          duracion: trabajo.duracion
+        }))
+      };
     } catch (error) {
       console.error('Error generando MP4 Beelup:', error);
       setEstadoCompilado(statusEl, `No se pudo generar el MP4: ${obtenerMensajeError(error)}`, 'error');
+      return null;
     } finally {
       if (ffmpeg) {
         for (const archivo of archivosTemporales.reverse()) {
@@ -17449,23 +17742,23 @@ const initApp = () => {
   async function generarVideoCompiladoDesdeArchivo(file, clips, statusEl, nombreBase = 'compilado') {
     if (!file) {
       setEstadoCompilado(statusEl, 'Carga primero el video fuente del partido.', 'warning');
-      return;
+      return null;
     }
 
     if (!clips.length) {
       setEstadoCompilado(statusEl, 'No hay cortes elegibles para generar.', 'warning');
-      return;
+      return null;
     }
 
     if (!window.MediaRecorder) {
       setEstadoCompilado(statusEl, 'Este navegador no soporta MediaRecorder para generar video.', 'error');
-      return;
+      return null;
     }
 
     const mimeType = obtenerMimeCompilado();
     if (!mimeType) {
       setEstadoCompilado(statusEl, 'Este navegador no soporta salida WebM para el compilado.', 'error');
-      return;
+      return null;
     }
 
     const video = document.createElement('video');
@@ -17514,7 +17807,7 @@ const initApp = () => {
 
       if (!clipsValidos.length) {
         setEstadoCompilado(statusEl, 'Los cortes quedan fuera de la duracion del video fuente.', 'warning');
-        return;
+        return null;
       }
 
       canvas = document.createElement('canvas');
@@ -17607,9 +17900,16 @@ const initApp = () => {
 
       descargarBlob(blob, `${normalizarNombreArchivo(nombreBase)}.webm`);
       setEstadoCompilado(statusEl, `Compilado listo: ${Math.round(blob.size / 1024 / 1024 * 10) / 10} MB descargados.`, 'success');
+      return {
+        clips: clipsValidos.map(clip => ({
+          ...clip,
+          duracion: Math.max(0, clip.fin - clip.inicio)
+        }))
+      };
     } catch (error) {
       console.error('Error generando compilado:', error);
       setEstadoCompilado(statusEl, `No se pudo generar el compilado: ${error.message}`, 'error');
+      return null;
     } finally {
       renderActivo = false;
       if (renderFrameId) window.cancelAnimationFrame(renderFrameId);
@@ -18836,6 +19136,7 @@ const initApp = () => {
       []
     ).map(item => normalizarStatReviewImportado(item, { cantidadDefault: 1 })).filter(Boolean);
     reviewSandbox.cagadas = (payload.cagadas || []).map(normalizarStatReviewImportado).filter(Boolean);
+    reviewSandbox.compiladoGenerado = null;
 
     const reviewLink = normalizarReviewUrl(payload.review_link || payload.reviewLink || '') || '';
     setValorReviewInput('review-link', reviewLink);
@@ -18890,7 +19191,15 @@ const initApp = () => {
 
     if (button) button.disabled = true;
     try {
-      await generarVideoCompiladoDesdeArchivo(file, clips, statusEl, nombreBase);
+      const resultado = await generarVideoCompiladoDesdeArchivo(file, clips, statusEl, nombreBase);
+      if (resultado?.clips?.length) {
+        reviewSandbox.compiladoGenerado = {
+          clips: resultado.clips,
+          firmaFuente: crearFirmaClipsCompilado(clips),
+          atajadasMinimas: obtenerUmbralAtajadasCompilado(),
+          generadoEn: new Date().toISOString()
+        };
+      }
     } finally {
       if (button) button.disabled = false;
     }
@@ -18924,7 +19233,15 @@ const initApp = () => {
 
     if (button) button.disabled = true;
     try {
-      await generarMp4CompiladoDesdeBeelup(reviewLink, clips, statusEl, nombreBase);
+      const resultado = await generarMp4CompiladoDesdeBeelup(reviewLink, clips, statusEl, nombreBase);
+      if (resultado?.clips?.length) {
+        reviewSandbox.compiladoGenerado = {
+          clips: resultado.clips,
+          firmaFuente: crearFirmaClipsCompilado(clips),
+          atajadasMinimas: obtenerUmbralAtajadasCompilado(),
+          generadoEn: new Date().toISOString()
+        };
+      }
     } finally {
       if (button) button.disabled = false;
     }
@@ -19164,6 +19481,7 @@ const initApp = () => {
         reviewSandbox.atajadas = [];
         reviewSandbox.cagadas = [];
         reviewSandbox.buenasJugadas = [];
+        reviewSandbox.compiladoGenerado = null;
         ['review-fecha', 'review-cancha', 'review-resultado', 'review-ganador', 'review-mvp', 'review-ace', 'review-inicio-minuto', 'review-inicio-segundo', 'review-fin-minuto', 'review-fin-segundo', 'review-compilado-youtube-link'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = '';
@@ -19915,12 +20233,33 @@ const initApp = () => {
       const reviewEventos = construirReviewEventosPartido(partidoId, reviewInicioSegundos, opciones);
       if (reviewEventos.length === 0) return;
 
-      const { error } = await supabase
+      const { data: reviewEventosGuardados, error } = await supabase
           .from('review_eventos')
-          .insert(reviewEventos);
+          .insert(reviewEventos)
+          .select('id, partido_id, jugador_id, tipo, cantidad, minuto_partido, review_segundos, metadata');
 
       if (!error) {
           console.log('Eventos de review guardados:', reviewEventos.length);
+          const compiladoGenerado = opciones.compiladoGenerado || reviewSandbox.compiladoGenerado;
+          if (compiladoGenerado?.clips?.length) {
+              const clipsActuales = construirClipsCompiladoSandbox({
+                  atajadasMinimas: compiladoGenerado.atajadasMinimas
+              });
+              if (crearFirmaClipsCompilado(clipsActuales) === compiladoGenerado.firmaFuente) {
+                  const clipsActualesPorFuente = new Map(
+                      clipsActuales.map(clip => [String(clip.sourceKey || ''), clip])
+                  );
+                  const clipsCorrelacion = compiladoGenerado.clips.map(clipGenerado => ({
+                      ...(clipsActualesPorFuente.get(String(clipGenerado.sourceKey || '')) || clipGenerado),
+                      inicio: clipGenerado.inicio,
+                      fin: clipGenerado.fin,
+                      duracion: clipGenerado.duracion
+                  }));
+                  await guardarCorrelacionesCompiladoPartido(partidoId, reviewEventosGuardados || [], clipsCorrelacion);
+              } else {
+                  showToast('La review cambio despues de generar el compilado. Regeneralo para guardar correlaciones exactas.', 'warning');
+              }
+          }
           return;
       }
 
@@ -20316,7 +20655,8 @@ const initApp = () => {
           if (guardandoDesdeReview) {
               await guardarReviewEventosPartido(partido_id, review_inicio_segundos, {
                   mvpId: mvp_id,
-                  aceId: ace_id
+                  aceId: ace_id,
+                  compiladoGenerado: reviewSandbox.compiladoGenerado
               });
           }
 
@@ -22043,6 +22383,8 @@ const initApp = () => {
     partidos.forEach(partido => {
       partido.review_eventos = eventosPorPartido.get(String(partido.id)) || [];
     });
+
+    await anexarCorrelacionesCompilado(partidos);
   }
 
   // --- Función para cargar historial de partidos ---
@@ -27955,7 +28297,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     buildBeelupBtn?.addEventListener('click', async () => {
       if (buildBeelupBtn) buildBeelupBtn.disabled = true;
       try {
-        await generarMp4CompiladoDesdeBeelup(beelupLink, clips, statusEl, nombreBase);
+        const resultado = await generarMp4CompiladoDesdeBeelup(beelupLink, clips, statusEl, nombreBase);
+        if (resultado?.clips?.length) {
+          const guardadas = await guardarCorrelacionesCompiladoPartido(partidoId, reviewEventos, resultado.clips);
+          if (guardadas) {
+            partido.compilado_eventos = crearFilasCorrelacionesCompilado(partidoId, reviewEventos, resultado.clips);
+            showToast('Compilado generado y correlaciones guardadas.', 'success');
+          }
+        }
       } finally {
         if (buildBeelupBtn) buildBeelupBtn.disabled = !puedeGenerarBeelup();
       }
@@ -27964,7 +28313,14 @@ TOTAL SKILL: ${jugador.rendimiento.toFixed(1)}`;
     buildBtn?.addEventListener('click', async () => {
       if (buildBtn) buildBtn.disabled = true;
       try {
-        await generarVideoCompiladoDesdeArchivo(fileInput?.files?.[0] || null, clips, statusEl, nombreBase);
+        const resultado = await generarVideoCompiladoDesdeArchivo(fileInput?.files?.[0] || null, clips, statusEl, nombreBase);
+        if (resultado?.clips?.length) {
+          const guardadas = await guardarCorrelacionesCompiladoPartido(partidoId, reviewEventos, resultado.clips);
+          if (guardadas) {
+            partido.compilado_eventos = crearFilasCorrelacionesCompilado(partidoId, reviewEventos, resultado.clips);
+            showToast('Compilado generado y correlaciones guardadas.', 'success');
+          }
+        }
       } finally {
         if (buildBtn) buildBtn.disabled = clips.length === 0;
       }
