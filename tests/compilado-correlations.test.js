@@ -31,6 +31,7 @@ assert(html.includes('id="review-sync-existing-compilado"'), 'la review debe per
 assert(app.includes('sincronizarCompiladoExistenteReviewSandbox'), 'debe existir el flujo de sincronizacion historica');
 assert(app.includes(".select('id', { count: 'exact', head: true })"), 'la sincronizacion debe evitar eventos duplicados');
 assert(app.includes('partido.compilado_youtube_link'), 'la sincronizacion debe exigir el compilado guardado');
+assert(app.includes("codigo === '42P01' || codigo === 'PGRST205'"), 'los errores de constraint no deben confundirse con una tabla faltante');
 
 const prepararInicio = app.indexOf('function prepararLinksVideoHistorialPartido(partido)');
 const prepararFin = app.indexOf('function renderizarClipsCompiladoHtml', prepararInicio);

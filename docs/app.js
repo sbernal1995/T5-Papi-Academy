@@ -656,8 +656,10 @@ function esErrorColumnaFaltante(error, columna) {
 function esErrorTablaFaltante(error, tabla) {
   const textoError = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
   const tablaNormalizada = String(tabla || '').toLowerCase();
+  const codigo = String(error?.code || '').toUpperCase();
+  if (codigo === '42P01' || codigo === 'PGRST205') return true;
   return textoError.includes(tablaNormalizada) &&
-    (textoError.includes('does not exist') || textoError.includes('schema cache') || textoError.includes('relation'));
+    (textoError.includes('does not exist') || textoError.includes('schema cache'));
 }
 
 const COMPILADO_EVENTOS_TABLA = 'compilado_eventos';
@@ -19568,8 +19570,10 @@ const initApp = () => {
         partido.id,
         obtenerReviewInicioSegundos(),
         {
-          mvpId: document.getElementById('review-mvp')?.value || null,
-          aceId: document.getElementById('review-ace')?.value || null,
+          // MVP y ACE ya existen en jugador_partido y no afectan los tiempos del compilado.
+          // Se omiten para recuperar partidos creados con esquemas anteriores de review_eventos.
+          mvpId: null,
+          aceId: null,
           compiladoGenerado
         }
       );
