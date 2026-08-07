@@ -19574,6 +19574,7 @@ const initApp = () => {
           // Se omiten para recuperar partidos creados con esquemas anteriores de review_eventos.
           mvpId: null,
           aceId: null,
+          tiposOmitidos: ['buena_jugada'],
           compiladoGenerado
         }
       );
@@ -20331,7 +20332,9 @@ const initApp = () => {
   }
 
   async function guardarReviewEventosPartido(partidoId, reviewInicioSegundos, opciones = {}) {
-      const reviewEventos = construirReviewEventosPartido(partidoId, reviewInicioSegundos, opciones);
+      const tiposOmitidos = new Set((opciones.tiposOmitidos || []).map(String));
+      const reviewEventos = construirReviewEventosPartido(partidoId, reviewInicioSegundos, opciones)
+          .filter(evento => !tiposOmitidos.has(String(evento.tipo || '')));
       if (reviewEventos.length === 0) return false;
 
       const { data: reviewEventosGuardados, error } = await supabase
