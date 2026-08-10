@@ -12375,6 +12375,9 @@ const initApp = () => {
   let reviewAnnotationWindow = null;
   let reviewAnnotationChannel = null;
   let reviewInlineHls = null;
+  let reviewInlineObjectUrl = '';
+  let reviewInlineSourceType = '';
+  let reviewInlineLoadVersion = 0;
   let hlsScriptPromise = null;
   let reviewVideoZoom = 1;
   let reviewScorebugOculto = false;
@@ -12701,7 +12704,9 @@ const initApp = () => {
 
   function emitirTiempoReproductorInline() {
     const video = document.getElementById('review-player-video');
-    const url = normalizarReviewUrl(document.getElementById('review-link')?.value) || '';
+    const url = reviewInlineSourceType === 'local'
+      ? ''
+      : (normalizarReviewUrl(document.getElementById('review-link')?.value) || '');
     if (!video || video.classList.contains('d-none')) return;
 
     aplicarEstadoPopupReview({
@@ -12718,10 +12723,13 @@ const initApp = () => {
 
   function limpiarReproductorInline() {
     const video = document.getElementById('review-player-video');
+    const objectUrlAnterior = reviewInlineObjectUrl;
     if (reviewInlineHls) {
       reviewInlineHls.destroy();
       reviewInlineHls = null;
     }
+    reviewInlineObjectUrl = '';
+    reviewInlineSourceType = '';
     if (video) {
       video.pause();
       video.removeAttribute('src');
@@ -12729,12 +12737,15 @@ const initApp = () => {
       video.load();
       video.classList.add('d-none');
     }
+    if (objectUrlAnterior) {
+      URL.revokeObjectURL(objectUrlAnterior);
+    }
   }
 
-  async function cargarReproductorInlineBeelup(url) {
+  async function cargarReproductorInlineBeelup(url, loadVersion) {
     const iframe = document.getElementById('review-player-frame');
     const video = document.getElementById('review-player-video');
-    if (!video) return false;
+    if (!video || loadVersion !== reviewInlineLoadVersion) return false;
 
     const playlistUrl = crearUrlPlaylistBeelup(url, 'm3u8');
     if (!playlistUrl) return false;
@@ -12746,6 +12757,7 @@ const initApp = () => {
     }
 
     video.classList.remove('d-none');
+    reviewInlineSourceType = 'beelup';
     instalarControlesReproductorReview(video);
     ['loadedmetadata', 'timeupdate', 'play', 'pause', 'seeking', 'seeked', 'ratechange'].forEach(eventName => {
       video.removeEventListener(eventName, emitirTiempoReproductorInline);
@@ -12753,6 +12765,7 @@ const initApp = () => {
     });
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      if (loadVersion !== reviewInlineLoadVersion) return false;
       video.src = playlistUrl;
       video.load();
       emitirTiempoReproductorInline();
@@ -12760,15 +12773,22 @@ const initApp = () => {
     }
 
     await cargarScriptExterno(HLS_JS_URL);
+    if (loadVersion !== reviewInlineLoadVersion || reviewInlineSourceType !== 'beelup') return false;
     if (!window.Hls || !window.Hls.isSupported()) {
       throw new Error('Este navegador no soporta HLS en el reproductor inline.');
     }
 
-    reviewInlineHls = new window.Hls({ enableWorker: true });
-    reviewInlineHls.loadSource(playlistUrl);
-    reviewInlineHls.attachMedia(video);
-    reviewInlineHls.on(window.Hls.Events.ERROR, (_event, data) => {
+    const hls = new window.Hls({ enableWorker: true });
+    if (loadVersion !== reviewInlineLoadVersion || reviewInlineSourceType !== 'beelup') {
+      hls.destroy();
+      return false;
+    }
+    reviewInlineHls = hls;
+    hls.loadSource(playlistUrl);
+    hls.attachMedia(video);
+    hls.on(window.Hls.Events.ERROR, (_event, data) => {
       if (data?.fatal) {
+        if (loadVersion !== reviewInlineLoadVersion || reviewInlineHls !== hls) return;
         showToast(`No se pudo cargar HLS: ${data.type}`, 'error');
       }
     });
@@ -14413,6 +14433,76 @@ const initApp = () => {
     return false;
   }
 
+  function actualizarEstadoFuenteVideoReview(mensaje, tipo = 'muted') {
+    const statusEl = document.getElementById('review-video-source-status');
+    if (!statusEl) return;
+    statusEl.className = `small review-video-source-status--${tipo} mb-2`;
+    statusEl.textContent = mensaje;
+  }
+
+  function pareceArchivoVideoReview(file) {
+    if (!file) return false;
+    const tipo = String(file.type || '').toLowerCase();
+    const extensionCompatible = /\.(mp4|webm|m4v|mov|ogv|ogg)$/i.test(String(file.name || ''));
+    return tipo.startsWith('video/') || extensionCompatible;
+  }
+
+  function cargarArchivoReviewSandbox(file) {
+    if (!file) return false;
+    if (!pareceArchivoVideoReview(file)) {
+      actualizarEstadoFuenteVideoReview('Selecciona un archivo de video compatible.', 'warning');
+      return false;
+    }
+
+    const loadVersion = ++reviewInlineLoadVersion;
+    const iframe = document.getElementById('review-player-frame');
+    const video = document.getElementById('review-player-video');
+    if (!video || typeof URL.createObjectURL !== 'function') {
+      actualizarEstadoFuenteVideoReview('Este navegador no permite reproducir archivos locales.', 'error');
+      return false;
+    }
+
+    const reviewLinkInput = document.getElementById('review-link');
+    const linkPartidoInput = document.getElementById('youtube-link-partido');
+    if (reviewLinkInput) reviewLinkInput.value = '';
+    if (linkPartidoInput) linkPartidoInput.value = '';
+
+    limpiarReproductorInline();
+    if (iframe) {
+      iframe.src = 'about:blank';
+      iframe.classList.add('d-none');
+    }
+
+    try {
+      reviewInlineObjectUrl = URL.createObjectURL(file);
+    } catch (error) {
+      console.error('No se pudo preparar el archivo local de review:', error);
+      actualizarEstadoFuenteVideoReview('El navegador rechazó el archivo seleccionado.', 'error');
+      return false;
+    }
+
+    if (loadVersion !== reviewInlineLoadVersion) {
+      limpiarReproductorInline();
+      return false;
+    }
+
+    reviewInlineSourceType = 'local';
+    video.classList.remove('d-none');
+    video.setAttribute('aria-label', `Video local: ${file.name}`);
+    instalarControlesReproductorReview(video);
+    ['loadedmetadata', 'timeupdate', 'play', 'pause', 'seeking', 'seeked', 'ratechange'].forEach(eventName => {
+      video.removeEventListener(eventName, emitirTiempoReproductorInline);
+      video.addEventListener(eventName, emitirTiempoReproductorInline);
+    });
+    video.src = reviewInlineObjectUrl;
+    video.load();
+    video.play().catch(() => {});
+    actualizarEstadoFuenteVideoReview(`Archivo local cargado: ${file.name}`, 'success');
+    renderizarCompiladoReviewSandbox();
+    actualizarScorebugReview();
+    return true;
+  }
+
   async function cargarLinkReviewSandbox() {
     const input = document.getElementById('review-link');
     const iframe = document.getElementById('review-player-frame');
@@ -14420,15 +14510,19 @@ const initApp = () => {
 
     if (!url) {
       showToast('Ingresa un link valido de review.', 'warning');
+      actualizarEstadoFuenteVideoReview('Ingresa un enlace válido de review.', 'warning');
       return;
     }
 
+    const loadVersion = ++reviewInlineLoadVersion;
     if (input) input.value = url;
     const esBeelup = !!obtenerDatosBeelupDesdeUrl(url);
     if (esBeelup) {
       try {
-        await cargarReproductorInlineBeelup(url);
+        const cargado = await cargarReproductorInlineBeelup(url, loadVersion);
+        if (!cargado || loadVersion !== reviewInlineLoadVersion) return;
       } catch (error) {
+        if (loadVersion !== reviewInlineLoadVersion) return;
         console.error('No se pudo cargar reproductor inline:', error);
         showToast('No se pudo cargar el reproductor sincronizado. Uso iframe externo.', 'warning');
         limpiarReproductorInline();
@@ -14445,8 +14539,13 @@ const initApp = () => {
       }
     }
 
+    if (loadVersion !== reviewInlineLoadVersion) return;
+
     const linkPartido = document.getElementById('youtube-link-partido');
     if (linkPartido && obtenerLinkYouTubeReview(url)) linkPartido.value = url;
+    const localFileInput = document.getElementById('review-video-file');
+    if (localFileInput) localFileInput.value = '';
+    actualizarEstadoFuenteVideoReview(esBeelup ? 'Enlace de Beelup cargado.' : 'Enlace de video cargado.', 'success');
     renderizarCompiladoReviewSandbox();
     actualizarScorebugReview();
   }
@@ -19603,6 +19702,20 @@ const initApp = () => {
     inicializarFullscreenReview();
 
     document.getElementById('review-load-link')?.addEventListener('click', cargarLinkReviewSandbox);
+    document.getElementById('review-link')?.addEventListener('keydown', event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      cargarLinkReviewSandbox();
+    });
+    document.getElementById('review-select-file')?.addEventListener('click', () => {
+      const input = document.getElementById('review-video-file');
+      if (!input) return;
+      input.value = '';
+      input.click();
+    });
+    document.getElementById('review-video-file')?.addEventListener('change', event => {
+      cargarArchivoReviewSandbox(event.currentTarget?.files?.[0] || null);
+    });
     document.getElementById('review-popup-link')?.addEventListener('click', abrirPopupReviewSandbox);
     document.getElementById('review-annotation-popup-link')?.addEventListener('click', abrirPopupAnotacionReview);
     document.getElementById('review-open-link')?.addEventListener('click', abrirLinkReviewSandbox);
@@ -19657,6 +19770,12 @@ const initApp = () => {
         renderizarReviewSandbox();
       });
     }
+
+    window.addEventListener('pagehide', event => {
+      if (event.persisted) return;
+      reviewInlineLoadVersion += 1;
+      limpiarReproductorInline();
+    });
 
     window.renderizarReviewSandbox = renderizarReviewSandbox;
     renderizarReviewSandbox();

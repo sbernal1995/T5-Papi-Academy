@@ -820,6 +820,55 @@
         min-height: 0;
       }
 
+      .review-video-source-grid {
+        align-items: stretch;
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      }
+
+      .review-video-source-card {
+        background: rgba(15, 23, 42, 0.54);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 8px;
+        min-width: 0;
+        padding: 0.8rem;
+      }
+
+      .review-video-source-divider {
+        align-items: center;
+        color: rgba(226, 232, 240, 0.58);
+        display: flex;
+        font-size: 0.72rem;
+        font-weight: 800;
+        justify-content: center;
+        text-transform: uppercase;
+      }
+
+      .review-video-source-divider span {
+        background: rgba(15, 23, 42, 0.86);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 999px;
+        padding: 0.32rem 0.44rem;
+      }
+
+      #review-select-file:hover,
+      #review-select-file:active {
+        color: #042f2e !important;
+      }
+
+      #review-select-file:focus-visible {
+        outline: 3px solid #67e8f9;
+        outline-offset: 3px;
+        box-shadow: none;
+      }
+
+      #review-video-source-status.review-video-source-status--muted { color: #cbd5e1; }
+      #review-video-source-status.review-video-source-status--info { color: #67e8f9; }
+      #review-video-source-status.review-video-source-status--success { color: #86efac; }
+      #review-video-source-status.review-video-source-status--warning { color: #fde68a; }
+      #review-video-source-status.review-video-source-status--error { color: #fca5a5; }
+
       .review-player-frame {
         aspect-ratio: 16 / 9;
         background: rgba(2, 6, 23, 0.72);
@@ -1272,6 +1321,14 @@
       }
 
       @media (max-width: 768px) {
+        .review-video-source-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .review-video-source-divider span {
+          padding: 0.28rem 0.58rem;
+        }
+
         .review-player-broadcast-overlay {
           transform: scale(0.82);
           transform-origin: top left;
@@ -10802,27 +10859,47 @@
                   <h2 class="h4 text-white fw-bold mb-1">
                     <i class="bi bi-camera-video me-2"></i>Sandbox de Review
                   </h2>
-                  <p class="text-light-emphasis mb-0">Beelup, YouTube o link de review del partido.</p>
+                  <p class="text-light-emphasis mb-0">Reproduce un link de Beelup o un video local de tu computadora.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                  <button type="button" id="review-load-link" class="btn btn-primary btn-enhanced">
-                    <i class="bi bi-play-circle me-1"></i>Cargar
-                  </button>
-                  <button type="button" id="review-popup-link" class="btn btn-warning btn-enhanced" title="Abrir reproductor popup">
+                  <button type="button" id="review-popup-link" class="btn btn-warning btn-enhanced" title="Abrir reproductor popup" aria-describedby="review-video-source-status">
                     <i class="bi bi-window-plus me-1"></i>Popup video
                   </button>
                   <button type="button" id="review-annotation-popup-link" class="btn btn-outline-warning btn-enhanced" title="Abrir datos popup">
                     <i class="bi bi-ui-checks-grid me-1"></i>Popup datos
                   </button>
-                  <button type="button" id="review-open-link" class="btn btn-outline-light" title="Abrir link externo">
+                  <button type="button" id="review-open-link" class="btn btn-outline-light" title="Abrir link externo" aria-label="Abrir link externo" aria-describedby="review-video-source-status">
                     <i class="bi bi-box-arrow-up-right"></i>
                   </button>
                 </div>
               </div>
 
-              <div class="input-group mb-3">
-                <span class="input-group-text bg-dark border-secondary text-light"><i class="bi bi-link-45deg"></i></span>
-                <input type="url" id="review-link" class="form-control" placeholder="https://beelup.com/player.php?id=32154594">
+              <div class="review-video-source-grid mb-3">
+                <div class="review-video-source-card">
+                  <label for="review-link" class="form-label text-light small fw-semibold">Desde un enlace</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-light"><i class="bi bi-link-45deg"></i></span>
+                    <input type="url" id="review-link" class="form-control" placeholder="https://beelup.com/player.php?id=32154594" aria-describedby="review-link-help review-video-source-status">
+                    <button type="button" id="review-load-link" class="btn btn-primary">
+                      <i class="bi bi-play-circle me-1"></i>Cargar link
+                    </button>
+                  </div>
+                  <div id="review-link-help" class="form-text text-light-emphasis">Admite enlaces de Beelup y otros reproductores web.</div>
+                </div>
+
+                <div class="review-video-source-divider" aria-hidden="true"><span>o</span></div>
+
+                <div class="review-video-source-card">
+                  <div id="review-video-file-label" class="form-label text-light small fw-semibold">Desde tu computadora</div>
+                  <input type="file" id="review-video-file" hidden accept="video/*,.mp4,.webm,.m4v,.mov,.ogv,.ogg">
+                  <button type="button" id="review-select-file" class="btn btn-outline-info w-100" aria-describedby="review-video-file-label review-local-video-help review-video-source-status">
+                    <i class="bi bi-folder2-open me-1"></i>Elegir video local
+                  </button>
+                  <div id="review-local-video-help" class="form-text text-light-emphasis">El archivo permanece en tu navegador durante esta sesión.</div>
+                </div>
+              </div>
+              <div id="review-video-source-status" class="small review-video-source-status--muted mb-2" role="status" aria-live="polite">
+                Selecciona un enlace o un archivo local para reproducirlo.
               </div>
               <div id="review-popup-status" class="small text-light-emphasis mb-3">
                 Reproductor sin sincronizar. Si Min/Seg quedan vacios, se usa el tiempo sincronizado del reproductor.
