@@ -437,12 +437,6 @@ function normalizarMinutoPartido(minuto) {
   if (minuto === null || minuto === undefined || minuto === '') return null;
   const valor = Number(minuto);
   if (!Number.isFinite(valor)) return null;
-
-  if (valor > 65) {
-    const normalizado = valor % 60;
-    return normalizado === 0 ? 60 : normalizado;
-  }
-
   return Math.max(0, valor);
 }
 
