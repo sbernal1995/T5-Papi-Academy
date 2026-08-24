@@ -35,6 +35,9 @@ const MATCHMAKING_DEFENSE_SKILL_BASELINE = 50;
 const MATCHMAKING_DEFENSE_SKILL_MIN = 0;
 const MATCHMAKING_DEFENSE_SKILL_MAX = 11;
 const MATCHMAKING_DEFENSE_RANGE_EPSILON = 0.001;
+// El tracking actual llega hasta 4.565 km/40'. Un techo fijo de 5 km/40'
+// deja margen para nuevos records y evita que la nota cambie segun los convocados.
+const MATCHMAKING_PULMON_KM40_MAX = 5;
 const MATCHMAKING_RANKING_SAVE_WEIGHT = 0.4;
 const imagenFotoJugadorMatchmakingCache = new Map();
 
@@ -58,6 +61,20 @@ function numeroSeguroMatchmaking(valor, fallback = 0) {
 
 function clampMatchmaking(valor, min, max) {
   return Math.max(min, Math.min(max, valor));
+}
+
+function calcularRatingPulmonKm40Matchmaking(km40) {
+  if (km40 === null || km40 === undefined || km40 === '') return null;
+  const numero = numeroFinitoMatchmaking(km40);
+  if (numero === null || numero < 0) return null;
+  return clampMatchmaking((numero / MATCHMAKING_PULMON_KM40_MAX) * 10, 0, 10);
+}
+
+function calcularRatingDefensaMatchmaking(score) {
+  if (score === null || score === undefined || score === '') return null;
+  const numero = numeroFinitoMatchmaking(score);
+  if (numero === null || numero < 0) return null;
+  return clampMatchmaking(numero / MATCHMAKING_DEFENSE_SCORE_MAX, 0, 1) * 10;
 }
 
 function calcularImpactoSkillDefensaMatchmaking(score, rangoDefensa = null) {
@@ -598,6 +615,7 @@ class GeneticTeamOptimizer {
         ? this.calcularRendimientoTotal(historicoMatchmaking)
         : null;
       const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
+      const pulmonKm40 = obtenerKm40JugadorMatchmaking(jugador);
       const scoreDefensivoTracking = obtenerScoreDefensivoTrackingMatchmaking(jugador);
       const scoreDefensivoMatchmaking = scoreDefensivoTracking ?? 0;
       const puntosDefensaRankingDirecto = obtenerPuntosDefensaRankingDirectoMatchmaking(jugador);
@@ -645,7 +663,8 @@ class GeneticTeamOptimizer {
         rachaActualMatchmaking: jugador.rachaActualMatchmaking && typeof jugador.rachaActualMatchmaking === 'object' ? jugador.rachaActualMatchmaking : null,
         distribucionTramos: jugador.distribucionTramos || jugador.momentosPerfil?.distribucionTramos || null,
         trackingDistanceKmAvg: numeroSeguroMatchmaking(jugador.trackingDistanceKmAvg ?? jugador.distance_km_avg ?? jugador.tracking?.distance_km_avg),
-        trackingDistancePer40Km: numeroSeguroMatchmaking(jugador.trackingDistancePer40Km ?? jugador.distance_per_40_min_km ?? jugador.tracking?.distance_per_40_min_km),
+        trackingDistancePer40Km: pulmonKm40,
+        pulmonKm40,
         pulmonTracking,
         scoreDefensivoTracking,
         scoreDefensivoMatchmaking,
@@ -937,7 +956,7 @@ class GeneticTeamOptimizer {
 
     for (let i = 0; i < individuo.length; i++) {
       const jugador = this.jugadores[i];
-      const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
+      const pulmonKm40 = obtenerKm40JugadorMatchmaking(jugador);
       if (individuo[i] === 0) {
         equipo1.push(jugador);
         stats1.rendimientoTotal += jugador.rendimientoTotal;
@@ -945,7 +964,7 @@ class GeneticTeamOptimizer {
         stats1.rendimientoArquero += jugador.rendimientoArquero;
         stats1.golesFavorEquipo += jugador.golesFavorEquipo;
         stats1.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
-        stats1.pulmonTrackingTotal += pulmonTracking || 0;
+        stats1.pulmonTrackingTotal += pulmonKm40 || 0;
         stats1.scoreDefensivoTotal += obtenerScoreDefensivoMatchmaking(jugador);
         stats1.cantidadArqueros += jugador.cantidadArqueros;
       } else {
@@ -955,7 +974,7 @@ class GeneticTeamOptimizer {
         stats2.rendimientoArquero += jugador.rendimientoArquero;
         stats2.golesFavorEquipo += jugador.golesFavorEquipo;
         stats2.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
-        stats2.pulmonTrackingTotal += pulmonTracking || 0;
+        stats2.pulmonTrackingTotal += pulmonKm40 || 0;
         stats2.scoreDefensivoTotal += obtenerScoreDefensivoMatchmaking(jugador);
         stats2.cantidadArqueros += jugador.cantidadArqueros;
       }
@@ -1116,9 +1135,9 @@ class GeneticTeamOptimizer {
       stats.golesFavorEquipo += jugador.golesFavorEquipo;
       stats.golesRecibidosEquipo += jugador.golesRecibidosEquipo;
       stats.winrate += jugador.winrate;
-      const pulmonTracking = obtenerPulmonTrackingMatchmaking(jugador);
-      if (pulmonTracking !== null && pulmonTracking > 0) {
-        stats.pulmonTrackingTotal += pulmonTracking;
+      const pulmonKm40 = obtenerKm40JugadorMatchmaking(jugador);
+      if (pulmonKm40 !== null && pulmonKm40 > 0) {
+        stats.pulmonTrackingTotal += pulmonKm40;
         stats.jugadoresConPulmonTracking += 1;
       }
       const scoreDefensivo = obtenerScoreDefensivoTrackingMatchmaking(jugador);
@@ -1132,6 +1151,12 @@ class GeneticTeamOptimizer {
 
     const size = equipo.length;
     const armonia = evaluarArmoniaEquipoMatchmaking(equipo);
+    const pulmonKm40Promedio = stats.jugadoresConPulmonTracking > 0
+      ? stats.pulmonTrackingTotal / stats.jugadoresConPulmonTracking
+      : 0;
+    const scoreDefensivoPromedio = stats.jugadoresConScoreDefensivoTracking > 0
+      ? stats.scoreDefensivoTotal / stats.jugadoresConScoreDefensivoTracking
+      : 0;
     return {
       rendimientoTotal: stats.rendimientoTotal,
       rendimientoAtaque: stats.rendimientoAtaque,
@@ -1139,11 +1164,15 @@ class GeneticTeamOptimizer {
       golesFavorPromedio: size > 0 ? stats.golesFavorEquipo / size : 0,
       golesRecibidosPromedio: size > 0 ? stats.golesRecibidosEquipo / size : 0,
       winratePromedio: size > 0 ? stats.winrate / size : 0,
-      pulmonPromedio: stats.jugadoresConPulmonTracking > 0 ? stats.pulmonTrackingTotal / stats.jugadoresConPulmonTracking : 0,
+      pulmonPromedio: pulmonKm40Promedio,
       pulmonTotal: stats.pulmonTrackingTotal,
       pulmonTrackingTotal: stats.pulmonTrackingTotal,
-      scoreDefensivoPromedio: stats.jugadoresConScoreDefensivoTracking > 0 ? stats.scoreDefensivoTotal / stats.jugadoresConScoreDefensivoTracking : 0,
+      pulmonKm40Promedio,
+      pulmonKm40Total: stats.pulmonTrackingTotal,
+      pulmonRating: calcularRatingPulmonKm40Matchmaking(pulmonKm40Promedio) ?? 0,
+      scoreDefensivoPromedio,
       scoreDefensivoTotal: stats.scoreDefensivoTotal,
+      defensaRating: calcularRatingDefensaMatchmaking(scoreDefensivoPromedio) ?? 0,
       jugadoresConPulmonTracking: stats.jugadoresConPulmonTracking,
       jugadoresConScoreDefensivoTracking: stats.jugadoresConScoreDefensivoTracking,
       cantidadArqueros: stats.cantidadArqueros,
@@ -1160,6 +1189,12 @@ class GeneticTeamOptimizer {
 
 // Exportar para uso global
 window.GeneticTeamOptimizer = GeneticTeamOptimizer;
+window.T5MatchmakingMetrics = {
+  ...(window.T5MatchmakingMetrics || {}),
+  pulmonKm40Rating: calcularRatingPulmonKm40Matchmaking,
+  defensaRating: calcularRatingDefensaMatchmaking,
+  pulmonKm40Max: MATCHMAKING_PULMON_KM40_MAX
+};
 
 // ===============================
 // Funcionalidad del Algoritmo Genético
@@ -4823,15 +4858,24 @@ function promedioEquipoMatchmaking(jugadores = [], obtenerValor) {
 }
 
 function obtenerKm40JugadorMatchmaking(jugador) {
-  return numeroFinitoMatchmaking(
-    jugador?.trackingDistancePer40Km
-    ?? jugador?.tracking?.distance_per_40_min_km
-    ?? jugador?.distance_per_40_min_km
-  );
+  const candidatos = [
+    jugador?.pulmonKm40,
+    jugador?.trackingDistancePer40Km,
+    jugador?.tracking?.distance_per_40_min_km,
+    jugador?.distance_per_40_min_km,
+    jugador?.metrics?.distance_per_40_min_km
+  ];
+
+  for (const valor of candidatos) {
+    const numero = numeroFinitoMatchmaking(valor);
+    if (numero !== null && numero > 0) return numero;
+  }
+
+  return null;
 }
 
 function obtenerPulmonJugadorMatchmaking(jugador) {
-  return obtenerPulmonTrackingMatchmaking(jugador);
+  return obtenerKm40JugadorMatchmaking(jugador);
 }
 
 function generarNotaFisicaMatchmaking(equipo, rival, nombreRival) {
@@ -4844,18 +4888,6 @@ function generarNotaFisicaMatchmaking(equipo, rival, nombreRival) {
       return diferenciaKm > 0
         ? `Dato fisico: +${diferenciaKm.toFixed(1)} km/40 de promedio sobre ${escaparHtmlMatchmaking(nombreRival)}.`
         : `Dato fisico: ${escaparHtmlMatchmaking(nombreRival)} tiene +${Math.abs(diferenciaKm).toFixed(1)} km/40 de promedio.`;
-    }
-  }
-
-  const pulmonEquipo = promedioEquipoMatchmaking(equipo, obtenerPulmonJugadorMatchmaking);
-  const pulmonRival = promedioEquipoMatchmaking(rival, obtenerPulmonJugadorMatchmaking);
-
-  if (pulmonEquipo.cantidad >= 2 && pulmonRival.cantidad >= 2) {
-    const diferenciaPulmon = pulmonEquipo.promedio - pulmonRival.promedio;
-    if (Math.abs(diferenciaPulmon) >= 4) {
-      return diferenciaPulmon > 0
-        ? `Pulmon: +${diferenciaPulmon.toFixed(1)} de promedio sobre ${escaparHtmlMatchmaking(nombreRival)}.`
-        : `Pulmon: ${escaparHtmlMatchmaking(nombreRival)} tiene +${Math.abs(diferenciaPulmon).toFixed(1)} de promedio.`;
     }
   }
 
@@ -5541,31 +5573,37 @@ function renderizarBalanzaMatchmaking(resultado) {
 
 function renderizarTotalesEquipoMatchmaking(resultado, equipoKey) {
   const stats = resultado?.[equipoKey]?.estadisticas || {};
-  const tienePulmonPromedio = numeroSeguroMatchmaking(stats.jugadoresConPulmonTracking) > 0;
-  const pulmonValor = tienePulmonPromedio
-    ? stats.pulmonPromedio
-    : (stats.pulmonTrackingTotal ?? stats.pulmonTotal);
+  const jugadores = Math.max(numeroSeguroMatchmaking(stats.jugadores), resultado?.[equipoKey]?.jugadores?.length || 0);
+  const jugadoresConPulmon = numeroSeguroMatchmaking(stats.jugadoresConPulmonTracking);
+  const jugadoresConDefensa = numeroSeguroMatchmaking(stats.jugadoresConScoreDefensivoTracking);
+  const pulmonKm40 = numeroSeguroMatchmaking(stats.pulmonKm40Promedio ?? stats.pulmonPromedio);
+  const pulmonRating = jugadoresConPulmon > 0
+    ? numeroSeguroMatchmaking(stats.pulmonRating, calcularRatingPulmonKm40Matchmaking(pulmonKm40) ?? 0)
+    : null;
+  const defensaRating = jugadoresConDefensa > 0
+    ? numeroSeguroMatchmaking(stats.defensaRating, calcularRatingDefensaMatchmaking(stats.scoreDefensivoPromedio) ?? 0)
+    : null;
   return `
     <div class="matchmaking-team-totals">
       <div class="matchmaking-team-total-row">
-        <span>Rendimiento total</span>
+        <span>Rendimiento total (pts.)</span>
         <b>${formatearNumeroMatchmaking(stats.rendimientoTotal, 1)}</b>
       </div>
       <div class="matchmaking-team-total-row">
-        <span>Ataque</span>
+        <span>Ataque (pts.)</span>
         <span>${formatearNumeroMatchmaking(stats.rendimientoAtaque, 1)}</span>
       </div>
       <div class="matchmaking-team-total-row">
-        <span>Arquero</span>
+        <span>Arquero (pts.)</span>
         <span>${formatearNumeroMatchmaking(stats.rendimientoArquero, 1)}</span>
       </div>
       <div class="matchmaking-team-total-row">
         <span>Defensa</span>
-        <span>${formatearNumeroMatchmaking(stats.scoreDefensivoTotal, 1)}</span>
+        <span>${defensaRating === null ? '-' : `${defensaRating.toFixed(1)}/10`} <small>${Math.round(jugadoresConDefensa)}/${Math.round(jugadores)} con tracking</small></span>
       </div>
       <div class="matchmaking-team-total-row">
         <span>Pulmon</span>
-        <span>${formatearNumeroMatchmaking(pulmonValor, 1)}</span>
+        <span>${pulmonRating === null ? '-' : `${pulmonRating.toFixed(1)}/10`} <small>${jugadoresConPulmon > 0 ? `${pulmonKm40.toFixed(2)} km/40' · ${Math.round(jugadoresConPulmon)}/${Math.round(jugadores)} con tracking` : 'sin dato de km/40'}</small></span>
       </div>
     </div>
   `;
@@ -5640,11 +5678,12 @@ function dimensionesAnalisisMatchmaking(resultado) {
   const e2 = resultado?.equipo2?.estadisticas || {};
   const cagadas1 = obtenerCagadasEquipoMatchmaking(resultado?.equipo1?.jugadores || []);
   const cagadas2 = obtenerCagadasEquipoMatchmaking(resultado?.equipo2?.jugadores || []);
-  const fisico1 = numeroSeguroMatchmaking(e1.pulmonPromedio);
-  const fisico2 = numeroSeguroMatchmaking(e2.pulmonPromedio);
-  const fisicoLabel = fisico1 > 0 || fisico2 > 0 ? 'Pulmon promedio' : 'Pulmon total';
-  const fisicoValor1 = fisico1 > 0 || fisico2 > 0 ? fisico1 : numeroSeguroMatchmaking(e1.pulmonTrackingTotal ?? e1.pulmonTotal);
-  const fisicoValor2 = fisico1 > 0 || fisico2 > 0 ? fisico2 : numeroSeguroMatchmaking(e2.pulmonTrackingTotal ?? e2.pulmonTotal);
+  const km40Equipo1 = numeroSeguroMatchmaking(e1.pulmonKm40Promedio ?? e1.pulmonPromedio);
+  const km40Equipo2 = numeroSeguroMatchmaking(e2.pulmonKm40Promedio ?? e2.pulmonPromedio);
+  const fisicoValor1 = numeroSeguroMatchmaking(e1.pulmonRating, calcularRatingPulmonKm40Matchmaking(km40Equipo1) ?? 0);
+  const fisicoValor2 = numeroSeguroMatchmaking(e2.pulmonRating, calcularRatingPulmonKm40Matchmaking(km40Equipo2) ?? 0);
+  const defensaValor1 = numeroSeguroMatchmaking(e1.defensaRating, calcularRatingDefensaMatchmaking(e1.scoreDefensivoPromedio) ?? 0);
+  const defensaValor2 = numeroSeguroMatchmaking(e2.defensaRating, calcularRatingDefensaMatchmaking(e2.scoreDefensivoPromedio) ?? 0);
 
   return [
     crearDimensionAnalisisMatchmaking({
@@ -5705,15 +5744,28 @@ function dimensionesAnalisisMatchmaking(resultado) {
       numeros: `Goles a favor/PJ - Equipo 1: ${formatearNumeroMatchmaking(e1.golesFavorPromedio, 2)} | Equipo 2: ${formatearNumeroMatchmaking(e2.golesFavorPromedio, 2)}`
     }),
     crearDimensionAnalisisMatchmaking({
+      key: 'defensa',
+      label: 'Defensa',
+      valor1: defensaValor1,
+      valor2: defensaValor2,
+      decimales: 1,
+      sufijo: '/10',
+      umbral: 0.4,
+      escala: 3,
+      detalle: 'Promedia el indice defensivo de tracking de cada equipo. El detector entrega 0-100 y aca se muestra como 0-10.',
+      numeros: `Defensa - Equipo 1: ${defensaValor1.toFixed(1)}/10 | Equipo 2: ${defensaValor2.toFixed(1)}/10`
+    }),
+    crearDimensionAnalisisMatchmaking({
       key: 'fisico',
       label: 'Fisico',
       valor1: fisicoValor1,
       valor2: fisicoValor2,
       decimales: 1,
-      umbral: 1,
-      escala: 8,
-      detalle: 'Compara la capacidad fisica disponible con el mejor dato de pulmon/tracking que tenga cada jugador.',
-      numeros: `${fisicoLabel} - Equipo 1: ${formatearNumeroMatchmaking(fisicoValor1, 1)} | Equipo 2: ${formatearNumeroMatchmaking(fisicoValor2, 1)}`
+      sufijo: '/10',
+      umbral: 0.5,
+      escala: 3,
+      detalle: `Compara solo el ritmo promedio de cancha. 0 km/40' equivale a 0 y ${MATCHMAKING_PULMON_KM40_MAX.toFixed(1)} km/40' equivale a 10.`,
+      numeros: `Pulmon - Equipo 1: ${fisicoValor1.toFixed(1)}/10 (${km40Equipo1.toFixed(2)} km/40') | Equipo 2: ${fisicoValor2.toFixed(1)}/10 (${km40Equipo2.toFixed(2)} km/40')`
     })
   ];
 }
@@ -6468,14 +6520,13 @@ function filasComparativaMatchmaking(resultado) {
     crearFilaComparativaMatchmaking('Rendimiento Jugadores', e1.rendimientoAtaque, e2.rendimientoAtaque, { siempreVisible: true, decimales: 1 }),
     crearFilaComparativaMatchmaking('Winrate Promedio', e1.winratePromedio, e2.winratePromedio, { siempreVisible: true, decimales: 1, sufijo: '%' }),
     crearFilaComparativaMatchmaking('Goles a Favor / Partido', e1.golesFavorPromedio, e2.golesFavorPromedio, { siempreVisible: true, decimales: 2 }),
-    crearFilaComparativaMatchmaking('Score Defensivo Total', e1.scoreDefensivoTotal, e2.scoreDefensivoTotal, { decimales: 1 }),
-    crearFilaComparativaMatchmaking('Score Defensivo Promedio', e1.scoreDefensivoPromedio, e2.scoreDefensivoPromedio, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Defensa', e1.defensaRating, e2.defensaRating, { decimales: 1, sufijo: '/10' }),
     crearFilaComparativaMatchmaking('Jugadores con Defensa Tracking', e1.jugadoresConScoreDefensivoTracking, e2.jugadoresConScoreDefensivoTracking, { formato: (valor) => String(Math.round(valor)) }),
     crearFilaComparativaMatchmaking('Armonia territorial', e1.armoniaHeatmapScore, e2.armoniaHeatmapScore, { decimales: 0 }),
     crearFilaComparativaMatchmaking('Rendimiento Arqueros', e1.rendimientoArquero, e2.rendimientoArquero, { decimales: 1 }),
     crearFilaComparativaMatchmaking('Arqueros', e1.cantidadArqueros, e2.cantidadArqueros, { formato: (valor) => String(Math.round(valor)) }),
-    crearFilaComparativaMatchmaking('Pulmon Promedio', e1.pulmonPromedio, e2.pulmonPromedio, { decimales: 1 }),
-    crearFilaComparativaMatchmaking('Pulmon Total', e1.pulmonTrackingTotal ?? e1.pulmonTotal, e2.pulmonTrackingTotal ?? e2.pulmonTotal, { decimales: 1 }),
+    crearFilaComparativaMatchmaking('Pulmon', e1.pulmonRating, e2.pulmonRating, { decimales: 1, sufijo: '/10' }),
+    crearFilaComparativaMatchmaking("Ritmo de cancha", e1.pulmonKm40Promedio ?? e1.pulmonPromedio, e2.pulmonKm40Promedio ?? e2.pulmonPromedio, { decimales: 2, sufijo: " km/40'" }),
     crearFilaComparativaMatchmaking('Goles Recibidos / Partido', e1.golesRecibidosPromedio, e2.golesRecibidosPromedio, { decimales: 2, menorEsMejor: true })
   ];
 }

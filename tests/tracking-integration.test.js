@@ -265,15 +265,43 @@ async function run() {
 
   const teamPenalty = tracking.trackingFitnessPenalty(
     [
-      { pulmonTracking: 80, trackingIntensity: 20, trackingHeatmap: { counts: [[5, 0], [0, 0]], x_bins: 2, y_bins: 2 }, trackingGoalkeeperSeconds: 500 },
-      { pulmonTracking: 70, trackingIntensity: 10, trackingHeatmap: { counts: [[5, 0], [0, 0]], x_bins: 2, y_bins: 2 } }
+      { pulmonTracking: 80, trackingDistancePer40Km: 4.2, trackingIntensity: 20, trackingHeatmap: { counts: [[5, 0], [0, 0]], x_bins: 2, y_bins: 2 }, trackingGoalkeeperSeconds: 500 },
+      { pulmonTracking: 70, trackingDistancePer40Km: 3.8, trackingIntensity: 10, trackingHeatmap: { counts: [[5, 0], [0, 0]], x_bins: 2, y_bins: 2 } }
     ],
     [
-      { pulmonTracking: 75, trackingIntensity: 15, trackingHeatmap: { counts: [[0, 0], [0, 5]], x_bins: 2, y_bins: 2 }, trackingGoalkeeperSeconds: 500 },
-      { pulmonTracking: 72, trackingIntensity: 14, trackingHeatmap: { counts: [[0, 5], [0, 0]], x_bins: 2, y_bins: 2 } }
+      { pulmonTracking: 75, trackingDistancePer40Km: 3.5, trackingIntensity: 15, trackingHeatmap: { counts: [[0, 0], [0, 5]], x_bins: 2, y_bins: 2 }, trackingGoalkeeperSeconds: 500 },
+      { pulmonTracking: 72, trackingDistancePer40Km: 3.6, trackingIntensity: 14, trackingHeatmap: { counts: [[0, 5], [0, 0]], x_bins: 2, y_bins: 2 } }
     ]
   );
   assert(teamPenalty > 0);
+
+  const fisIgnoredPenalty = tracking.trackingFitnessPenalty(
+    [{ pulmonTracking: 100, trackingDistancePer40Km: 3.5, advanced_defense_score: 55, trackingIntensity: 10, trackingGoalkeeperSeconds: 500 }],
+    [{ pulmonTracking: 1, trackingDistancePer40Km: 3.5, advanced_defense_score: 55, trackingIntensity: 10, trackingGoalkeeperSeconds: 500 }]
+  );
+  assert.strictEqual(fisIgnoredPenalty, 0);
+
+  global.window = {};
+  global.document = { addEventListener() {} };
+  require('../docs/genetic-teams.js');
+  assert.strictEqual(window.T5MatchmakingMetrics.pulmonKm40Rating(0), 0);
+  assert.strictEqual(window.T5MatchmakingMetrics.pulmonKm40Rating(3.5), 7);
+  assert.strictEqual(window.T5MatchmakingMetrics.pulmonKm40Rating(5), 10);
+  assert.strictEqual(window.T5MatchmakingMetrics.pulmonKm40Rating(6), 10);
+  assert.strictEqual(window.T5MatchmakingMetrics.pulmonKm40Rating(null), null);
+  assert.strictEqual(window.T5MatchmakingMetrics.defensaRating(0), 0);
+  assert.strictEqual(window.T5MatchmakingMetrics.defensaRating(55), 5.5);
+  assert.strictEqual(window.T5MatchmakingMetrics.defensaRating(100), 10);
+
+  const optimizer = new window.GeneticTeamOptimizer();
+  optimizer.setJugadores([
+    { id: 'player-a', nombre: 'A', pj: 1, pulmon_tracking: 99, distance_per_40_min_km: 3.5, advanced_defense_score: 55 },
+    { id: 'player-b', nombre: 'B', pj: 1, pulmon_tracking: 1, distance_per_40_min_km: 4.5, advanced_defense_score: 75 }
+  ]);
+  const ratingsEquipo = optimizer.calcularEstadisticasEquipo(optimizer.jugadores);
+  assert.strictEqual(ratingsEquipo.pulmonKm40Promedio, 4);
+  assert.strictEqual(ratingsEquipo.pulmonRating, 8);
+  assert.strictEqual(ratingsEquipo.defensaRating, 6.5);
 
   const mappings = new Map([['P01', { jugador_id: 'jugador-1' }]]);
   const statsRows = tracking.buildTrackingPlayerStatsRows(normalized, mappings, 'analysis-1', 'match-1');

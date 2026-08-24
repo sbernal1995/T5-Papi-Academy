@@ -4679,6 +4679,12 @@
         const rendimientoArquero = processed.rolPartido === 'arquero'
           ? this.calcularRendimientoArquero(playerWithGoalkeeperData)
           : processed.rendimientoArquero;
+        const pulmonKm40 = numberOrNull(
+          tracking?.distance_per_40_min_km
+          ?? processed.pulmonKm40
+          ?? processed.trackingDistancePer40Km
+          ?? raw.distance_per_40_min_km
+        );
         const rankingSaveSkill = numberOrNull(processed.rendimientoArqueroRanking)
           ?? (((toNumber(raw.atajadas ?? processed.atajadas, 0)) / Math.max(toNumber(raw.pj ?? processed.pj, 0), 1)) * 0.4);
         const rendimientoTotal = toNumber(processed.rendimientoJugador, 0) + rankingSaveSkill + impactoSkillDefensa;
@@ -4698,6 +4704,7 @@
           pulmon: tracking?.pulmon_tracking ?? 0,
           pulmonManual: processed.pulmon,
           pulmonTracking: tracking?.pulmon_tracking ?? null,
+          pulmonKm40,
           scoreDefensivoMatchmaking: scoreDefensivoTracking ?? processed.scoreDefensivoMatchmaking ?? 0,
           scoreDefensivoTracking,
           defense_score: tracking?.defense_score ?? processed.defense_score ?? null,
@@ -4709,7 +4716,7 @@
           trackingGoalkeeperSeconds: tracking?.goalkeeper_seconds ?? 0,
           trackingDistanceKmAvg: tracking?.distance_km_avg ?? processed.trackingDistanceKmAvg ?? 0,
           trackingDistanceKmTotal: tracking?.distance_km_total ?? processed.trackingDistanceKmTotal ?? 0,
-          trackingDistancePer40Km: tracking?.distance_per_40_min_km ?? processed.trackingDistancePer40Km ?? 0,
+          trackingDistancePer40Km: pulmonKm40,
           trackingGoalsScoredLocations: tracking?.goal_locations || processed.trackingGoalsScoredLocations || [],
           trackingGoalsConcededLocations: concededGoals,
           trackingGoalsConcededCount: concededGoals.length
@@ -4766,13 +4773,21 @@
       const scoreDefensivoPromedio = tracking.playersWithDefenseScore > 0
         ? tracking.defenseAvg
         : toNumber(stats.scoreDefensivoPromedio, 0);
+      const pulmonRating = window.T5MatchmakingMetrics?.pulmonKm40Rating?.(tracking.pulmonAvg)
+        ?? Math.max(0, Math.min(10, tracking.pulmonAvg * 2));
+      const defensaRating = window.T5MatchmakingMetrics?.defensaRating?.(scoreDefensivoPromedio)
+        ?? Math.max(0, Math.min(10, scoreDefensivoPromedio / 10));
       return {
         ...stats,
         pulmonPromedio: tracking.pulmonAvg,
         pulmonTotal: tracking.pulmonTotal,
         pulmonTrackingTotal: tracking.pulmonTotal,
+        pulmonKm40Promedio: tracking.pulmonAvg,
+        pulmonKm40Total: tracking.pulmonTotal,
+        pulmonRating,
         scoreDefensivoPromedio,
         scoreDefensivoTotal,
+        defensaRating,
         jugadoresConScoreDefensivoTracking,
         trackingCoveragePct: tracking.coveragePct,
         trackingOverlapPct: tracking.overlapPct,
@@ -4792,6 +4807,8 @@
       player.tracking
       || player.trackingHeatmap
       || player.pulmonTracking !== null && player.pulmonTracking !== undefined
+      || player.pulmonKm40 !== null && player.pulmonKm40 !== undefined
+      || player.trackingDistancePer40Km !== null && player.trackingDistancePer40Km !== undefined
       || trackingDefenseScore(player) !== null
     ));
     const heatmaps = withTracking
@@ -4806,12 +4823,18 @@
       ? Math.max(0, Math.min(100, (coverageScore * 0.62) + (overlapScore * 0.38)))
       : 0;
     const pulmonValues = withTracking
-      .map(player => toNumber(player.pulmonTracking ?? player.tracking?.pulmon_tracking ?? player.tracking?.fis_valor, 0))
+      .map(player => toNumber(
+        player.pulmonKm40
+        ?? player.trackingDistancePer40Km
+        ?? player.tracking?.distance_per_40_min_km
+        ?? player.distance_per_40_min_km,
+        0
+      ))
       .filter(value => value > 0);
     const pulmonTotal = pulmonValues.reduce((sum, value) => sum + value, 0);
     const defenseValues = withTracking
       .map(player => trackingDefenseScore(player))
-      .filter(value => value !== null && value > 0);
+      .filter(value => value !== null && value >= 0);
     const defenseTotal = defenseValues.reduce((sum, value) => sum + value, 0);
     const intensityValues = withTracking.map(player => toNumber(player.trackingIntensity, 0));
     const goalkeepers = (team || []).filter(player =>
