@@ -7,6 +7,14 @@ import {
   obtenerTechoSkillHistorico
 } from './history-score.mjs?v=p95-ceiling-2026-08-04';
 import { resolverPremiosPortada } from './cover-awards.mjs?v=awards-2026-08-04';
+import {
+  calcularDistanciaTotalTrackingPartido,
+  construirIndiceRecordsDistanciaJugador,
+  encontrarPartidosConMayorDistancia,
+  encontrarAtajadaClaveRemontada,
+  esRecordDistanciaJugadorPartido,
+  obtenerDistanciaTrackingJugador
+} from './history-tracking-achievements.mjs?v=running-records-2026-08-31';
 
 // Cargar variables de entorno desde .env (solo para desarrollo local, en producción usar variables de entorno del build)
 const SUPABASE_URL = window.SUPABASE_URL || '';
@@ -1950,14 +1958,23 @@ function calcularDinamicaPartido(partido) {
       : null;
   })();
 
+  const remontada = ganador && maxDeficit[ganador] > 0
+    ? { equipo: ganador, deficit: maxDeficit[ganador], desde: maxDeficitScore[ganador] }
+    : null;
+  const atajadaClaveRemontada = encontrarAtajadaClaveRemontada(partido, {
+    eventos,
+    final,
+    ganador,
+    remontada
+  });
+
   return {
     eventos,
     final,
     ganador,
     cambiosLider,
-    remontada: ganador && maxDeficit[ganador] > 0
-      ? { equipo: ganador, deficit: maxDeficit[ganador], desde: maxDeficitScore[ganador] }
-      : null,
+    remontada,
+    atajadaClaveRemontada,
     entregada: ganador
       ? (() => {
           const perdedor = ganador === 1 ? 2 : 1;
@@ -22607,19 +22624,22 @@ const initApp = () => {
   }
 
   // --- Función para cargar historial de partidos ---
-  async function anexarTrackingDefensaHistorial(partidos = []) {
+  async function anexarTrackingHistorial(partidos = []) {
     const partidoIds = [...new Set(partidos.map(partido => partido.id).filter(Boolean).map(String))];
     partidos.forEach(partido => {
       partido._tracking_defensa_jugadores = new Map();
       partido._tracking_defensa_disponible = false;
+      partido._tracking_distancia_jugadores = new Map();
+      partido._tracking_distancia_disponible = false;
     });
     if (!partidoIds.length) return;
 
     const selects = [
-      'partido_id, jugador_id, defense_score, advanced_defense_score, defense_score_method',
-      'partido_id, jugador_id, defense_score, defense_score_method',
-      'partido_id, jugador_id, defense_score',
-      'partido_id, jugador_id, advanced_defense_score'
+      'partido_id, jugador_id, distance_km, defense_score, advanced_defense_score, defense_score_method',
+      'partido_id, jugador_id, distance_km, defense_score, defense_score_method',
+      'partido_id, jugador_id, distance_km, defense_score',
+      'partido_id, jugador_id, distance_km, advanced_defense_score',
+      'partido_id, jugador_id, distance_km'
     ];
     let data = [];
     let ultimoError = null;
@@ -22656,23 +22676,35 @@ const initApp = () => {
     }
 
     const trackingPorPartido = new Map();
+    const distanciasPorPartido = new Map();
     (data || []).forEach(row => {
       if (!row?.partido_id || !row?.jugador_id) return;
       const partidoKey = String(row.partido_id);
       const jugadorKey = String(row.jugador_id);
       if (!trackingPorPartido.has(partidoKey)) trackingPorPartido.set(partidoKey, new Map());
+      if (!distanciasPorPartido.has(partidoKey)) distanciasPorPartido.set(partidoKey, new Map());
 
       const mapaJugadores = trackingPorPartido.get(partidoKey);
       const actual = mapaJugadores.get(jugadorKey);
       if (!actual || calcularPuntosDefensaTracking(row) > calcularPuntosDefensaTracking(actual)) {
         mapaJugadores.set(jugadorKey, row);
       }
+
+      const distanciaKm = Number(row.distance_km);
+      const mapaDistancias = distanciasPorPartido.get(partidoKey);
+      const distanciaActual = Number(mapaDistancias.get(jugadorKey)?.distance_km);
+      if (Number.isFinite(distanciaKm) && distanciaKm > 0 && (!Number.isFinite(distanciaActual) || distanciaKm > distanciaActual)) {
+        mapaDistancias.set(jugadorKey, row);
+      }
     });
 
     partidos.forEach(partido => {
       const mapa = trackingPorPartido.get(String(partido.id)) || new Map();
+      const mapaDistancias = distanciasPorPartido.get(String(partido.id)) || new Map();
       partido._tracking_defensa_jugadores = mapa;
       partido._tracking_defensa_disponible = mapa.size > 0;
+      partido._tracking_distancia_jugadores = mapaDistancias;
+      partido._tracking_distancia_disponible = mapaDistancias.size > 0;
     });
   }
 
@@ -22721,6 +22753,7 @@ const initApp = () => {
       totalAsistencias,
       totalAtajadas: jugadoresPartido.reduce((sum, jp) => sum + (Number(jp.atajadas) || 0), 0),
       totalCagadas: jugadoresPartido.reduce((sum, jp) => sum + obtenerCagadasJugadorRecordsHistorial(partido, jp), 0),
+      totalDistanciaKm: calcularDistanciaTotalTrackingPartido(partido),
       dinamica
     };
   }
@@ -22755,6 +22788,12 @@ const initApp = () => {
     ];
   }
 
+  function obtenerRecordsTrackingConfigHistorial() {
+    return [
+      { tipo: 'partido-distancia', iconoHtml: '<i class="bi bi-person-walking"></i>', clase: 'is-running' }
+    ];
+  }
+
   function obtenerTemporadaScopeRecordsHistorial(temporadaId = '') {
     return temporadaId ? String(temporadaId) : '__todas__';
   }
@@ -22764,7 +22803,8 @@ const initApp = () => {
       ...obtenerRecordsPartidoConfigHistorial(),
       ...obtenerRecordsJugadorConfigHistorial(),
       ...obtenerRecordsGolConfigHistorial(),
-      ...obtenerRecordsDinamicaConfigHistorial()
+      ...obtenerRecordsDinamicaConfigHistorial(),
+      ...obtenerRecordsTrackingConfigHistorial()
     ]
       .find(config => config.tipo === tipo) || {
         tipo,
@@ -23057,6 +23097,40 @@ const initApp = () => {
       });
     });
 
+    const registrarMaximoDistancia = ({ candidatos, esHistorico }) => {
+      encontrarPartidosConMayorDistancia(candidatos).partidos
+        .forEach(({ partido, distanciaKm }) => {
+          if (!esPartidoDeTemporadaVisible(partido)) return;
+          agregarRecordCalculadoHistorial(recordsPorPartido, recordsPlanos, partido, temporadaScope, {
+            tipo: 'partido-distancia',
+            scope: 'partido',
+            metricKey: 'totalDistanciaKm',
+            valor: distanciaKm,
+            anterior: null,
+            recordKeyScope: esHistorico ? 'distancia-historia' : 'distancia-temporada',
+            clase: 'is-running',
+            iconoHtml: '<i class="bi bi-person-walking"></i>',
+            destacadoHistorico: esHistorico,
+            kicker: esHistorico ? 'Récord histórico de tracking' : 'Récord de tracking de la temporada',
+            titulo: esHistorico
+              ? 'El partido en el que más se corrió de la historia'
+              : 'El partido en el que más se corrió de la temporada',
+            detalleTexto: `${distanciaKm.toFixed(2)} km recorridos por el conjunto de jugadores`
+          });
+        });
+    };
+
+    registrarMaximoDistancia({
+      candidatos: partidosCronologicos,
+      esHistorico: true
+    });
+    if (temporadaSeleccionadaKey) {
+      registrarMaximoDistancia({
+        candidatos: partidosCronologicos.filter(esPartidoDeTemporadaVisible),
+        esHistorico: false
+      });
+    }
+
     return { recordsPorPartido, recordsPlanos };
   }
 
@@ -23260,6 +23334,7 @@ const initApp = () => {
 
     const partidos = Array.isArray(data) ? data : [];
     await anexarReviewEventosHistorial(partidos);
+    await anexarTrackingHistorial(partidos);
     return partidos;
   }
 
@@ -24116,13 +24191,12 @@ const initApp = () => {
       }
 
       await anexarReviewEventosHistorial(partidos);
-      await anexarTrackingDefensaHistorial(partidos);
+      await anexarTrackingHistorial(partidos);
       try {
         partidosEscalaHistorialGlobal = await consultarPartidosParaRecordsHistorial(
           temporadaSeleccionada,
           { incluirTodasLasTemporadas: true }
         );
-        await anexarTrackingDefensaHistorial(partidosEscalaHistorialGlobal);
       } catch (errorEscala) {
         console.warn('No se pudo cargar la escala completa de puntajes del historial. Se usa el lote visible:', errorEscala);
         partidosEscalaHistorialGlobal = partidos;
@@ -24493,6 +24567,7 @@ const initApp = () => {
     const partidosEscala = Array.isArray(opciones.partidosEscala) && opciones.partidosEscala.length
       ? opciones.partidosEscala
       : partidos;
+    const recordsDistanciaJugadorTemporada = construirIndiceRecordsDistanciaJugador(partidosEscala);
 
     const calcularSkillPartido = ({
       goles = 0,
@@ -24611,6 +24686,7 @@ const initApp = () => {
         totalAtajadas: jugadoresPartido.reduce((sum, jp) => sum + (Number(jp.atajadas) || 0), 0),
         totalCagadas: jugadoresPartido.reduce((sum, jp) => sum + obtenerCagadasJugadorPartidoHistorial(partido, jp), 0),
         totalBuenasJugadas: jugadoresPartido.reduce((sum, jp) => sum + obtenerBuenasJugadasJugadorPartidoHistorial(partido, jp), 0),
+        totalDistanciaKm: calcularDistanciaTotalTrackingPartido(partido),
         dinamica
       };
     };
@@ -24935,6 +25011,23 @@ const initApp = () => {
           etiqueta: `Remontada ${dinamica.remontada.desde}`,
           titulo: `${nombreEquipo(dinamica.remontada.equipo)} levanto el partido`,
           detalleTexto: `Levanto un ${dinamica.remontada.desde} y gano el partido`
+        });
+      }
+
+      if (dinamica.atajadaClaveRemontada) {
+        const atajada = dinamica.atajadaClaveRemontada;
+        const minutoTexto = Number.isFinite(atajada.minuto)
+          ? ` a los ${formatearMinutoPartidoNormalizado(atajada.minuto)}`
+          : '';
+        items.push({
+          tipo: 'dinamica-atajada-clave-remontada',
+          scope: 'partido',
+          valor: atajada.cantidad,
+          clase: 'is-saves',
+          iconoHtml: '<i class="bi bi-shield-fill-check"></i>',
+          etiqueta: `Atajada clave (${atajada.cantidad})`,
+          titulo: `${atajada.jugadorNombre} mantuvo vivo al equipo`,
+          detalleTexto: `Con el partido ${atajada.marcadorTexto}${minutoTexto}, sostuvo al equipo que después lo dio vuelta`
         });
       }
 
@@ -25442,6 +25535,15 @@ const initApp = () => {
         return `<span class="historial-player-good-note" title="DEF ajustado por carga: +${puntosTexto} al skill (${scoreTexto}/100${obtenerDetalleRangoDefensaTrackingHistorial()}${cargaTexto})"><i class="bi bi-shield-check"></i>+${puntosTexto}</span>`;
       };
 
+      const renderizarRecordDistanciaJugadorHistorial = (jp) => {
+        const record = esRecordDistanciaJugadorPartido(recordsDistanciaJugadorTemporada, partido, jp?.jugador_id);
+        const distanciaKm = obtenerDistanciaTrackingJugador(partido, jp?.jugador_id);
+        if (!record || !Number.isFinite(distanciaKm)) return '';
+
+        const distanciaTexto = distanciaKm.toFixed(2);
+        return `<span class="historial-player-good-note is-running-record" title="Mayor distancia personal de la temporada: ${distanciaTexto} km"><i class="bi bi-person-walking"></i>${distanciaTexto} km · récord temp.</span>`;
+      };
+
       const renderizarFilaJugadorHistorial = (jp) => {
         const {
           golesDelJugador,
@@ -25473,6 +25575,7 @@ const initApp = () => {
           ? `<span class="historial-player-good-note" title="${buenasJugadasJugador} buenas jugadas"><i class="bi bi-stars"></i>${buenasJugadasJugador}</span>`
           : '';
         const defensaTrackingHtml = renderizarChipDefensaTrackingHistorial({ defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima });
+        const recordDistanciaHtml = renderizarRecordDistanciaJugadorHistorial(jp);
 
         return `
           <div class="historial-player-row ${esAdmin ? 'has-coin-action' : ''}">
@@ -25488,6 +25591,7 @@ const initApp = () => {
                   ${renderizarTextoCarrilHistorial({ tipo: 'mistake', icono: '<i class="bi bi-exclamation-triangle-fill"></i>', cantidad: cagadasJugador, label: 'cagadas' })}
                   ${buenasJugadasHtml}
                   ${defensaTrackingHtml}
+                  ${recordDistanciaHtml}
                 </span>
               </div>
             </div>
@@ -25549,6 +25653,10 @@ const initApp = () => {
         const defensaTrackingHtml = renderizarChipDefensaTrackingHistorial({ defensaTrackingScore, puntosDefensaTracking, cargaDefensivaEquipo, cargaDefensivaMaxima });
         if (defensaTrackingHtml) {
           stats.push(defensaTrackingHtml);
+        }
+        const recordDistanciaHtml = renderizarRecordDistanciaJugadorHistorial(jp);
+        if (recordDistanciaHtml) {
+          stats.push(recordDistanciaHtml);
         }
 
         const iconoTendencia = tendencia === 'up' ? '&uarr;' : (tendencia === 'down' ? '&darr;' : '=');
